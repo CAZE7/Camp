@@ -9,9 +9,7 @@ import {
 import type { RoutingDiagnosticExport, QualityLoss } from './types';
 
 describe('Root-Cause-Analysis', () => {
-  const createMockExport = (
-    qualityLosses: QualityLoss[] = []
-  ): RoutingDiagnosticExport => ({
+  const createMockExport = (qualityLosses: QualityLoss[] = []): RoutingDiagnosticExport => ({
     meta: {
       planId: 'test-plan',
       sessionId: 'test-session',
@@ -108,9 +106,7 @@ describe('Root-Cause-Analysis', () => {
       const analysis = performRootCauseAnalysis(exportData);
 
       expect(analysis.hypotheses.length).toBeGreaterThan(0);
-      const hypothesis = analysis.hypotheses.find(
-        (h) => h.category === 'postprocessing'
-      );
+      const hypothesis = analysis.hypotheses.find((h) => h.category === 'postprocessing');
       expect(hypothesis).toBeDefined();
       expect(hypothesis?.title).toContain('Postprocessing');
       expect(hypothesis?.confidence).toBeGreaterThan(0.8);
@@ -134,9 +130,7 @@ describe('Root-Cause-Analysis', () => {
       const analysis = performRootCauseAnalysis(exportData);
 
       expect(analysis.hypotheses.length).toBeGreaterThan(0);
-      const hypothesis = analysis.hypotheses.find(
-        (h) => h.category === 'routing-algorithm'
-      );
+      const hypothesis = analysis.hypotheses.find((h) => h.category === 'routing-algorithm');
       expect(hypothesis).toBeDefined();
       expect(hypothesis?.severity).toBe('major');
     });
@@ -159,9 +153,7 @@ describe('Root-Cause-Analysis', () => {
       const analysis = performRootCauseAnalysis(exportData);
 
       expect(analysis.hypotheses.length).toBeGreaterThan(0);
-      const hypothesis = analysis.hypotheses.find(
-        (h) => h.severity === 'critical'
-      );
+      const hypothesis = analysis.hypotheses.find((h) => h.severity === 'critical');
       expect(hypothesis).toBeDefined();
       expect(hypothesis?.category).toBe('routing-algorithm');
     });
@@ -184,9 +176,7 @@ describe('Root-Cause-Analysis', () => {
       const analysis = performRootCauseAnalysis(exportData);
 
       expect(analysis.hypotheses.length).toBeGreaterThan(0);
-      const hypothesis = analysis.hypotheses.find(
-        (h) => h.category === 'configuration'
-      );
+      const hypothesis = analysis.hypotheses.find((h) => h.category === 'configuration');
       expect(hypothesis).toBeDefined();
     });
 

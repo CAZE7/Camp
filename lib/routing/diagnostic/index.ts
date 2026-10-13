@@ -43,12 +43,7 @@ export {
   countBendsInWaypoints,
 } from './snapshot';
 
-export type {
-  SnapshotNodeInput,
-  SnapshotEdgeInput,
-  SnapshotRouteInput,
-  CaptureStateInput,
-} from './snapshot';
+export type { SnapshotNodeInput, SnapshotEdgeInput, SnapshotRouteInput, CaptureStateInput } from './snapshot';
 
 // ── Metriken ────────────────────────────────────────────────────────────────
 
@@ -107,9 +102,7 @@ let currentSession: RoutingDiagnosticSession | null = null;
  * Setzt die aktive Diagnose-Session. Von den Instrumentierungs-Hooks in
  * `routeAll.ts` und `cableRouteStore.ts` aufgerufen.
  */
-export function setActiveDiagnosticSession(
-  session: RoutingDiagnosticSession | null
-): void {
+export function setActiveDiagnosticSession(session: RoutingDiagnosticSession | null): void {
   currentSession = session;
 }
 

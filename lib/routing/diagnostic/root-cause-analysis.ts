@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Root-Cause-Analysis Engine
- * 
+ *
  * Automatische Ursachenidentifikation bei Qualitätsverlusten.
  * Analysiert Übergangsberichte und Metriken, um die wahrscheinliche
  * Ursache von Problemen zu bestimmen.
@@ -83,10 +83,7 @@ export interface RootCauseAnalysis {
 
 interface PatternMatcher {
   name: string;
-  test: (
-    exportData: RoutingDiagnosticExport,
-    loss: QualityLoss
-  ) => RootCauseHypothesis | null;
+  test: (exportData: RoutingDiagnosticExport, loss: QualityLoss) => RootCauseHypothesis | null;
 }
 
 const patternMatchers: PatternMatcher[] = [
@@ -181,7 +178,7 @@ const patternMatchers: PatternMatcher[] = [
 
       const baselineMetrics = exportData.metrics.A;
       const afterMetrics = exportData.metrics.B;
-      
+
       if (!baselineMetrics || !afterMetrics) return null;
 
       const lengthIncrease = afterMetrics.totalCableLength - baselineMetrics.totalCableLength;
@@ -306,9 +303,8 @@ const patternMatchers: PatternMatcher[] = [
   {
     name: 'performance-expansion-limit',
     test: (exportData, loss) => {
-      const phaseDuration = loss.affectedEdges.length > 0 ? 
-        exportData.metrics.C?.phaseDurationMs : null;
-      
+      const phaseDuration = loss.affectedEdges.length > 0 ? exportData.metrics.C?.phaseDurationMs : null;
+
       if (!phaseDuration || phaseDuration < 1000) return null;
       if (loss.metricDelta.metric !== 'fallbackRoutes') return null;
 
@@ -350,9 +346,7 @@ const patternMatchers: PatternMatcher[] = [
 // Main Analysis Function
 // ============================================================================
 
-export function performRootCauseAnalysis(
-  exportData: RoutingDiagnosticExport
-): RootCauseAnalysis {
+export function performRootCauseAnalysis(exportData: RoutingDiagnosticExport): RootCauseAnalysis {
   const hypotheses: RootCauseHypothesis[] = [];
 
   for (const loss of exportData.qualityLosses) {
@@ -454,10 +448,7 @@ export function generateRootCauseReport(analysis: RootCauseAnalysis): string {
   return lines.join('\n');
 }
 
-export function getTopRecommendations(
-  analysis: RootCauseAnalysis,
-  limit: number = 5
-): string[] {
+export function getTopRecommendations(analysis: RootCauseAnalysis, limit: number = 5): string[] {
   const allRecs = analysis.hypotheses.flatMap((h) => h.recommendations);
   const unique = Array.from(new Set(allRecs));
   return unique.slice(0, limit);

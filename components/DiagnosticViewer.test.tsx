@@ -24,11 +24,38 @@ describe('DiagnosticViewer', () => {
         capturedAt: '2026-01-15T10:00:00.000Z',
         captureDurationMs: 10,
         nodes: [
-          { id: 'node1', type: 'consumer', position: { x: 0, y: 0 }, width: 100, height: 50, locked: false, handles: null },
-          { id: 'node2', type: 'consumer', position: { x: 200, y: 0 }, width: 100, height: 50, locked: false, handles: null },
+          {
+            id: 'node1',
+            type: 'consumer',
+            position: { x: 0, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
+          {
+            id: 'node2',
+            type: 'consumer',
+            position: { x: 200, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
         ],
         edges: [
-          { id: 'edge1', source: 'node1', target: 'node2', sourceHandle: null, targetHandle: null, domain: null, crossSection: null, locked: false, lockedWaypoints: null, autoWired: false },
+          {
+            id: 'edge1',
+            source: 'node1',
+            target: 'node2',
+            sourceHandle: null,
+            targetHandle: null,
+            domain: null,
+            crossSection: null,
+            locked: false,
+            lockedWaypoints: null,
+            autoWired: false,
+          },
         ],
         routes: [],
         counts: { nodes: 2, edges: 1, routes: 0 },
@@ -39,13 +66,59 @@ describe('DiagnosticViewer', () => {
         capturedAt: '2026-01-15T10:00:00.100Z',
         captureDurationMs: 15,
         nodes: [
-          { id: 'node1', type: 'consumer', position: { x: 0, y: 0 }, width: 100, height: 50, locked: false, handles: null },
-          { id: 'node2', type: 'consumer', position: { x: 200, y: 0 }, width: 100, height: 50, locked: false, handles: null },
-          { id: 'node3', type: 'fuse', position: { x: 100, y: 100 }, width: 80, height: 40, locked: false, handles: null },
+          {
+            id: 'node1',
+            type: 'consumer',
+            position: { x: 0, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
+          {
+            id: 'node2',
+            type: 'consumer',
+            position: { x: 200, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
+          {
+            id: 'node3',
+            type: 'fuse',
+            position: { x: 100, y: 100 },
+            width: 80,
+            height: 40,
+            locked: false,
+            handles: null,
+          },
         ],
         edges: [
-          { id: 'edge1', source: 'node1', target: 'node3', sourceHandle: null, targetHandle: null, domain: 'dc', crossSection: 2.5, locked: false, lockedWaypoints: null, autoWired: true },
-          { id: 'edge2', source: 'node3', target: 'node2', sourceHandle: null, targetHandle: null, domain: 'dc', crossSection: 2.5, locked: false, lockedWaypoints: null, autoWired: true },
+          {
+            id: 'edge1',
+            source: 'node1',
+            target: 'node3',
+            sourceHandle: null,
+            targetHandle: null,
+            domain: 'dc',
+            crossSection: 2.5,
+            locked: false,
+            lockedWaypoints: null,
+            autoWired: true,
+          },
+          {
+            id: 'edge2',
+            source: 'node3',
+            target: 'node2',
+            sourceHandle: null,
+            targetHandle: null,
+            domain: 'dc',
+            crossSection: 2.5,
+            locked: false,
+            lockedWaypoints: null,
+            autoWired: true,
+          },
         ],
         routes: [],
         counts: { nodes: 3, edges: 2, routes: 0 },
@@ -56,20 +129,70 @@ describe('DiagnosticViewer', () => {
         capturedAt: '2026-01-15T10:00:00.200Z',
         captureDurationMs: 250,
         nodes: [
-          { id: 'node1', type: 'consumer', position: { x: 0, y: 0 }, width: 100, height: 50, locked: false, handles: null },
-          { id: 'node2', type: 'consumer', position: { x: 200, y: 0 }, width: 100, height: 50, locked: false, handles: null },
-          { id: 'node3', type: 'fuse', position: { x: 100, y: 100 }, width: 80, height: 40, locked: false, handles: null },
+          {
+            id: 'node1',
+            type: 'consumer',
+            position: { x: 0, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
+          {
+            id: 'node2',
+            type: 'consumer',
+            position: { x: 200, y: 0 },
+            width: 100,
+            height: 50,
+            locked: false,
+            handles: null,
+          },
+          {
+            id: 'node3',
+            type: 'fuse',
+            position: { x: 100, y: 100 },
+            width: 80,
+            height: 40,
+            locked: false,
+            handles: null,
+          },
         ],
         edges: [
-          { id: 'edge1', source: 'node1', target: 'node3', sourceHandle: null, targetHandle: null, domain: 'dc', crossSection: 2.5, locked: false, lockedWaypoints: null, autoWired: true },
-          { id: 'edge2', source: 'node3', target: 'node2', sourceHandle: null, targetHandle: null, domain: 'dc', crossSection: 2.5, locked: false, lockedWaypoints: null, autoWired: true },
+          {
+            id: 'edge1',
+            source: 'node1',
+            target: 'node3',
+            sourceHandle: null,
+            targetHandle: null,
+            domain: 'dc',
+            crossSection: 2.5,
+            locked: false,
+            lockedWaypoints: null,
+            autoWired: true,
+          },
+          {
+            id: 'edge2',
+            source: 'node3',
+            target: 'node2',
+            sourceHandle: null,
+            targetHandle: null,
+            domain: 'dc',
+            crossSection: 2.5,
+            locked: false,
+            lockedWaypoints: null,
+            autoWired: true,
+          },
         ],
         routes: [
           {
             edgeId: 'edge1',
             source: 'node1',
             target: 'node3',
-            waypoints: [{ x: 50, y: 25 }, { x: 50, y: 120 }, { x: 100, y: 120 }],
+            waypoints: [
+              { x: 50, y: 25 },
+              { x: 50, y: 120 },
+              { x: 100, y: 120 },
+            ],
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -85,7 +208,11 @@ describe('DiagnosticViewer', () => {
             edgeId: 'edge2',
             source: 'node3',
             target: 'node2',
-            waypoints: [{ x: 140, y: 120 }, { x: 200, y: 120 }, { x: 200, y: 25 }],
+            waypoints: [
+              { x: 140, y: 120 },
+              { x: 200, y: 120 },
+              { x: 200, y: 25 },
+            ],
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -209,22 +336,22 @@ describe('DiagnosticViewer', () => {
 
   it('should switch between tabs', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     // Standard-Tab ist "Übersicht", also klicken wir auf "Metriken"
     const metricsTab = screen.getByText('Metriken');
     fireEvent.click(metricsTab);
-    
+
     // Wähle State C, der Metriken hat
     const stateCButtons = screen.getAllByText('Nach Routing');
     fireEvent.click(stateCButtons[0]!);
-    
+
     // Jetzt sollten wir Metriken sehen
     expect(screen.getByText('Kabellänge gesamt')).toBeInTheDocument();
   });
 
   it('should display state selector in overview', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     // Im Standard-Tab "Übersicht" sollten die State-Labels sichtbar sein
     expect(screen.getByText('Initial')).toBeInTheDocument();
     expect(screen.getByText('Nach AutoWire')).toBeInTheDocument();
@@ -233,7 +360,7 @@ describe('DiagnosticViewer', () => {
 
   it('should show node and edge counts for each state', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     expect(screen.getByText('2 Nodes')).toBeInTheDocument();
     expect(screen.getByText('1 Edges')).toBeInTheDocument();
   });
@@ -241,59 +368,59 @@ describe('DiagnosticViewer', () => {
   it('should call onClose when close button is clicked', () => {
     const onClose = vi.fn();
     render(<DiagnosticViewer export={mockExport} onClose={onClose} />);
-    
+
     // Finde den Close-Button (SVG mit X-Icon)
     const closeButton = screen.getByRole('button', { name: '' });
     fireEvent.click(closeButton);
-    
+
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('should call onViewState when "Plan anzeigen" is clicked', () => {
     const onViewState = vi.fn();
     render(<DiagnosticViewer export={mockExport} onViewState={onViewState} />);
-    
+
     // Wähle State B, der einen Snapshot hat
     const stateBButton = screen.getByText('Nach AutoWire').closest('button')!;
     fireEvent.click(stateBButton);
-    
+
     // Jetzt sollte der "Plan anzeigen" Button sichtbar sein
     const viewButton = screen.getByText('Plan anzeigen');
     fireEvent.click(viewButton);
-    
+
     expect(onViewState).toHaveBeenCalledWith('B');
   });
 
   it('should display metrics when switching to metrics tab', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     const metricsTab = screen.getByText('Metriken');
     fireEvent.click(metricsTab);
-    
+
     // Wähle State C, der Metriken hat (verwende getAllByText da es mehrere State-Buttons gibt)
     const stateCButtons = screen.getAllByText('Nach Routing');
     fireEvent.click(stateCButtons[0]!);
-    
+
     expect(screen.getByText('Kabellänge gesamt')).toBeInTheDocument();
     expect(screen.getByText('290 px')).toBeInTheDocument();
   });
 
   it('should display transitions when switching to transitions tab', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     const transitionsTab = screen.getByText('Übergänge');
     fireEvent.click(transitionsTab);
-    
+
     expect(screen.getByText('B → C')).toBeInTheDocument();
     expect(screen.getByText('Routing')).toBeInTheDocument();
   });
 
   it('should show no quality losses message when array is empty', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     const qualityTab = screen.getByText('Qualitätsverluste');
     fireEvent.click(qualityTab);
-    
+
     expect(screen.getByText('Keine Qualitätsverluste erkannt')).toBeInTheDocument();
   });
 
@@ -317,53 +444,53 @@ describe('DiagnosticViewer', () => {
     };
 
     render(<DiagnosticViewer export={exportWithLosses} />);
-    
+
     const qualityTab = screen.getByText('Qualitätsverluste');
     fireEvent.click(qualityTab);
-    
+
     expect(screen.getByText('1 Qualitätsverlust erkannt')).toBeInTheDocument();
     expect(screen.getByText('Edge crosses node boundary')).toBeInTheDocument();
   });
 
   it('should allow switching between states', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     // Im Standard-Tab "Übersicht" auf State B klicken
     const stateBButton = screen.getByText('Nach AutoWire').closest('button')!;
     fireEvent.click(stateBButton);
-    
+
     // Jetzt sollten die Details für State B angezeigt werden
     // Verwende getAllByText da "3 Nodes" mehrfach vorkommt (im Selector und in den Details)
     const nodesElements = screen.getAllByText('3 Nodes');
     expect(nodesElements.length).toBeGreaterThan(0);
-    
+
     const edgesElements = screen.getAllByText('2 Edges');
     expect(edgesElements.length).toBeGreaterThan(0);
   });
 
   it('should enable comparison mode', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     const transitionsTab = screen.getByText('Übergänge');
     fireEvent.click(transitionsTab);
-    
+
     const comparisonButton = screen.getByText('Vergleichsmodus aktivieren');
     fireEvent.click(comparisonButton);
-    
+
     expect(screen.getByText('Vergleichsmodus aktiv')).toBeInTheDocument();
   });
 
   it('should handle missing snapshots gracefully', () => {
     render(<DiagnosticViewer export={mockExport} />);
-    
+
     // Wechsle zum Metriken-Tab
     const metricsTab = screen.getByText('Metriken');
     fireEvent.click(metricsTab);
-    
+
     // Klicke auf den State-Button für D (im Metriken-Tab, erster gefundener Button)
     const stateDButtons = screen.getAllByText('Nach Postprocessing');
     fireEvent.click(stateDButtons[0]!);
-    
+
     // Sollte eine Meldung zeigen, dass keine Metriken verfügbar sind
     expect(screen.getByText('Keine Metriken für State D verfügbar')).toBeInTheDocument();
   });

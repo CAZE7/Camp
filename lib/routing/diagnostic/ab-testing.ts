@@ -1,9 +1,9 @@
 /**
  * A/B-Testing Framework für Routing-Varianten
- * 
+ *
  * Systematischer Vergleich verschiedener Routing-Konfigurationen
  * mit statistischer Analyse und Signifikanz-Tests.
- * 
+ *
  * Features:
  * - Multi-Variant Testing (A/B/C/D/...)
  * - Statistische Signifikanz-Tests (t-test)
@@ -12,11 +12,7 @@
  * - Detaillierte Vergleichsberichte
  */
 
-import type {
-  RoutingDiagnosticExport,
-  RoutingMetrics,
-  DiagnosticStateId,
-} from './types';
+import type { RoutingDiagnosticExport, RoutingMetrics, DiagnosticStateId } from './types';
 
 // ============================================================================
 // Types
@@ -86,10 +82,7 @@ export interface StatisticalTest {
  * Student's t-test for two samples
  * Vereinfachte Version für einzelne Messwerte (Annahme: bekannte Varianz)
  */
-function performTTest(
-  sample1: number[],
-  sample2: number[]
-): StatisticalTest {
+function performTTest(sample1: number[], sample2: number[]): StatisticalTest {
   const n1 = sample1.length;
   const n2 = sample2.length;
 
@@ -106,12 +99,8 @@ function performTTest(
   const mean2 = sample2.reduce((a, b) => a + b, 0) / n2;
 
   // Vereinfachte Varianz-Schätzung
-  const variance1 = n1 > 1
-    ? sample1.reduce((sum, v) => sum + Math.pow(v - mean1, 2), 0) / (n1 - 1)
-    : 0;
-  const variance2 = n2 > 1
-    ? sample2.reduce((sum, v) => sum + Math.pow(v - mean2, 2), 0) / (n2 - 1)
-    : 0;
+  const variance1 = n1 > 1 ? sample1.reduce((sum, v) => sum + Math.pow(v - mean1, 2), 0) / (n1 - 1) : 0;
+  const variance2 = n2 > 1 ? sample2.reduce((sum, v) => sum + Math.pow(v - mean2, 2), 0) / (n2 - 1) : 0;
 
   // Pooled standard error
   const se = Math.sqrt(variance1 / n1 + variance2 / n2);
@@ -141,8 +130,8 @@ function performTTest(
     pValue,
     degreesOfFreedom: df,
     confidenceInterval: {
-      lower: (mean1 - mean2) - marginOfError,
-      upper: (mean1 - mean2) + marginOfError,
+      lower: mean1 - mean2 - marginOfError,
+      upper: mean1 - mean2 + marginOfError,
       level: 0.95,
     },
   };
@@ -164,7 +153,7 @@ function normalCDF(x: number): number {
   x = Math.abs(x) / Math.sqrt(2);
 
   const t = 1.0 / (1.0 + p * x);
-  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
 
   return 0.5 * (1.0 + sign * y);
 }
@@ -181,12 +170,8 @@ function calculateEffectSize(sample1: number[], sample2: number[]): number {
   const mean1 = sample1.reduce((a, b) => a + b, 0) / n1;
   const mean2 = sample2.reduce((a, b) => a + b, 0) / n2;
 
-  const variance1 = n1 > 1
-    ? sample1.reduce((sum, v) => sum + Math.pow(v - mean1, 2), 0) / (n1 - 1)
-    : 0;
-  const variance2 = n2 > 1
-    ? sample2.reduce((sum, v) => sum + Math.pow(v - mean2, 2), 0) / (n2 - 1)
-    : 0;
+  const variance1 = n1 > 1 ? sample1.reduce((sum, v) => sum + Math.pow(v - mean1, 2), 0) / (n1 - 1) : 0;
+  const variance2 = n2 > 1 ? sample2.reduce((sum, v) => sum + Math.pow(v - mean2, 2), 0) / (n2 - 1) : 0;
 
   const pooledStd = Math.sqrt(((n1 - 1) * variance1 + (n2 - 1) * variance2) / (n1 + n2 - 2));
 
@@ -239,8 +224,16 @@ export function runABTest(config: ABTestConfig): ABTestResult {
 
       const isSignificant = test.pValue < config.significanceLevel;
       const winner = config.lowerIsBetter
-        ? (valueA < valueB ? 'A' : valueB < valueA ? 'B' : 'tie')
-        : (valueA > valueB ? 'A' : valueB > valueA ? 'B' : 'tie');
+        ? valueA < valueB
+          ? 'A'
+          : valueB < valueA
+            ? 'B'
+            : 'tie'
+        : valueA > valueB
+          ? 'A'
+          : valueB > valueA
+            ? 'B'
+            : 'tie';
 
       const confidence = 1 - test.pValue;
 
@@ -261,7 +254,9 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       console.warn(`   ${variantA.id} vs ${variantB.id}:`);
       console.warn(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
       console.warn(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
-      console.warn(`     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`);
+      console.warn(
+        `     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`
+      );
       console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
       console.warn('');
     }
@@ -286,17 +281,14 @@ export function runABTest(config: ABTestConfig): ABTestResult {
   } else {
     statisticalSignificance = 'significant';
     const maxWins = Math.max(...winnerCounts.values(), 0);
-    const winnerId = Array.from(winnerCounts.entries()).find(
-      ([, count]) => count === maxWins
-    )?.[0];
+    const winnerId = Array.from(winnerCounts.entries()).find(([, count]) => count === maxWins)?.[0];
     if (winnerId) {
       winner = config.variants.find((v) => v.id === winnerId) || null;
     }
   }
 
-  const overallConfidence = comparisons.length > 0
-    ? comparisons.reduce((sum, c) => sum + c.confidence, 0) / comparisons.length
-    : 0;
+  const overallConfidence =
+    comparisons.length > 0 ? comparisons.reduce((sum, c) => sum + c.confidence, 0) / comparisons.length : 0;
 
   // Generate recommendations
   const recommendations: string[] = [];
@@ -314,10 +306,11 @@ export function runABTest(config: ABTestConfig): ABTestResult {
   }
 
   if (significantComparisons.length > 0) {
-    const avgImprovement = significantComparisons
-      .filter((c) => c.winner !== 'tie')
-      .reduce((sum, c) => sum + Math.abs(c.deltaPercent), 0) / significantComparisons.length;
-    
+    const avgImprovement =
+      significantComparisons
+        .filter((c) => c.winner !== 'tie')
+        .reduce((sum, c) => sum + Math.abs(c.deltaPercent), 0) / significantComparisons.length;
+
     if (avgImprovement > 10) {
       recommendations.push(`🎯 Durchschnittliche Verbesserung: ${avgImprovement.toFixed(1)}%`);
     }
@@ -346,9 +339,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
 // Multi-Metric Analysis
 // ============================================================================
 
-export function analyzeSecondaryMetrics(
-  result: ABTestResult
-): Map<string, VariantComparison[]> {
+export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, VariantComparison[]> {
   const secondaryComparisons = new Map<string, VariantComparison[]>();
 
   if (!result.config.secondaryMetrics) return secondaryComparisons;
@@ -441,8 +432,12 @@ export function generateABTestReport(result: ABTestResult): string {
     lines.push('');
     lines.push(`- **${comp.metric}:** ${comp.valueA.toFixed(2)} → ${comp.valueB.toFixed(2)}`);
     lines.push(`- **Delta:** ${comp.delta.toFixed(2)} (${comp.deltaPercent.toFixed(1)}%)`);
-    lines.push(`- **p-Wert:** ${comp.pValue.toFixed(4)} (${comp.isSignificant ? 'signifikant' : 'nicht signifikant'})`);
-    lines.push(`- **Gewinner:** ${comp.winner === 'tie' ? 'Unentschieden' : comp.winner === 'A' ? comp.variantA : comp.variantB}`);
+    lines.push(
+      `- **p-Wert:** ${comp.pValue.toFixed(4)} (${comp.isSignificant ? 'signifikant' : 'nicht signifikant'})`
+    );
+    lines.push(
+      `- **Gewinner:** ${comp.winner === 'tie' ? 'Unentschieden' : comp.winner === 'A' ? comp.variantA : comp.variantB}`
+    );
     lines.push(`- **Konfidenz:** ${(comp.confidence * 100).toFixed(1)}%`);
     lines.push('');
   }

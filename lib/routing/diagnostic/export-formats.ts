@@ -1,18 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 /**
  * Export-Formate für Routing-Diagnostik
- * 
+ *
  * Unterstützte Formate:
  * - HTML: Vollständiger interaktiver Bericht
  * - CSV: Tabellarische Daten für Excel/Analyse
  * - Markdown: Dokumentation und PR-Kommentare
  */
 
-import type {
-  RoutingDiagnosticExport,
-  DiagnosticStateId,
-  RoutingMetrics,
-} from './types';
+import type { RoutingDiagnosticExport, DiagnosticStateId, RoutingMetrics } from './types';
 
 // ============================================================================
 // HTML Export
@@ -132,52 +128,67 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
     <div id="tab-overview" class="tab-content active">
       <h2>State-Übersicht</h2>
       <div class="state-selector">
-        ${states.map((stateId) => {
-          const snapshot = exportData.snapshots[stateId];
-          return `
+        ${states
+          .map((stateId) => {
+            const snapshot = exportData.snapshots[stateId];
+            return `
             <button class="state-btn" onclick="selectState('${stateId}')">
               <div class="state-letter">${stateId}</div>
               <div class="state-label">${stateLabels[stateId]}</div>
-              ${snapshot ? `
+              ${
+                snapshot
+                  ? `
                 <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280;">
                   ${snapshot.counts.nodes} Nodes<br>
                   ${snapshot.counts.edges} Edges
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </button>
           `;
-        }).join('')}
+          })
+          .join('')}
       </div>
 
       <h3>Konfiguration</h3>
       <div class="metrics-grid">
         <div class="metric-card">
           <h4>Routing Tokens</h4>
-          ${Object.entries(exportData.configuration.routingTokens).map(([key, value]) => `
+          ${Object.entries(exportData.configuration.routingTokens)
+            .map(
+              ([key, value]) => `
             <div class="metric-row">
               <span class="metric-label">${key}</span>
               <span class="metric-value">${value}</span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
         <div class="metric-card">
           <h4>Cost Weights</h4>
-          ${Object.entries(exportData.configuration.costWeights).map(([key, value]) => `
+          ${Object.entries(exportData.configuration.costWeights)
+            .map(
+              ([key, value]) => `
             <div class="metric-row">
               <span class="metric-label">${key}</span>
               <span class="metric-value">${value}</span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
       </div>
     </div>
 
     <div id="tab-metrics" class="tab-content">
       <h2>Routing-Metriken</h2>
-      ${states.map((stateId) => {
-        const metrics = exportData.metrics[stateId];
-        if (!metrics) return `<div class="empty-state">Keine Metriken für State ${stateId}</div>`;
-        return `
+      ${states
+        .map((stateId) => {
+          const metrics = exportData.metrics[stateId];
+          if (!metrics) return `<div class="empty-state">Keine Metriken für State ${stateId}</div>`;
+          return `
           <div id="state-${stateId}" style="display: ${stateId === 'C' ? 'block' : 'none'};">
             <h3>State ${stateId}: ${stateLabels[stateId]}</h3>
             <div class="metrics-grid">
@@ -221,13 +232,16 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
             </div>
           </div>
         `;
-      }).join('')}
+        })
+        .join('')}
     </div>
 
     <div id="tab-transitions" class="tab-content">
       <h2>Übergangsberichte</h2>
       ${exportData.transitions.length === 0 ? '<div class="empty-state">Keine Übergangsberichte verfügbar</div>' : ''}
-      ${exportData.transitions.map((t) => `
+      ${exportData.transitions
+        .map(
+          (t) => `
         <div class="metric-card" style="margin-bottom: 1rem;">
           <h4>${t.from} → ${t.to}: ${t.label}</h4>
           <table>
@@ -240,24 +254,32 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
               </tr>
             </thead>
             <tbody>
-              ${Object.entries(t.deltas || {}).map(([metric, delta]: [string, any]) => `
+              ${Object.entries(t.deltas || {})
+                .map(
+                  ([metric, delta]: [string, any]) => `
                 <tr>
                   <td>${metric}</td>
                   <td>${delta.before?.toFixed(2) || '—'}</td>
                   <td>${delta.after?.toFixed(2) || '—'}</td>
                   <td>${delta.delta?.toFixed(2) || '—'}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
 
     <div id="tab-quality" class="tab-content">
       <h2>Qualitätsverluste</h2>
       ${exportData.qualityLosses.length === 0 ? '<div class="empty-state">✅ Keine Qualitätsverluste erkannt</div>' : ''}
-      ${exportData.qualityLosses.map((loss) => `
+      ${exportData.qualityLosses
+        .map(
+          (loss) => `
         <div class="metric-card" style="margin-bottom: 1rem;">
           <h4>
             #${loss.rank} ${loss.description}
@@ -273,14 +295,20 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
             <span class="metric-label">Betroffene Kanten</span>
             <span class="metric-value">${loss.affectedEdges.join(', ')}</span>
           </div>
-          ${loss.metricDelta ? `
+          ${
+            loss.metricDelta
+              ? `
             <div class="metric-row">
               <span class="metric-label">${loss.metricDelta.metric}</span>
               <span class="metric-value">${loss.metricDelta.before} → ${loss.metricDelta.after}</span>
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
   </div>
 
@@ -310,7 +338,7 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
 
 export function exportToCSV(exportData: RoutingDiagnosticExport): string {
   const lines: string[] = [];
-  
+
   // Header
   lines.push('State,Metric,Value,Unit');
 
@@ -410,7 +438,9 @@ export function exportToMarkdown(exportData: RoutingDiagnosticExport): string {
       lines.push(`- **Transition:** ${loss.transition}`);
       lines.push(`- **Affected Edges:** ${loss.affectedEdges.join(', ')}`);
       if (loss.metricDelta) {
-        lines.push(`- **Metric:** ${loss.metricDelta.metric} (${loss.metricDelta.before} → ${loss.metricDelta.after})`);
+        lines.push(
+          `- **Metric:** ${loss.metricDelta.metric} (${loss.metricDelta.before} → ${loss.metricDelta.after})`
+        );
       }
       lines.push('');
     }

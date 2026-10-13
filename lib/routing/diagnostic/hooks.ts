@@ -11,10 +11,7 @@
  */
 
 import type { Point } from '../geometry/types';
-import {
-  getActiveDiagnosticSession,
-  isRoutingDiagnosticsEnabled,
-} from './index';
+import { getActiveDiagnosticSession, isRoutingDiagnosticsEnabled } from './index';
 import {
   captureStateSnapshot,
   type SnapshotNodeInput,
@@ -60,10 +57,7 @@ export function recordDiagnosticState(input: DiagnosticHookInput): void {
     session.recordState(snapshot);
   } catch (error) {
     // Diagnose-Fehler dürfen das Routing nicht beeinträchtigen.
-    console.error(
-      `[RoutingDiagnostic] Fehler bei State ${input.stateId}:`,
-      error
-    );
+    console.error(`[RoutingDiagnostic] Fehler bei State ${input.stateId}:`, error);
   }
 }
 

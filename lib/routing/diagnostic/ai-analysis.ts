@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 /**
  * KI-gestützte Analyse für Routing-Diagnostik
- * 
+ *
  * Regelbasierte Mustererkennung und statistische Anomalie-Detection.
  * Erkennt automatisch:
  * - Wiederkehrende Muster in Qualitätsverlusten
@@ -10,10 +10,7 @@
  * - Prädiktive Empfehlungen basierend auf historischen Daten
  */
 
-import type {
-  RoutingDiagnosticExport,
-  RoutingMetrics,
-} from './types';
+import type { RoutingDiagnosticExport, RoutingMetrics } from './types';
 
 // ============================================================================
 // Types
@@ -27,10 +24,7 @@ export type PatternType =
   | 'performance-bottleneck';
 
 export type AnomalyType =
-  | 'statistical-outlier'
-  | 'trend-deviation'
-  | 'correlation-break'
-  | 'unexpected-improvement';
+  'statistical-outlier' | 'trend-deviation' | 'correlation-break' | 'unexpected-improvement';
 
 export interface DetectedPattern {
   id: string;
@@ -465,8 +459,8 @@ export function performAIAnalysis(exportData: RoutingDiagnosticExport): AIAnalys
     predictions.length > 0
       ? predictions[0].recommendation
       : patterns.length > 0
-      ? patterns[0].recommendations[0]
-      : null;
+        ? patterns[0].recommendations[0]
+        : null;
 
   return {
     timestamp: new Date().toISOString(),
@@ -498,7 +492,9 @@ export function generateAIReport(analysis: AIAnalysisResult): string {
   lines.push('## Zusammenfassung');
   lines.push('');
   lines.push(`- **Erkannte Muster:** ${analysis.summary.totalPatterns}`);
-  lines.push(`- **Anomalien:** ${analysis.summary.totalAnomalies} (${analysis.summary.highSeverityAnomalies} mit hoher Schwere)`);
+  lines.push(
+    `- **Anomalien:** ${analysis.summary.totalAnomalies} (${analysis.summary.highSeverityAnomalies} mit hoher Schwere)`
+  );
   lines.push(`- **Korrelationen:** ${analysis.correlations.length}`);
   lines.push(`- **Prädiktionen:** ${analysis.predictions.length}`);
   lines.push('');
@@ -514,7 +510,9 @@ export function generateAIReport(analysis: AIAnalysisResult): string {
     lines.push('');
     for (const pattern of analysis.patterns) {
       lines.push(`### ${pattern.title}`);
-      lines.push(`**Typ:** ${pattern.type} • **Konfidenz:** ${(pattern.confidence * 100).toFixed(0)}% • **Häufigkeit:** ${pattern.frequency}`);
+      lines.push(
+        `**Typ:** ${pattern.type} • **Konfidenz:** ${(pattern.confidence * 100).toFixed(0)}% • **Häufigkeit:** ${pattern.frequency}`
+      );
       lines.push('');
       lines.push(pattern.description);
       lines.push('');

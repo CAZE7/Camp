@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * CI Regression Detection Script
- * 
+ *
  * Vergleicht aktuelle Routing-Diagnostik mit Golden Master Baseline.
  * Schlägt fehl wenn Qualitätsmetriken signifikant schlechter werden.
- * 
+ *
  * Usage:
  *   npm run diagnostic:ci-check
  *   node scripts/ci/diagnostic-regression-check.ts --baseline=golden-master.json --current=current-run.json
@@ -12,22 +12,18 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import type { 
-  RoutingDiagnosticExport, 
-  RoutingMetrics,
-  DiagnosticStateId 
-} from '@/lib/routing/diagnostic';
+import type { RoutingDiagnosticExport, RoutingMetrics, DiagnosticStateId } from '@/lib/routing/diagnostic';
 
 interface RegressionConfig {
   baselinePath: string;
   currentPath: string;
   outputPath?: string;
   thresholds: {
-    cableLength: number;        // Max. Verschlechterung in %
-    bends: number;              // Max. Verschlechterung in %
-    crossings: number;          // Max. erlaubte neue Kreuzungen
+    cableLength: number; // Max. Verschlechterung in %
+    bends: number; // Max. Verschlechterung in %
+    crossings: number; // Max. erlaubte neue Kreuzungen
     clearanceViolations: number; // Max. erlaubte neue Verletzungen
-    edgeNodeViolations: number;  // Max. erlaubte neue Verletzungen
+    edgeNodeViolations: number; // Max. erlaubte neue Verletzungen
   };
 }
 
@@ -53,11 +49,11 @@ interface RegressionViolation {
 }
 
 const DEFAULT_THRESHOLDS = {
-  cableLength: 5,           // 5% max. Verschlechterung
-  bends: 10,                // 10% max. Verschlechterung
-  crossings: 0,             // Keine neuen Kreuzungen
-  clearanceViolations: 0,   // Keine neuen Clearance-Verletzungen
-  edgeNodeViolations: 0,    // Keine neuen Edge-Node-Verletzungen
+  cableLength: 5, // 5% max. Verschlechterung
+  bends: 10, // 10% max. Verschlechterung
+  crossings: 0, // Keine neuen Kreuzungen
+  clearanceViolations: 0, // Keine neuen Clearance-Verletzungen
+  edgeNodeViolations: 0, // Keine neuen Edge-Node-Verletzungen
 };
 
 function parseArgs(): RegressionConfig {
@@ -86,7 +82,9 @@ function parseArgs(): RegressionConfig {
 
   if (!config.baselinePath || !config.currentPath) {
     console.error('Error: --baseline and --current paths are required');
-    console.error('Usage: node diagnostic-regression-check.ts --baseline=baseline.json --current=current.json');
+    console.error(
+      'Usage: node diagnostic-regression-check.ts --baseline=baseline.json --current=current.json'
+    );
     process.exit(1);
   }
 
@@ -252,7 +250,7 @@ function runRegressionCheck(config: RegressionConfig): RegressionResult {
 
 function generateReport(result: RegressionResult): string {
   const lines: string[] = [];
-  
+
   lines.push('# Routing Diagnostic Regression Report');
   lines.push('');
   lines.push(`**Status:** ${result.passed ? '✅ PASSED' : '❌ FAILED'}`);
@@ -264,7 +262,7 @@ function generateReport(result: RegressionResult): string {
     lines.push('');
     lines.push('| Metric | State | Baseline | Current | Delta | Threshold |');
     lines.push('|--------|-------|----------|---------|-------|-----------|');
-    
+
     for (const v of result.violations) {
       lines.push(
         `| ${v.metric} | ${v.stateId} | ${v.baseline.toFixed(2)} | ${v.current.toFixed(2)} | ${v.delta.toFixed(2)} (${v.deltaPercent.toFixed(1)}%) | ${v.threshold} |`
@@ -275,15 +273,19 @@ function generateReport(result: RegressionResult): string {
 
   lines.push('## Summary by State');
   lines.push('');
-  
+
   for (const s of result.summary) {
     lines.push(`### State ${s.stateId}`);
     if (!s.baselineMetrics || !s.currentMetrics) {
       lines.push('_No metrics available_');
     } else {
-      lines.push(`- Cable Length: ${s.baselineMetrics.totalCableLength.toFixed(2)} → ${s.currentMetrics.totalCableLength.toFixed(2)}`);
+      lines.push(
+        `- Cable Length: ${s.baselineMetrics.totalCableLength.toFixed(2)} → ${s.currentMetrics.totalCableLength.toFixed(2)}`
+      );
       lines.push(`- Bends: ${s.baselineMetrics.totalBends} → ${s.currentMetrics.totalBends}`);
-      lines.push(`- Crossings: ${s.baselineMetrics.totalCrossingPairs} → ${s.currentMetrics.totalCrossingPairs}`);
+      lines.push(
+        `- Crossings: ${s.baselineMetrics.totalCrossingPairs} → ${s.currentMetrics.totalCrossingPairs}`
+      );
     }
     lines.push('');
   }

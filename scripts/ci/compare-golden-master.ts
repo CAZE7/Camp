@@ -1,24 +1,20 @@
 #!/usr/bin/env node
 /**
  * Golden Master Comparison Tool
- * 
+ *
  * Vergleicht aktuelle Routing-Diagnostik mit gespeicherten Referenzplänen.
  * Nützlich für:
  * - Regression-Tests in CI/CD
  * - A/B-Vergleiche nach Algorithmus-Änderungen
  * - Benchmarking verschiedener Konfigurationen
- * 
+ *
  * Usage:
  *   npm run diagnostic:compare-golden -- --reference=golden/simple.json --current=current.json
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { resolve, join, basename } from 'path';
-import type { 
-  RoutingDiagnosticExport, 
-  RoutingMetrics,
-  DiagnosticStateId 
-} from '@/lib/routing/diagnostic';
+import type { RoutingDiagnosticExport, RoutingMetrics, DiagnosticStateId } from '@/lib/routing/diagnostic';
 
 interface ComparisonConfig {
   referencePath: string;
@@ -152,16 +148,16 @@ function compareStates(
     compareMetric('totalBends', reference.totalBends, current.totalBends, true),
     compareMetric('totalUTurns', reference.totalUTurns, current.totalUTurns, true),
     compareMetric('totalShortSegments', reference.totalShortSegments, current.totalShortSegments, true),
-    
+
     // Crossings (lower is better)
     compareMetric('totalCrossingPairs', reference.totalCrossingPairs, current.totalCrossingPairs, true),
     compareMetric('geometricCrossings', reference.geometricCrossings, current.geometricCrossings, true),
     compareMetric('collinearOverlaps', reference.collinearOverlaps, current.collinearOverlaps, true),
-    
+
     // Violations (lower is better)
     compareMetric('edgeNodeViolations', reference.edgeNodeViolations, current.edgeNodeViolations, true),
     compareMetric('clearanceViolations', reference.clearanceViolations, current.clearanceViolations, true),
-    
+
     // Performance (lower is better)
     compareMetric('phaseDurationMs', reference.phaseDurationMs, current.phaseDurationMs, true),
     compareMetric('fallbackRoutes', reference.fallbackRoutes, current.fallbackRoutes, true),
@@ -204,11 +200,7 @@ function performComparison(
   const comparisons: StateComparison[] = [];
 
   for (const stateId of states) {
-    const comparison = compareStates(
-      reference.metrics[stateId],
-      current.metrics[stateId],
-      stateId
-    );
+    const comparison = compareStates(reference.metrics[stateId], current.metrics[stateId], stateId);
     comparisons.push(comparison);
 
     const statusIcon = {
@@ -219,12 +211,12 @@ function performComparison(
     }[comparison.status];
 
     console.log(`${statusIcon} State ${stateId}: ${comparison.status}`);
-    
+
     if (comparison.deltas.length > 0) {
       const significant = comparison.deltas.filter((d) => d.isSignificant);
       const improvements = significant.filter((d) => d.isImprovement).length;
       const degradations = significant.filter((d) => !d.isImprovement).length;
-      
+
       if (significant.length > 0) {
         console.log(`   ${improvements} improvement(s), ${degradations} degradation(s)`);
       }
@@ -249,7 +241,9 @@ function performComparison(
   }
 
   console.log('');
-  console.log(`📊 Summary: ${improvements} improvements, ${degradations} degradations, ${unchanged} unchanged`);
+  console.log(
+    `📊 Summary: ${improvements} improvements, ${degradations} degradations, ${unchanged} unchanged`
+  );
   console.log(`   Overall: ${overallStatus}`);
 
   return {

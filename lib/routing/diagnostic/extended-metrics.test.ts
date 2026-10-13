@@ -43,7 +43,10 @@ describe('Extended Metrics', () => {
             edgeId: 'ac1',
             source: 'n1',
             target: 'n2',
-            waypoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -59,7 +62,10 @@ describe('Extended Metrics', () => {
             edgeId: 'dc1',
             source: 'n3',
             target: 'n4',
-            waypoints: [{ x: 0, y: 20 }, { x: 100, y: 20 }], // 20px Abstand (< 24px)
+            waypoints: [
+              { x: 0, y: 20 },
+              { x: 100, y: 20 },
+            ], // 20px Abstand (< 24px)
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -92,7 +98,10 @@ describe('Extended Metrics', () => {
             edgeId: 'ac1',
             source: 'n1',
             target: 'n2',
-            waypoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -108,7 +117,10 @@ describe('Extended Metrics', () => {
             edgeId: 'dc1',
             source: 'n3',
             target: 'n4',
-            waypoints: [{ x: 0, y: 30 }, { x: 100, y: 30 }], // 30px Abstand (>= 24px)
+            waypoints: [
+              { x: 0, y: 30 },
+              { x: 100, y: 30 },
+            ], // 30px Abstand (>= 24px)
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -150,7 +162,10 @@ describe('Extended Metrics', () => {
             edgeId: 'e1',
             source: 'n1',
             target: 'n2',
-            waypoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,
@@ -166,7 +181,10 @@ describe('Extended Metrics', () => {
             edgeId: 'e2',
             source: 'n3',
             target: 'n4',
-            waypoints: [{ x: 0, y: 5 }, { x: 100, y: 5 }], // 5px Abstand (< 8px)
+            waypoints: [
+              { x: 0, y: 5 },
+              { x: 100, y: 5 },
+            ], // 5px Abstand (< 8px)
             usedSearch: 'astar',
             fallbackHitsObstacles: false,
             tightMarginUsed: false,

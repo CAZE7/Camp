@@ -1,18 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 /**
  * Erweiterte Metriken für Routing-Diagnostik
- * 
+ *
  * Zusätzliche Metriken für spezifische Anforderungen:
  * - Domänen-Clearance (24px für AC/DC Trennung)
  * - Thermische Bündel (VDE 0298-4)
  * - Routing-Dauer pro Kante
  */
 
-import type {
-  DiagnosticStateSnapshot,
-  RoutingMetrics,
-  DiagnosticStateId,
-} from './types';
+import type { DiagnosticStateSnapshot, RoutingMetrics, DiagnosticStateId } from './types';
 
 // ============================================================================
 // Types
@@ -99,23 +95,21 @@ const TIMEOUT_THRESHOLD = 1000; // ms
 
 // VDE 0298-4: Strombelastbarkeit für gebündelte Leitungen (vereinfacht)
 const CURRENT_CAPACITY_TABLE: Record<number, number> = {
-  1: 16,   // 1.5mm² → 16A (Einzelleitung)
-  2: 13,   // 2 Leitungen gebündelt
-  3: 11,   // 3 Leitungen
-  4: 10,   // 4 Leitungen
-  5: 9,    // 5+ Leitungen
+  1: 16, // 1.5mm² → 16A (Einzelleitung)
+  2: 13, // 2 Leitungen gebündelt
+  3: 11, // 3 Leitungen
+  4: 10, // 4 Leitungen
+  5: 9, // 5+ Leitungen
 };
 
 // ============================================================================
 // Domain Clearance Calculation
 // ============================================================================
 
-export function calculateDomainClearance(
-  snapshot: DiagnosticStateSnapshot
-): DomainClearanceMetrics {
+export function calculateDomainClearance(snapshot: DiagnosticStateSnapshot): DomainClearanceMetrics {
   const acEdges = snapshot.edges.filter((e) => e.domain === 'ac');
   const dcEdges = snapshot.edges.filter((e) => e.domain === 'dc');
-  
+
   let acDcViolations = 0;
   let minAcDcDistance: number | null = null;
   const violationsPerEdge: Record<string, number> = {};
@@ -130,7 +124,7 @@ export function calculateDomainClearance(
       if (!dcRoute) continue;
 
       const distance = calculateMinDistanceBetweenRoutes(acRoute.waypoints, dcRoute.waypoints);
-      
+
       if (minAcDcDistance === null || distance < minAcDcDistance) {
         minAcDcDistance = distance;
       }
@@ -173,11 +167,7 @@ function calculateMinDistanceBetweenRoutes(
   return minDist;
 }
 
-function calculateMeanAcDcDistance(
-  acEdges: any[],
-  dcEdges: any[],
-  routes: any[]
-): number | null {
+function calculateMeanAcDcDistance(acEdges: any[], dcEdges: any[], routes: any[]): number | null {
   const distances: number[] = [];
 
   for (const acEdge of acEdges) {
@@ -201,9 +191,7 @@ function calculateMeanAcDcDistance(
 // Thermal Bundle Calculation
 // ============================================================================
 
-export function calculateThermalBundles(
-  snapshot: DiagnosticStateSnapshot
-): ThermalBundleMetrics {
+export function calculateThermalBundles(snapshot: DiagnosticStateSnapshot): ThermalBundleMetrics {
   const bundles = identifyBundles(snapshot);
   const thermalBundles: ThermalBundle[] = [];
 
@@ -214,14 +202,12 @@ export function calculateThermalBundles(
 
   const overloadedBundles = thermalBundles.filter((b) => b.isOverloaded);
   const bundleSizes = thermalBundles.map((b) => b.edgeIds.length);
-  
+
   return {
     bundleCount: thermalBundles.length,
     overloadedBundles,
     maxBundleSize: Math.max(...bundleSizes, 0),
-    meanBundleSize: bundleSizes.length > 0 
-      ? bundleSizes.reduce((a, b) => a + b, 0) / bundleSizes.length 
-      : 0,
+    meanBundleSize: bundleSizes.length > 0 ? bundleSizes.reduce((a, b) => a + b, 0) / bundleSizes.length : 0,
     totalThermalLoad: thermalBundles.reduce((sum, b) => sum + b.utilizationPercent, 0),
   };
 }
@@ -276,26 +262,18 @@ function areRoutesParallel(
   return false;
 }
 
-function analyzeBundle(
-  bundleEdgeIds: string[],
-  snapshot: DiagnosticStateSnapshot
-): ThermalBundle {
-  const edges = bundleEdgeIds
-    .map((id) => snapshot.edges.find((e) => e.id === id))
-    .filter(Boolean) as any[];
+function analyzeBundle(bundleEdgeIds: string[], snapshot: DiagnosticStateSnapshot): ThermalBundle {
+  const edges = bundleEdgeIds.map((id) => snapshot.edges.find((e) => e.id === id)).filter(Boolean) as any[];
 
   const routes = bundleEdgeIds
     .map((id) => snapshot.routes.find((r) => r.edgeId === id))
     .filter(Boolean) as any[];
 
-  const totalCrossSection = edges.reduce(
-    (sum, e) => sum + (e.crossSection || 1.5),
-    0
-  );
+  const totalCrossSection = edges.reduce((sum, e) => sum + (e.crossSection || 1.5), 0);
 
   const bundleSize = edges.length;
   const maxCurrentCapacity = CURRENT_CAPACITY_TABLE[Math.min(bundleSize, 5)] || 9;
-  
+
   // Geschätzte Belastung: 80% der Nennbelastbarkeit pro Kante
   const estimatedLoad = edges.length * 0.8 * maxCurrentCapacity;
   const utilizationPercent = (estimatedLoad / (maxCurrentCapacity * edges.length)) * 100;
@@ -305,7 +283,7 @@ function analyzeBundle(
   const allPoints = routes.flatMap((r) => r.waypoints);
   const xs = allPoints.map((p) => p.x);
   const ys = allPoints.map((p) => p.y);
-  
+
   const bounds = {
     x: Math.min(...xs),
     y: Math.min(...ys),
@@ -329,9 +307,7 @@ function analyzeBundle(
 // Per-Edge Routing Metrics
 // ============================================================================
 
-export function calculatePerEdgeRoutingMetrics(
-  snapshot: DiagnosticStateSnapshot
-): PerEdgeRoutingMetrics {
+export function calculatePerEdgeRoutingMetrics(snapshot: DiagnosticStateSnapshot): PerEdgeRoutingMetrics {
   const durationPerEdge: Record<string, number> = {};
   const timeoutEdges: string[] = [];
   const fallbackEdges: string[] = [];
@@ -354,12 +330,8 @@ export function calculatePerEdgeRoutingMetrics(
 
   return {
     durationPerEdge,
-    meanDuration: durations.length > 0
-      ? durations.reduce((a, b) => a + b, 0) / durations.length
-      : 0,
-    medianDuration: sorted.length > 0
-      ? sorted[Math.floor(sorted.length / 2)]
-      : 0,
+    meanDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+    medianDuration: sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0,
     maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
     timeoutEdges,
     fallbackEdges,
@@ -370,9 +342,7 @@ export function calculatePerEdgeRoutingMetrics(
 // Main Function
 // ============================================================================
 
-export function calculateExtendedMetrics(
-  snapshot: DiagnosticStateSnapshot
-): ExtendedMetrics {
+export function calculateExtendedMetrics(snapshot: DiagnosticStateSnapshot): ExtendedMetrics {
   return {
     domainClearance: calculateDomainClearance(snapshot),
     thermalBundles: calculateThermalBundles(snapshot),
@@ -395,7 +365,9 @@ export function generateExtendedMetricsReport(metrics: ExtendedMetrics): string 
   lines.push('');
   lines.push(`- **AC-DC Verletzungen (< 24px):** ${metrics.domainClearance.acDcViolations}`);
   lines.push(`- **Minimale Distanz:** ${metrics.domainClearance.minAcDcDistance?.toFixed(2) || '—'} px`);
-  lines.push(`- **Durchschnittliche Distanz:** ${metrics.domainClearance.meanAcDcDistance?.toFixed(2) || '—'} px`);
+  lines.push(
+    `- **Durchschnittliche Distanz:** ${metrics.domainClearance.meanAcDcDistance?.toFixed(2) || '—'} px`
+  );
   lines.push(`- **AC-DC Kantenpaare:** ${metrics.domainClearance.acDcEdgePairs}`);
   lines.push('');
 

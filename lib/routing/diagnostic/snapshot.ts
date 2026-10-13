@@ -24,8 +24,7 @@ import type {
 
 const deepClonePoint = (p: Point): Point => ({ x: p.x, y: p.y });
 
-const deepClonePoints = (points: readonly Point[]): Point[] =>
-  points.map(deepClonePoint);
+const deepClonePoints = (points: readonly Point[]): Point[] => points.map(deepClonePoint);
 
 const safeNumber = (value: unknown): number | null => {
   if (typeof value !== 'number') return null;
@@ -75,9 +74,7 @@ const cloneHandleBoxes = (
   handles: SnapshotNodeInput['handleBounds']
 ): { source: DiagnosticHandleBox[]; target: DiagnosticHandleBox[] } | null => {
   if (!handles) return null;
-  const clone = (
-    arr: NonNullable<SnapshotNodeInput['handleBounds']>['source']
-  ): DiagnosticHandleBox[] => {
+  const clone = (arr: NonNullable<SnapshotNodeInput['handleBounds']>['source']): DiagnosticHandleBox[] => {
     if (!arr) return [];
     return arr.map((h) => ({
       id: h?.id ?? null,
@@ -126,8 +123,11 @@ export function captureEdgeSnapshot(edge: SnapshotEdgeInput): DiagnosticEdgeSnap
     ? (data.lockedWaypoints as Array<{ x?: unknown; y?: unknown }>)
         .filter(
           (p) =>
-            p && typeof p.x === 'number' && Number.isFinite(p.x) &&
-            typeof p.y === 'number' && Number.isFinite(p.y)
+            p &&
+            typeof p.x === 'number' &&
+            Number.isFinite(p.x) &&
+            typeof p.y === 'number' &&
+            Number.isFinite(p.y)
         )
         .map((p) => ({ x: p.x as number, y: p.y as number }))
     : null;
@@ -168,8 +168,7 @@ export interface SnapshotRouteInput {
 
 export function captureRouteSnapshot(route: SnapshotRouteInput): DiagnosticRouteSnapshot {
   const waypoints = deepClonePoints(route.waypoints);
-  const length =
-    safeNumber(route.length) ?? computePolylineLength(waypoints);
+  const length = safeNumber(route.length) ?? computePolylineLength(waypoints);
   const bends = safeNumber(route.bends) ?? countBendsInWaypoints(waypoints);
   return {
     edgeId: route.edgeId,

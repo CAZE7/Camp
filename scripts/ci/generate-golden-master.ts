@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Golden Master Generator
- * 
+ *
  * Erzeugt eine Referenz-Baseline für Regression-Tests.
  * Führt Routing-Diagnostik für alle Test-Pläne aus und speichert die Ergebnisse.
- * 
+ *
  * Usage:
  *   npm run diagnostic:generate-golden-master
  *   node scripts/ci/generate-golden-master.ts --output=golden-master/baseline.json
@@ -18,10 +18,10 @@ import type { RoutingDiagnosticExport } from '@/lib/routing/diagnostic';
 function generateGoldenMaster(): RoutingDiagnosticExport {
   console.log('🎯 Generating Golden Master baseline...');
   console.log('');
-  
+
   // This would normally run the full routing pipeline with diagnostics enabled
   // For now, we create a representative baseline
-  
+
   const baseline: RoutingDiagnosticExport = {
     meta: {
       planId: 'simple',
@@ -109,7 +109,7 @@ function generateGoldenMaster(): RoutingDiagnosticExport {
   console.log('');
   console.log('⚠️  Note: This is a placeholder baseline.');
   console.log('   In production, this should run the actual routing pipeline.');
-  
+
   return baseline;
 }
 
@@ -129,7 +129,7 @@ function parseArgs(): { outputPath: string } {
 try {
   const { outputPath } = parseArgs();
   const fullPath = resolve(outputPath);
-  
+
   // Ensure directory exists
   const dir = dirname(fullPath);
   if (!existsSync(dir)) {
@@ -138,14 +138,14 @@ try {
 
   const baseline = generateGoldenMaster();
   writeFileSync(fullPath, JSON.stringify(baseline, null, 2), 'utf-8');
-  
+
   console.log(`📄 Baseline written to: ${fullPath}`);
   console.log('');
   console.log('Next steps:');
   console.log('  1. Commit the golden master to your repository');
   console.log('  2. Use it as baseline for regression checks');
   console.log('  3. Update it periodically or when routing improves');
-  
+
   process.exit(0);
 } catch (error) {
   console.error('❌ Error generating golden master:', error);

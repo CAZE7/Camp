@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 /**
  * Realtime Diagnostic Updates
- * 
+ *
  * Live-Updates während des Routing-Prozesses.
  * Nutzt EventEmitter für Browser-Kompatibilität.
  * Kann später auf WebSocket erweitert werden.
  */
 
-import type {
-  DiagnosticStateId,
-  RoutingMetrics,
-  DiagnosticStateSnapshot,
-} from './types';
+import type { DiagnosticStateId, RoutingMetrics, DiagnosticStateSnapshot } from './types';
 
 // ============================================================================
 // Types
@@ -198,11 +194,7 @@ export class RealtimeDiagnosticBroadcaster {
   /**
    * Emit state completed event
    */
-  emitStateCompleted(
-    stateId: DiagnosticStateId,
-    metrics: RoutingMetrics,
-    durationMs: number
-  ): void {
+  emitStateCompleted(stateId: DiagnosticStateId, metrics: RoutingMetrics, durationMs: number): void {
     this.emit({
       type: 'state-completed',
       timestamp: Date.now(),
@@ -339,38 +331,35 @@ export function resetRealtimeBroadcaster(): void {
 
 /**
  * React hook for subscribing to realtime diagnostic events
- * 
+ *
  * Usage:
  * ```tsx
  * function DiagnosticStatus() {
  *   const [progress, setProgress] = useState(0);
- *   
+ *
  *   useRealtimeDiagnostic('state-progress', (event) => {
  *     if (event.type === 'state-progress') {
  *       setProgress(event.data.progress);
  *     }
  *   });
- *   
+ *
  *   return <div>Progress: {progress}%</div>;
  * }
  * ```
  */
 export function createUseRealtimeDiagnostic() {
-  return function useRealtimeDiagnostic(
-    type: RealtimeEventType,
-    handler: RealtimeEventHandler
-  ): void {
+  return function useRealtimeDiagnostic(type: RealtimeEventType, handler: RealtimeEventHandler): void {
     // This would use React's useEffect in actual implementation
     // For now, we provide the structure
     const broadcaster = getRealtimeBroadcaster();
     const unsubscribe = broadcaster.on(type, handler);
-    
+
     // In React, this would be:
     // useEffect(() => {
     //   const unsubscribe = broadcaster.on(type, handler);
     //   return unsubscribe;
     // }, [type, handler]);
-    
+
     return unsubscribe();
   };
 }
@@ -453,26 +442,23 @@ export class WebSocketDiagnosticAdapter implements WebSocketAdapter {
 
 /**
  * Helper to integrate realtime diagnostics into routing pipeline
- * 
+ *
  * Usage in routeAll.ts:
  * ```ts
  * import { createRealtimeProgressTracker } from '@/lib/routing/diagnostic/realtime-diagnostic';
- * 
+ *
  * const tracker = createRealtimeProgressTracker('C', edges.length);
- * 
+ *
  * for (const edge of edges) {
  *   tracker.startEdge(edge.id);
  *   const route = await routeEdge(edge);
  *   tracker.completeEdge(edge.id, route);
  * }
- * 
+ *
  * tracker.complete();
  * ```
  */
-export function createRealtimeProgressTracker(
-  stateId: DiagnosticStateId,
-  totalEdges: number
-) {
+export function createRealtimeProgressTracker(stateId: DiagnosticStateId, totalEdges: number) {
   const broadcaster = getRealtimeBroadcaster();
   let completedEdges = 0;
   const startTime = Date.now();
@@ -519,11 +505,7 @@ export function createRealtimeProgressTracker(
       broadcaster.emitStateCompleted(stateId, metrics, durationMs);
     },
 
-    reportIssue(
-      severity: 'warning' | 'error' | 'critical',
-      message: string,
-      edgeId?: string
-    ): void {
+    reportIssue(severity: 'warning' | 'error' | 'critical', message: string, edgeId?: string): void {
       broadcaster.emitQualityIssue(stateId, severity, message, edgeId);
     },
   };

@@ -43,8 +43,7 @@ export function evaluateRoutingSnapshot(
   const maxCableLength = lengths.length > 0 ? Math.max(...lengths) : 0;
 
   const totalBends = snapshot.routes.reduce((sum, r) => sum + r.bends, 0);
-  const meanBendsPerEdge =
-    snapshot.routes.length > 0 ? totalBends / snapshot.routes.length : 0;
+  const meanBendsPerEdge = snapshot.routes.length > 0 ? totalBends / snapshot.routes.length : 0;
 
   // U-Turns: 180°-Richtungswechsel (dasselbe Segment zurück)
   let totalUTurns = 0;
@@ -289,10 +288,8 @@ function countRedundantWaypoints(waypoints: readonly Point[]): number {
     const curr = waypoints[i]!;
     const next = waypoints[i + 1]!;
     // Kollinear auf derselben Achse
-    const onSameHorizontal =
-      Math.abs(prev.y - curr.y) < EPS && Math.abs(curr.y - next.y) < EPS;
-    const onSameVertical =
-      Math.abs(prev.x - curr.x) < EPS && Math.abs(curr.x - next.x) < EPS;
+    const onSameHorizontal = Math.abs(prev.y - curr.y) < EPS && Math.abs(curr.y - next.y) < EPS;
+    const onSameVertical = Math.abs(prev.x - curr.x) < EPS && Math.abs(curr.x - next.x) < EPS;
     if (onSameHorizontal || onSameVertical) redundant++;
   }
   return redundant;
@@ -302,9 +299,7 @@ function computeMedian(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]!
-    : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /**
@@ -364,10 +359,8 @@ function classifySegmentRelation(
     if (xInside && yInside) return 'crossing';
 
     // Endpunkt-Berührung
-    const xOnBoundary =
-      Math.abs(crossX - hMin) < EPS || Math.abs(crossX - hMax) < EPS;
-    const yOnBoundary =
-      Math.abs(crossY - vMin) < EPS || Math.abs(crossY - vMax) < EPS;
+    const xOnBoundary = Math.abs(crossX - hMin) < EPS || Math.abs(crossX - hMax) < EPS;
+    const yOnBoundary = Math.abs(crossY - vMin) < EPS || Math.abs(crossY - vMax) < EPS;
     if (
       (xInside || xOnBoundary) &&
       (yInside || yOnBoundary) &&
@@ -401,27 +394,27 @@ function segmentIntersectsRect(
   if (maxX < rx || minX > rx + rw || maxY < ry || minY > ry + rh) return false;
 
   // Punkt-in-Rechteck-Test für beide Endpunkte
-  if (
-    seg[0].x >= rx &&
-    seg[0].x <= rx + rw &&
-    seg[0].y >= ry &&
-    seg[0].y <= ry + rh
-  )
-    return true;
-  if (
-    seg[1].x >= rx &&
-    seg[1].x <= rx + rw &&
-    seg[1].y >= ry &&
-    seg[1].y <= ry + rh
-  )
-    return true;
+  if (seg[0].x >= rx && seg[0].x <= rx + rw && seg[0].y >= ry && seg[0].y <= ry + rh) return true;
+  if (seg[1].x >= rx && seg[1].x <= rx + rw && seg[1].y >= ry && seg[1].y <= ry + rh) return true;
 
   // Schnitt mit Rechteckseiten
   const rectSegs: Segment[] = [
-    [{ x: rx, y: ry }, { x: rx + rw, y: ry }],
-    [{ x: rx + rw, y: ry }, { x: rx + rw, y: ry + rh }],
-    [{ x: rx + rw, y: ry + rh }, { x: rx, y: ry + rh }],
-    [{ x: rx, y: ry + rh }, { x: rx, y: ry }],
+    [
+      { x: rx, y: ry },
+      { x: rx + rw, y: ry },
+    ],
+    [
+      { x: rx + rw, y: ry },
+      { x: rx + rw, y: ry + rh },
+    ],
+    [
+      { x: rx + rw, y: ry + rh },
+      { x: rx, y: ry + rh },
+    ],
+    [
+      { x: rx, y: ry + rh },
+      { x: rx, y: ry },
+    ],
   ];
   for (const rs of rectSegs) {
     if (classifySegmentRelation(seg, rs) === 'crossing') return true;

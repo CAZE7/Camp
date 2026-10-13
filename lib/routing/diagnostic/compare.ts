@@ -128,11 +128,7 @@ export function compareRoutingSnapshots(
   for (const [id, routeAfter] of routeMapAfter) {
     const routeBefore = routeMapBefore.get(id);
     if (!routeBefore) continue;
-    const wpChanged = waypointsChanged(
-      routeBefore.waypoints,
-      routeAfter.waypoints,
-      config.geometryTolerance
-    );
+    const wpChanged = waypointsChanged(routeBefore.waypoints, routeAfter.waypoints, config.geometryTolerance);
     if (wpChanged) {
       changedWaypoints++;
       affectedEdges.push(id);
@@ -172,46 +168,28 @@ export function compareRoutingSnapshots(
   const violationsAfter = extractViolations(after, metricsAfter);
 
   const newViolations = violationsAfter.filter(
-    (v) =>
-      !violationsBefore.some(
-        (vb) => vb.ruleId === v.ruleId && vb.entityId === v.entityId
-      )
+    (v) => !violationsBefore.some((vb) => vb.ruleId === v.ruleId && vb.entityId === v.entityId)
   );
   const resolvedViolations = violationsBefore.filter(
-    (v) =>
-      !violationsAfter.some(
-        (va) => va.ruleId === v.ruleId && va.entityId === v.entityId
-      )
+    (v) => !violationsAfter.some((va) => va.ruleId === v.ruleId && va.entityId === v.entityId)
   );
 
   // ── Invarianten ─────────────────────────────────────────────────────────
 
   const stableInvariants: string[] = [];
-  if (
-    metricsBefore.edgeNodeViolations === 0 &&
-    metricsAfter.edgeNodeViolations === 0
-  ) {
+  if (metricsBefore.edgeNodeViolations === 0 && metricsAfter.edgeNodeViolations === 0) {
     stableInvariants.push('I1 (keine Edge-Node-Kollisionen)');
   }
-  if (
-    metricsBefore.edgeEdgeOverlapViolations === 0 &&
-    metricsAfter.edgeEdgeOverlapViolations === 0
-  ) {
+  if (metricsBefore.edgeEdgeOverlapViolations === 0 && metricsAfter.edgeEdgeOverlapViolations === 0) {
     stableInvariants.push('I2 (keine kollinearen Überdeckungen)');
   }
-  if (
-    metricsBefore.clearanceViolations === 0 &&
-    metricsAfter.clearanceViolations === 0
-  ) {
+  if (metricsBefore.clearanceViolations === 0 && metricsAfter.clearanceViolations === 0) {
     stableInvariants.push('I3 (keine Clearance-Verletzungen)');
   }
   if (metricsBefore.totalUTurns === 0 && metricsAfter.totalUTurns === 0) {
     stableInvariants.push('I4 (keine U-Turns am Handle)');
   }
-  if (
-    metricsBefore.totalShortSegments === 0 &&
-    metricsAfter.totalShortSegments === 0
-  ) {
+  if (metricsBefore.totalShortSegments === 0 && metricsAfter.totalShortSegments === 0) {
     stableInvariants.push('I6 (keine Kurzsegmente)');
   }
 
@@ -222,9 +200,7 @@ export function compareRoutingSnapshots(
 
   // ── Nicht messbar ───────────────────────────────────────────────────────
 
-  const notMeasurable = [
-    ...new Set([...metricsBefore.notMeasurable, ...metricsAfter.notMeasurable]),
-  ];
+  const notMeasurable = [...new Set([...metricsBefore.notMeasurable, ...metricsAfter.notMeasurable])];
 
   // ── Untersuchungskandidaten ─────────────────────────────────────────────
 
@@ -278,10 +254,7 @@ export function compareRoutingSnapshots(
 
 // ── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
-function computeMetricDeltas(
-  before: RoutingMetrics,
-  after: RoutingMetrics
-): MetricDeltas {
+function computeMetricDeltas(before: RoutingMetrics, after: RoutingMetrics): MetricDeltas {
   const keys: Array<keyof RoutingMetrics> = [
     'totalCableLength',
     'meanCableLength',
@@ -325,11 +298,7 @@ function computeMetricDeltas(
   return deltas;
 }
 
-function waypointsChanged(
-  before: readonly Point[],
-  after: readonly Point[],
-  tolerance: number
-): boolean {
+function waypointsChanged(before: readonly Point[], after: readonly Point[], tolerance: number): boolean {
   if (before.length !== after.length) return true;
   for (let i = 0; i < before.length; i++) {
     const a = before[i]!;
@@ -397,9 +366,7 @@ function extractViolations(
 
 // ── Qualitätsverluste priorisieren ──────────────────────────────────────────
 
-export function prioritizeQualityLosses(
-  transitions: TransitionReport[]
-): QualityLoss[] {
+export function prioritizeQualityLosses(transitions: TransitionReport[]): QualityLoss[] {
   const losses: QualityLoss[] = [];
 
   for (const transition of transitions) {
@@ -420,10 +387,7 @@ export function prioritizeQualityLosses(
     }
 
     // Sperrverletzungen
-    if (
-      transition.metricsAfter.changedLocks !== null &&
-      transition.metricsAfter.changedLocks > 0
-    ) {
+    if (transition.metricsAfter.changedLocks !== null && transition.metricsAfter.changedLocks > 0) {
       losses.push({
         rank: 0,
         transition: key,

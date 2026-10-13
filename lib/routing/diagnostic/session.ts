@@ -94,9 +94,7 @@ export class RoutingDiagnosticSession {
     const stateId = snapshot.stateId;
 
     if (this.snapshots.has(stateId)) {
-      this.captureErrors.push(
-        `State ${stateId} wurde bereits aufgenommen — überschrieben.`
-      );
+      this.captureErrors.push(`State ${stateId} wurde bereits aufgenommen — überschrieben.`);
     }
 
     // Deep-clone to ensure immutability — the caller's objects must not leak in
@@ -114,9 +112,7 @@ export class RoutingDiagnosticSession {
       })),
       edges: snapshot.edges.map((e) => ({
         ...e,
-        lockedWaypoints: e.lockedWaypoints
-          ? e.lockedWaypoints.map((p) => ({ ...p }))
-          : null,
+        lockedWaypoints: e.lockedWaypoints ? e.lockedWaypoints.map((p) => ({ ...p })) : null,
       })),
       routes: snapshot.routes.map((r) => ({
         ...r,
@@ -136,11 +132,8 @@ export class RoutingDiagnosticSession {
       this.metrics.set(stateId, metrics);
       this.metricsEvalTimings[stateId] = performanceNow() - evalStart;
     } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : String(error);
-      this.captureErrors.push(
-        `Metrik-Berechnung für State ${stateId} fehlgeschlagen: ${msg}`
-      );
+      const msg = error instanceof Error ? error.message : String(error);
+      this.captureErrors.push(`Metrik-Berechnung für State ${stateId} fehlgeschlagen: ${msg}`);
     }
   }
 
@@ -238,11 +231,8 @@ export class RoutingDiagnosticSession {
           );
           transitions.push(report);
         } catch (error) {
-          const msg =
-            error instanceof Error ? error.message : String(error);
-          this.captureErrors.push(
-            `Vergleich ${from}→${to} fehlgeschlagen: ${msg}`
-          );
+          const msg = error instanceof Error ? error.message : String(error);
+          this.captureErrors.push(`Vergleich ${from}→${to} fehlgeschlagen: ${msg}`);
         }
       }
     }
@@ -256,10 +246,7 @@ export class RoutingDiagnosticSession {
       const dMetrics = this.metrics.get('D');
       const eMetrics = this.metrics.get('E');
       if (dMetrics && eMetrics) {
-        if (
-          Math.abs(dMetrics.totalCableLength - eMetrics.totalCableLength) >
-          this.config.geometryTolerance
-        ) {
+        if (Math.abs(dMetrics.totalCableLength - eMetrics.totalCableLength) > this.config.geometryTolerance) {
           this.unresolvedDiscrepancies.push(
             `D→E: Kabellänge unterscheidet sich (${dMetrics.totalCableLength.toFixed(1)} → ${eMetrics.totalCableLength.toFixed(1)} px) — Validierung oder Store-Update könnte Geometrie verändert haben.`
           );

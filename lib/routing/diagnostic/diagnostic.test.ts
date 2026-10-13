@@ -126,20 +126,25 @@ describe('Routing-Diagnostic-System', () => {
 
   describe('Metrik-Berechnung', () => {
     it('berechnet Geometrie-Metriken korrekt', () => {
-      const snapshot = createMockSnapshot('C', [], [], [
-        {
-          edgeId: 'e1',
-          source: 'n1',
-          target: 'n2',
-          waypoints: [
-            { x: 0, y: 0 },
-            { x: 100, y: 0 },
-            { x: 100, y: 50 },
-          ],
-          length: 150,
-          bends: 1,
-        },
-      ]);
+      const snapshot = createMockSnapshot(
+        'C',
+        [],
+        [],
+        [
+          {
+            edgeId: 'e1',
+            source: 'n1',
+            target: 'n2',
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+              { x: 100, y: 50 },
+            ],
+            length: 150,
+            bends: 1,
+          },
+        ]
+      );
 
       const metrics = evaluateRoutingSnapshot(snapshot, TEST_CONFIG);
 
@@ -149,18 +154,23 @@ describe('Routing-Diagnostic-System', () => {
     });
 
     it('erkennt Kurzsegmente', () => {
-      const snapshot = createMockSnapshot('C', [], [], [
-        {
-          edgeId: 'e1',
-          source: 'n1',
-          target: 'n2',
-          waypoints: [
-            { x: 0, y: 0 },
-            { x: 10, y: 0 }, // Kurzsegment < 16
-            { x: 10, y: 100 },
-          ],
-        },
-      ]);
+      const snapshot = createMockSnapshot(
+        'C',
+        [],
+        [],
+        [
+          {
+            edgeId: 'e1',
+            source: 'n1',
+            target: 'n2',
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 10, y: 0 }, // Kurzsegment < 16
+              { x: 10, y: 100 },
+            ],
+          },
+        ]
+      );
 
       const metrics = evaluateRoutingSnapshot(snapshot, TEST_CONFIG);
       expect(metrics.totalShortSegments).toBeGreaterThan(0);
@@ -185,24 +195,14 @@ describe('Routing-Diagnostic-System', () => {
       const metricsBefore = evaluateRoutingSnapshot(before, TEST_CONFIG);
       const metricsAfter = evaluateRoutingSnapshot(after, TEST_CONFIG);
 
-      const report = compareRoutingSnapshots(
-        before,
-        after,
-        metricsBefore,
-        metricsAfter,
-        TEST_CONFIG
-      );
+      const report = compareRoutingSnapshots(before, after, metricsBefore, metricsAfter, TEST_CONFIG);
 
       expect(report.metricsAfter.changedNodePositions).toBe(1);
       expect(report.affectedEntities.nodes).toContain('n1');
     });
 
     it('erkennt neue und entfernte Kanten', () => {
-      const before = createMockSnapshot(
-        'A',
-        [],
-        [{ id: 'e1', source: 'n1', target: 'n2' }]
-      );
+      const before = createMockSnapshot('A', [], [{ id: 'e1', source: 'n1', target: 'n2' }]);
       const after = createMockSnapshot(
         'B',
         [],
@@ -215,54 +215,52 @@ describe('Routing-Diagnostic-System', () => {
       const metricsBefore = evaluateRoutingSnapshot(before, TEST_CONFIG);
       const metricsAfter = evaluateRoutingSnapshot(after, TEST_CONFIG);
 
-      const report = compareRoutingSnapshots(
-        before,
-        after,
-        metricsBefore,
-        metricsAfter,
-        TEST_CONFIG
-      );
+      const report = compareRoutingSnapshots(before, after, metricsBefore, metricsAfter, TEST_CONFIG);
 
       expect(report.metricsAfter.newElements).toBe(1);
     });
 
     it('erkennt Waypoint-Änderungen', () => {
-      const before = createMockSnapshot('C', [], [], [
-        {
-          edgeId: 'e1',
-          source: 'n1',
-          target: 'n2',
-          waypoints: [
-            { x: 0, y: 0 },
-            { x: 100, y: 0 },
-          ],
-          length: 100,
-        },
-      ]);
-      const after = createMockSnapshot('D', [], [], [
-        {
-          edgeId: 'e1',
-          source: 'n1',
-          target: 'n2',
-          waypoints: [
-            { x: 0, y: 0 },
-            { x: 50, y: 50 },
-            { x: 100, y: 0 },
-          ],
-          length: 141.4,
-        },
-      ]);
+      const before = createMockSnapshot(
+        'C',
+        [],
+        [],
+        [
+          {
+            edgeId: 'e1',
+            source: 'n1',
+            target: 'n2',
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
+            length: 100,
+          },
+        ]
+      );
+      const after = createMockSnapshot(
+        'D',
+        [],
+        [],
+        [
+          {
+            edgeId: 'e1',
+            source: 'n1',
+            target: 'n2',
+            waypoints: [
+              { x: 0, y: 0 },
+              { x: 50, y: 50 },
+              { x: 100, y: 0 },
+            ],
+            length: 141.4,
+          },
+        ]
+      );
 
       const metricsBefore = evaluateRoutingSnapshot(before, TEST_CONFIG);
       const metricsAfter = evaluateRoutingSnapshot(after, TEST_CONFIG);
 
-      const report = compareRoutingSnapshots(
-        before,
-        after,
-        metricsBefore,
-        metricsAfter,
-        TEST_CONFIG
-      );
+      const report = compareRoutingSnapshots(before, after, metricsBefore, metricsAfter, TEST_CONFIG);
 
       expect(report.metricsAfter.changedWaypoints).toBe(1);
     });
