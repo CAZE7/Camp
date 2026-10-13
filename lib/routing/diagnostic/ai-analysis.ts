@@ -111,8 +111,8 @@ function calculateCorrelation(x: number[], y: number[]): number {
   let denomY = 0;
 
   for (let i = 0; i < n; i++) {
-    const dx = x[i] - meanX;
-    const dy = y[i] - meanY;
+    const dx = x[i]! - meanX;
+    const dy = y[i]! - meanY;
     numerator += dx * dy;
     denomX += dx * dx;
     denomY += dy * dy;
