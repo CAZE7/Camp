@@ -10,6 +10,7 @@ import {
   getEdgeDomain,
   getHandleDomain,
   selectFuseSize,
+  crossSectionForFuse,
   isFuseFeasible,
   FUSE_MAX_UNPROTECTED_LENGTH_M,
   FUSE_MAX_UNPROTECTED_SOURCE,
@@ -158,6 +159,24 @@ describe('electrical safety refactoring tests', () => {
     expect(selectFuseSize(10, 2.5)).toBe(10);
     expect(selectFuseSize(10, 1.5)).toBe(10);
     expect(selectFuseSize(16, 2.5)).toBe(16);
+  });
+
+  it('crossSectionForFuse findet den kleinsten Querschnitt, der eine Absicherung trägt (B3)', () => {
+    // Koordination I_n ≤ I_z: Für ein 16-A-Schutzorgan (CEE) muss der
+    // Querschnitt mindestens 2,5 mm² betragen (FUSE_MAP[2,5] = 16).
+    expect(crossSectionForFuse(16)).toBe(2.5);
+    expect(crossSectionForFuse(10)).toBe(1.5);
+    expect(crossSectionForFuse(5)).toBe(1.5);
+    expect(crossSectionForFuse(32)).toBe(10);
+    expect(crossSectionForFuse(1.4)).toBe(1.5); // aufgerundet wie selectFuseSize
+    // Über der Modellgrenze wird nichts behauptet.
+    expect(crossSectionForFuse(1000)).toBeUndefined();
+    // Gegenprobe gegen die Umkehrrichtung: was gefunden wird, trägt auch.
+    for (const rating of [5, 10, 16, 20, 25, 32, 40]) {
+      const cs = crossSectionForFuse(rating)!;
+      expect(cs).toBeDefined();
+      expect(FUSE_MAP[cs]!).toBeGreaterThanOrEqual(rating);
+    }
   });
 
   it('isFuseFeasible indicates whether a cable can carry the current', () => {

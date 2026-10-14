@@ -7,6 +7,7 @@ import {
   lookupThermalCrossSection,
   selectFuseSize,
   isFuseFeasible,
+  crossSectionForFuse,
   designAmpacity,
 } from '../electrical';
 import { getCableCurrents } from '../electricalGraph/currentFlow';
@@ -410,22 +411,40 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
       cs = nextStandardCrossSection(cs);
       edge.data.crossSection = cs;
     }
+    const rating = shoreSupplyRating(sourceNode) ?? shoreSupplyRating(targetNode);
     if (cs > MAX_CROSS_SECTION) {
       // Querschnitt bleibt unverändert (95 mm² niemals auf 70 schwächen);
       // gesichert wird auf die größte bekannte Normstufe (konservativ).
-      edge.data.fuseSize = selectFuseSize(I, MAX_CROSS_SECTION);
+      // B3: Eine deklarierte Anschluss-Absicherung ist das reale Organ —
+      // sie gewinnt, solange sie innerhalb der Normbestung liegt.
+      edge.data.fuseSize =
+        rating !== undefined && rating <= (FUSE_MAP[MAX_CROSS_SECTION] ?? 0)
+          ? rating
+          : selectFuseSize(I, MAX_CROSS_SECTION);
       edge.data.fuseWarning = I > (FUSE_MAP[MAX_CROSS_SECTION] ?? 0);
       continue;
     }
-    edge.data.crossSection = calculateCrossSection(I, length, cs, 'AC_230V');
-    // ELEC-003: AC-Zweige waren ungesichert dimensioniert. Die Sicherung ist
-    // der kleinere Wert aus modellierter Dosen-Absicherung (sonst Normwert
-    // ≥ Astlast) und der Kabelträgigkeit — selectFuseSize kapselt beides.
-    const rating = shoreSupplyRating(sourceNode) ?? shoreSupplyRating(targetNode);
+    // ELEC-003 (B3): Eine deklarierte Anschluss-Absicherung ist das REALE
+    // Schutzorgan der Leitung — dann muss der Querschnitt sie auch tragen
+    // (I_B ≤ I_n ≤ I_z, DIN VDE 0100-430). Ohne diese Koordination stünde
+    // z. B. 1,5 mm² (max. 10 A) unter einer 16-A-CEE: die Sicherung schützte
+    // das Kabel nicht. Die Leitung wird deshalb auf den Querschnitt angehoben,
+    // den die Absicherung verlangt (nie verkleinert — Nutzerwert bleibt Boden).
+    let crossSection = calculateCrossSection(I, length, cs, 'AC_230V');
+    if (rating !== undefined) {
+      const protectionCs = crossSectionForFuse(rating);
+      if (protectionCs !== undefined && protectionCs > crossSection) {
+        crossSection = protectionCs;
+      }
+    }
+    edge.data.crossSection = crossSection;
+    // Die Sicherung ist die modellierte Anschluss-Absicherung, wenn der
+    // Querschnitt sie trägt; sonst der Normwert ≥ Astlast ≤ Kabelträgigkeit
+    // (selectFuseSize kapselt beides).
     edge.data.fuseSize =
-      rating !== undefined && rating <= calculateMaxFuse(edge.data.crossSection)
+      rating !== undefined && rating <= calculateMaxFuse(crossSection)
         ? rating
-        : selectFuseSize(I, edge.data.crossSection);
+        : selectFuseSize(I, crossSection);
   }
 }
 

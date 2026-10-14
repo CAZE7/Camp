@@ -27,7 +27,7 @@
 
 - 🔴 **Critical (1):** ARCH-001
 - 🟠 **High (3):** A11Y-001, ELEC-001 _(**geschlossen 2026-10-14**, s. Abschnitt ELEC-001)_, AUTO-001
-- 🟡 **Medium (8):** M1, #309-Token, DEAD-001, K1, ELEC-002, ELEC-003, SEC-001, AUTO-002
+- 🟡 **Medium (8):** M1, #309-Token, DEAD-001, K1, ELEC-002 _(**geschlossen 2026-10-14**)_, ELEC-003 _(**geschlossen 2026-10-14**)_, SEC-001, AUTO-002
 - 🔵 **Low/Bemerkung (6+):** H1, A11Y-002/003, UX-Handoff, Stale-Kommentare, Typ hygiene
 
 ---
@@ -254,9 +254,63 @@ Jede Landstrom-Komponente bekommt nach Auto-Wire pauschal `hasRcd=true` und `Sho
 
 **Maßnahme:** Auto-Wire darf einen fehlenden RCD nicht stillschweigend als gesetzt markieren; stattdessen eine Warnung/Fehler im `WarningCenter` erzeugen und die Node-Daten nur dann auf `hasRcd=true` setzen, wenn tatsächlich ein RCD-integriertes Bauteil erzeugt wird.
 
+**✅ GESCHLOSSEN (2026-10-14) — an zwei Stellen, nicht an einer**
+
+Der pauschale Stempel (`for (const sp of shorePowers) sp.data.hasRcd = true`) ist
+aus `autoWire` entfernt; die Node-Daten bleiben Nutzer-Aussage. Stattdessen wird
+ein fehlender FI **angezeigt**:
+
+1. **Verifikations-Engine (`lib/verify/protection.ts`, RCD-001):** Ein Plan ohne
+   modellierten FI meldet `RCD-001-rcd-deviation` (VIOLATION, 30 mA nach
+   DIN VDE 0100-721). Gegenprobe gemessen: Landstrom ohne `hasRcd` → 2 Meldungen
+   (RCD-001 + RCD-004), mit `hasRcd: true` → nur die Datenlücke RCD-004.
+2. **WarningCenter:** `components/planner/hooks/useLiveValidation.ts` ruft
+   `verificationReportFor` (Engine) auf und übersetzt die Befunde über
+   `verificationWarnings.ts` in die Warn-Zentrale — die RCD-Warnung ist damit im
+   Produktpfad sichtbar, ohne eine zweite Regel zu erfinden (ARCH-Regel D).
+3. **Inspector:** `ShorePowerInspector` zeigt ohne FI eine kritische `warn-card`
+   mit Normverweis.
+
+Abgesichert durch `lib/autoWire.test.ts` („stempelt NICHT pauschal hasRcd=true")
+und die RCD-001-Tests in `lib/verify/protection.test.ts`.
+
 ### ELEC-003 🟡 MEDIUM — AC-Kanten ohne Sicherungs-Dimensionierung
 
 `applyFuseSizes` in `autoWire.ts` bearbeitet nur Plus-DC-Kanten (`if (!edge.sourceHandle?.includes('plus')) continue`); `sizeAcEdges` setzt nur `crossSection`, aber **keine `fuseSize`** für AC-Zweige. Der AC-Strom wird für Landstrom pauschal mit `16 A` angenommen (`acCurrentA`). Eine 230-V-Verteilung hat typischerweise einen 16-A-Leitungsschutz + 30-mA-RCD; die Werte sollten als modellierte Eigenschaft der `shorePower`-Node (z. B. `rating`) gepflegt und auf den AC-Kanten abgebildet werden.
+
+**✅ GESCHLOSSEN (2026-10-14) — AC-Zweige dimensioniert, Anschlusswert bedienbar**
+
+Die AC-Absicherung existiert bereits (`sizeAcEdges` setzt `crossSection` **und**
+`fuseSize` aus dem Strommodell; die pauschale 16-A-Annahme ist durch
+`modelCurrentOf` ersetzt). Dieser PR schließt die zwei verbliebenen Lücken:
+
+1. **Der modellierte Anschlusswert war nicht bedienbar.** `shorePower.rating`
+   wurde von `sizeAcEdges` gelesen, war aber im Inspector nicht editierbar —
+   erreichbar nur über Import/Altpläne. Der `ShorePowerInspector` hat jetzt ein
+   optionales, löschbares Feld „Absicherung des Anschlusses in Ampere" (leer =
+   nicht deklariert; die Leitung entscheidet dann selbst). Tests:
+   `components/inspector/NodeInspectors.test.tsx` (5 Fälle, inkl. Rücknahme und
+   Ablehnung von 0 A).
+2. **Die deklarierte Absicherung wurde nicht koordiniert (Sicherheitslücke im
+   Modell).** Bisher konnte eine 1,5-mm²-Leitung (Kabelgrenze 10 A) unter einer
+   16-A-CEE liegen — die Sicherung hätte das Kabel im Fehlerfall nicht
+   geschützt. Neu: `crossSectionForFuse(rating)` (`lib/electrical.ts`, Umkehrung
+   von `FUSE_MAP`) hebt den Querschnitt auf die Stufe, die die deklarierte
+   Absicherung trägt (I_B ≤ I_n ≤ I_z, DIN VDE 0100-430); nie verkleinert
+   (Nutzerwert bleibt Boden).
+
+**Messung vorher → nachher** (`sizeAcEdges`, 230 V):
+
+| Fall                            | vorher                                               | nachher                                                                            |
+| ------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 575-W-Gerät an 16-A-CEE         | 1,5 mm² / **5 A** (CEE-Absicherung nicht abgebildet) | **2,5 mm² / 16 A**                                                                 |
+| 3680-W-Gerät (16 A) an 16-A-CEE | 4 mm² / 16 A                                         | 4 mm² / 16 A (unverändert)                                                         |
+| 575-W-Gerät an **32-A**-CEE     | 1,5 mm² / 5 A                                        | **10 mm² / 32 A**                                                                  |
+| 20-A-Ladegerät an 16-A-CEE      | 4 mm² / 16 A, **still**                              | 4 mm² / 16 A + **AMP-001 VIOLATION** (I_b = 20 A > I_n = 16 A), vom Test erzwungen |
+
+**Kein Eingriff in eingefrorene Artefakte:** kein Referenzplan (`knownPlans/`)
+und kein Regressionsszenario deklariert `rating` — Golden Master 13/13
+byte-identisch, Regression 68/68, `routing:audit` I1–I7 = 0 unverändert.
 
 ### VDE-Magic-Numbers / Formelprüfung
 
