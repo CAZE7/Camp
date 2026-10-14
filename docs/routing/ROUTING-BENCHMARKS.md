@@ -42,3 +42,4 @@ Gemessen in `tests/scale/plannerScale.test.ts`:
 - **Garantie I1 (Bauteildurchquerung):** 0 Verletzungen (vollständig ausgeschlossen).
 - **Garantie I2 (Überlappung):** 0 unzulässige kollineare Überdeckungen.
 - **Garantie I3 (Mindestabstand):** 0 Abstandsverletzungen (Separationsgang schützt Trassen).
+- **Akzeptanzregel der Nachbearbeitung (A1/ADR 0037):** Jeder Nachbearbeitungs-Schritt muss die zentrale Regel passieren (`lib/routing/rules/transformAcceptance.ts`): keine neue harte Verletzung, Freigabe nicht schlechter, ΔLänge ≤ 0,5 % der Planlänge (Ausnahme nur bei strikter harter Verbesserung mit besserem Kostenscore). Messgleichheit auf allen 21 Referenz-/Szenarioplänen; Kosten auf dem pathologischen Live-Pfad-Referenzplan (N = 36/E = 134) +3,1 % (230,29 → 237,35 ms Median) — Bericht: `docs/routing/OPTIMIZE-DIAGNOSIS.md`.

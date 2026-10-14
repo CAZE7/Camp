@@ -10,6 +10,43 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ROUTE-013 — Nachbearbeitung (C→D) ohne eigenen Akzeptanzvertrag — **GELÖST (2026-10-14)**
+
+- **AREA:** Routing / Nachbearbeitung (Nudge, Bend-Merge, Kabel-/Domain-Trenngang)
+- **FILE:** `components/edges/utils/routeAll.ts`, `lib/routing/rules/transformAcceptance.ts`
+  (neu), `scripts/routing/optimizeDiagnosis.ts` (neu)
+- **DESCRIPTION:** Die drei Nachbearbeitungs-Schritte brachten je eigene
+  Annahme-Bedingungen mit (`routeDefectScore` kennt nur I4/I6/Selbstüberlappung;
+  der Trenngang zählt Freigabe-Verstöße, aber nicht Länge oder Kreuzungen).
+  Keine Bedingung prüfte den Gesamtkatalog, und die 5-State-Diagnose konnte die
+  Frage nicht beantworten: Der D-Hook übergab die Geometrie NACH der
+  Nachbearbeitung, aber Länge und Biegungen des **Rohroutings** — gemeldet wurde
+  die Länge von Zustand C (auf der Spannkanten-Familie `stress:spanning-100`
+  gemessen: +0,00 % gemeldet, tatsächlich +0,59 %).
+- **CURRENT BEHAVIOR (nach Fix):** `acceptTransformChain` prüft den gesamten
+  Block gegen den Rohstand: harte Zunahme ⇒ Rohgeometrie, Freigabe-Zunahme nur
+  bei besserem Kostenscore, wertgleich kein Längenwachstum > 0,5 % und kein
+  Umbau ohne Gewinn. Zustand D meldet Länge/Biegungen aus der eigenen Geometrie.
+- **EXPECTED BEHAVIOR:** Der C→D-Übergang kann keine harte Verletzung erzeugen
+  und die Freigabe nicht ohne Score-Gewinn verschlechtern. Gemessen: ΔFreigabe ≤ 0,
+  Δharte ≤ 0, ΔKreuzungen ≤ 0, ΔLänge ≤ +0,28 % über 6 Referenzpläne + 3
+  Stress-Szenarien; Ausnahme (Länge > Budget) nur bei strikter harter Verbesserung
+  mit besserem Score — `stress:spanning-100`: 30 hart + 100 frei → 0/0 für
+  +30 Kreuzungen und +0,59 % Länge.
+- **SEVERITY:** mittel (Qualität/Messbarkeit; kein Sicherheitsverstoß)
+- **RELATED TEST:** `lib/routing/rules/transformAcceptance.test.ts` (Parität mit
+  I1/I2/I3), `scripts/routing/optimizeDiagnosis.test.ts` (C→D-Akzeptanz)
+- **RELATED ISSUE:** ADR 0037, ADR 0036 (Präzedenz), ADR 0009/0015 (harte
+  Invariante), `docs/routing/OPTIMIZE-DIAGNOSIS.md`
+- **REST (offen, dokumentiert):** Die Diagnose-Metrik „Clearance-Verstöße"
+  zählt jedes Segmentpaar unter `CABLE_CLEARANCE` und wendet die
+  Port-Bündel-Ausnahme des Final-Gates nicht an (inverter D 3, complex D 2
+  gegenüber I3 = 0). Der Fix braucht Handle-/Port-Daten im
+  `DiagnosticRouteSnapshot`-Schema.
+- **COMMIT:** `2ccb273`
+
+---
+
 ## ROUTE-009 — Kreuzungs-Ausweichlauf ist blind für gewichtete Clearance (p02-Kaskade)
 
 - **AREA:** Routing / Kostenmodell
