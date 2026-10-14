@@ -146,6 +146,14 @@ describe('electrical safety refactoring tests', () => {
     expect(selectFuseSize(21, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
     expect(selectFuseSize(21, 2.5)).toBe(16);
 
+    // ELEC-001, zweiter Grenzstrom der Abnahme: auch 17 A auf 2,5 mm² liegt
+    // über der Normstufe, die das Kabel noch trägt (16 A). Die Funktion darf
+    // hier NIEMALS auf 20 A ausweichen (der historische Fehler) — sie meldet
+    // die Kabelgrenze, der Aufrufer dimensioniert den Querschnitt hoch.
+    expect(selectFuseSize(17, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
+    expect(selectFuseSize(17, 2.5)).toBe(16);
+    expect(isFuseFeasible(17, 2.5)).toBe(false);
+
     // Normalfall: kleinste passende Norm-Sicherung.
     expect(selectFuseSize(10, 2.5)).toBe(10);
     expect(selectFuseSize(10, 1.5)).toBe(10);

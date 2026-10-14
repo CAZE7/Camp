@@ -26,7 +26,7 @@
 ### Schweregrade
 
 - 🔴 **Critical (1):** ARCH-001
-- 🟠 **High (3):** A11Y-001, ELEC-001, AUTO-001
+- 🟠 **High (3):** A11Y-001, ELEC-001 _(**geschlossen 2026-10-14**, s. Abschnitt ELEC-001)_, AUTO-001
 - 🟡 **Medium (8):** M1, #309-Token, DEAD-001, K1, ELEC-002, ELEC-003, SEC-001, AUTO-002
 - 🔵 **Low/Bemerkung (6+):** H1, A11Y-002/003, UX-Handoff, Stale-Kommentare, Typ hygiene
 
@@ -216,6 +216,29 @@ selectFuseSize(17, 1.5) = 20   ❌ Kabel 1,5 mm² darf laut FUSE_MAP nur mit 16 
 Im aktuellen Auto-Wire wird das teilweise dadurch kaschiert, dass `sizeDcEdges` den Querschnitt vorher hochtreibt (`lookupThermalCrossSection`), aber der public-Helfer `selectFuseSize` und der Fallback sind fachlich falsch und können — insbesondere an Nutzer-konfigurierten Kanten — eine **überdimensionierte Sicherung erzeugen, die das Kabel im Kurzschlussfall nicht schützt (Brandgefahr)**. Es gibt keinen Test, der den Fall „Strom > max. Sicherung des Kabels" abdeckt.
 
 **Maßnahme:** Wenn `minFuse > maxFuse`, muss der Querschnitt hochgestuft werden (Rückgabe z. B. `{ fuseSize: maxFuse, needsLargerCable: true }`) oder die Funktion muss explizit einen Fehler/`null` zurückgeben, statt eine zu große Sicherung zu empfehlen. Test für 17 A auf 1,5/2,5 mm² ergänzen.
+
+**✅ GESCHLOSSEN (2026-10-14) — Nachprüfung am Code, nicht an Kommentaren**
+
+Die Prüfung bei Arbeitsbeginn fand den Fehler **nicht mehr**: Die Schleife endet
+heute ohne `minFuse`-Ausweichzweig und gibt `maxFuse || MIN_STANDARD_FUSE`
+zurück (`lib/electrical.ts`, `selectFuseSize`); der Querschnitts-Bump sitzt im
+Aufrufer `applyFuseSizes` (`lib/autoWire/sizing.ts`, `isFuseFeasible` +
+`nextStandardCrossSection`). Belege dieser Nachprüfung (neu ergänzt, damit die
+Schließung nachvollziehbar bleibt):
+
+| Fall                                                              | Ergebnis                                                    | Bewertung              |
+| ----------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------- |
+| `selectFuseSize(17, 1,5)`                                         | 10 (= Kabelgrenze)                                          | Audit-Beispiel 17 A ✅ |
+| `selectFuseSize(16, 1,5)`                                         | 10                                                          | Audit-Beispiel 16 A ✅ |
+| `selectFuseSize(17, 2,5)`                                         | 16 (nicht 20!)                                              | **neu abgesichert**    |
+| `selectFuseSize(21, 2,5)`                                         | 16                                                          | Grenzfall ✅           |
+| Sweep 17 Normquerschnitte × 0,5-A-Schritte (39 990 Kombinationen) | **0** Sicherungen über `FUSE_MAP[Querschnitt]`              | messbar geschlossen    |
+| `applyFuseSizes` 17 A auf 1,5 mm²                                 | Querschnitt 1,5 → **4 mm²**, Sicherung 20 A ≤ `FUSE_MAP[4]` | **neu abgesichert**    |
+
+Die vier Altfälle (16 A/1,5 · 17 A/1,5 · 21 A/2,5 · 17 A/2,5) und der
+Aufrufer-Fall stehen in `lib/electrical.test.ts` / `lib/autoWire.test.ts`; die
+Property-Tests `lib/vde-properties.test.ts` (G1: „Sandwich" + „niemals über die
+Kabelgrenze", 5 000-A-Extremströme) decken die Invariante zusätzlich fuzzend ab.
 
 ### ELEC-002 🟡 MEDIUM — Auto-Wire stempelt Landstrom-RCD pauschal als vorhanden
 

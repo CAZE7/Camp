@@ -964,6 +964,31 @@ describe('autoWire — applyFuseSizes', () => {
     expect(cs).toBeGreaterThan(2.5);
   });
 
+  it('ELEC-001: 17 A auf 1,5 mm² — Querschnitt wächst mit, Sicherung bleibt unter dem Kabel-Max', () => {
+    // Abnahmefall aus dem Audit: 17 A Nennstrom auf einem 1,5-mm²-Pluskabel.
+    // FUSE_MAP[1,5 mm²] = 10 A — eine Sicherung ≥ 17 A gibt es auf diesem
+    // Querschnitt NICHT. Erwartung: der Aufrufer treibt den Querschnitt hoch
+    // (nächste Stufe, die 17 A trägt = 4 mm² / 20 A) und setzt NIE eine
+    // Sicherung über dem Kabel-Maximalwert (Brandschutz).
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 218 })];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'f17',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 2, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      }),
+    ];
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
+    const data = edges[0]?.data;
+    const cs = data?.crossSection ?? 0;
+    const fuse = data?.fuseSize ?? 0;
+    expect(fuse).toBeGreaterThanOrEqual(17); // trägt den Nennstrom …
+    expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0); // … ohne das Kabel zu überfordern
+    expect(cs).toBeGreaterThan(1.5); // hochdimensioniert statt überabsichert
+    expect(data?.fuseWarning).not.toBe(true); // innerhalb des Modells lösbar
+  });
+
   it('fasst Minus-Kanten nicht an (Sicherungen sitzen im Pluspfad)', () => {
     const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 24 })];
     const edges: Edge<CableEdgeData>[] = [

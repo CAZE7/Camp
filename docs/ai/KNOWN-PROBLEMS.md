@@ -10,6 +10,34 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ELEC-001 (Audit-ROUTING-2026) — `selectFuseSize` konnte eine Sicherung über dem Kabel-Max empfehlen — **GELÖST (2026-10-14)**
+
+- **AREA:** Elektrik / Sicherungsdimensionierung (`selectFuseSize`, Auto-Wire)
+- **FILE:** `lib/electrical.ts` (`selectFuseSize`, `isFuseFeasible`),
+  `lib/autoWire/sizing.ts` (`applyFuseSizes`), `lib/electrical.test.ts`,
+  `lib/autoWire.test.ts`
+- **DESCRIPTION (Original):** Der Ausweichzweig `STANDARD_FUSE_SIZES.find(s => s >= minFuse)`
+  gab bei `minFuse > maxFuse` eine Sicherung **oberhalb** von `FUSE_MAP[Querschnitt]`
+  zurück — z. B. `selectFuseSize(17, 1.5) = 20` statt Kabelgrenze 10 → die Sicherung
+  schützt das Kabel im Kurzschlussfall nicht (Brandgefahr).
+- **CURRENT BEHAVIOR:** `selectFuseSize` gibt **niemals** mehr als
+  `FUSE_MAP[crossSection]` zurück (Rückfall = Kabelgrenze als „Querschnitt zu klein"-Signal);
+  `isFuseFeasible` macht die Unterscheidung explizit; der Produktivpfad
+  `applyFuseSizes` hebt den Querschnitt auf die nächste tragende Normstufe
+  (`nextStandardCrossSection`) — die Sicherung trägt die Last UND schützt das Kabel.
+- **VERIFICATION (2026-10-14, am Missions-Basis-Commit):** Sweep über alle 17
+  Normquerschnitte × 0,5-A-Schritte (39 990 Kombinationen): **0** Ausgaben über
+  `FUSE_MAP`. Neue Regressionstests: 17 A auf 2,5 mm² → 16 A (war der 20-A-Fall),
+  `applyFuseSizes` 17 A auf 1,5 mm² → 4 mm² / 20 A. Property-Tests
+  (`lib/vde-properties.test.ts` G1/G2) decken die Invariante fuzzend ab.
+- **SEVERITY:** hoch (war) → geschlossen
+- **RELATED TEST:** `lib/electrical.test.ts` („selectFuseSize never exceeds …"),
+  `lib/autoWire.test.ts` („ELEC-001: 17 A auf 1,5 mm² …"), `lib/vde-properties.test.ts` (G1)
+- **RELATED ISSUE:** `docs/AUDIT-ROUTING-2026.md` §ELEC-001 (mit Schließungstabelle)
+- **COMMIT:** siehe PR-Beschreibung (Branch `arena/f27aa996-camp`, PR #532)
+
+---
+
 ## ROUTE-013 — Nachbearbeitung (C→D) ohne eigenen Akzeptanzvertrag — **GELÖST (2026-10-14)**
 
 - **AREA:** Routing / Nachbearbeitung (Nudge, Bend-Merge, Kabel-/Domain-Trenngang)
