@@ -1,5 +1,6 @@
 import type { ValidationWarning } from '../hooks/useLiveValidation';
 import type { PlannerFlowNode } from '../../nodes/types';
+import type { VerificationVerdict } from '../../../lib/verify/types';
 
 /**
  * Geführter Planungsablauf — die Antwort auf „Was soll ich als Nächstes tun?“.
@@ -113,7 +114,21 @@ export interface GuidedPlanInput {
   nodes: PlannerFlowNode[];
   edges: readonly GuidedEdgeRef[];
   warnings: ValidationWarning[];
+  /**
+   * Ergebnis der Prüfung (Prüfbericht). Nur `COMPLIANT` ist „geprüft“; ein
+   * Plan mit fehlenden Angaben (`INCOMPLETE`) oder einem Verstoß
+   * (`NON_COMPLIANT`) darf im Ablauf nicht als fertig gelten.
+   */
+  verdict: VerificationVerdict;
+  /** Routing-Gate: `false`, solange eine I1–I3-Regelverletzung offen ist. */
+  routingValid: boolean;
 }
+
+const VERDICT_REASON: Readonly<Record<VerificationVerdict, string>> = {
+  COMPLIANT: '',
+  INCOMPLETE: 'Prüfbericht unvollständig belegt (fehlende Angaben).',
+  NON_COMPLIANT: 'Prüfbericht nicht bestanden.',
+};
 
 /**
  * Leitet die fünf Planungsschritte aus dem Elektrikplan ab.
@@ -123,7 +138,30 @@ export interface GuidedPlanInput {
  * konsistent — auch wenn ein Nutzer Schritte überspringt (dann ist der erste
  * offene Schritt der aktuelle, die späteren bleiben offen).
  */
-export function evaluateGuidedSteps({ nodes, edges, warnings }: GuidedPlanInput): GuidedPlanSteps {
+/**
+ * Begründung, warum Schritt 5 offen ist. Ohne Grund stünde dort nur „nicht
+ * erledigt“, obwohl der Nutzer wissen muss, ob Angaben fehlen oder ein
+ * Verstoß vorliegt.
+ */
+function resultBlockedDetail(
+  complete: readonly boolean[],
+  verdict: VerificationVerdict,
+  routingValid: boolean
+): string {
+  if (!complete[3]) return 'Noch nicht alle Schritte erledigt.';
+  const reasons = [VERDICT_REASON[verdict], routingValid ? '' : 'Routing: Regelverletzung offen.'].filter(
+    (reason) => reason.length > 0
+  );
+  return reasons.length > 0 ? reasons.join(' ') : 'Noch nicht alle Schritte erledigt.';
+}
+
+export function evaluateGuidedSteps({
+  nodes,
+  edges,
+  warnings,
+  verdict,
+  routingValid,
+}: GuidedPlanInput): GuidedPlanSteps {
   const hasSource = countTypes(nodes, SOURCE_SET) > 0;
   const coreCount = countTypes(nodes, CORE_SET);
   const consumerCount = countTypes(nodes, CONSUMER_SET);
@@ -137,7 +175,9 @@ export function evaluateGuidedSteps({ nodes, edges, warnings }: GuidedPlanInput)
     coreCount > 0,
     consumerCount > 0 && wiredConsumers >= consumerCount,
     criticalCount === 0,
-    true, // Schritt 5 ist das Ergebnis: verfügbar, sobald die vier davor stehen.
+    // Schritt 5 ist das Ergebnis: erst, wenn der Prüfbericht bestanden ist UND
+    // das Routing keine Regelverletzung mehr meldet.
+    verdict === 'COMPLIANT' && routingValid,
   ];
 
   /**
@@ -166,7 +206,7 @@ export function evaluateGuidedSteps({ nodes, edges, warnings }: GuidedPlanInput)
         : warningCount > 0
           ? `Kein kritisches Problem, ${warningCount} Hinweis${warningCount === 1 ? '' : 'e'}.`
           : 'Keine offenen Hinweise.',
-    complete[4] ? 'Plan ist vollständig und geprüft.' : 'Noch nicht alle Schritte erledigt.',
+    complete[4] ? 'Plan ist vollständig und geprüft.' : resultBlockedDetail(complete, verdict, routingValid),
   ];
 
   const labels = ['Anlage', 'Kern', 'Verbinden', 'Prüfen', 'Ergebnis'];

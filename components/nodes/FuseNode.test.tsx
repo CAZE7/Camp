@@ -31,9 +31,10 @@ describe('FuseNode Component', () => {
     expect(screen.getByText('Custom Fuse')).toBeInTheDocument();
   });
 
-  it('renders default rating when not provided', () => {
+  it('kennzeichnet einen fehlenden Nennstrom als nicht angegeben, nicht als 0 A', () => {
     render(<FuseNode id="1" data={{}} />);
-    expect(screen.getByText('Sicherung: 0 A')).toBeInTheDocument();
+    expect(screen.getByText('Sicherung: nicht angegeben')).toBeInTheDocument();
+    expect(screen.queryByText('Sicherung: 0 A')).toBeNull();
   });
 
   it('renders custom rating when provided in data', () => {

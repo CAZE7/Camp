@@ -12,6 +12,9 @@ function edge(id: string, source: string, target: string): GuidedEdgeRef {
   return { id, source, target } as GuidedEdgeRef;
 }
 
+/** Prüfung bestanden und Routing gültig — Basis für Tests, die nur Schritte 1–4 prüfen. */
+const GATE_OK = { verdict: 'COMPLIANT', routingValid: true } as const;
+
 const critical: ValidationWarning = {
   id: 'missing-fuse-1',
   category: 'safety',
@@ -27,7 +30,7 @@ const hint: ValidationWarning = {
 
 describe('evaluateGuidedSteps', () => {
   it('nennt bei leerem Plan Schritt 1 als aktuellen Schritt', () => {
-    const plan = evaluateGuidedSteps({ nodes: [], edges: [], warnings: [] });
+    const plan = evaluateGuidedSteps({ nodes: [], edges: [], ...GATE_OK, warnings: [] });
 
     expect(plan.steps.map((step) => step.id)).toEqual([...GUIDED_STEP_IDS]);
     expect(plan.currentStep).toBe(1);
@@ -41,6 +44,7 @@ describe('evaluateGuidedSteps', () => {
     const withBattery = evaluateGuidedSteps({
       nodes: [node('b1', 'battery')],
       edges: [],
+      ...GATE_OK,
       warnings: [],
     });
     expect(withBattery.currentStep).toBe(2);
@@ -49,6 +53,7 @@ describe('evaluateGuidedSteps', () => {
     const withFuse = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse')],
       edges: [],
+      ...GATE_OK,
       warnings: [],
     });
     expect(withFuse.currentStep).toBe(3);
@@ -59,6 +64,7 @@ describe('evaluateGuidedSteps', () => {
     const unconnected = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [],
+      ...GATE_OK,
       warnings: [],
     });
     expect(unconnected.currentStep).toBe(3);
@@ -67,6 +73,7 @@ describe('evaluateGuidedSteps', () => {
     const connected = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      ...GATE_OK,
       warnings: [],
     });
     expect(connected.steps[2]!.complete).toBe(true);
@@ -81,6 +88,7 @@ describe('evaluateGuidedSteps', () => {
     const plan = evaluateGuidedSteps({
       nodes: [node('c1', 'consumer'), node('c2', 'consumer')],
       edges: [edge('e1', 'c1', 'c2')],
+      ...GATE_OK,
       warnings: [],
     });
 
@@ -93,6 +101,7 @@ describe('evaluateGuidedSteps', () => {
     const plan = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      ...GATE_OK,
       warnings: [critical, hint],
     });
 
@@ -105,6 +114,7 @@ describe('evaluateGuidedSteps', () => {
     const plan = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      ...GATE_OK,
       warnings: [hint],
     });
 
@@ -116,11 +126,52 @@ describe('evaluateGuidedSteps', () => {
     expect(plan.steps[3]!.detail).toBe('Kein kritisches Problem, 1 Hinweis.');
   });
 
+  it('hält Schritt 5 offen, solange der Prüfbericht nicht bestanden ist', () => {
+    const plan = evaluateGuidedSteps({
+      nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
+      edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      warnings: [hint],
+      verdict: 'INCOMPLETE',
+      routingValid: true,
+    });
+
+    expect(plan.steps[4]!.complete).toBe(false);
+    expect(plan.currentStep).toBe(5);
+    expect(plan.steps[4]!.detail).toBe('Prüfbericht unvollständig belegt (fehlende Angaben).');
+  });
+
+  it('nennt bei verletztem Routing den Grund, statt „geprüft“ zu behaupten', () => {
+    const plan = evaluateGuidedSteps({
+      nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
+      edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      warnings: [],
+      verdict: 'COMPLIANT',
+      routingValid: false,
+    });
+
+    expect(plan.steps[4]!.complete).toBe(false);
+    expect(plan.steps[4]!.detail).toBe('Routing: Regelverletzung offen.');
+  });
+
+  it('markiert Schritt 5 nur bei bestandenem Prüfbericht und gültigem Routing als erledigt', () => {
+    const plan = evaluateGuidedSteps({
+      nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
+      edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      warnings: [],
+      verdict: 'COMPLIANT',
+      routingValid: true,
+    });
+
+    expect(plan.steps[4]!.complete).toBe(true);
+    expect(plan.steps[4]!.detail).toBe('Plan ist vollständig und geprüft.');
+  });
+
   it('zählt einen Verbraucher erst als verbunden, wenn eine Kante in ihn zeigt', () => {
     // Kante zeigt VOM Verbraucher weg: keine Einspeisung, Schritt 3 bleibt offen.
     const outgoingOnly = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [edge('e1', 'b1', 'f1'), edge('e2', 'c1', 'f1')],
+      ...GATE_OK,
       warnings: [],
     });
     expect(outgoingOnly.steps[2]!.complete).toBe(false);
@@ -129,13 +180,14 @@ describe('evaluateGuidedSteps', () => {
     const incoming = evaluateGuidedSteps({
       nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
       edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      ...GATE_OK,
       warnings: [],
     });
     expect(incoming.steps[2]!.complete).toBe(true);
   });
 
   it('gibt jedem Schritt eine ausführbare Primäraktion', () => {
-    const plan = evaluateGuidedSteps({ nodes: [], edges: [], warnings: [] });
+    const plan = evaluateGuidedSteps({ nodes: [], edges: [], ...GATE_OK, warnings: [] });
 
     // Keine Leiste ohne Knopf: Jeder Schritt beantwortet „Was soll ich tun?".
     // Ein `none` gibt es im Typ `GuidedStepAction` gar nicht mehr — der
@@ -154,6 +206,7 @@ describe('evaluateGuidedSteps', () => {
     const plan = evaluateGuidedSteps({
       nodes: [node('b1', 'battery')],
       edges: [],
+      ...GATE_OK,
       warnings: [],
     });
     const current = plan.steps.filter((step) => step.status === 'current');

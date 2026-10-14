@@ -43,7 +43,15 @@ afterEach(() => {
 
 describe('GuidedPlanRail', () => {
   it('zeigt alle fünf Schritte und markiert den aktuellen als Schritt', () => {
-    render(<GuidedPlanRail nodes={[node('b1', 'battery')]} edges={[]} warnings={[]} {...handlers()} />);
+    render(
+      <GuidedPlanRail
+        nodes={[node('b1', 'battery')]}
+        edges={[]}
+        verdict="COMPLIANT"
+        warnings={[]}
+        {...handlers()}
+      />
+    );
 
     expect(screen.getByRole('navigation', { name: 'Planungsablauf' })).toBeInTheDocument();
     const items = screen.getAllByRole('listitem');
@@ -53,7 +61,7 @@ describe('GuidedPlanRail', () => {
   });
 
   it('lässt die nicht-interaktive Leistenfläche durch, damit Canvas-Taps nicht blockiert werden', () => {
-    render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...handlers()} />);
+    render(<GuidedPlanRail nodes={[]} edges={[]} verdict="COMPLIANT" warnings={[]} {...handlers()} />);
 
     const rail = screen.getByRole('navigation', { name: 'Planungsablauf' });
     expect(rail).toHaveClass('pointer-events-none');
@@ -63,7 +71,7 @@ describe('GuidedPlanRail', () => {
 
   it('öffnet im ersten Schritt den Bauteilkatalog', () => {
     const actions = handlers();
-    render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...actions} />);
+    render(<GuidedPlanRail nodes={[]} edges={[]} verdict="COMPLIANT" warnings={[]} {...actions} />);
 
     const primary = screen.getByTestId('guided-primary-action');
     expect(primary).toHaveTextContent('Batterie hinzufügen');
@@ -79,6 +87,7 @@ describe('GuidedPlanRail', () => {
       <GuidedPlanRail
         nodes={[node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')]}
         edges={[]}
+        verdict="COMPLIANT"
         warnings={[]}
         {...actions}
       />
@@ -99,6 +108,7 @@ describe('GuidedPlanRail', () => {
       <GuidedPlanRail
         nodes={[node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')]}
         edges={[edge('e1', 'b1', 'f1')]}
+        verdict="COMPLIANT"
         warnings={[critical, hint]}
         {...actions}
       />
@@ -116,6 +126,7 @@ describe('GuidedPlanRail', () => {
       <GuidedPlanRail
         nodes={[node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')]}
         edges={[edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')]}
+        verdict="COMPLIANT"
         warnings={[]}
         {...handlers()}
       />
@@ -135,6 +146,7 @@ describe('GuidedPlanRail', () => {
       <GuidedPlanRail
         nodes={[node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')]}
         edges={[edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')]}
+        verdict="COMPLIANT"
         warnings={[]}
         {...actions}
       />
@@ -146,7 +158,7 @@ describe('GuidedPlanRail', () => {
 
   it('erlaubt den Wechsel in den freien Editor', () => {
     const actions = handlers();
-    render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...actions} />);
+    render(<GuidedPlanRail nodes={[]} edges={[]} verdict="COMPLIANT" warnings={[]} {...actions} />);
 
     fireEvent.click(screen.getByTestId('guided-expert-toggle'));
     expect(actions.onSwitchToExpertMode).toHaveBeenCalledTimes(1);

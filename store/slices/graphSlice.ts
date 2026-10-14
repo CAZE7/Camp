@@ -55,6 +55,7 @@ export type GraphSlice = Pick<
   | 'waterEdges'
   | 'setWaterNodes'
   | 'setWaterEdges'
+  | 'importProject'
   | 'historyPast'
   | 'historyFuture'
   | 'canUndo'
@@ -1243,6 +1244,31 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         autoStructurePending: false,
       })
     );
+  },
+  importProject: (plan) => {
+    const current = get();
+    const locked = lockedElectricalEdges(current.edges);
+    if (locked.length > 0) {
+      for (const edge of locked) reportLockedMutation(current, edge, 'replace-plan');
+      return false;
+    }
+    set((state) =>
+      withHistory(state, {
+        nodes: plan.nodes,
+        edges: plan.edges,
+        waterNodes: plan.waterNodes,
+        waterEdges: plan.waterEdges,
+        selectedNodes: [],
+        selectedEdges: [],
+        firstTappedHandle: null,
+        // Eine offene ELK-Strukturierung gehört zum ersetzten Plan.
+        autoStructurePending: false,
+      })
+    );
+    // Die Jahreszeit ist ein Planungsparameter, aber kein Teil der Undo-
+    // Historie (wie `setSeason`): sie wird separat gesetzt.
+    set({ season: plan.season });
+    return true;
   },
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
     const edges = customEdges || get().edges;
