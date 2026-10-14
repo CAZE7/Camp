@@ -262,11 +262,40 @@ export function PlannerDashboard() {
         openMenu={openMenu}
         onOpenMenu={setOpenMenu}
         statusArea={
+          /*
+            Statuschips rechts in der Werkzeugleiste — festgenagelt, nie
+            weggescrollt (siehe `PlannerToolbar`/`.cad-toolbar__status`).
+
+            Die Chips folgen dem gemessenen Breitenbudget der Leiste
+            (`app/globals.css` §7a), nicht Tailwind-Breakpoints: Die Leiste ist
+            in jeder Breite 100 % des Fensters breit.
+              · Speicherzustand  — Symbol immer; Text ab 1980 px
+                                   (`.cad-tb-explain`).
+              · Routing-Status   — Symbol immer; Text ab 1980 px.
+              · Kabel optimieren — „Optimieren“ bis 1979 px, ab 1980 px
+                                   „Kabel optimieren“; der zugängliche Name ist
+                                   in jeder Breite vollständig. Unter 360 px
+                                   weicht der Knopf aus der Leiste, die Aktion
+                                   steht dann im `⋯`-Menü
+                                   (`action-optimize-routing`).
+              · Prüfsiegel       — erst ab 768 px: Auf dem Handy ist der Weg zum
+                                   Bericht der Prüfknopf in der Schrittleiste
+                                   bzw. „Prüfbericht öffnen“ im `⋯`-Menü.
+              · Warnzentrale     — immer: Sie ist der einzige sichtbare Zugang
+                                   zum Prüfbericht mit Zahl; unter 1400 px zeigt
+                                   sie nur die Zahl der schwersten Stufe
+                                   (`.cad-warn-chip__count`), der vollständige
+                                   Satz steht im `aria-label`.
+          */
           <>
             <SaveIndicator revision={planRevision} />
             {viewMode === 'electric' && <RoutingStatusBadge />}
             {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
-            {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
+            {viewMode === 'electric' && nodes.length > 0 && (
+              <span className="hidden md:inline-flex">
+                <VerificationSeal summary={verification} />
+              </span>
+            )}
             <WarningCenter warnings={warnings} onFix={handleFix} />
           </>
         }

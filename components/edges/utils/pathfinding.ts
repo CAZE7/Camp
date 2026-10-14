@@ -1,5 +1,5 @@
 import { portOutward } from '../../../lib/routing/model';
-import { Position } from '@xyflow/react';
+import type { Position } from '@xyflow/react';
 import {
   nodeHeight,
   nodeOriginX,

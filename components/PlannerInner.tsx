@@ -25,7 +25,12 @@ import { usePlannerStore } from '../store/usePlannerStore';
  * JavaScript: so stimmt das Layout schon beim ersten Frame (kein Flackern nach
  * der Hydration) und es gibt keine „falsche“ Geräteklasse beim Fenster-Resize.
  *
- *  < 768 px  (Handy)   : ein Bereich sichtbar, Umschaltung über die Bottom-Tabs.
+ *  < 768 px  (Handy)   : Zeichenfläche füllt den Arbeitsbereich; Palette und
+ *                        Eigenschaften legen sich als Blätter darüber
+ *                        (`max-md:absolute inset-0`, Umschaltung über die
+ *                        Fußleiste). Der Canvas bleibt montiert — er behält
+ *                        seine gemessene Größe und ist nach dem Schließen
+ *                        sofort wieder bedienbar.
  *  768–1279 px (Tablet): Palette (260 px) + Canvas; Inspector als Slide-over
  *                        von rechts (320 px, mit Backdrop).
  *  ≥ 1280 px (Desktop) : feste 3 Spalten — Palette 248 px | Canvas flex-1
@@ -33,12 +38,22 @@ import { usePlannerStore } from '../store/usePlannerStore';
  *
  * Aufbau der Anwendungsshell (oben nach unten): Menüleiste, Werkzeugleiste,
  * Arbeitsbereich (Palette | Zeichenfläche | Eigenschaften), Statuszeile. Nur
- * Panels scrollen — die Seite selbst nie (`h-dvh` + `overflow-hidden`).
+ * Panels scrollen — die Seite selbst nie (Höhe aus `app/globals.css`:
+ * `100dvh` mit `100vh`-Rückfall, `overflow: hidden`).
  *
  * Warum der Inspector erst ab 1280 px andockt (und nicht ab 1024 px):
  * 1024 − 248 − 288 = 488 px Canvas. Das verletzt die geforderte Mindestbreite
  * von 600 px und macht den Plan unbrauchbar. Zwischen 768 und 1279 px bleibt
  * er deshalb Slide-over; der Canvas behält dort die volle Restbreite.
+ *
+ * Warum auf dem Handy Blätter statt Tabs (M12):
+ * Vorher ersetzte der Katalog die Zeichenfläche (`hidden`). Das war nicht nur
+ * ein Wechsel der Ansicht: React Flow verlor seine gemessene Größe, ein
+ * hinzugefügtes Bauteil wartete 30 Frames auf eine messbare Pane
+ * (`PANE_WAIT_FRAMES`) und landete ohne sie auf einem festen Raster. Als Blatt
+ * bleibt die Zeichenfläche die ganze Zeit im Layout — der Zusatz sitzt sofort
+ * dort, wo der Nutzer ihn erwartet, und die Geste (Pan/Pinch) arbeitet auf
+ * einer unveränderten Größe weiter.
  */
 /**
  * Die Provider-Grenze liegt VOR dem eigentlichen Shell-Baum: `useStore` aus
@@ -145,6 +160,23 @@ function PlannerShell() {
   const handleMobileAdd = () => setActiveTab('canvas');
 
   /**
+   * Blatt-Umschaltung der Fußleiste (Handy).
+   *
+   * `Bauteile` und `Details` sind dort keine Seiten mehr, sondern Blätter über
+   * der Zeichenfläche: Ein zweiter Tipp auf denselben Eintrag schließt wieder,
+   * ein Tipp auf `Elektrik`/`Wasser` ebenfalls. Auf Tablet und Desktop werden
+   * dieselben Schalter zu Spalten-/Overlay-Schaltern — deshalb setzt jede
+   * Aktion zusätzlich den Store-Zustand, den die Geräteklassen ab 768 px lesen.
+   */
+  const togglePanel = (panel: 'sidebar' | 'inspector') => {
+    setActiveTab((current) => (current === panel ? 'canvas' : panel));
+    if (panel === 'sidebar') usePlannerStore.getState().setSidebarOpen(true);
+    if (panel === 'inspector') usePlannerStore.getState().setInspectorOpen(true);
+  };
+
+  const closePanels = () => setActiveTab('canvas');
+
+  /**
    * „Bauteile hinzufügen" aus der Schrittleiste (UX-Reset 2026-09).
    *
    * Der Katalog ist je Geräteklasse etwas anderes: Auf dem Handy ein eigener
@@ -171,15 +203,25 @@ function PlannerShell() {
       active ? 'bg-accent text-foreground' : 'text-muted-foreground'
     }`;
 
+  /**
+   * Eigenschaften-Spalte: auf jeder Geräteklasse dieselbe Box, drei Zustände.
+   *
+   *  < 768 px  : Blatt über dem Arbeitsbereich (`max-md:absolute inset-0`),
+   *              Sichtbarkeit über den Fußleisten-Schalter (`activeTab`).
+   *  768–1279  : Slide-over von rechts, 320 px, mit Backdrop (`md:fixed`).
+   *  ≥ 1280 px : dritte Spalte; eingeklappt bleibt sie als 0-px-Spalte im
+   *              Layout (kein Overlay, kein Schatten), `invisible` nimmt sie
+   *              aus der Tastatur-Reihenfolge.
+   *
+   * `max-md:`-Varianten sind Absicht: Ohne sie würde das mobile `inset-0` auch
+   * am Tablet greifen und das Slide-over auf volle Breite ziehen.
+   */
   const inspectorClass = [
-    // Handy: vollflächiger Tab-Bereich.
-    'min-h-0 w-full flex-1 flex-col bg-surface-panel',
-    activeTab === 'inspector' ? 'flex' : 'hidden',
-    // Tablet/kleiner Desktop: Slide-over von rechts, 320 px, über dem Canvas.
+    'min-h-0 flex-col bg-surface-panel',
+    activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex' : 'max-md:hidden',
     isInspectorOpen
       ? 'md:fixed md:inset-y-0 md:right-0 md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
       : 'md:hidden',
-    // Ab 1280 px echte dritte Spalte (kein Overlay, kein Schatten).
     isInspectorOpen
       ? 'xl:static xl:z-auto xl:flex xl:w-[288px] xl:flex-none 2xl:w-[320px]'
       : 'xl:static xl:invisible xl:flex xl:w-0 xl:flex-none xl:overflow-hidden xl:border-l-0',
@@ -187,9 +229,24 @@ function PlannerShell() {
 
   const isDarkPlanner = usePlannerDarkMode();
 
+  /**
+   * Dokument-Sperre: Der Planer IST das Dokument auf `/planer/`, kein Abschnitt
+   * einer Seite. `html`/`body` dürfen deshalb nicht mitscrollen — sonst schiebt
+   * ein Touch-Drag am Canvas-Rand die gesamte Anwendung samt Werkzeugleiste aus
+   * dem Bild (Gummiband-Effekt) und die Scrollposition ist nach dem Schließen
+   * eines Panels eine andere als davor. Die Klasse wird nur hier gesetzt und
+   * beim Unmount entfernt; alle anderen Routen bleiben unberührt.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('planner-root-active');
+    return () => root.classList.remove('planner-root-active');
+  }, []);
+
   return (
     <div
       data-testid="planner-shell"
+      data-panel-open={activeTab === 'canvas' ? 'false' : 'true'}
       className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans ${focusMode ? 'planner-shell--focus' : ''} ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
     >
       {!hasOnboarded && <OnboardingWizard />}
@@ -200,24 +257,33 @@ function PlannerShell() {
 
       <div
         data-testid="planner-workspace"
-        // `relative`: Die Panel-Umschalter (Palette/Eigenschaften) kleben als
-        // absolut positionierte Griffe auf der Panelkante. Bezug ist damit der
-        // Arbeitsbereich — nicht die Anwendungsshell, sonst lägen sie unter der
-        // Menüleiste.
+        // `relative`: Bezug für die Blätter auf dem Handy und für die
+        // Panel-Umschalter, die als absolut positionierte Griffe auf der
+        // Panelkante sitzen. Bezug ist damit der Arbeitsbereich — nicht die
+        // Anwendungsshell, sonst lägen sie unter der Menüleiste.
         className="relative flex min-h-0 min-w-0 flex-1 flex-col md:flex-row"
       >
         {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 248 px
             Desktop) setzt das einklappbare Panel selbst, damit „eingeklappt“
             auch wirklich 0 px Spaltenbreite bedeutet. */}
         <div
-          className={`min-h-0 w-full flex-1 md:flex md:w-fit md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
+          data-testid="planner-sidebar-slot"
+          className={`min-h-0 w-full flex-1 md:flex md:w-fit md:flex-none ${
+            activeTab === 'sidebar'
+              ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex max-md:flex-col'
+              : 'hidden md:flex'
+          }`}
         >
-          <PlannerSidebar onMobileAdd={handleMobileAdd} />
+          <PlannerSidebar onMobileAdd={handleMobileAdd} onCloseMobile={closePanels} />
         </div>
 
+        {/* Zeichenfläche: auf jeder Breite sichtbar und montiert. `isolate`
+            hält die schwebenden Canvas-Griffe (Undo/Redo, Expertenschalter,
+            z-50) in dieser Spalte — sie dürfen nicht über die Blätter des
+            Handys zeichnen, die eine Ebene höher liegen. */}
         <div
           data-testid="planner-canvas-column"
-          className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}
+          className="isolate flex min-w-0 flex-1 flex-col xl:min-w-[600px]"
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <React.Suspense fallback={<CanvasSkeleton />}>
@@ -280,12 +346,17 @@ function PlannerShell() {
           className={inspectorClass}
           aria-label="Eigenschaften"
         >
-          {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
-          <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
+          {/* Kopfzeile des Overlays — auf dem Handy (Blatt) und am Tablet
+              (Slide-over) derselbe Weg nach draußen. Am Desktop gehört sie zur
+              Spalte und entfällt (`xl:hidden`). */}
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2 xl:hidden">
             <span className="panel-title">Eigenschaften</span>
             <button
               type="button"
-              onClick={() => setInspectorOpen(false)}
+              onClick={() => {
+                setInspectorOpen(false);
+                closePanels();
+              }}
               className="cad-btn h-11 w-11 justify-center"
               aria-label="Eigenschaften schließen"
             >
@@ -330,9 +401,15 @@ function PlannerShell() {
         </div>
       )}
 
-      {/* Bottom-Navigation: nur Handy. Vier Bereiche, ein Zustand —
+      {/* Fußleiste: nur Handy. Fünf Ziele in einer Zeile —
           `planner-bottom-nav` ergänzt die iOS-Safe-Area, damit der
-          Home-Indicator nichts überdeckt. */}
+          Home-Indicator nichts überdeckt.
+
+          `Bauteile` und `Details` sind Blatt-Schalter (`aria-expanded`), keine
+          Seiten: Die Zeichenfläche bleibt darunter im Layout und montiert.
+          `Elektrik`/`Wasser` wählen den Planbereich und schließen ein offenes
+          Blatt mit — vorher war der Bereichswechsel auf dem Handy hinter dem
+          Katalog „versteckt“, weil der Katalog die Zeichenfläche ersetzte. */}
       <nav
         data-testid="planner-bottom-nav"
         className="planner-bottom-nav z-50 flex shrink-0 items-center border-t border-border bg-surface-panel md:hidden"
@@ -341,9 +418,10 @@ function PlannerShell() {
         <button
           type="button"
           data-testid="nav-tab-sidebar"
-          onClick={() => setActiveTab('sidebar')}
+          onClick={() => togglePanel('sidebar')}
           className={navClass(activeTab === 'sidebar')}
-          aria-current={activeTab === 'sidebar' ? 'page' : undefined}
+          aria-expanded={activeTab === 'sidebar'}
+          aria-controls="component-palette-panel"
         >
           <Layers size={20} aria-hidden="true" />
           <span>Bauteile</span>
@@ -352,7 +430,7 @@ function PlannerShell() {
           type="button"
           data-testid="nav-tab-electric"
           onClick={() => {
-            setActiveTab('canvas');
+            closePanels();
             setViewMode('electric');
           }}
           className={navClass(activeTab === 'canvas' && viewMode === 'electric')}
@@ -365,7 +443,7 @@ function PlannerShell() {
           type="button"
           data-testid="nav-tab-water"
           onClick={() => {
-            setActiveTab('canvas');
+            closePanels();
             setViewMode('water');
           }}
           className={navClass(activeTab === 'canvas' && viewMode === 'water')}
@@ -377,9 +455,10 @@ function PlannerShell() {
         <button
           type="button"
           data-testid="nav-tab-inspector"
-          onClick={() => setActiveTab('inspector')}
+          onClick={() => togglePanel('inspector')}
           className={navClass(activeTab === 'inspector')}
-          aria-current={activeTab === 'inspector' ? 'page' : undefined}
+          aria-expanded={activeTab === 'inspector'}
+          aria-controls="inspector-panel"
           // Ohne Auswahl bleibt der sichtbare Name „Details“ der zugängliche
           // Name — mit Auswahl nennt die Ansage Zahl und Ziel.
           aria-label={

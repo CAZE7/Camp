@@ -62,7 +62,7 @@ export function SaveIndicator({ revision }: { revision: unknown[] }) {
       ) : (
         <Circle className="h-2.5 w-2.5 fill-current text-warning" aria-hidden="true" />
       )}
-      <span className="hidden xl:inline">{saved ? 'Gespeichert' : 'Ungespeichert'}</span>
+      <span className="cad-tb-explain">{saved ? 'Gespeichert' : 'Ungespeichert'}</span>
     </span>
   );
 }
