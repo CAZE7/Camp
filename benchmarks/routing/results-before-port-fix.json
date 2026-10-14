@@ -1,0 +1,5326 @@
+{
+  "schemaVersion": 1,
+  "algorithmVersion": "routing-global-1",
+  "date": "2026-10-14",
+  "commit": "498c57ba596e46c16dea62687a4839f622af815b",
+  "node": "v22.22.3",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.60GHz",
+  "runs": 3,
+  "note": "Fixed positions. No layout per candidate. Cold path cache per run; JS/WASM JIT persists. Heap deltas exclude WASM and are NOT peak memory. Validation excluded from baseline/library timing but included in optimizing candidates.",
+  "rows": [
+    {
+      "plan": "golden-simple",
+      "candidate": "baseline",
+      "inputHash": "fd21ea6bd756cf2fe479a19290aad79ebdcd73ae61c395e82699dd0e8f783db1",
+      "nodes": 7,
+      "ports": 11,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2664.8,
+      "bends": 26,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        46.72178699999995,
+        21.75082999999995,
+        13.309348999999997
+      ],
+      "medianMs": 21.75082999999995,
+      "maxMs": 46.72178699999995,
+      "heapDeltaBytes": [
+        787776,
+        -4442784,
+        8735704
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "72e0707e8e4b3302131d27e5cd3c023272bcabd780dcd6161987ad216634f400",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-simple",
+      "candidate": "libavoid",
+      "inputHash": "fd21ea6bd756cf2fe479a19290aad79ebdcd73ae61c395e82699dd0e8f783db1",
+      "nodes": 7,
+      "ports": 11,
+      "cables": 9,
+      "valid": false,
+      "hardViolations": 7,
+      "lengthPx": 2676.8,
+      "bends": 22,
+      "crossings": 3,
+      "defects": 1,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 7,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 8,
+      "timesMs": [
+        41.146082999999976,
+        3.44672300000002,
+        1.977149000000054
+      ],
+      "medianMs": 3.44672300000002,
+      "maxMs": 41.146082999999976,
+      "heapDeltaBytes": [
+        -12339104,
+        337712,
+        320328
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c3223875d1a0dfee079a0eda8ae93eec6b20bb4e1fcfe27d251b621658a11098",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-5",
+          "otherId": "e-auto-7",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-5 und e-auto-7"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-5",
+          "otherId": "e-auto-9",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e-auto-5 und e-auto-9"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-5",
+          "otherId": "e-auto-9",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-5 und e-auto-9"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-5",
+          "otherId": "e-auto-9",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e-auto-5 und e-auto-9"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-7",
+          "otherId": "e-auto-9",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-7 und e-auto-9"
+        }
+      ]
+    },
+    {
+      "plan": "golden-simple",
+      "candidate": "rip-up",
+      "inputHash": "fd21ea6bd756cf2fe479a19290aad79ebdcd73ae61c395e82699dd0e8f783db1",
+      "nodes": 7,
+      "ports": 11,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2664.8,
+      "bends": 26,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        40.76976300000001,
+        48.59331499999996,
+        31.49866499999996
+      ],
+      "medianMs": 40.76976300000001,
+      "maxMs": 48.59331499999996,
+      "heapDeltaBytes": [
+        2900408,
+        1304352,
+        -2216
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "72e0707e8e4b3302131d27e5cd3c023272bcabd780dcd6161987ad216634f400",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-simple",
+      "candidate": "hybrid",
+      "inputHash": "fd21ea6bd756cf2fe479a19290aad79ebdcd73ae61c395e82699dd0e8f783db1",
+      "nodes": 7,
+      "ports": 11,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2664.8,
+      "bends": 26,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        42.95761500000003,
+        33.45759900000007,
+        35.031761999999844
+      ],
+      "medianMs": 35.031761999999844,
+      "maxMs": 42.95761500000003,
+      "heapDeltaBytes": [
+        5327368,
+        4900496,
+        -11480712
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "72e0707e8e4b3302131d27e5cd3c023272bcabd780dcd6161987ad216634f400",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-camper",
+      "candidate": "baseline",
+      "inputHash": "d4bea6051c048202b28a75635dd07c923e83b20c6fe257812f050449a429de23",
+      "nodes": 9,
+      "ports": 14,
+      "cables": 12,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3677.2,
+      "bends": 28,
+      "crossings": 4,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        13.001804999999877,
+        14.690387999999984,
+        15.153676000000132
+      ],
+      "medianMs": 14.690387999999984,
+      "maxMs": 15.153676000000132,
+      "heapDeltaBytes": [
+        -7528184,
+        9305944,
+        -7743512
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ef20ee5c6572a652942ad1459cdde68127cb67ff4cb13bd8d6eafac2a23b90b3",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-camper",
+      "candidate": "libavoid",
+      "inputHash": "d4bea6051c048202b28a75635dd07c923e83b20c6fe257812f050449a429de23",
+      "nodes": 9,
+      "ports": 14,
+      "cables": 12,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3668,
+      "bends": 28,
+      "crossings": 1,
+      "defects": 3,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 10,
+      "timesMs": [
+        2.8964900000000853,
+        2.532773000000134,
+        3.3823409999999967
+      ],
+      "medianMs": 2.8964900000000853,
+      "maxMs": 3.3823409999999967,
+      "heapDeltaBytes": [
+        405080,
+        380760,
+        356920
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a11246f99c4ce660f901625d813f316b570d11e1b776b578ae9711435c698029",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-camper",
+      "candidate": "rip-up",
+      "inputHash": "d4bea6051c048202b28a75635dd07c923e83b20c6fe257812f050449a429de23",
+      "nodes": 9,
+      "ports": 14,
+      "cables": 12,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3663.8,
+      "bends": 28,
+      "crossings": 3,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        62.79872399999999,
+        48.89929099999995,
+        48.78525100000002
+      ],
+      "medianMs": 48.89929099999995,
+      "maxMs": 62.79872399999999,
+      "heapDeltaBytes": [
+        6942752,
+        -10392400,
+        5565840
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a017133cf6a952c69e9cfbf1d7059fd75f3292dc974614013aad8df5549ba22a",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-camper",
+      "candidate": "hybrid",
+      "inputHash": "d4bea6051c048202b28a75635dd07c923e83b20c6fe257812f050449a429de23",
+      "nodes": 9,
+      "ports": 14,
+      "cables": 12,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3663.8,
+      "bends": 28,
+      "crossings": 3,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        65.45422499999995,
+        48.80730399999993,
+        46.30640900000003
+      ],
+      "medianMs": 48.80730399999993,
+      "maxMs": 65.45422499999995,
+      "heapDeltaBytes": [
+        2150656,
+        -1639088,
+        -2342160
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a017133cf6a952c69e9cfbf1d7059fd75f3292dc974614013aad8df5549ba22a",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-solar",
+      "candidate": "baseline",
+      "inputHash": "23b717b55c51a15e01263f55173b295d5614aa98600a935962b1b9fddec1d5ff",
+      "nodes": 8,
+      "ports": 13,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3200,
+      "bends": 18,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        5.076657000000068,
+        4.19634700000006,
+        3.953471000000036
+      ],
+      "medianMs": 4.19634700000006,
+      "maxMs": 5.076657000000068,
+      "heapDeltaBytes": [
+        -12854384,
+        3410032,
+        3409864
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "966145b6d98d32216a916f6c17ef57dbc0dd3f2635af13b64b1c3e6e221b5cd4",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-solar",
+      "candidate": "libavoid",
+      "inputHash": "23b717b55c51a15e01263f55173b295d5614aa98600a935962b1b9fddec1d5ff",
+      "nodes": 8,
+      "ports": 13,
+      "cables": 11,
+      "valid": false,
+      "hardViolations": 1,
+      "lengthPx": 3192,
+      "bends": 16,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 1,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 6,
+      "timesMs": [
+        2.0028870000001007,
+        2.143730000000005,
+        1.9746979999999894
+      ],
+      "medianMs": 2.0028870000001007,
+      "maxMs": 2.143730000000005,
+      "heapDeltaBytes": [
+        310240,
+        306168,
+        305640
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "eaf1c74c85a547cee2115be3064fdb84b4247a2c576e6f23875d8b838017688c",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-1",
+          "otherId": "e-auto-10",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-1 und e-auto-10"
+        }
+      ]
+    },
+    {
+      "plan": "golden-solar",
+      "candidate": "rip-up",
+      "inputHash": "23b717b55c51a15e01263f55173b295d5614aa98600a935962b1b9fddec1d5ff",
+      "nodes": 8,
+      "ports": 13,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3200,
+      "bends": 16,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        20.73513600000001,
+        25.173463999999967,
+        21.308862999999974
+      ],
+      "medianMs": 21.308862999999974,
+      "maxMs": 25.173463999999967,
+      "heapDeltaBytes": [
+        13254808,
+        -3691008,
+        -3865648
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0802be9efd66ab9547b7d6f193656d820598071d963466a192c74e7981b2d97d",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-solar",
+      "candidate": "hybrid",
+      "inputHash": "23b717b55c51a15e01263f55173b295d5614aa98600a935962b1b9fddec1d5ff",
+      "nodes": 8,
+      "ports": 13,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3200,
+      "bends": 16,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        21.69035400000007,
+        22.09177599999998,
+        21.677343999999948
+      ],
+      "medianMs": 21.69035400000007,
+      "maxMs": 22.09177599999998,
+      "heapDeltaBytes": [
+        -484592,
+        -533552,
+        -566176
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0802be9efd66ab9547b7d6f193656d820598071d963466a192c74e7981b2d97d",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-inverter",
+      "candidate": "baseline",
+      "inputHash": "470286dd1c483d6005146211fa7c1c3888e42e59acf169afa1bb1b40a6b008a8",
+      "nodes": 8,
+      "ports": 12,
+      "cables": 10,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3710.3999999999996,
+      "bends": 22,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        16.642515999999887,
+        12.962374000000182,
+        13.07144900000003
+      ],
+      "medianMs": 13.07144900000003,
+      "maxMs": 16.642515999999887,
+      "heapDeltaBytes": [
+        -3105472,
+        -4645584,
+        11596456
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "293306a41541561dce7df1d56e45b286828ec87d21216eefd52a7097b59e7ba6",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-inverter",
+      "candidate": "libavoid",
+      "inputHash": "470286dd1c483d6005146211fa7c1c3888e42e59acf169afa1bb1b40a6b008a8",
+      "nodes": 8,
+      "ports": 12,
+      "cables": 10,
+      "valid": false,
+      "hardViolations": 1,
+      "lengthPx": 3710.3999996800003,
+      "bends": 16,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 1,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 6,
+      "timesMs": [
+        2.176183999999921,
+        5.984201000000212,
+        2.2984230000001844
+      ],
+      "medianMs": 2.2984230000001844,
+      "maxMs": 5.984201000000212,
+      "heapDeltaBytes": [
+        287552,
+        279640,
+        279816
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0c4ccf1c87ef5ecda73a017a2855a12268f0ad8eb2ebcdf76ef816f66c73cbf7",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-1",
+          "otherId": "e-auto-8",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-1 und e-auto-8"
+        }
+      ]
+    },
+    {
+      "plan": "golden-inverter",
+      "candidate": "rip-up",
+      "inputHash": "470286dd1c483d6005146211fa7c1c3888e42e59acf169afa1bb1b40a6b008a8",
+      "nodes": 8,
+      "ports": 12,
+      "cables": 10,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3710.3999999999996,
+      "bends": 22,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        40.91324399999985,
+        36.288836000000174,
+        36.55093799999986
+      ],
+      "medianMs": 36.55093799999986,
+      "maxMs": 40.91324399999985,
+      "heapDeltaBytes": [
+        -6376424,
+        9847960,
+        -6488392
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "293306a41541561dce7df1d56e45b286828ec87d21216eefd52a7097b59e7ba6",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-inverter",
+      "candidate": "hybrid",
+      "inputHash": "470286dd1c483d6005146211fa7c1c3888e42e59acf169afa1bb1b40a6b008a8",
+      "nodes": 8,
+      "ports": 12,
+      "cables": 10,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3710.3999999999996,
+      "bends": 22,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        42.55081500000006,
+        45.37041399999998,
+        40.61422299999958
+      ],
+      "medianMs": 42.55081500000006,
+      "maxMs": 45.37041399999998,
+      "heapDeltaBytes": [
+        202728,
+        611064,
+        303464
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "293306a41541561dce7df1d56e45b286828ec87d21216eefd52a7097b59e7ba6",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-acdc",
+      "candidate": "baseline",
+      "inputHash": "71a7bcc4207d7772a24f56c48b4ee1bd3014d8c2cd05767fbb95c0096d711c18",
+      "nodes": 10,
+      "ports": 16,
+      "cables": 14,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 5591.2,
+      "bends": 30,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        24.97897499999999,
+        24.406760999999733,
+        24.242068000000017
+      ],
+      "medianMs": 24.406760999999733,
+      "maxMs": 24.97897499999999,
+      "heapDeltaBytes": [
+        6249360,
+        -10256328,
+        6006968
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "bade5267b38ef489bf85510120487ea5e4e708025f9a86da734a25a379f9b133",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-acdc",
+      "candidate": "libavoid",
+      "inputHash": "71a7bcc4207d7772a24f56c48b4ee1bd3014d8c2cd05767fbb95c0096d711c18",
+      "nodes": 10,
+      "ports": 16,
+      "cables": 14,
+      "valid": false,
+      "hardViolations": 1,
+      "lengthPx": 5179.2,
+      "bends": 26,
+      "crossings": 3,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 1,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 9,
+      "timesMs": [
+        7.110764000000017,
+        4.240867999999864,
+        3.938532000000123
+      ],
+      "medianMs": 4.240867999999864,
+      "maxMs": 7.110764000000017,
+      "heapDeltaBytes": [
+        387792,
+        382128,
+        386336
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "b94b78eafbb642dd1a43188bd568bfd7ec9b155cf9fb4d1d22d532b4cdab242e",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-auto-8",
+          "otherId": "e-auto-10",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-auto-8 und e-auto-10"
+        }
+      ]
+    },
+    {
+      "plan": "golden-acdc",
+      "candidate": "rip-up",
+      "inputHash": "71a7bcc4207d7772a24f56c48b4ee1bd3014d8c2cd05767fbb95c0096d711c18",
+      "nodes": 10,
+      "ports": 16,
+      "cables": 14,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 5591.2,
+      "bends": 30,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        56.220536000000266,
+        57.17235900000014,
+        68.62844099999984
+      ],
+      "medianMs": 57.17235900000014,
+      "maxMs": 68.62844099999984,
+      "heapDeltaBytes": [
+        6643560,
+        -10119144,
+        6403536
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "bade5267b38ef489bf85510120487ea5e4e708025f9a86da734a25a379f9b133",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-acdc",
+      "candidate": "hybrid",
+      "inputHash": "71a7bcc4207d7772a24f56c48b4ee1bd3014d8c2cd05767fbb95c0096d711c18",
+      "nodes": 10,
+      "ports": 16,
+      "cables": 14,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 5591.2,
+      "bends": 30,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        69.81976799999984,
+        62.624099000000115,
+        60.91540799999984
+      ],
+      "medianMs": 62.624099000000115,
+      "maxMs": 69.81976799999984,
+      "heapDeltaBytes": [
+        1950592,
+        1598608,
+        1605168
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "bade5267b38ef489bf85510120487ea5e4e708025f9a86da734a25a379f9b133",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-complex",
+      "candidate": "baseline",
+      "inputHash": "7eaee30cbf3339396e1f85dd40a9c0fa59939fd3a8474637eb5678dc7d8911c1",
+      "nodes": 15,
+      "ports": 26,
+      "cables": 23,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 8645.6,
+      "bends": 53,
+      "crossings": 25,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        56.91403799999989,
+        54.61449800000037,
+        51.22103199999992
+      ],
+      "medianMs": 54.61449800000037,
+      "maxMs": 56.91403799999989,
+      "heapDeltaBytes": [
+        -7653184,
+        7663728,
+        -8822808
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6fe82ec982bfbf13b48d74f8adeb69264e7f2dbb3f11d6ca0ba57808f771823b",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-complex",
+      "candidate": "libavoid",
+      "inputHash": "7eaee30cbf3339396e1f85dd40a9c0fa59939fd3a8474637eb5678dc7d8911c1",
+      "nodes": 15,
+      "ports": 26,
+      "cables": 23,
+      "valid": false,
+      "hardViolations": 30,
+      "lengthPx": 8761.59999988012,
+      "bends": 48,
+      "crossings": 22,
+      "defects": 8,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 30,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 18,
+      "timesMs": [
+        24.866743000000042,
+        23.08909100000028,
+        23.72130100000004
+      ],
+      "medianMs": 23.72130100000004,
+      "maxMs": 24.866743000000042,
+      "heapDeltaBytes": [
+        922824,
+        915800,
+        918464
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ad510e27984a35c7e4a23884efef5f7483b6b9b485485f799f0b5edd26d5b04d",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-minus",
+          "otherId": "e-auto-1",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-minus und e-auto-1"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-minus",
+          "otherId": "e-auto-1",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-minus und e-auto-1"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-minus",
+          "otherId": "e-auto-1",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-minus und e-auto-1"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-charger-busbar",
+          "otherId": "e-dcdc-busbar",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-charger-busbar und e-dcdc-busbar"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-charger-busbar",
+          "otherId": "e-auto-7",
+          "detail": "Abstand 11.2px < cableClearance 12px zwischen Kanten e-charger-busbar und e-auto-7"
+        }
+      ]
+    },
+    {
+      "plan": "golden-complex",
+      "candidate": "rip-up",
+      "inputHash": "7eaee30cbf3339396e1f85dd40a9c0fa59939fd3a8474637eb5678dc7d8911c1",
+      "nodes": 15,
+      "ports": 26,
+      "cables": 23,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 8645.6,
+      "bends": 53,
+      "crossings": 25,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        112.14469099999997,
+        116.67842000000019,
+        111.31100400000014
+      ],
+      "medianMs": 112.14469099999997,
+      "maxMs": 116.67842000000019,
+      "heapDeltaBytes": [
+        -3530616,
+        -5157512,
+        9881128
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6fe82ec982bfbf13b48d74f8adeb69264e7f2dbb3f11d6ca0ba57808f771823b",
+      "diagnostics": []
+    },
+    {
+      "plan": "golden-complex",
+      "candidate": "hybrid",
+      "inputHash": "7eaee30cbf3339396e1f85dd40a9c0fa59939fd3a8474637eb5678dc7d8911c1",
+      "nodes": 15,
+      "ports": 26,
+      "cables": 23,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 8645.6,
+      "bends": 53,
+      "crossings": 25,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        165.46892200000002,
+        200.83970599999975,
+        164.69211899999937
+      ],
+      "medianMs": 165.46892200000002,
+      "maxMs": 200.83970599999975,
+      "heapDeltaBytes": [
+        -4352056,
+        -4121032,
+        -4363304
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6fe82ec982bfbf13b48d74f8adeb69264e7f2dbb3f11d6ca0ba57808f771823b",
+      "diagnostics": []
+    },
+    {
+      "plan": "p01-batterie-1-verbraucher",
+      "candidate": "baseline",
+      "inputHash": "31bf9ebbb75ba279a48b5e577815f4dd876323edfee26f5a5a39ff576c5d26fe",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.4913799999994808,
+        0.21938499999941996,
+        0.20165799999995215
+      ],
+      "medianMs": 0.21938499999941996,
+      "maxMs": 0.4913799999994808,
+      "heapDeltaBytes": [
+        127320,
+        123984,
+        124056
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "p01-batterie-1-verbraucher",
+      "candidate": "libavoid",
+      "inputHash": "31bf9ebbb75ba279a48b5e577815f4dd876323edfee26f5a5a39ff576c5d26fe",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.7016929999999775,
+        0.3184830000000147,
+        0.2564879999999903
+      ],
+      "medianMs": 0.3184830000000147,
+      "maxMs": 0.7016929999999775,
+      "heapDeltaBytes": [
+        63872,
+        61408,
+        61408
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "p01-batterie-1-verbraucher",
+      "candidate": "rip-up",
+      "inputHash": "31bf9ebbb75ba279a48b5e577815f4dd876323edfee26f5a5a39ff576c5d26fe",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.7176990000007208,
+        0.5674929999995584,
+        0.47131200000058016
+      ],
+      "medianMs": 0.5674929999995584,
+      "maxMs": 0.7176990000007208,
+      "heapDeltaBytes": [
+        383736,
+        382912,
+        382888
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "p01-batterie-1-verbraucher",
+      "candidate": "hybrid",
+      "inputHash": "31bf9ebbb75ba279a48b5e577815f4dd876323edfee26f5a5a39ff576c5d26fe",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.8292839999994612,
+        0.7176669999998921,
+        0.7174930000001041
+      ],
+      "medianMs": 0.7176669999998921,
+      "maxMs": 0.8292839999994612,
+      "heapDeltaBytes": [
+        537456,
+        537160,
+        537032
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "p02-batterie-10-verbraucher",
+      "candidate": "baseline",
+      "inputHash": "b78e5cb7b962d0859190f7daef1635e149c82a4f4ce845fb51c35eb87512695d",
+      "nodes": 12,
+      "ports": 12,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 7268,
+      "bends": 34,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        16.62141100000008,
+        16.28837199999998,
+        18.484473999999864
+      ],
+      "medianMs": 16.62141100000008,
+      "maxMs": 18.484473999999864,
+      "heapDeltaBytes": [
+        -3875960,
+        -3876680,
+        -3876128
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c53daa61d3e3f90aa84513b1fd60ce28d08260b2b14863139dbcf2e8ce9b8094",
+      "diagnostics": []
+    },
+    {
+      "plan": "p02-batterie-10-verbraucher",
+      "candidate": "libavoid",
+      "inputHash": "b78e5cb7b962d0859190f7daef1635e149c82a4f4ce845fb51c35eb87512695d",
+      "nodes": 12,
+      "ports": 12,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 7088,
+      "bends": 30,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 10,
+      "timesMs": [
+        2.9371310000005906,
+        2.7268459999995684,
+        2.6013900000007197
+      ],
+      "medianMs": 2.7268459999995684,
+      "maxMs": 2.9371310000005906,
+      "heapDeltaBytes": [
+        387080,
+        387008,
+        386712
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "40631cbf8b9448ace9d996d9b8ab4aa95c775741e30aa56bb46df25d2c69846d",
+      "diagnostics": []
+    },
+    {
+      "plan": "p02-batterie-10-verbraucher",
+      "candidate": "rip-up",
+      "inputHash": "b78e5cb7b962d0859190f7daef1635e149c82a4f4ce845fb51c35eb87512695d",
+      "nodes": 12,
+      "ports": 12,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 7268,
+      "bends": 34,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        57.142869000000246,
+        59.62870500000008,
+        62.15264800000023
+      ],
+      "medianMs": 59.62870500000008,
+      "maxMs": 62.15264800000023,
+      "heapDeltaBytes": [
+        6739720,
+        6636720,
+        -9776896
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c53daa61d3e3f90aa84513b1fd60ce28d08260b2b14863139dbcf2e8ce9b8094",
+      "diagnostics": []
+    },
+    {
+      "plan": "p02-batterie-10-verbraucher",
+      "candidate": "hybrid",
+      "inputHash": "b78e5cb7b962d0859190f7daef1635e149c82a4f4ce845fb51c35eb87512695d",
+      "nodes": 12,
+      "ports": 12,
+      "cables": 11,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 7268,
+      "bends": 34,
+      "crossings": 5,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        104.83508600000005,
+        101.1822229999998,
+        100.12445200000002
+      ],
+      "medianMs": 101.1822229999998,
+      "maxMs": 104.83508600000005,
+      "heapDeltaBytes": [
+        1105800,
+        1897896,
+        1757968
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c53daa61d3e3f90aa84513b1fd60ce28d08260b2b14863139dbcf2e8ce9b8094",
+      "diagnostics": []
+    },
+    {
+      "plan": "p03-busbar-fanout",
+      "candidate": "baseline",
+      "inputHash": "ae9a611d71fe467184da3d82a6d31707baded97c810e9b0059d8ac0c8d5ee837",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3680.8,
+      "bends": 14,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.5532730000004449,
+        1.5421510000005583,
+        1.980109000000084
+      ],
+      "medianMs": 1.5532730000004449,
+      "maxMs": 1.980109000000084,
+      "heapDeltaBytes": [
+        1673368,
+        1672152,
+        -14650848
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "356470ee42c51eb7d184a329e5deac6d8428986e2542ef02fad3735d4c305333",
+      "diagnostics": []
+    },
+    {
+      "plan": "p03-busbar-fanout",
+      "candidate": "libavoid",
+      "inputHash": "ae9a611d71fe467184da3d82a6d31707baded97c810e9b0059d8ac0c8d5ee837",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": false,
+      "hardViolations": 4,
+      "lengthPx": 3384,
+      "bends": 10,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 4,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 5,
+      "timesMs": [
+        0.9459600000000137,
+        0.7963359999994282,
+        0.7670669999997699
+      ],
+      "medianMs": 0.7963359999994282,
+      "maxMs": 0.9459600000000137,
+      "heapDeltaBytes": [
+        176592,
+        176368,
+        176456
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "b27e0cc6ee396469ff1f340a95f4ba0ee875874927c6534385fcf7195ecb4924",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-d",
+          "otherId": "e-bus-e",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-d und e-bus-e"
+        }
+      ]
+    },
+    {
+      "plan": "p03-busbar-fanout",
+      "candidate": "rip-up",
+      "inputHash": "ae9a611d71fe467184da3d82a6d31707baded97c810e9b0059d8ac0c8d5ee837",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3680.8,
+      "bends": 14,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        6.296917000000576,
+        7.46542799999952,
+        6.463886000000457
+      ],
+      "medianMs": 6.463886000000457,
+      "maxMs": 7.46542799999952,
+      "heapDeltaBytes": [
+        4839688,
+        4914776,
+        -11386664
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "356470ee42c51eb7d184a329e5deac6d8428986e2542ef02fad3735d4c305333",
+      "diagnostics": []
+    },
+    {
+      "plan": "p03-busbar-fanout",
+      "candidate": "hybrid",
+      "inputHash": "ae9a611d71fe467184da3d82a6d31707baded97c810e9b0059d8ac0c8d5ee837",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3680.8,
+      "bends": 14,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        8.982939000000442,
+        8.46090599999934,
+        9.146802000000207
+      ],
+      "medianMs": 8.982939000000442,
+      "maxMs": 9.146802000000207,
+      "heapDeltaBytes": [
+        -8993528,
+        7210032,
+        -9015048
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "356470ee42c51eb7d184a329e5deac6d8428986e2542ef02fad3735d4c305333",
+      "diagnostics": []
+    },
+    {
+      "plan": "p04-parallele-verbraucher",
+      "candidate": "baseline",
+      "inputHash": "7ebec8d0d1e44c8c606a81a728cf73a0778a683dfd8634a9f9231ab5d327d11e",
+      "nodes": 5,
+      "ports": 5,
+      "cables": 4,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2592,
+      "bends": 12,
+      "crossings": 2,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.900163999999677,
+        1.8668459999998959,
+        1.7375739999997677
+      ],
+      "medianMs": 1.8668459999998959,
+      "maxMs": 1.900163999999677,
+      "heapDeltaBytes": [
+        1867656,
+        1866928,
+        1867808
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "3258a0cfb282545823cbca474aadfc3816d9e7b0d5a0faf815cfb8ab966962d7",
+      "diagnostics": []
+    },
+    {
+      "plan": "p04-parallele-verbraucher",
+      "candidate": "libavoid",
+      "inputHash": "7ebec8d0d1e44c8c606a81a728cf73a0778a683dfd8634a9f9231ab5d327d11e",
+      "nodes": 5,
+      "ports": 5,
+      "cables": 4,
+      "valid": false,
+      "hardViolations": 10,
+      "lengthPx": 2592,
+      "bends": 8,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 10,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 4,
+      "timesMs": [
+        0.7867569999998523,
+        0.5218589999994947,
+        0.8896969999996145
+      ],
+      "medianMs": 0.7867569999998523,
+      "maxMs": 0.8896969999996145,
+      "heapDeltaBytes": [
+        122152,
+        121528,
+        122624
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a2a95c42d9fb4d7c1cf0e955ca47faa047a5c47642c1fc784d253edce668388b",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-a",
+          "otherId": "e-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-a und e-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-a",
+          "otherId": "e-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-a und e-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-a",
+          "otherId": "e-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-a und e-d"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-a",
+          "otherId": "e-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-a und e-d"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-a",
+          "otherId": "e-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-a und e-d"
+        }
+      ]
+    },
+    {
+      "plan": "p04-parallele-verbraucher",
+      "candidate": "rip-up",
+      "inputHash": "7ebec8d0d1e44c8c606a81a728cf73a0778a683dfd8634a9f9231ab5d327d11e",
+      "nodes": 5,
+      "ports": 5,
+      "cables": 4,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2592,
+      "bends": 10,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        11.022032999999283,
+        10.507609999999659,
+        10.995694999999614
+      ],
+      "medianMs": 10.995694999999614,
+      "maxMs": 11.022032999999283,
+      "heapDeltaBytes": [
+        -7589944,
+        8636536,
+        -7632360
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0bf3d1d7a150b2906e949269f0adc47b5b4a7ca35bcc12bb7f0ad6a9ca857496",
+      "diagnostics": []
+    },
+    {
+      "plan": "p04-parallele-verbraucher",
+      "candidate": "hybrid",
+      "inputHash": "7ebec8d0d1e44c8c606a81a728cf73a0778a683dfd8634a9f9231ab5d327d11e",
+      "nodes": 5,
+      "ports": 5,
+      "cables": 4,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2592,
+      "bends": 10,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        14.22343600000022,
+        13.842443999999887,
+        14.217291999999361
+      ],
+      "medianMs": 14.217291999999361,
+      "maxMs": 14.22343600000022,
+      "heapDeltaBytes": [
+        -4656344,
+        11653880,
+        -4663472
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0bf3d1d7a150b2906e949269f0adc47b5b4a7ca35bcc12bb7f0ad6a9ca857496",
+      "diagnostics": []
+    },
+    {
+      "plan": "p05-solar-mppt",
+      "candidate": "baseline",
+      "inputHash": "557daa427612df12b9179b3f86340c0b0d666cb040a0a37af49656d8d964b5ec",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 656,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.2721499999997832,
+        0.740816999999879,
+        0.32501500000034866
+      ],
+      "medianMs": 0.32501500000034866,
+      "maxMs": 0.740816999999879,
+      "heapDeltaBytes": [
+        143480,
+        -16197160,
+        143232
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0416833ee5344d7d884fdca567503c1fc026464158cf058ec31d55875a48916f",
+      "diagnostics": []
+    },
+    {
+      "plan": "p05-solar-mppt",
+      "candidate": "libavoid",
+      "inputHash": "557daa427612df12b9179b3f86340c0b0d666cb040a0a37af49656d8d964b5ec",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 656,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.48176299999977346,
+        0.339429999999993,
+        0.27126899999984744
+      ],
+      "medianMs": 0.339429999999993,
+      "maxMs": 0.48176299999977346,
+      "heapDeltaBytes": [
+        90832,
+        90848,
+        90608
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0416833ee5344d7d884fdca567503c1fc026464158cf058ec31d55875a48916f",
+      "diagnostics": []
+    },
+    {
+      "plan": "p05-solar-mppt",
+      "candidate": "rip-up",
+      "inputHash": "557daa427612df12b9179b3f86340c0b0d666cb040a0a37af49656d8d964b5ec",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 656,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.9126850000002378,
+        0.7555720000000292,
+        0.767931000000317
+      ],
+      "medianMs": 0.767931000000317,
+      "maxMs": 0.9126850000002378,
+      "heapDeltaBytes": [
+        634072,
+        633656,
+        633664
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0416833ee5344d7d884fdca567503c1fc026464158cf058ec31d55875a48916f",
+      "diagnostics": []
+    },
+    {
+      "plan": "p05-solar-mppt",
+      "candidate": "hybrid",
+      "inputHash": "557daa427612df12b9179b3f86340c0b0d666cb040a0a37af49656d8d964b5ec",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 656,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.033886000000166,
+        1.0354079999997339,
+        0.9732359999998152
+      ],
+      "medianMs": 1.033886000000166,
+      "maxMs": 1.0354079999997339,
+      "heapDeltaBytes": [
+        874768,
+        874960,
+        874544
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0416833ee5344d7d884fdca567503c1fc026464158cf058ec31d55875a48916f",
+      "diagnostics": []
+    },
+    {
+      "plan": "p06-inverter",
+      "candidate": "baseline",
+      "inputHash": "b792f3a8c884566673e29155a6483f5a8282496ec332738ff87ab1a27a84176b",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1184,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.6360580000000482,
+        0.5583260000003065,
+        0.49230200000056357
+      ],
+      "medianMs": 0.5583260000003065,
+      "maxMs": 0.6360580000000482,
+      "heapDeltaBytes": [
+        645000,
+        644896,
+        644968
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e82c01ddf432ba591dd0b6a4b0d19a4cea434050999f78ae00f4a49e8f2e2992",
+      "diagnostics": []
+    },
+    {
+      "plan": "p06-inverter",
+      "candidate": "libavoid",
+      "inputHash": "b792f3a8c884566673e29155a6483f5a8282496ec332738ff87ab1a27a84176b",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": false,
+      "hardViolations": 3,
+      "lengthPx": 1184,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 3,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.5670110000000932,
+        0.5128219999996873,
+        0.38060700000005454
+      ],
+      "medianMs": 0.5128219999996873,
+      "maxMs": 0.5670110000000932,
+      "heapDeltaBytes": [
+        95512,
+        95264,
+        95264
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "bf20271690ea895c566ee52d3f4f4d3aca2e04451f8e3b6e251ebe1213575527",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-inv",
+          "otherId": "e-batt-dc",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-inv und e-batt-dc"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-inv",
+          "otherId": "e-batt-dc",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-inv und e-batt-dc"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-inv",
+          "otherId": "e-batt-dc",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-inv und e-batt-dc"
+        }
+      ]
+    },
+    {
+      "plan": "p06-inverter",
+      "candidate": "rip-up",
+      "inputHash": "b792f3a8c884566673e29155a6483f5a8282496ec332738ff87ab1a27a84176b",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1184,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        2.693210000000363,
+        3.1684150000000955,
+        2.4081539999997403
+      ],
+      "medianMs": 2.693210000000363,
+      "maxMs": 3.1684150000000955,
+      "heapDeltaBytes": [
+        2467688,
+        -13762600,
+        2467072
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e82c01ddf432ba591dd0b6a4b0d19a4cea434050999f78ae00f4a49e8f2e2992",
+      "diagnostics": []
+    },
+    {
+      "plan": "p06-inverter",
+      "candidate": "hybrid",
+      "inputHash": "b792f3a8c884566673e29155a6483f5a8282496ec332738ff87ab1a27a84176b",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1184,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        3.332242999999835,
+        3.4631090000002587,
+        3.8640239999995174
+      ],
+      "medianMs": 3.4631090000002587,
+      "maxMs": 3.8640239999995174,
+      "heapDeltaBytes": [
+        3238880,
+        3241344,
+        -12988344
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e82c01ddf432ba591dd0b6a4b0d19a4cea434050999f78ae00f4a49e8f2e2992",
+      "diagnostics": []
+    },
+    {
+      "plan": "p07-acdc-mischung",
+      "candidate": "baseline",
+      "inputHash": "2ef8bf81c300b5473428f3bad9713309284a8841c2b9d176cce6448c827cce84",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 6,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.33104000000003,
+        1.1260410000004413,
+        1.1941720000004352
+      ],
+      "medianMs": 1.1941720000004352,
+      "maxMs": 1.33104000000003,
+      "heapDeltaBytes": [
+        1279624,
+        1297424,
+        1297440
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f5532d2091102ae092679357665fc8c369cb66e6e6800e5f97c5bf8a87795945",
+      "diagnostics": []
+    },
+    {
+      "plan": "p07-acdc-mischung",
+      "candidate": "libavoid",
+      "inputHash": "2ef8bf81c300b5473428f3bad9713309284a8841c2b9d176cce6448c827cce84",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": false,
+      "hardViolations": 1,
+      "lengthPx": 1552,
+      "bends": 2,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 1,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.7764250000000175,
+        0.5648459999993065,
+        0.5908279999994193
+      ],
+      "medianMs": 0.5908279999994193,
+      "maxMs": 0.7764250000000175,
+      "heapDeltaBytes": [
+        141024,
+        140840,
+        140784
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ed06f1b52bae0dedc1935723065153073a5599f106057b6f28f9f7f19bd332a1",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-batt-inv",
+          "otherId": "e-batt-dc",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-batt-inv und e-batt-dc"
+        }
+      ]
+    },
+    {
+      "plan": "p07-acdc-mischung",
+      "candidate": "rip-up",
+      "inputHash": "2ef8bf81c300b5473428f3bad9713309284a8841c2b9d176cce6448c827cce84",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 6,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        6.070671999999831,
+        5.358857000000171,
+        5.208405999999741
+      ],
+      "medianMs": 5.358857000000171,
+      "maxMs": 6.070671999999831,
+      "heapDeltaBytes": [
+        -11712480,
+        4568888,
+        4568712
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f5532d2091102ae092679357665fc8c369cb66e6e6800e5f97c5bf8a87795945",
+      "diagnostics": []
+    },
+    {
+      "plan": "p07-acdc-mischung",
+      "candidate": "hybrid",
+      "inputHash": "2ef8bf81c300b5473428f3bad9713309284a8841c2b9d176cce6448c827cce84",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 6,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        6.180360000000292,
+        8.42142899999999,
+        6.785638999999719
+      ],
+      "medianMs": 6.785638999999719,
+      "maxMs": 8.42142899999999,
+      "heapDeltaBytes": [
+        6080224,
+        -10241480,
+        6078688
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f5532d2091102ae092679357665fc8c369cb66e6e6800e5f97c5bf8a87795945",
+      "diagnostics": []
+    },
+    {
+      "plan": "p08-enger-raum",
+      "candidate": "baseline",
+      "inputHash": "ea08c2fc417f7fdbf7844cb0ab5378cce18f8812203d2c5839829fcf7ea87a53",
+      "nodes": 4,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 568,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.17198299999927258,
+        0.10038600000007136,
+        0.0841389999995954
+      ],
+      "medianMs": 0.10038600000007136,
+      "maxMs": 0.17198299999927258,
+      "heapDeltaBytes": [
+        55200,
+        55048,
+        55096
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ab8d8c2b876de603852ca551ab3747fae537e41f1fca4769f2e74ee9a48936e2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p08-enger-raum",
+      "candidate": "libavoid",
+      "inputHash": "ea08c2fc417f7fdbf7844cb0ab5378cce18f8812203d2c5839829fcf7ea87a53",
+      "nodes": 4,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 568,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.3457669999997961,
+        0.21726099999978032,
+        0.19456300000001647
+      ],
+      "medianMs": 0.21726099999978032,
+      "maxMs": 0.3457669999997961,
+      "heapDeltaBytes": [
+        56448,
+        56224,
+        56224
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ab8d8c2b876de603852ca551ab3747fae537e41f1fca4769f2e74ee9a48936e2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p08-enger-raum",
+      "candidate": "rip-up",
+      "inputHash": "ea08c2fc417f7fdbf7844cb0ab5378cce18f8812203d2c5839829fcf7ea87a53",
+      "nodes": 4,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 568,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.36112599999978556,
+        0.26386700000057317,
+        0.17942200000015873
+      ],
+      "medianMs": 0.26386700000057317,
+      "maxMs": 0.36112599999978556,
+      "heapDeltaBytes": [
+        138424,
+        138176,
+        138328
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ab8d8c2b876de603852ca551ab3747fae537e41f1fca4769f2e74ee9a48936e2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p08-enger-raum",
+      "candidate": "hybrid",
+      "inputHash": "ea08c2fc417f7fdbf7844cb0ab5378cce18f8812203d2c5839829fcf7ea87a53",
+      "nodes": 4,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 568,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.31435899999996764,
+        0.2835989999994126,
+        0.4043969999993351
+      ],
+      "medianMs": 0.31435899999996764,
+      "maxMs": 0.4043969999993351,
+      "heapDeltaBytes": [
+        226440,
+        226360,
+        226408
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "ab8d8c2b876de603852ca551ab3747fae537e41f1fca4769f2e74ee9a48936e2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p09-node-im-weg",
+      "candidate": "baseline",
+      "inputHash": "d4d984e531ce60c7c14551116b7c4a77adfbcba3006a70742702d45fc4fb8e72",
+      "nodes": 3,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 708,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.45305499999994936,
+        0.33503399999972316,
+        0.37152100000002974
+      ],
+      "medianMs": 0.37152100000002974,
+      "maxMs": 0.45305499999994936,
+      "heapDeltaBytes": [
+        277984,
+        277880,
+        277744
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "836412dde7b31c9fee7e59cb561fc3522cab4eedecc32390ec25d7344a5eac77",
+      "diagnostics": []
+    },
+    {
+      "plan": "p09-node-im-weg",
+      "candidate": "libavoid",
+      "inputHash": "d4d984e531ce60c7c14551116b7c4a77adfbcba3006a70742702d45fc4fb8e72",
+      "nodes": 3,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 704,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        0.32474899999942863,
+        0.19284400000015012,
+        0.17278299999998126
+      ],
+      "medianMs": 0.19284400000015012,
+      "maxMs": 0.32474899999942863,
+      "heapDeltaBytes": [
+        55576,
+        55352,
+        55352
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "d1ba191102732a8d743e90d1bced7787e06053b1657f3ae3807cf53fa83bf10e",
+      "diagnostics": []
+    },
+    {
+      "plan": "p09-node-im-weg",
+      "candidate": "rip-up",
+      "inputHash": "d4d984e531ce60c7c14551116b7c4a77adfbcba3006a70742702d45fc4fb8e72",
+      "nodes": 3,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 708,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.6738129999994271,
+        0.628247999999985,
+        0.5770999999995183
+      ],
+      "medianMs": 0.628247999999985,
+      "maxMs": 0.6738129999994271,
+      "heapDeltaBytes": [
+        461344,
+        461120,
+        461112
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "836412dde7b31c9fee7e59cb561fc3522cab4eedecc32390ec25d7344a5eac77",
+      "diagnostics": []
+    },
+    {
+      "plan": "p09-node-im-weg",
+      "candidate": "hybrid",
+      "inputHash": "d4d984e531ce60c7c14551116b7c4a77adfbcba3006a70742702d45fc4fb8e72",
+      "nodes": 3,
+      "ports": 2,
+      "cables": 1,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 708,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.7210759999998118,
+        0.6930199999997058,
+        0.7214199999998527
+      ],
+      "medianMs": 0.7210759999998118,
+      "maxMs": 0.7214199999998527,
+      "heapDeltaBytes": [
+        649064,
+        649008,
+        649088
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "836412dde7b31c9fee7e59cb561fc3522cab4eedecc32390ec25d7344a5eac77",
+      "diagnostics": []
+    },
+    {
+      "plan": "p10-parallele-trassen",
+      "candidate": "baseline",
+      "inputHash": "2b96c898df817685993b40509539343c649284f121b390e95c1c9d4848a7b600",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1464,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.28765999999995984,
+        0.19043300000066665,
+        0.1608990000004269
+      ],
+      "medianMs": 0.19043300000066665,
+      "maxMs": 0.28765999999995984,
+      "heapDeltaBytes": [
+        144944,
+        144752,
+        144744
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "5a923490cf4c18d7fc17062a324c2dd76dbb16bf34ad440197414bf84b0b7e33",
+      "diagnostics": []
+    },
+    {
+      "plan": "p10-parallele-trassen",
+      "candidate": "libavoid",
+      "inputHash": "2b96c898df817685993b40509539343c649284f121b390e95c1c9d4848a7b600",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1464,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.389433000000281,
+        0.31934199999977864,
+        0.3309720000006564
+      ],
+      "medianMs": 0.3309720000006564,
+      "maxMs": 0.389433000000281,
+      "heapDeltaBytes": [
+        106584,
+        106368,
+        106360
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "5a923490cf4c18d7fc17062a324c2dd76dbb16bf34ad440197414bf84b0b7e33",
+      "diagnostics": []
+    },
+    {
+      "plan": "p10-parallele-trassen",
+      "candidate": "rip-up",
+      "inputHash": "2b96c898df817685993b40509539343c649284f121b390e95c1c9d4848a7b600",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1464,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.9125309999999445,
+        0.6718190000001414,
+        0.7277199999998629
+      ],
+      "medianMs": 0.7277199999998629,
+      "maxMs": 0.9125309999999445,
+      "heapDeltaBytes": [
+        642024,
+        641544,
+        641560
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "5a923490cf4c18d7fc17062a324c2dd76dbb16bf34ad440197414bf84b0b7e33",
+      "diagnostics": []
+    },
+    {
+      "plan": "p10-parallele-trassen",
+      "candidate": "hybrid",
+      "inputHash": "2b96c898df817685993b40509539343c649284f121b390e95c1c9d4848a7b600",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1464,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.0798400000003312,
+        0.9179669999994076,
+        0.9955569999992804
+      ],
+      "medianMs": 0.9955569999992804,
+      "maxMs": 1.0798400000003312,
+      "heapDeltaBytes": [
+        857032,
+        856096,
+        856176
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "5a923490cf4c18d7fc17062a324c2dd76dbb16bf34ad440197414bf84b0b7e33",
+      "diagnostics": []
+    },
+    {
+      "plan": "p11-zwangskreuzung",
+      "candidate": "baseline",
+      "inputHash": "e134c390a4f2dc072a83433f59f55c0cbcb1859579a3715e793ae8d5a473ca90",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1896,
+      "bends": 6,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        2.6812110000000757,
+        2.0868850000006205,
+        2.1405350000004546
+      ],
+      "medianMs": 2.1405350000004546,
+      "maxMs": 2.6812110000000757,
+      "heapDeltaBytes": [
+        2184200,
+        2173872,
+        2173600
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9c6e1aa386726276d1ca027a39c361724541c1a58e6911d67b8f973ef826cf92",
+      "diagnostics": []
+    },
+    {
+      "plan": "p11-zwangskreuzung",
+      "candidate": "libavoid",
+      "inputHash": "e134c390a4f2dc072a83433f59f55c0cbcb1859579a3715e793ae8d5a473ca90",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": false,
+      "hardViolations": 3,
+      "lengthPx": 1896,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 1,
+        "clearanceViolations": 2,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.5222860000003493,
+        0.3552460000000792,
+        1.1694840000000113
+      ],
+      "medianMs": 0.5222860000003493,
+      "maxMs": 1.1694840000000113,
+      "heapDeltaBytes": [
+        80392,
+        80168,
+        -16211704
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "77fd044e7500350a4b3d17b2dcfc1f5c8009aae1d79811ec2842ca7fda3b8921",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e-down",
+          "otherId": "e-up",
+          "detail": "Kanten e-down und e-up überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-down",
+          "otherId": "e-up",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-down und e-up"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-down",
+          "otherId": "e-up",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-down und e-up"
+        }
+      ]
+    },
+    {
+      "plan": "p11-zwangskreuzung",
+      "candidate": "rip-up",
+      "inputHash": "e134c390a4f2dc072a83433f59f55c0cbcb1859579a3715e793ae8d5a473ca90",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1896,
+      "bends": 6,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        5.13561800000025,
+        5.0369629999995595,
+        5.233596000000034
+      ],
+      "medianMs": 5.13561800000025,
+      "maxMs": 5.233596000000034,
+      "heapDeltaBytes": [
+        4498752,
+        4503856,
+        4512800
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9c6e1aa386726276d1ca027a39c361724541c1a58e6911d67b8f973ef826cf92",
+      "diagnostics": []
+    },
+    {
+      "plan": "p11-zwangskreuzung",
+      "candidate": "hybrid",
+      "inputHash": "e134c390a4f2dc072a83433f59f55c0cbcb1859579a3715e793ae8d5a473ca90",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1896,
+      "bends": 6,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        6.218727999999828,
+        6.4544630000000325,
+        5.836573000000499
+      ],
+      "medianMs": 6.218727999999828,
+      "maxMs": 6.4544630000000325,
+      "heapDeltaBytes": [
+        6143176,
+        -10194928,
+        6143896
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9c6e1aa386726276d1ca027a39c361724541c1a58e6911d67b8f973ef826cf92",
+      "diagnostics": []
+    },
+    {
+      "plan": "p12-backbone-kreuzung",
+      "candidate": "baseline",
+      "inputHash": "d953daeeb0082d661d1b4d895cea7bfb17a2683f86614fd20b175823eb34dbfc",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 0,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.25066900000001624,
+        0.18404000000009546,
+        0.20291700000052515
+      ],
+      "medianMs": 0.20291700000052515,
+      "maxMs": 0.25066900000001624,
+      "heapDeltaBytes": [
+        108184,
+        107712,
+        107728
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "85128e63733716d6c0b697409d5080a77e1cca620fa9fa9d55ce1cb9137c86a8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p12-backbone-kreuzung",
+      "candidate": "libavoid",
+      "inputHash": "d953daeeb0082d661d1b4d895cea7bfb17a2683f86614fd20b175823eb34dbfc",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 0,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.4683390000000145,
+        0.36069099999986065,
+        0.2792170000002443
+      ],
+      "medianMs": 0.36069099999986065,
+      "maxMs": 0.4683390000000145,
+      "heapDeltaBytes": [
+        74328,
+        74104,
+        74216
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "85128e63733716d6c0b697409d5080a77e1cca620fa9fa9d55ce1cb9137c86a8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p12-backbone-kreuzung",
+      "candidate": "rip-up",
+      "inputHash": "d953daeeb0082d661d1b4d895cea7bfb17a2683f86614fd20b175823eb34dbfc",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 0,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.6659399999998641,
+        2.320491999999831,
+        0.6324339999991935
+      ],
+      "medianMs": 0.6659399999998641,
+      "maxMs": 2.320491999999831,
+      "heapDeltaBytes": [
+        369080,
+        373104,
+        368800
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "85128e63733716d6c0b697409d5080a77e1cca620fa9fa9d55ce1cb9137c86a8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p12-backbone-kreuzung",
+      "candidate": "hybrid",
+      "inputHash": "d953daeeb0082d661d1b4d895cea7bfb17a2683f86614fd20b175823eb34dbfc",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 1608,
+      "bends": 0,
+      "crossings": 1,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.7350620000006529,
+        0.827078999999685,
+        0.6837850000001708
+      ],
+      "medianMs": 0.7350620000006529,
+      "maxMs": 0.827078999999685,
+      "heapDeltaBytes": [
+        526104,
+        525896,
+        525896
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "85128e63733716d6c0b697409d5080a77e1cca620fa9fa9d55ce1cb9137c86a8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p13-drag-zentraler-node",
+      "candidate": "baseline",
+      "inputHash": "04e671134385cc2f451f386001a5601aba81e69ca0e84c2e348d8dc99d18614b",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3312,
+      "bends": 10,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.9646160000002055,
+        1.0514439999997194,
+        0.9905629999993835
+      ],
+      "medianMs": 0.9905629999993835,
+      "maxMs": 1.0514439999997194,
+      "heapDeltaBytes": [
+        992664,
+        1015832,
+        991576
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f3fa5573d009511a76ab8888414d3ae3c469a8e9172f4aab0052ee87b7694ba2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p13-drag-zentraler-node",
+      "candidate": "libavoid",
+      "inputHash": "04e671134385cc2f451f386001a5601aba81e69ca0e84c2e348d8dc99d18614b",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": false,
+      "hardViolations": 5,
+      "lengthPx": 3312,
+      "bends": 10,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 5,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 5,
+      "timesMs": [
+        1.57024199999978,
+        0.6926219999995737,
+        0.7276409999994939
+      ],
+      "medianMs": 0.7276409999994939,
+      "maxMs": 1.57024199999978,
+      "heapDeltaBytes": [
+        176952,
+        172752,
+        173032
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "33fbe1c260fc93d896093c03df6f232aadb7d06e1a79aab7dc00b8d6f3d8fab5",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-d"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-d"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-b",
+          "otherId": "e-bus-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-b und e-bus-d"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-bus-c",
+          "otherId": "e-bus-d",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-bus-c und e-bus-d"
+        }
+      ]
+    },
+    {
+      "plan": "p13-drag-zentraler-node",
+      "candidate": "rip-up",
+      "inputHash": "04e671134385cc2f451f386001a5601aba81e69ca0e84c2e348d8dc99d18614b",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3312,
+      "bends": 10,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        5.385338999999476,
+        4.565948999999819,
+        4.519765999999436
+      ],
+      "medianMs": 4.565948999999819,
+      "maxMs": 5.385338999999476,
+      "heapDeltaBytes": [
+        -12498152,
+        3715008,
+        3716712
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f3fa5573d009511a76ab8888414d3ae3c469a8e9172f4aab0052ee87b7694ba2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p13-drag-zentraler-node",
+      "candidate": "hybrid",
+      "inputHash": "04e671134385cc2f451f386001a5601aba81e69ca0e84c2e348d8dc99d18614b",
+      "nodes": 7,
+      "ports": 7,
+      "cables": 6,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 3312,
+      "bends": 10,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        6.552993000000242,
+        6.40528600000016,
+        7.056716000000051
+      ],
+      "medianMs": 6.552993000000242,
+      "maxMs": 7.056716000000051,
+      "heapDeltaBytes": [
+        5104976,
+        5104896,
+        -11047184
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "f3fa5573d009511a76ab8888414d3ae3c469a8e9172f4aab0052ee87b7694ba2",
+      "diagnostics": []
+    },
+    {
+      "plan": "p14-undo-redo",
+      "candidate": "baseline",
+      "inputHash": "6a7d62a460f5b80485ac0ac77a4744aa538db9e3c307b18d63f8a168afcd3620",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 984,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.5223489999998492,
+        0.41480700000010984,
+        0.457789999999477
+      ],
+      "medianMs": 0.457789999999477,
+      "maxMs": 0.5223489999998492,
+      "heapDeltaBytes": [
+        421632,
+        421464,
+        421424
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6d1e71376b66f66b99776bb45e49c35344ed94918956889f5277b91989b0ad21",
+      "diagnostics": []
+    },
+    {
+      "plan": "p14-undo-redo",
+      "candidate": "libavoid",
+      "inputHash": "6a7d62a460f5b80485ac0ac77a4744aa538db9e3c307b18d63f8a168afcd3620",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": false,
+      "hardViolations": 3,
+      "lengthPx": 984,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 3,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.48805300000003626,
+        0.4734199999993507,
+        0.3508929999998145
+      ],
+      "medianMs": 0.4734199999993507,
+      "maxMs": 0.48805300000003626,
+      "heapDeltaBytes": [
+        94752,
+        94792,
+        94528
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "8e65bfa78762c493b3060354eb21263d1491bcb07b076c0b1e9824f2068f05f2",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-a",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-a und e-fuse-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-a",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-a und e-fuse-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-a",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-a und e-fuse-b"
+        }
+      ]
+    },
+    {
+      "plan": "p14-undo-redo",
+      "candidate": "rip-up",
+      "inputHash": "6a7d62a460f5b80485ac0ac77a4744aa538db9e3c307b18d63f8a168afcd3620",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 984,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        2.145863000000645,
+        2.9539930000000822,
+        2.124906999999439
+      ],
+      "medianMs": 2.145863000000645,
+      "maxMs": 2.9539930000000822,
+      "heapDeltaBytes": [
+        1741288,
+        -14407232,
+        1740648
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6d1e71376b66f66b99776bb45e49c35344ed94918956889f5277b91989b0ad21",
+      "diagnostics": []
+    },
+    {
+      "plan": "p14-undo-redo",
+      "candidate": "hybrid",
+      "inputHash": "6a7d62a460f5b80485ac0ac77a4744aa538db9e3c307b18d63f8a168afcd3620",
+      "nodes": 4,
+      "ports": 4,
+      "cables": 3,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 984,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        3.111311999999998,
+        3.023693000000094,
+        3.1363780000001498
+      ],
+      "medianMs": 3.111311999999998,
+      "maxMs": 3.1363780000001498,
+      "heapDeltaBytes": [
+        2686576,
+        2686480,
+        2686416
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "6d1e71376b66f66b99776bb45e49c35344ed94918956889f5277b91989b0ad21",
+      "diagnostics": []
+    },
+    {
+      "plan": "p15-pass-wechsel",
+      "candidate": "baseline",
+      "inputHash": "8919c020c1b1a2fb3843d9bf201df422e8d865b8402a905a4097b077c4894db4",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2040,
+      "bends": 8,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.2658279999996012,
+        1.2909710000003543,
+        1.2767089999997552
+      ],
+      "medianMs": 1.2767089999997552,
+      "maxMs": 1.2909710000003543,
+      "heapDeltaBytes": [
+        1527296,
+        1526872,
+        1526888
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c8c06ed0c706878875d10026e3d7a14ca05f5e9d3345bef31627ddde2c4aadd8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p15-pass-wechsel",
+      "candidate": "libavoid",
+      "inputHash": "8919c020c1b1a2fb3843d9bf201df422e8d865b8402a905a4097b077c4894db4",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": false,
+      "hardViolations": 5,
+      "lengthPx": 2040,
+      "bends": 6,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 5,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 3,
+      "timesMs": [
+        0.6915149999995265,
+        0.5109629999997196,
+        0.5319170000002487
+      ],
+      "medianMs": 0.5319170000002487,
+      "maxMs": 0.6915149999995265,
+      "heapDeltaBytes": [
+        143664,
+        143440,
+        143784
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "69dee9735e2b57837235bd7c755c090f2bca6eea8de2244be8a647e4002fedfa",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-inv",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-inv und e-fuse-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-inv",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-inv und e-fuse-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-inv",
+          "otherId": "e-fuse-b",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-inv und e-fuse-b"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-inv",
+          "otherId": "e-fuse-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-inv und e-fuse-c"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e-fuse-b",
+          "otherId": "e-fuse-c",
+          "detail": "Abstand 0.0px < cableClearance 12px zwischen Kanten e-fuse-b und e-fuse-c"
+        }
+      ]
+    },
+    {
+      "plan": "p15-pass-wechsel",
+      "candidate": "rip-up",
+      "inputHash": "8919c020c1b1a2fb3843d9bf201df422e8d865b8402a905a4097b077c4894db4",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2040,
+      "bends": 8,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        7.058154999999715,
+        7.243123000000196,
+        6.4925640000001295
+      ],
+      "medianMs": 7.058154999999715,
+      "maxMs": 7.243123000000196,
+      "heapDeltaBytes": [
+        -10258080,
+        6024688,
+        6010312
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "c8c06ed0c706878875d10026e3d7a14ca05f5e9d3345bef31627ddde2c4aadd8",
+      "diagnostics": []
+    },
+    {
+      "plan": "p15-pass-wechsel",
+      "candidate": "hybrid",
+      "inputHash": "8919c020c1b1a2fb3843d9bf201df422e8d865b8402a905a4097b077c4894db4",
+      "nodes": 6,
+      "ports": 6,
+      "cables": 5,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2040,
+      "bends": 6,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 1,
+      "timesMs": [
+        9.232350000000224,
+        14.50500000000011,
+        9.658994999999777
+      ],
+      "medianMs": 9.658994999999777,
+      "maxMs": 14.50500000000011,
+      "heapDeltaBytes": [
+        -8863456,
+        7493904,
+        7462272
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e22aaa84d921672d63c3a5d309126fd866d0cc5ef293c39d4437967fd00c5b21",
+      "diagnostics": []
+    },
+    {
+      "plan": "manual-locked",
+      "candidate": "baseline",
+      "inputHash": "0e2320e044295911ab346158319b3c31f0166b81a0d50c50c4114adf3d3218ff",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.6639400000003661,
+        0.2444660000001022,
+        0.22536500000023807
+      ],
+      "medianMs": 0.2444660000001022,
+      "maxMs": 0.6639400000003661,
+      "heapDeltaBytes": [
+        83448,
+        79832,
+        79608
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "manual-locked",
+      "candidate": "libavoid",
+      "inputHash": "0e2320e044295911ab346158319b3c31f0166b81a0d50c50c4114adf3d3218ff",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.7713450000001103,
+        0.31984899999952177,
+        0.23490299999957642
+      ],
+      "medianMs": 0.31984899999952177,
+      "maxMs": 0.7713450000001103,
+      "heapDeltaBytes": [
+        66744,
+        63032,
+        63120
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "manual-locked",
+      "candidate": "rip-up",
+      "inputHash": "0e2320e044295911ab346158319b3c31f0166b81a0d50c50c4114adf3d3218ff",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.356141000000207,
+        0.22141199999987293,
+        0.19172299999991083
+      ],
+      "medianMs": 0.22141199999987293,
+      "maxMs": 0.356141000000207,
+      "heapDeltaBytes": [
+        113608,
+        112512,
+        113088
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "manual-locked",
+      "candidate": "hybrid",
+      "inputHash": "0e2320e044295911ab346158319b3c31f0166b81a0d50c50c4114adf3d3218ff",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.4113950000000841,
+        0.42408900000009453,
+        0.3671119999999064
+      ],
+      "medianMs": 0.4113950000000841,
+      "maxMs": 0.42408900000009453,
+      "heapDeltaBytes": [
+        258920,
+        258120,
+        258168
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": []
+    },
+    {
+      "plan": "manual-locked-moved",
+      "candidate": "baseline",
+      "inputHash": "a4ceb84fbf380ee6e9721e290d800310c0bda32eaacf1c0ad3f85e62cf39b962",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": false,
+      "hardViolations": 4,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0,
+        "lockedRouteViolations": 2,
+        "contractViolations": 2
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.1870600000002014,
+        0.12187300000005052,
+        0.12116799999967043
+      ],
+      "medianMs": 0.12187300000005052,
+      "maxMs": 0.1870600000002014,
+      "heapDeltaBytes": [
+        80216,
+        80152,
+        80064
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": [
+        {
+          "edgeId": "e-plus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "edgeId": "e-minus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-plus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-minus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        }
+      ]
+    },
+    {
+      "plan": "manual-locked-moved",
+      "candidate": "libavoid",
+      "inputHash": "a4ceb84fbf380ee6e9721e290d800310c0bda32eaacf1c0ad3f85e62cf39b962",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": false,
+      "hardViolations": 2,
+      "lengthPx": 776,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0,
+        "lockedRouteViolations": 2
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.3965809999999692,
+        0.28255799999988085,
+        0.22051600000031613
+      ],
+      "medianMs": 0.28255799999988085,
+      "maxMs": 0.3965809999999692,
+      "heapDeltaBytes": [
+        63536,
+        63312,
+        63312
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e2c547e2af0276c507b7fcb435aca0437873fea7993079ca3df5acd19b54aa13",
+      "diagnostics": [
+        {
+          "code": "ROUTE-LOCK-GEOMETRY",
+          "edgeId": "e-plus",
+          "detail": "Die veröffentlichte Trasse weicht vom gespeicherten, fixierten Weg ab."
+        },
+        {
+          "code": "ROUTE-LOCK-GEOMETRY",
+          "edgeId": "e-minus",
+          "detail": "Die veröffentlichte Trasse weicht vom gespeicherten, fixierten Weg ab."
+        }
+      ]
+    },
+    {
+      "plan": "manual-locked-moved",
+      "candidate": "rip-up",
+      "inputHash": "a4ceb84fbf380ee6e9721e290d800310c0bda32eaacf1c0ad3f85e62cf39b962",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": false,
+      "hardViolations": 4,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0,
+        "lockedRouteViolations": 2,
+        "contractViolations": 2
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.4406120000003284,
+        0.2544879999995828,
+        0.2078639999999723
+      ],
+      "medianMs": 0.2544879999995828,
+      "maxMs": 0.4406120000003284,
+      "heapDeltaBytes": [
+        114864,
+        114432,
+        114464
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": [
+        {
+          "edgeId": "e-plus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "edgeId": "e-minus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-plus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-minus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        }
+      ]
+    },
+    {
+      "plan": "manual-locked-moved",
+      "candidate": "hybrid",
+      "inputHash": "a4ceb84fbf380ee6e9721e290d800310c0bda32eaacf1c0ad3f85e62cf39b962",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": false,
+      "hardViolations": 4,
+      "lengthPx": 576,
+      "bends": 0,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0,
+        "lockedRouteViolations": 2,
+        "contractViolations": 2
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.41982000000007247,
+        0.4452049999999872,
+        2.115207000000737
+      ],
+      "medianMs": 0.4452049999999872,
+      "maxMs": 2.115207000000737,
+      "heapDeltaBytes": [
+        262696,
+        262544,
+        408880
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "9b65750b161381089c84b3ac6b1fe99bc8e3b383d3a2cc21ea37b79962db935e",
+      "diagnostics": [
+        {
+          "edgeId": "e-plus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "edgeId": "e-minus",
+          "code": "ROUTE-ENDPOINT",
+          "detail": "Die Route verbindet nicht die aktuellen Anschlusspunkte."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-plus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        },
+        {
+          "code": "ROUTE-LOCK-ENDPOINT",
+          "edgeId": "e-minus",
+          "detail": "Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile."
+        }
+      ]
+    },
+    {
+      "plan": "asymmetric-large",
+      "candidate": "baseline",
+      "inputHash": "f622ebd1acafab9da020ba9234f6bc01454295125b44a8c6f78cdef1dff0a77e",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 380,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        0.5097730000006777,
+        0.39790999999968335,
+        0.43096000000059576
+      ],
+      "medianMs": 0.43096000000059576,
+      "maxMs": 0.5097730000006777,
+      "heapDeltaBytes": [
+        418480,
+        418424,
+        418280
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e8cddf321fee69cb811e411775ad09e88fc6e03d38ce5342ed4d6cd4f55e27b9",
+      "diagnostics": []
+    },
+    {
+      "plan": "asymmetric-large",
+      "candidate": "libavoid",
+      "inputHash": "f622ebd1acafab9da020ba9234f6bc01454295125b44a8c6f78cdef1dff0a77e",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 380,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 2,
+      "timesMs": [
+        0.3581420000000435,
+        0.25355800000033923,
+        0.23296299999947223
+      ],
+      "medianMs": 0.25355800000033923,
+      "maxMs": 0.3581420000000435,
+      "heapDeltaBytes": [
+        65848,
+        65368,
+        65368
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0eb1a836461c707ab6b3d077631d35e35e362e3979ac7f4a408207bee0adb561",
+      "diagnostics": []
+    },
+    {
+      "plan": "asymmetric-large",
+      "candidate": "rip-up",
+      "inputHash": "f622ebd1acafab9da020ba9234f6bc01454295125b44a8c6f78cdef1dff0a77e",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 380,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.2708159999992859,
+        1.144629999999779,
+        1.1261210000002393
+      ],
+      "medianMs": 1.144629999999779,
+      "maxMs": 1.2708159999992859,
+      "heapDeltaBytes": [
+        1090848,
+        1090648,
+        1090688
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e8cddf321fee69cb811e411775ad09e88fc6e03d38ce5342ed4d6cd4f55e27b9",
+      "diagnostics": []
+    },
+    {
+      "plan": "asymmetric-large",
+      "candidate": "hybrid",
+      "inputHash": "f622ebd1acafab9da020ba9234f6bc01454295125b44a8c6f78cdef1dff0a77e",
+      "nodes": 2,
+      "ports": 4,
+      "cables": 2,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 380,
+      "bends": 4,
+      "crossings": 0,
+      "defects": 0,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1.7103939999997237,
+        1.5268370000003415,
+        1.6321820000002845
+      ],
+      "medianMs": 1.6321820000002845,
+      "maxMs": 1.7103939999997237,
+      "heapDeltaBytes": [
+        1537464,
+        1537608,
+        1537744
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "e8cddf321fee69cb811e411775ad09e88fc6e03d38ce5342ed4d6cd4f55e27b9",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-7-10-sparse",
+      "candidate": "baseline",
+      "inputHash": "2462d61bff2872936cc108bf87e7561eacda933433c8eb9ea6e0f5d76b925d5d",
+      "seed": 7,
+      "nodes": 10,
+      "ports": 10,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2105.5,
+      "bends": 18,
+      "crossings": 0,
+      "defects": 7,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        2.545654999999897,
+        1.9255499999999302,
+        1.750492000000122
+      ],
+      "medianMs": 1.9255499999999302,
+      "maxMs": 2.545654999999897,
+      "heapDeltaBytes": [
+        1881608,
+        1874024,
+        1873184
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a66e4803a81c24dfeafe0ad97c7598b306fe123f4f9f6c2417ebad45b7092fca",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-7-10-sparse",
+      "candidate": "libavoid",
+      "inputHash": "2462d61bff2872936cc108bf87e7561eacda933433c8eb9ea6e0f5d76b925d5d",
+      "seed": 7,
+      "nodes": 10,
+      "ports": 10,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2105.5,
+      "bends": 18,
+      "crossings": 0,
+      "defects": 7,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 9,
+      "timesMs": [
+        1.1834140000000843,
+        1.0276249999997162,
+        1.0493380000007164
+      ],
+      "medianMs": 1.0493380000007164,
+      "maxMs": 1.1834140000000843,
+      "heapDeltaBytes": [
+        288712,
+        288208,
+        288640
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "309ea1c3131bc3e6dbe9d1ba5352f3ee8945cfa3c2ed760a78988782224fb786",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-7-10-sparse",
+      "candidate": "rip-up",
+      "inputHash": "2462d61bff2872936cc108bf87e7561eacda933433c8eb9ea6e0f5d76b925d5d",
+      "seed": 7,
+      "nodes": 10,
+      "ports": 10,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2105.5,
+      "bends": 18,
+      "crossings": 0,
+      "defects": 7,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        8.32050900000013,
+        7.306239999999889,
+        10.201866000000336
+      ],
+      "medianMs": 8.32050900000013,
+      "maxMs": 10.201866000000336,
+      "heapDeltaBytes": [
+        -10242576,
+        5886232,
+        5809792
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a66e4803a81c24dfeafe0ad97c7598b306fe123f4f9f6c2417ebad45b7092fca",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-7-10-sparse",
+      "candidate": "hybrid",
+      "inputHash": "2462d61bff2872936cc108bf87e7561eacda933433c8eb9ea6e0f5d76b925d5d",
+      "seed": 7,
+      "nodes": 10,
+      "ports": 10,
+      "cables": 9,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 2105.5,
+      "bends": 18,
+      "crossings": 0,
+      "defects": 7,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        18.72705599999972,
+        12.658962000000429,
+        9.306752999999844
+      ],
+      "medianMs": 12.658962000000429,
+      "maxMs": 18.72705599999972,
+      "heapDeltaBytes": [
+        -8188696,
+        7710144,
+        7636096
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "a66e4803a81c24dfeafe0ad97c7598b306fe123f4f9f6c2417ebad45b7092fca",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-42-25-dense",
+      "candidate": "baseline",
+      "inputHash": "62ad9fa4a074554fd272a2098550f3afa26d5d33dc9d4081ff20e1ad6048e4a1",
+      "seed": 42,
+      "nodes": 25,
+      "ports": 25,
+      "cables": 36,
+      "valid": false,
+      "hardViolations": 17,
+      "lengthPx": 19169.5,
+      "bends": 95,
+      "crossings": 35,
+      "defects": 16,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 2,
+        "clearanceViolations": 15,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        416.18248399999993,
+        374.9632019999999,
+        375.5615950000001
+      ],
+      "medianMs": 375.5615950000001,
+      "maxMs": 416.18248399999993,
+      "heapDeltaBytes": [
+        -13300696,
+        2024168,
+        15965552
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0611dc6ea63c43b01401efc8f72d11be07f1913ef1e3cbb0f02fabbd32af38fa",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span3",
+          "detail": "Kanten e009 und span3 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span9",
+          "detail": "Kanten e019 und span9 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span11",
+          "otherId": "n12",
+          "detail": "Abstand 2.0px < cableClearance 12px zu Node n12"
+        }
+      ]
+    },
+    {
+      "plan": "seed-42-25-dense",
+      "candidate": "libavoid",
+      "inputHash": "62ad9fa4a074554fd272a2098550f3afa26d5d33dc9d4081ff20e1ad6048e4a1",
+      "seed": 42,
+      "nodes": 25,
+      "ports": 25,
+      "cables": 36,
+      "valid": false,
+      "hardViolations": 20,
+      "lengthPx": 18264.89999753542,
+      "bends": 98,
+      "crossings": 30,
+      "defects": 23,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 20,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 30,
+      "timesMs": [
+        74.49687000000085,
+        73.96906300000046,
+        76.48576799999864
+      ],
+      "medianMs": 74.49687000000085,
+      "maxMs": 76.48576799999864,
+      "heapDeltaBytes": [
+        1011208,
+        -15291216,
+        1009504
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0c97925eb5375fd410bb8054f62b80c2ce4f2969830aee3e01b21072649f403d",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e004",
+          "otherId": "span9",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e004 und span9"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e004",
+          "otherId": "span9",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e004 und span9"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e019",
+          "otherId": "span0",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e019 und span0"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e019",
+          "otherId": "span0",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten e019 und span0"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span0",
+          "otherId": "span3",
+          "detail": "Abstand 8.0px < cableClearance 12px zwischen Kanten span0 und span3"
+        }
+      ]
+    },
+    {
+      "plan": "seed-42-25-dense",
+      "candidate": "rip-up",
+      "inputHash": "62ad9fa4a074554fd272a2098550f3afa26d5d33dc9d4081ff20e1ad6048e4a1",
+      "seed": 42,
+      "nodes": 25,
+      "ports": 25,
+      "cables": 36,
+      "valid": false,
+      "hardViolations": 17,
+      "lengthPx": 19169.5,
+      "bends": 95,
+      "crossings": 35,
+      "defects": 16,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 2,
+        "clearanceViolations": 15,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        568.4068329999991,
+        551.0877270000001,
+        558.3963719999992
+      ],
+      "medianMs": 558.3963719999992,
+      "maxMs": 568.4068329999991,
+      "heapDeltaBytes": [
+        881480,
+        -208352,
+        -986928
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0611dc6ea63c43b01401efc8f72d11be07f1913ef1e3cbb0f02fabbd32af38fa",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span3",
+          "detail": "Kanten e009 und span3 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span9",
+          "detail": "Kanten e019 und span9 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span11",
+          "otherId": "n12",
+          "detail": "Abstand 2.0px < cableClearance 12px zu Node n12"
+        }
+      ]
+    },
+    {
+      "plan": "seed-42-25-dense",
+      "candidate": "hybrid",
+      "inputHash": "62ad9fa4a074554fd272a2098550f3afa26d5d33dc9d4081ff20e1ad6048e4a1",
+      "seed": 42,
+      "nodes": 25,
+      "ports": 25,
+      "cables": 36,
+      "valid": false,
+      "hardViolations": 17,
+      "lengthPx": 19169.5,
+      "bends": 95,
+      "crossings": 35,
+      "defects": 16,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 2,
+        "clearanceViolations": 15,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        832.3333760000005,
+        844.9186719999998,
+        902.3791729999994
+      ],
+      "medianMs": 844.9186719999998,
+      "maxMs": 902.3791729999994,
+      "heapDeltaBytes": [
+        -3438832,
+        -2672704,
+        12878040
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "0611dc6ea63c43b01401efc8f72d11be07f1913ef1e3cbb0f02fabbd32af38fa",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span3",
+          "detail": "Kanten e009 und span3 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span9",
+          "detail": "Kanten e019 und span9 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span3",
+          "otherId": "n20",
+          "detail": "Abstand 7.0px < cableClearance 12px zu Node n20"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "span11",
+          "otherId": "n12",
+          "detail": "Abstand 2.0px < cableClearance 12px zu Node n12"
+        }
+      ]
+    },
+    {
+      "plan": "seed-73-50-sparse",
+      "candidate": "baseline",
+      "inputHash": "3799b83226993d95b94cc519f7dbbab7aa300981c29e43c67f9e2d5fdbbe1174",
+      "seed": 73,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 49,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 26738.5,
+      "bends": 102,
+      "crossings": 0,
+      "defects": 37,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        19.53008399999817,
+        18.988226000001305,
+        30.103055999999924
+      ],
+      "medianMs": 19.53008399999817,
+      "maxMs": 30.103055999999924,
+      "heapDeltaBytes": [
+        7619416,
+        7870256,
+        -8459168
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "7d018a3027174856c950d1adaa23d8af15de12b09e8efe8fa4eb50a13fa06bd9",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-73-50-sparse",
+      "candidate": "libavoid",
+      "inputHash": "3799b83226993d95b94cc519f7dbbab7aa300981c29e43c67f9e2d5fdbbe1174",
+      "seed": 73,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 49,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 26818.5,
+      "bends": 106,
+      "crossings": 0,
+      "defects": 37,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 49,
+      "timesMs": [
+        10.329204000001482,
+        9.677757999997993,
+        9.626087000000553
+      ],
+      "medianMs": 9.677757999997993,
+      "maxMs": 10.329204000001482,
+      "heapDeltaBytes": [
+        1418040,
+        1416128,
+        1416808
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "cb83e68dbddeb18e55a2cac917cb774c40484693cf506a57bb7bcc42089e3ba2",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-73-50-sparse",
+      "candidate": "rip-up",
+      "inputHash": "3799b83226993d95b94cc519f7dbbab7aa300981c29e43c67f9e2d5fdbbe1174",
+      "seed": 73,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 49,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 26738.5,
+      "bends": 102,
+      "crossings": 0,
+      "defects": 37,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        97.08711300000141,
+        95.19999000000098,
+        102.29662800000006
+      ],
+      "medianMs": 97.08711300000141,
+      "maxMs": 102.29662800000006,
+      "heapDeltaBytes": [
+        3993016,
+        3687680,
+        3541984
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "7d018a3027174856c950d1adaa23d8af15de12b09e8efe8fa4eb50a13fa06bd9",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-73-50-sparse",
+      "candidate": "hybrid",
+      "inputHash": "3799b83226993d95b94cc519f7dbbab7aa300981c29e43c67f9e2d5fdbbe1174",
+      "seed": 73,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 49,
+      "valid": true,
+      "hardViolations": 0,
+      "lengthPx": 26738.5,
+      "bends": 102,
+      "crossings": 0,
+      "defects": 37,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 0,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        138.97593699999925,
+        140.2186619999993,
+        137.03202200000305
+      ],
+      "medianMs": 138.97593699999925,
+      "maxMs": 140.2186619999993,
+      "heapDeltaBytes": [
+        245952,
+        367416,
+        427648
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "7d018a3027174856c950d1adaa23d8af15de12b09e8efe8fa4eb50a13fa06bd9",
+      "diagnostics": []
+    },
+    {
+      "plan": "seed-97-50-dense",
+      "candidate": "baseline",
+      "inputHash": "01951b8da2dcba49752e2f3fd9917d32f0286d1f96c2b91d97e242c70b5f82cf",
+      "seed": 97,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 74,
+      "valid": false,
+      "hardViolations": 243,
+      "lengthPx": 58221.73333333334,
+      "bends": 194,
+      "crossings": 233,
+      "defects": 35,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 50,
+        "clearanceViolations": 193,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        1854.8814239999992,
+        1973.3288219999995,
+        1813.594272000002
+      ],
+      "medianMs": 1854.8814239999992,
+      "maxMs": 1973.3288219999995,
+      "heapDeltaBytes": [
+        4388408,
+        -1907328,
+        13874232
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "8579574b8a47198eb20bdfdc26c994a5512914a44365cd261bdd96374ea25a04",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span5",
+          "detail": "Kanten e009 und span5 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span7",
+          "detail": "Kanten e009 und span7 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span15",
+          "detail": "Kanten e019 und span15 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span16",
+          "detail": "Kanten e019 und span16 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span18",
+          "detail": "Kanten e019 und span18 überdecken sich kollinear außerhalb des Ports"
+        }
+      ]
+    },
+    {
+      "plan": "seed-97-50-dense",
+      "candidate": "libavoid",
+      "inputHash": "01951b8da2dcba49752e2f3fd9917d32f0286d1f96c2b91d97e242c70b5f82cf",
+      "seed": 97,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 74,
+      "valid": false,
+      "hardViolations": 126,
+      "lengthPx": 71298.45481498333,
+      "bends": 216,
+      "crossings": 112,
+      "defects": 54,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 0,
+        "clearanceViolations": 126,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 62,
+      "timesMs": [
+        2831.071634,
+        2803.469015999999,
+        2813.1399269999965
+      ],
+      "medianMs": 2813.1399269999965,
+      "maxMs": 2831.071634,
+      "heapDeltaBytes": [
+        2476328,
+        2388680,
+        2393072
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "7a603d2002312f6c5c0ee882bed12315243c9914f044804abf503962ad747dba",
+      "diagnostics": [
+        {
+          "invariant": "I3",
+          "edgeId": "e009",
+          "otherId": "span8",
+          "detail": "Abstand 6.4px < cableClearance 12px zwischen Kanten e009 und span8"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e009",
+          "otherId": "span8",
+          "detail": "Abstand 6.4px < cableClearance 12px zwischen Kanten e009 und span8"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e009",
+          "otherId": "span8",
+          "detail": "Abstand 6.4px < cableClearance 12px zwischen Kanten e009 und span8"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e009",
+          "otherId": "span10",
+          "detail": "Abstand 6.4px < cableClearance 12px zwischen Kanten e009 und span10"
+        },
+        {
+          "invariant": "I3",
+          "edgeId": "e009",
+          "otherId": "span10",
+          "detail": "Abstand 6.4px < cableClearance 12px zwischen Kanten e009 und span10"
+        }
+      ]
+    },
+    {
+      "plan": "seed-97-50-dense",
+      "candidate": "rip-up",
+      "inputHash": "01951b8da2dcba49752e2f3fd9917d32f0286d1f96c2b91d97e242c70b5f82cf",
+      "seed": 97,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 74,
+      "valid": false,
+      "hardViolations": 243,
+      "lengthPx": 58221.73333333334,
+      "bends": 194,
+      "crossings": 233,
+      "defects": 35,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 50,
+        "clearanceViolations": 193,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        2303.2787489999973,
+        2357.7672229999953,
+        2241.356314000004
+      ],
+      "medianMs": 2303.2787489999973,
+      "maxMs": 2357.7672229999953,
+      "heapDeltaBytes": [
+        -2930496,
+        12667936,
+        -14146712
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "8579574b8a47198eb20bdfdc26c994a5512914a44365cd261bdd96374ea25a04",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span5",
+          "detail": "Kanten e009 und span5 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span7",
+          "detail": "Kanten e009 und span7 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span15",
+          "detail": "Kanten e019 und span15 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span16",
+          "detail": "Kanten e019 und span16 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span18",
+          "detail": "Kanten e019 und span18 überdecken sich kollinear außerhalb des Ports"
+        }
+      ]
+    },
+    {
+      "plan": "seed-97-50-dense",
+      "candidate": "hybrid",
+      "inputHash": "01951b8da2dcba49752e2f3fd9917d32f0286d1f96c2b91d97e242c70b5f82cf",
+      "seed": 97,
+      "nodes": 50,
+      "ports": 50,
+      "cables": 74,
+      "valid": false,
+      "hardViolations": 243,
+      "lengthPx": 58221.73333333334,
+      "bends": 194,
+      "crossings": 233,
+      "defects": 35,
+      "counts": {
+        "edgeNodeCollisions": 0,
+        "edgeEdgeOverlaps": 50,
+        "clearanceViolations": 193,
+        "sanityViolations": 0
+      },
+      "fallbacks": 0,
+      "changedRoutes": 0,
+      "timesMs": [
+        3810.761249999996,
+        4854.818018000005,
+        3672.665583000002
+      ],
+      "medianMs": 3810.761249999996,
+      "maxMs": 4854.818018000005,
+      "heapDeltaBytes": [
+        337808,
+        6786952,
+        -10066896
+      ],
+      "deterministic": true,
+      "translationInvariant": true,
+      "permutationInvariant": true,
+      "corridorOverload": null,
+      "labelCollisions": null,
+      "peakMemoryBytes": null,
+      "outputHash": "8579574b8a47198eb20bdfdc26c994a5512914a44365cd261bdd96374ea25a04",
+      "diagnostics": [
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span5",
+          "detail": "Kanten e009 und span5 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e009",
+          "otherId": "span7",
+          "detail": "Kanten e009 und span7 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span15",
+          "detail": "Kanten e019 und span15 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span16",
+          "detail": "Kanten e019 und span16 überdecken sich kollinear außerhalb des Ports"
+        },
+        {
+          "invariant": "I2",
+          "edgeId": "e019",
+          "otherId": "span18",
+          "detail": "Kanten e019 und span18 überdecken sich kollinear außerhalb des Ports"
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions
 import { PlannerMenubar } from './ui/PlannerMenubar';
 import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
+import { OptimizeRoutingButton } from './ui/OptimizeRoutingButton';
 import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
@@ -264,6 +265,7 @@ export function PlannerDashboard() {
           <>
             <SaveIndicator revision={planRevision} />
             {viewMode === 'electric' && <RoutingStatusBadge />}
+            {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
             {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
             <WarningCenter warnings={warnings} onFix={handleFix} />
           </>

@@ -31,6 +31,7 @@
  * Zeichenketten und gibt Zahlen zurück.
  */
 
+import type { RoutingPublicationState } from './publication';
 import { fnv1a } from '../electricalGraph/graph';
 
 /**
@@ -48,6 +49,15 @@ export const MAX_ROUTE_REVISIONS_PER_GRAPH = 4;
 export interface RouteGenerationStatus {
   /** Hash der Eingabe, zu der dieser Lauf gehört. */
   hash: string;
+  /** Publication lifecycle; not a claim of electrical safety. */
+  state?: RoutingPublicationState;
+  /** Input identity of the visible geometry (may differ when stale). */
+  geometryHash?: string;
+  optimization?: {
+    attempted: number;
+    accepted: number;
+    budgetExhausted: boolean;
+  };
   /** Fortlaufende Nummer der EINGABE (steigt nur bei echter Änderung). */
   generation: number;
   /** Wievielter Lauf für genau diese Eingabe (1 = erster). */

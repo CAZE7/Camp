@@ -11,7 +11,13 @@ import {
   waypointsToSegments,
   type Segment,
 } from './pathfinding';
-import { countBends, hasMinimumStubs, segmentsCross, segmentsOverlap } from '../../../lib/routing/geometry';
+import {
+  countBends,
+  hasMinimumStubs,
+  preservesPortDirections,
+  segmentsCross,
+  segmentsOverlap,
+} from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -296,7 +302,12 @@ const candidateIsSafe = (
   context: CandidateSafetyContext
 ): Point[] | null => {
   const repaired = stitchOrthogonal(candidate);
-  if (!isOrthogonalPath(repaired) || !hasMinimumStubs(repaired)) return null;
+  if (
+    !isOrthogonalPath(repaired) ||
+    !hasMinimumStubs(repaired) ||
+    !preservesPortDirections(original, repaired)
+  )
+    return null;
   if (context.relevantObstacles.length > 0) {
     const hitsObstacles = context.originalHitsObstacles
       ? pathHitsObstacles(repaired, context.relevantObstacles)
@@ -575,6 +586,7 @@ export function nudgeOrthogonalPaths(
     // nicht erhöht.
     const ok =
       isOrthogonalPath(repaired) &&
+      preservesPortDirections(orig, repaired) &&
       hasMinimumStubs(repaired) &&
       (relevant.length === 0 ||
         !(safety.originalHitsObstacles
