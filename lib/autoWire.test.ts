@@ -21,6 +21,7 @@ import { connectionKey } from './autoWire/primitives';
 import { safeText } from './safeText'; // AUDIT T1
 import { getSystemVoltage } from './vde-standards';
 import { compareIds } from './sortOrder';
+import { verifyPlan } from './verify';
 
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
   return { id, type, position, data };
@@ -744,6 +745,102 @@ describe('autoWire — sizeAcEdges', () => {
     expect(edges[1]?.data).toBeUndefined();
   });
 
+  it('B3/ELEC-003: modellierte Absicherung (16 A LS) steuert fuseSize der 230-V-Leitung', () => {
+    // Der Landstromanschluss ist ein 16-A-CEE. Ohne modellierte Absicherung
+    // fiele der Normwert aus der Astlast an (575 W ≈ 2,5 A → 5 A) — der
+    // Anschlusswert MUSS gewinnen, sonst passt die Sicherung nicht zum
+    // realen Leitungsschutzorgan der Einspeisestelle.
+    const nodes = [n('sp', 'shorePower', { rating: 16 }), n('c1', 'consumer230v', { watts: 575 })];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 3, edgeDomain: 'AC_230V' },
+      }),
+    ];
+    sizeAcEdges(edges, nodes);
+    const data = edges[0]?.data;
+    expect(data?.fuseSize).toBe(16);
+    expect(data?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[data?.crossSection ?? 0] ?? 0);
+  });
+
+  it('B3: die deklarierte Absicherung hebt den Querschnitt an, der sie tragen muss', () => {
+    // Kleine Last (2,5 A) an einem 32-A-CEE: Ohne Anschlusswert bliebe es bei
+    // 1,5 mm² (lastgeführt) — unter einem 32-A-Schutzorgan wäre das Kabel
+    // ungeschützt. Die Koordination I_n ≤ I_z verlangt 10 mm² (FUSE_MAP = 32).
+    const nodes = [n('sp', 'shorePower', { rating: 32 }), n('c1', 'consumer230v', { watts: 575 })];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 3, edgeDomain: 'AC_230V' },
+      }),
+    ];
+    sizeAcEdges(edges, nodes);
+    const data = edges[0]?.data;
+    expect(data?.crossSection).toBe(10);
+    expect(data?.fuseSize).toBe(32);
+    expect(data?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[data?.crossSection ?? 0] ?? 0);
+  });
+
+  it('B3: ohne Anschlusswert bleibt die Sicherung der Normwert ≤ Kabel-Max (keine Erfindung)', () => {
+    const nodes = [n('sp', 'shorePower', {}), n('c1', 'consumer230v', { watts: 575 })];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 3, edgeDomain: 'AC_230V' },
+      }),
+    ];
+    sizeAcEdges(edges, nodes);
+    const data = edges[0]?.data;
+    const cs = data?.crossSection ?? 0;
+    expect(data?.fuseSize).toBeDefined();
+    expect(data?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0);
+    expect(data?.fuseSize).toBeLessThan(16); // kein pauschal gestempeltes 16-A
+  });
+
+  it('B3: Laststrom über der Anschlussabsicherung wird von der Engine gemeldet (AMP-001)', () => {
+    // 20-A-Ladegerät an einem 16-A-CEE: Die Absicherung bleibt das reale
+    // Organ der Einspeisestelle (16 A) — aber der Plan ist so nicht
+    // betreibbar. Das darf nicht still bleiben: Die Verifikation muss den
+    // Betriebsstrom über dem Nennstrom anzeigen (I_b > I_n).
+    const nodes = [
+      n('sp', 'shorePower', { rating: 16, hasRcd: true }),
+      n('ch', 'acBatteryCharger', { amps: 20 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'ch',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, edgeDomain: 'AC_230V' },
+      }),
+    ];
+    sizeAcEdges(edges, nodes);
+    expect(edges[0]?.data?.fuseSize).toBe(16);
+
+    const report = verifyPlan({
+      nodes,
+      edges,
+      options: { profile: 'PRACTICE', context: 'VEHICLE' },
+    });
+    const amp = report.events.filter((event) => event.ruleId === 'AMP-001-ib-in-iz');
+    expect(amp.length).toBeGreaterThan(0);
+    expect(amp[0]?.kind).toBe('VIOLATION');
+  });
+
   it('CRASH-001: wirft nie bei Alt-/Import-Querschnitten (95/0/NaN/3) und normiert stattdessen', () => {
     // Fuzz-Fund (400 Graphen, 5 Abstürze): eine AC-Kante mit
     // data.crossSection = 95 aus Altplänen/localStorage riss mit
@@ -962,6 +1059,31 @@ describe('autoWire — applyFuseSizes', () => {
     const fuse = data?.fuseSize ?? 0;
     expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? Infinity);
     expect(cs).toBeGreaterThan(2.5);
+  });
+
+  it('ELEC-001: 17 A auf 1,5 mm² — Querschnitt wächst mit, Sicherung bleibt unter dem Kabel-Max', () => {
+    // Abnahmefall aus dem Audit: 17 A Nennstrom auf einem 1,5-mm²-Pluskabel.
+    // FUSE_MAP[1,5 mm²] = 10 A — eine Sicherung ≥ 17 A gibt es auf diesem
+    // Querschnitt NICHT. Erwartung: der Aufrufer treibt den Querschnitt hoch
+    // (nächste Stufe, die 17 A trägt = 4 mm² / 20 A) und setzt NIE eine
+    // Sicherung über dem Kabel-Maximalwert (Brandschutz).
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 218 })];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'f17',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 2, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      }),
+    ];
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
+    const data = edges[0]?.data;
+    const cs = data?.crossSection ?? 0;
+    const fuse = data?.fuseSize ?? 0;
+    expect(fuse).toBeGreaterThanOrEqual(17); // trägt den Nennstrom …
+    expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0); // … ohne das Kabel zu überfordern
+    expect(cs).toBeGreaterThan(1.5); // hochdimensioniert statt überabsichert
+    expect(data?.fuseWarning).not.toBe(true); // innerhalb des Modells lösbar
   });
 
   it('fasst Minus-Kanten nicht an (Sicherungen sitzen im Pluspfad)', () => {

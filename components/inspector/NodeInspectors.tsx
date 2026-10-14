@@ -529,6 +529,29 @@ export function ShorePowerInspector({
               0100-721).
             </div>
           )}
+          <div>
+            {/*
+              ELEC-003: `rating` ist die modellierte Absicherung des
+              Landstromanschlusses (CEE 16 A / 32 A …). `sizeAcEdges` liest den
+              Wert, um `fuseSize` der AC-Leitungen zu setzen — ohne dieses Feld
+              war die Eigenschaft nur über Import/Altpläne erreichbar (B3).
+              Optional und löschbar: leer = „Anschluss nicht deklariert", dann
+              entscheidet die Leitung selbst (Normwert ≥ Astlast, ≤ Kabel-Max).
+            */}
+            <label htmlFor={`${node.id}-rating`} className="mb-1 block text-sm font-medium text-foreground">
+              Absicherung des Anschlusses in Ampere (optional)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-rating`}
+              type="number"
+              value={node.data?.rating ?? ''}
+              allowEmpty
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
+              onEmptyChange={() => onUpdateNodeData?.(node.id, { rating: undefined })}
+              className="min-h-11 rounded border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
         </div>
       </InspectorSection>
       <InspectorSection title="Berechnung">

@@ -187,6 +187,48 @@ describe('ShorePowerInspector — I_k der Einspeisung (AUDIT N1)', () => {
     expect(onUpdateNodeData).toHaveBeenCalledWith('shore-1', { prospectiveIkA: undefined });
   });
 
+  describe('Absicherung des Anschlusses (ELEC-003 / B3)', () => {
+    const RATING_LABEL = /Absicherung des Anschlusses/i;
+
+    it('ist ohne Angabe leer — kein erfundener Wert im Feld', () => {
+      render(<ShorePowerInspector node={shorePowerNode({})} onUpdateNodeData={onUpdateNodeData} />);
+      expect((screen.getByLabelText(RATING_LABEL) as HTMLInputElement).value).toBe('');
+    });
+
+    it('zeigt den gespeicherten Anschlusswert (CEE 16 A)', () => {
+      render(
+        <ShorePowerInspector node={shorePowerNode({ rating: 16 })} onUpdateNodeData={onUpdateNodeData} />
+      );
+      expect((screen.getByLabelText(RATING_LABEL) as HTMLInputElement).value).toBe('16');
+    });
+
+    it('schreibt den Anschlusswert als Zahl — genau der Wert, den sizeAcEdges liest', () => {
+      render(<ShorePowerInspector node={shorePowerNode({})} onUpdateNodeData={onUpdateNodeData} />);
+      fireEvent.change(screen.getByLabelText(RATING_LABEL), { target: { value: '16' } });
+
+      expect(onUpdateNodeData).toHaveBeenCalledTimes(1);
+      const [id, patch] = onUpdateNodeData.mock.calls[0]!;
+      expect(id).toBe('shore-1');
+      expect(patch).toEqual({ rating: 16 });
+    });
+
+    it('nimmt die Angabe beim Leeren zurück (optionales Feld bleibt löschbar)', () => {
+      render(
+        <ShorePowerInspector node={shorePowerNode({ rating: 16 })} onUpdateNodeData={onUpdateNodeData} />
+      );
+      fireEvent.change(screen.getByLabelText(RATING_LABEL), { target: { value: '' } });
+
+      expect(onUpdateNodeData).toHaveBeenCalledWith('shore-1', { rating: undefined });
+    });
+
+    it('lehnt 0 A ab (kein Anschluss ohne Absicherung)', () => {
+      render(<ShorePowerInspector node={shorePowerNode({})} onUpdateNodeData={onUpdateNodeData} />);
+      fireEvent.change(screen.getByLabelText(RATING_LABEL), { target: { value: '0' } });
+
+      expect(onUpdateNodeData).not.toHaveBeenCalled();
+    });
+  });
+
   it('lehnt unsinnige Angaben ab (0 A ist kein Kurzschlussstrom)', () => {
     render(<ShorePowerInspector node={shorePowerNode({})} onUpdateNodeData={onUpdateNodeData} />);
     fireEvent.change(screen.getByLabelText(IK_LABEL), { target: { value: '0' } });

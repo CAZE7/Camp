@@ -10,6 +10,85 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ELEC-002 (Audit-ROUTING-2026) — Auto-Wire stempelte Landstrom-RCD pauschal — **GELÖST (2026-10-14)**
+
+- **AREA:** Elektrik / Schutzmaßnahmen (DIN VDE 0100-721), Auto-Wire + Warn-Zentrale
+- **FILE:** `lib/autoWire.ts` (Stempel entfernt), `lib/verify/protection.ts` (RCD-001),
+  `components/planner/hooks/useLiveValidation.ts` + `utils/verificationWarnings.ts`,
+  `components/inspector/NodeInspectors.tsx` (`hasRcd`-Feld + kritische Warnkarte)
+- **DESCRIPTION (Original):** `for (const sp of shorePowers) sp.data.hasRcd = true`
+  markierte jeden Landstromanschluss als FI-geschützt — ein tatsächlich fehlender
+  FI (30 mA) wäre im Plan unsichtbar geblieben.
+- **CURRENT BEHAVIOR:** Auto-Wire setzt `hasRcd` nicht mehr. Fehlt der FI, meldet
+  die Engine `RCD-001-rcd-deviation` (VIOLATION, VDE 0100-721) und die Warn-Zentrale
+  zeigt sie; der Inspector verlangt die Nutzer-Aussage und warnt ohne FI kritisch.
+- **VERIFICATION (2026-10-14):** Probe mit einem 230-V-Zweig — ohne `hasRcd`:
+  RCD-001 VIOLATION + RCD-004 (Polzahl nicht belegt); mit `hasRcd: true`:
+  nur RCD-004. Test `lib/autoWire.test.ts` („stempelt NICHT pauschal hasRcd=true"),
+  RCD-001-Suite in `lib/verify/protection.test.ts`.
+- **SEVERITY:** mittel (war) → geschlossen
+- **RELATED ISSUE:** `docs/AUDIT-ROUTING-2026.md` §ELEC-002
+- **COMMIT:** siehe PR-Beschreibung (Branch `arena/f27aa996-camp`)
+
+---
+
+## ELEC-003 (Audit-ROUTING-2026) — AC-Absicherung nicht bedienbar und nicht koordiniert — **GELÖST (2026-10-14)**
+
+- **AREA:** Elektrik / 230-V-Absicherung (`sizeAcEdges`, `shorePower.rating`)
+- **FILE:** `lib/autoWire/sizing.ts`, `lib/electrical.ts` (`crossSectionForFuse`),
+  `components/inspector/NodeInspectors.tsx`
+- **DESCRIPTION (Original):** AC-Kanten bekamen keine Sicherung; später existierte
+  die Dimensionierung, aber (a) `shorePower.rating` war im Inspector nicht
+  editierbar (nur über Import erreichbar) und (b) die deklarierte Absicherung
+  wurde **nicht** mit dem Querschnitt koordiniert: ein 575-W-Gerät an einer
+  16-A-CEE ergab 1,5 mm² (Kabelgrenze 10 A) unter einem 16-A-Organ — das Kabel
+  wäre im Fehlerfall ungeschützt.
+- **CURRENT BEHAVIOR:** `crossSectionForFuse(rating)` (Umkehrung von `FUSE_MAP`,
+  DIN VDE 0100-430: I_B ≤ I_n ≤ I_z) hebt den Querschnitt auf die Stufe, die die
+  deklarierte Absicherung trägt; `fuseSize` = Anschlusswert (sonst Normwert ≥
+  Laststrom ≤ Kabelgrenze). Der Inspector hat das Feld (optional + löschbar).
+- **VERIFICATION (2026-10-14), Messung vorher → nachher:** 575 W an 16-A-CEE
+  1,5 mm² / 5 A → **2,5 mm² / 16 A**; 575 W an 32-A-CEE → **10 mm² / 32 A**;
+  20-A-Ladegerät an 16-A-CEE → 16 A + **AMP-001 VIOLATION** (I_b > I_n) erzwungen.
+  Kein Referenzplan deklariert `rating` → Golden Master 13/13 byte-identisch,
+  Regression 68/68, `routing:audit` I1–I7 = 0 unverändert.
+- **SEVERITY:** mittel (war) → geschlossen
+- **RELATED TEST:** `lib/electrical.test.ts` (`crossSectionForFuse`),
+  `lib/autoWire.test.ts` (B3-Block: 16 A LS, Koordination, AMP-001),
+  `components/inspector/NodeInspectors.test.tsx` (5 Feld-Fälle)
+- **RELATED ISSUE:** `docs/AUDIT-ROUTING-2026.md` §ELEC-003
+- **COMMIT:** siehe PR-Beschreibung (Branch `arena/f27aa996-camp`)
+
+---
+
+## ELEC-001 (Audit-ROUTING-2026) — `selectFuseSize` konnte eine Sicherung über dem Kabel-Max empfehlen — **GELÖST (2026-10-14)**
+
+- **AREA:** Elektrik / Sicherungsdimensionierung (`selectFuseSize`, Auto-Wire)
+- **FILE:** `lib/electrical.ts` (`selectFuseSize`, `isFuseFeasible`),
+  `lib/autoWire/sizing.ts` (`applyFuseSizes`), `lib/electrical.test.ts`,
+  `lib/autoWire.test.ts`
+- **DESCRIPTION (Original):** Der Ausweichzweig `STANDARD_FUSE_SIZES.find(s => s >= minFuse)`
+  gab bei `minFuse > maxFuse` eine Sicherung **oberhalb** von `FUSE_MAP[Querschnitt]`
+  zurück — z. B. `selectFuseSize(17, 1.5) = 20` statt Kabelgrenze 10 → die Sicherung
+  schützt das Kabel im Kurzschlussfall nicht (Brandgefahr).
+- **CURRENT BEHAVIOR:** `selectFuseSize` gibt **niemals** mehr als
+  `FUSE_MAP[crossSection]` zurück (Rückfall = Kabelgrenze als „Querschnitt zu klein"-Signal);
+  `isFuseFeasible` macht die Unterscheidung explizit; der Produktivpfad
+  `applyFuseSizes` hebt den Querschnitt auf die nächste tragende Normstufe
+  (`nextStandardCrossSection`) — die Sicherung trägt die Last UND schützt das Kabel.
+- **VERIFICATION (2026-10-14, am Missions-Basis-Commit):** Sweep über alle 17
+  Normquerschnitte × 0,5-A-Schritte (39 990 Kombinationen): **0** Ausgaben über
+  `FUSE_MAP`. Neue Regressionstests: 17 A auf 2,5 mm² → 16 A (war der 20-A-Fall),
+  `applyFuseSizes` 17 A auf 1,5 mm² → 4 mm² / 20 A. Property-Tests
+  (`lib/vde-properties.test.ts` G1/G2) decken die Invariante fuzzend ab.
+- **SEVERITY:** hoch (war) → geschlossen
+- **RELATED TEST:** `lib/electrical.test.ts` („selectFuseSize never exceeds …"),
+  `lib/autoWire.test.ts` („ELEC-001: 17 A auf 1,5 mm² …"), `lib/vde-properties.test.ts` (G1)
+- **RELATED ISSUE:** `docs/AUDIT-ROUTING-2026.md` §ELEC-001 (mit Schließungstabelle)
+- **COMMIT:** siehe PR-Beschreibung (Branch `arena/f27aa996-camp`, PR #532)
+
+---
+
 ## ROUTE-013 — Nachbearbeitung (C→D) ohne eigenen Akzeptanzvertrag — **GELÖST (2026-10-14)**
 
 - **AREA:** Routing / Nachbearbeitung (Nudge, Bend-Merge, Kabel-/Domain-Trenngang)

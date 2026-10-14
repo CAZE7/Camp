@@ -261,6 +261,24 @@ export const selectFuseSize = (currentA: number, crossSection: number): number =
 };
 
 /**
+ * Kleinster Normquerschnitt, dessen zulässige Sicherung einen Nennstrom `A`
+ * trägt — die Umkehrung von `FUSE_MAP`.
+ *
+ * Warum es diese Funktion gibt (ELEC-003 / B3): Eine deklarierte
+ * Absicherung des Landstromanschlusses (z. B. 16-A-CEE) ist das reale
+ * Schutzorgan der Leitung. Die Koordinationsregel I_B ≤ I_n ≤ I_z
+ * (DIN VDE 0100-430) verlangt dann, dass der Querschnitt diese Sicherung
+ * auch trägt — sonst stünde im Plan eine 1,5-mm²-Leitung unter einem
+ * 16-A-Schutzorgan, also ein Kabel, das die Sicherung im Fehlerfall nicht
+ * schützt. `undefined` = die Modellgrenze ist kleiner als der Nennstrom
+ * (nicht behaupten, nicht werfen — der Aufrufer entscheidet und markiert).
+ */
+export const crossSectionForFuse = (currentA: number): number | undefined => {
+  const required = Math.max(1, Math.ceil(currentA));
+  return VDE_SIZES.find((size) => (FUSE_MAP[size] ?? 0) >= required);
+};
+
+/**
  * Prüft, ob ein Kabelquerschnitt für den Nennstrom ausreicht, also
  * eine zulässige Sicherung gefunden werden kann, die ≥ Nennstrom und
  * ≤ Kabel-Maximalsicherung ist.
