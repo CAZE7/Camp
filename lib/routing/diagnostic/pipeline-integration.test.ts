@@ -27,7 +27,7 @@ describe('Routing Pipeline Diagnostic Integration', () => {
     const session = createDiagnosticSession('test-golden-simple');
     setActiveDiagnosticSession(session);
 
-    const plan = GOLDEN_PLANS.simple;
+    const plan = GOLDEN_PLANS.simple!;
     const wired = performAutoWiring(plan.nodes as never, plan.edges as never);
     expect(wired).toBeDefined();
 
@@ -74,7 +74,7 @@ describe('Routing Pipeline Diagnostic Integration', () => {
   it('bleibt vollkommen passiv und ohne Seiteneffekte, wenn Diagnostics deaktiviert sind', () => {
     enableRoutingDiagnostics(false);
 
-    const plan = GOLDEN_PLANS.simple;
+    const plan = GOLDEN_PLANS.simple!;
     const wired = performAutoWiring(plan.nodes as never, plan.edges as never);
     const nodes = wired!.nodes as RoutableNode[];
     const edges = wired!.edges as unknown as RouteEdgeRef[];
