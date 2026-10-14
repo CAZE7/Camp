@@ -5,6 +5,7 @@ import { performAutoWiring } from '../../lib/autoWire';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import { checkInvariants, type RoutedEdge, type NodeRect } from '../../lib/routing/invariants';
 import { nodeObstacleMap } from '../../components/edges/utils/pathfinding';
+import type { RoutableNode } from '../../components/edges/utils/nodeGeometry';
 
 export function runBenchmark() {
   const results = [];
@@ -12,8 +13,8 @@ export function runBenchmark() {
   for (const [name, plan] of Object.entries(GOLDEN_PLANS)) {
     const wired = performAutoWiring(plan.nodes as never, plan.edges as never);
     if (!wired) continue;
-    const nodes = wired.nodes as never;
-    const edges = wired.edges as never as RouteEdgeRef[];
+    const nodes = wired.nodes as RoutableNode[];
+    const edges = wired.edges as unknown as RouteEdgeRef[];
 
     // Warmup
     routeAllCables(nodes, edges);
@@ -58,7 +59,7 @@ export function runBenchmark() {
 
     results.push({
       plan: name,
-      components: (nodes as unknown[]).length,
+      components: nodes.length,
       cables: edges.length,
       durationMs: Number(durationMs.toFixed(2)),
       totalLength: Math.round(totalLength),
