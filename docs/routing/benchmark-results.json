@@ -1,0 +1,80 @@
+[
+  {
+    "plan": "simple",
+    "components": 7,
+    "cables": 9,
+    "durationMs": 6.03,
+    "totalLength": 2665,
+    "totalBends": 26,
+    "crossings": 2,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  },
+  {
+    "plan": "camper",
+    "components": 9,
+    "cables": 12,
+    "durationMs": 8.55,
+    "totalLength": 3677,
+    "totalBends": 28,
+    "crossings": 8,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  },
+  {
+    "plan": "solar",
+    "components": 8,
+    "cables": 11,
+    "durationMs": 3.4,
+    "totalLength": 3200,
+    "totalBends": 18,
+    "crossings": 4,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  },
+  {
+    "plan": "inverter",
+    "components": 8,
+    "cables": 10,
+    "durationMs": 7.49,
+    "totalLength": 3710,
+    "totalBends": 22,
+    "crossings": 4,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  },
+  {
+    "plan": "acdc",
+    "components": 10,
+    "cables": 14,
+    "durationMs": 15.59,
+    "totalLength": 5591,
+    "totalBends": 30,
+    "crossings": 10,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  },
+  {
+    "plan": "complex",
+    "components": 15,
+    "cables": 23,
+    "durationMs": 37.54,
+    "totalLength": 8646,
+    "totalBends": 53,
+    "crossings": 48,
+    "I1_Collisions": 0,
+    "I2_Overlaps": 0,
+    "I3_Clearance": 0,
+    "status": "VALID"
+  }
+]
