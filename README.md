@@ -298,6 +298,7 @@ Branch Protection: `docs/CI.md`.
 | [0034](docs/adr/0034-port-korridor-nach-buendelgroesse.md)                  | Korridor nach Bündelgröße      | Die Port-Bündel-Freigabe ist `max(portFacingClearance, requiredPortCorridor(K))` — löst den Widerspruch zwischen 68 px Token und Fächerregel ab K = 4 (p02: 6 → 0 I3)                                                                        |
 | [0035](docs/adr/0035-auslaufkorridor-fremder-ansa.md)                       | Auslaufkorridor fremder Ports  | **verworfen, mit Messung belegt:** harte Sperre der Auslaufkorridore löst p11 (3 → 0), bricht aber die Versatz-Invarianz — Versuchsprotokoll, damit niemand denselben Weg zweimal geht                                                       |
 | [0036](docs/adr/0036-verifikations-reparatur-belegung.md)                   | Verifikations-Reparatur        | Der Gewinner wird gegen die verlegte Belegung geprüft (`priorVerdict`); eine port-gebundene Überdeckung (`hardEnds > 0`) löst `bestOccupancyRepair` mit Mittelachsen-Z-Lagen und Lane-Schritten — ROUTE-010/p11 **0/0/0**, Versatz-Gate PASS |
+| [0037](docs/adr/0037-eine-akzeptanzregel-fuer-die-nachbearbeitung.md)       | Akzeptanzregel Nachbearbeitung | Ein Vertrag für den C→D-Block: keine neue harte Verletzung, Freigabe nicht schlechter, wertgleich ΔLänge ≤ 0,5 %; Schritt-Gatter je Schritt gemessen verworfen (Versatz-Gate 2/49 auf 33 × I3), Verdrahtung als Kettenregel                  |
 
 ## Weitere Nachweise
 

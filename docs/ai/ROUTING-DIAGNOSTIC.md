@@ -314,6 +314,19 @@ npx vitest run lib/routing/diagnostic/diagnostic.test.ts
 2. **Handle-Bounds**: Werden nur erfasst, wenn sie zum Zeitpunkt der Aufnahme gemessen sind
 3. **Domänen-Trennung**: Domänen-spezifische Clearance (24 px für AC/DC) wird nicht separat ausgewiesen
 4. **Thermische Bündel**: VDE-0298-4-Häufungsfaktoren sind nicht Teil der Metriken
+5. **State D: Länge/Biegungen** _(A1-Befund, behoben 2026-10-14)_: Der D-Hook
+   übergab die Geometrie nach der Nachbearbeitung, aber die Zahlen des
+   Rohroutings (`result.length` / `result.bends`). Gemeldet wurde damit die
+   Länge von Zustand C — die C→D-Frage war unsichtbar (auf der
+   Spannkanten-Familie: gemeldet +0,00 %, tatsächlich +0,59 %). Der Hook
+   übergibt jetzt `length: null, bends: null`; `snapshot.ts` rechnet beide aus
+   den Wegpunkten.
+6. **Clearance-Metrik ohne Port-Bündel-Ausnahme** _(offen, 2026-10-14)_: Die
+   Metrik zählt jedes Segmentpaar unter `CABLE_CLEARANCE`, das Final-Gate
+   (`checkClearance`, ADR 0025/0031/0034) gibt Port-Bündel-Näherungen über
+   `isPortBundleProximity` frei. Die Diagnose ist dadurch pessimistisch
+   (inverter D 3, complex D 2 gegenüber I3 = 0). Der Fix braucht Handle-/
+   Port-Daten im Snapshot-Schema.
 
 ### Ungeklärte Abweichungen
 
@@ -341,6 +354,8 @@ Nach der Diagnose-Implementierung können gezielte Routing-Optimierungen durchge
 - `docs/ROUTING-V2.md` — Routing-Spezifikation
 - `docs/ROUTING-INVARIANTS.md` — Invarianten I1-I7
 - `docs/ai/KNOWN-PROBLEMS.md` — Bekannte Routing-Probleme
+- `docs/routing/OPTIMIZE-DIAGNOSIS.md` — C→D-Messbericht (A1) mit Reproduktion
+- `docs/adr/0037-eine-akzeptanzregel-fuer-die-nachbearbeitung.md` — die Akzeptanzregel der Nachbearbeitung
 
 ## Autor
 
