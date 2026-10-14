@@ -883,6 +883,21 @@ export function useLiveValidation(
         message: violation.detail,
       });
     }
+    for (const violation of routingReport?.contractViolations ?? []) {
+      warnings.push({
+        id: `${violation.code}-${violation.edgeId}`,
+        category: 'routing',
+        type: 'critical',
+        title: 'Leitungsroute nicht verifiziert',
+        focusId: violation.edgeId,
+        focusType: 'edge',
+        ruleId: violation.code,
+        expectedValue: 'vollständige orthogonale Route zwischen den aktuellen Anschlüssen',
+        source: 'Globaler Routing-Pass: Ein-/Ausgabevertrag',
+        remedy: 'Anschlüsse und Bauteilpositionen prüfen; gegebenenfalls die fixierte Trasse entsperren.',
+        message: violation.detail,
+      });
+    }
     const lockRemedy = (code: string): string =>
       code === 'ROUTE-LOCK-MISSING'
         ? 'Leitung entsperren und erneut fixieren, damit ein unveränderlicher Wegpunktsnapshot gespeichert wird.'

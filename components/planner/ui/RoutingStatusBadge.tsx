@@ -36,11 +36,36 @@ export function RoutingStatusBadge() {
         role="alert"
         aria-live="polite"
         aria-label="Routing konvergiert nicht"
-        title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Es entsteht keine Endlosschleife; der letzte gültige Stand wird angezeigt. Ein kleines Verschieben eines Bauteils löst das Problem üblicherweise.`}
+        title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Weitere Läufe wurden gestoppt. Der angezeigte Stand muss gegen die aktuellen Anschlüsse geprüft werden.`}
         className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
       >
         <Repeat2 className="h-4 w-4" aria-hidden="true" />
         <span className="hidden xl:inline">Routing: Konvergenzfehler</span>
+      </span>
+    );
+  }
+
+  if (generation?.state && generation.state !== 'valid' && generation.state !== 'invalid') {
+    const labels = {
+      optimized: 'Routing: Optimierung geprüft',
+      partial: 'Routing: teilweise optimiert',
+      pending: 'Routing: neu zu berechnen',
+      routing: 'Routing: in Bearbeitung',
+      retained: 'Routing: vorheriger gültiger Stand',
+      stale: 'Routing: veraltete Geometrie',
+      error: 'Routing: Berechnung fehlgeschlagen',
+    };
+    const label = labels[generation.state];
+    return (
+      <span
+        data-testid={`routing-status-${generation.state}`}
+        role="status"
+        aria-label={label}
+        title={generation.reason ?? 'Die sichtbare Geometrie ist noch nicht für diese Eingabe bestätigt.'}
+        className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
+      >
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden xl:inline">{label}</span>
       </span>
     );
   }
@@ -87,6 +112,9 @@ export function RoutingStatusBadge() {
 
   const countText = total === 1 ? '1 Regelverletzung' : `${total} Regelverletzungen`;
   const causes = [
+    ...((report.counts.contractViolations ?? 0) > 0
+      ? [`Unvollständige oder gelöste Routen: ${report.counts.contractViolations}`]
+      : []),
     ...(report.counts.edgeNodeCollisions > 0
       ? [`I1 Bauteil-Kollisionen: ${report.counts.edgeNodeCollisions}`]
       : []),

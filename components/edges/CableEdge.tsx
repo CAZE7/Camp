@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
 import { fanOutLanesForEdge } from './utils/routeAll';
-import { useCableRoute } from './utils/cableRouteStore';
+import { useCableRoute, useCableRouteGeneration } from './utils/cableRouteStore';
 import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
@@ -465,6 +465,7 @@ const CableEdge = function ({
   const allNodes = usePlannerStore((state) => state.nodes);
   const trunkMode = usePlannerStore((state) => state.trunkMode);
   const globalRoute = useCableRoute(id);
+  const routeGeneration = useCableRouteGeneration();
 
   // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
   // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
@@ -514,8 +515,23 @@ const CableEdge = function ({
         labelY: globalRoute.labelY,
         routeLengthPx: globalRoute.length,
         routeTight: globalRoute.tightMarginUsed ?? false,
-        routeInvalid: globalRoute.fallbackHitsObstacles ?? false,
+        routeInvalid:
+          (globalRoute.fallbackHitsObstacles ?? false) ||
+          (routeGeneration?.state !== undefined &&
+            !['valid', 'retained', 'optimized', 'partial'].includes(routeGeneration.state)),
         routeCrossings: globalRoute.crossings,
+      };
+    }
+    // A managed generation must never be replaced by an unvalidated per-edge route.
+    if (routeGeneration) {
+      return {
+        path: '',
+        labelX: sourceX,
+        labelY: sourceY,
+        routeLengthPx: 0,
+        routeTight: false,
+        routeInvalid: true,
+        routeCrossings: 0,
       };
     }
     const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
@@ -552,6 +568,7 @@ const CableEdge = function ({
     };
   }, [
     globalRoute,
+    routeGeneration,
     getNodes,
     id,
     sourceX,
@@ -775,7 +792,14 @@ const CableEdge = function ({
   // nicht mehr den Querschnitt — der steht im Label. Siehe utils/cableStyle.ts.
   const renderedStrokeWidth = cableStrokeWidth({ isBackbone, emphasized, trunkMode });
   const routeStatusDetails = [
-    ...(routeInvalid ? ['Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve'] : []),
+    ...(routeInvalid
+      ? [
+          routeGeneration?.reason ??
+            (routeGeneration?.state
+              ? `Routing nicht aktuell verifiziert (${routeGeneration.state})`
+              : 'Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve'),
+        ]
+      : []),
     ...(routeTight
       ? ['Engstelle: reduzierte Bauteil-Reserve; verbindlicher Mindestabstand wird separat geprüft']
       : []),

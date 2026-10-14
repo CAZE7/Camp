@@ -39,7 +39,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "audit:dead-code": "knip --no-progress"
+    "audit:dead-code": "knip --no-progress",
+    "routing:compare": "tsx benchmarks/routing/compare.ts"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -107,6 +108,7 @@
     "js-yaml": "^5.3.0",
     "jsdom": "^30.1.1",
     "knip": "^6.32.3",
+    "libavoid-js": "0.5.0-beta.5",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",

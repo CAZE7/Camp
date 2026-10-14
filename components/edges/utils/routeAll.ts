@@ -1,3 +1,4 @@
+import { repairClearanceClusters } from '../../../lib/routing/globalLaneRepair';
 import { Position } from '@xyflow/react';
 import {
   nodeHandleBounds,
@@ -54,6 +55,7 @@ import {
 import { isBackboneConnection } from '../../planner/utils/backbone';
 import {
   isOrthogonalPath,
+  preservesPortDirections,
   mergeCloseBends,
   simplifyWaypoints,
   waypointsToSegments,
@@ -695,14 +697,17 @@ function makeHandleResolver(nodes: RoutableNode[]) {
 export function resolveRoutingEndpoints(
   nodes: RoutableNode[],
   edges: readonly RouteEdgeRef[]
-): Map<string, { source: Point; target: Point }> {
+): Map<string, { source: Point & { position: Position }; target: Point & { position: Position } }> {
   const routable = routableNodes(nodes);
   const resolveHandle = makeHandleResolver(routable);
-  const endpoints = new Map<string, { source: Point; target: Point }>();
+  const endpoints = new Map<
+    string,
+    { source: Point & { position: Position }; target: Point & { position: Position } }
+  >();
   for (const edge of [...edges].sort((left, right) => compareIds(left.id, right.id))) {
     const source = resolveHandle(edge, 'source');
     const target = resolveHandle(edge, 'target');
-    endpoints.set(edge.id, { source: { x: source.x, y: source.y }, target: { x: target.x, y: target.y } });
+    endpoints.set(edge.id, { source: { ...source }, target: { ...target } });
   }
   return endpoints;
 }
@@ -755,7 +760,16 @@ const hasPairRuleAbove = (
   return false;
 };
 
-export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export type RouteAllOptions = {
+  /** Internal rip-up occupancy. Does not turn user edges into locked edges. */
+  preservedRoutes?: ReadonlyMap<string, PathResult>;
+};
+
+export function routeAllCables(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  options: RouteAllOptions = {}
+): Map<string, PathResult> {
   nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const out = new Map<string, PathResult>();
@@ -854,11 +868,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Festgelegte Wege werden vor freien Trassen registriert. So routet der
   // normale Pfad an der unveränderlichen Nutzergeometrie vorbei; die Sperre
   // ist nicht nur ein nachträglicher Hop-/Nudge-Hinweis.
+  const isFixed = (edge: RouteEdgeRef) =>
+    isLockedRouteEdge(edge) || options.preservedRoutes?.has(edge.id) === true;
   const routingOrder = [
-    ...workOrder.filter(isLockedRouteEdge).sort((left, right) => compareIds(left.id, right.id)),
-    ...workOrder.filter((edge) => !isLockedRouteEdge(edge)),
+    ...workOrder.filter(isFixed).sort((left, right) => compareIds(left.id, right.id)),
+    ...workOrder.filter((edge) => !isFixed(edge)),
   ];
-  const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
+  const lockedIds = new Set(edges.filter(isFixed).map((edge) => edge.id));
   // Bundle-Größen aus den endgültigen Port-Koordinaten aller Routen vorab
   // bestimmen. Die Tube-Freistellung muss dieselbe Korridorgröße verwenden
   // wie I3 (`portBundleSizes`/`bundleCorridor`), auch wenn eine Route später
@@ -1123,6 +1139,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // The snapshot is user-owned geometry: no A*, fallback, hop, or later
       // optimization may change a point. Final validation reports conflicts.
       result = rebuild([...storedLockedPath], 0, 'locked', [], false, false, true);
+    } else if (options.preservedRoutes?.has(edge.id)) {
+      const preserved = options.preservedRoutes.get(edge.id)!;
+      result = { ...preserved, waypoints: preserved.waypoints.map((point) => ({ ...point })) };
     } else {
       result = routeWithTubes(request_, tubesForRegion(tubes, region, currentPorts));
       // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der
@@ -1229,6 +1248,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     const worthIt =
       merged.length < waypoints.length &&
       isOrthogonalPath(merged) &&
+      preservesPortDirections(waypoints, merged) &&
       !pathHitsObstacles(merged, inflated) &&
       routeDefectScore(merged) <= routeDefectScore(waypoints);
     cleaned.set(id, worthIt ? merged : waypoints);
@@ -1300,6 +1320,20 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     })
   );
 
+  // Joint lane propagation repairs a whole capacity cluster atomically. In particular,
+  // it cannot buy clearance by erasing a port stub (the former greedy-shortening bug).
+  const clusterRepair = repairClearanceClusters(
+    order.map((id) => ({
+      id,
+      source: edgeById.get(id)!.source,
+      target: edgeById.get(id)!.target,
+      waypoints: finalWaypoints.get(id) ?? [],
+    })),
+    [...obstacleById].map(([id, rect]) => ({ id, ...rect })),
+    lockedIds
+  );
+  if (clusterRepair) for (const [id, points] of clusterRepair) finalWaypoints.set(id, points);
+
   // WP-7 (#395) / ROUTE-BUG-5: Hops und echte Fremdkanten-Kreuzungszahlen
   // werden erst NACH Ausrichtung/Nudge bestimmt — und in EINEM Scan, weil
   // beide dieselben Segment-Schnittpunkte konsumieren.
@@ -1357,7 +1391,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       hopsByEdge.get(id) ?? [],
       fallbackHitsObstacles,
       tightMarginUsed,
-      item.result.locked || lockedIds.has(id)
+      item.result.locked || (edgeRef ? isLockedRouteEdge(edgeRef) : false)
     );
     // Bündel-Versatz desselben Kantenpaars — gehört hierher, nicht in die
     // Kante: Nur der globale Pass sieht alle Kanten und kann den Versatz

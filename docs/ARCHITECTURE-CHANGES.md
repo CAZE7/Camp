@@ -2809,3 +2809,17 @@ routing:audit` Exit 0 ohne Hinweis, `FINAL_VALIDATION_RATCHET` auf 0/0/0/0/0/0.
    `scripts/routing/portCapacity.test.ts` (5 Fälle: Token-Arithmetik,
    Monotonie, gemessener Anlass, Referenzplan-Bündel + Ausnahmeliste), zwei
    neue Locus-Fälle in `lib/routing/rules/portBundle.test.ts`.
+
+## 2026-10-14 — Globales Routing, Worker und Port-Stummel-Korrektur (Draft)
+
+- Normalisiertes Transfermodell, abbrechbarer Worker, Generation/Revision-Guard und
+  atomare Veröffentlichung mit revalidiertem Vorgänger; klare Pending/Stale/Error-Zustände.
+- Fehlende Routen, falsche Endpunkte/-richtungen, fehlende gemessene Handles und
+  Rückkehr durch Anschlussgeräte werden nicht mehr als gültig veröffentlicht.
+- Separations-Nachlauf konnte in `complex/e-auto-2` den Top-Stummel entfernen;
+  Richtungs-Veto plus gemeinsame Lane-Propagation/-Tausch behebt die Ursache.
+- Bewusster Recapture nur `knownPlans/complex.json`, vier Routing-Kanten, keine
+  elektrischen Daten. Kreuzungen 25→24, Länge unverändert, Biegungen 53→54 wegen
+  wiederhergestelltem Pflicht-Stummel. Kreuzungsratchet 25→24 verschärft.
+- Explizites begrenztes Rip-up ohne Geräteverschiebung; keine Elektro-Semantik geändert.
+- Recherche/Experimente und verbleibende Freigabekriterien: `docs/routing/`.
