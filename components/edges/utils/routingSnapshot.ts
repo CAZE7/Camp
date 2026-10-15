@@ -50,15 +50,15 @@ export function routingSnapshot(nodes: RoutableNode[], edges: RouteEdgeRef[]): R
 export function routingSnapshotNodes(snapshot: RoutingSnapshot): RoutableNode[] {
   const handles = (values: NonNullable<RoutingSnapshot['nodes'][number]['handles']>['source']) =>
     values == null ? values : values.map((handle) => ({ ...handle, position: handle.position as Position }));
-  return snapshot.nodes.map((node) => ({
-    id: node.id,
-    type: node.type,
+  return snapshot.nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
     data: {},
-    position: { ...node.position },
-    width: node.width,
-    height: node.height,
-    handleBounds: node.handles
-      ? { source: handles(node.handles.source), target: handles(node.handles.target) }
+    position: { ...n.position },
+    width: n.width,
+    height: n.height,
+    handleBounds: n.handles
+      ? { source: handles(n.handles.source), target: handles(n.handles.target) }
       : undefined,
   }));
 }

@@ -59,7 +59,7 @@ const PORT_BUNDLE_PAIRS: Record<string, number> = {
   solar: 4,
   inverter: 4,
   acdc: 10,
-  complex: 12,
+  complex: 15,
 };
 
 const TOTAL = Object.values(PORT_BUNDLE_PAIRS).reduce((sum, n) => sum + n, 0);

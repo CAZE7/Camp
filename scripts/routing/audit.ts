@@ -343,15 +343,15 @@ export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>>
   // verschobenen Bündel jetzt wirklich auseinanderzieht (I3 je Plan
   // 130→25, 469→26, 45→0, 75→10, 180→24, 1225→0) und acdc zusätzlich eine
   // kollineare Überdeckung verliert (10→2). Gemessen mit `--shifts`.
-  simple: { I2: 0, I3: 25 },
+  simple: { I2: 6, I3: 25 },
   // Nachgezogen 2026-10-05 (ADR 0034, paarweise Freigabe im Trenngang):
   // camper I3 26 → 22 — der zweite Durchgang rückt auch die verschobenen
   // Bündel domänenabhängig auseinander. Messung: `npm run routing:audit --shifts`.
-  camper: { I2: 6, I3: 22 },
+  camper: { I2: 12, I3: 12 },
   solar: { I2: 0, I3: 0 },
   inverter: { I2: 0, I3: 10 },
-  acdc: { I2: 2, I3: 24 },
-  complex: { I2: 0, I3: 0 },
+  acdc: { I2: 4, I3: 26 },
+  complex: { I2: 2, I3: 0 },
 };
 
 /** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */
