@@ -64,6 +64,14 @@ const mockScreenToFlowPosition = vi
     x: pos.x ?? pos.clientX,
     y: pos.y ?? pos.clientY,
   }));
+/** Veröffentlichte Trassen für den Fokus-Test (UI-AUDIT UX-FOCUS-001). */
+const mockPublishedRoutes = new Map<string, { waypoints: { x: number; y: number }[] }>();
+
+// UI-AUDIT UX-FOCUS-001: `setCenter`/`getNode` müssen aus dem Test erreichbar
+// sein — der Fokus einer Leitung wird jetzt über die veröffentlichte Trasse
+// berechnet, und das ist ohne Zugriff auf den Mock nicht prüfbar.
+const mockSetCenter = vi.fn<(x: number, y: number, options: { zoom: number; duration: number }) => void>();
+const mockGetNode = vi.fn();
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react');
   return {
@@ -73,8 +81,8 @@ vi.mock('@xyflow/react', async () => {
       screenToFlowPosition: mockScreenToFlowPosition,
       getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
       setViewport: vi.fn(),
-      getNode: vi.fn(),
-      setCenter: vi.fn(),
+      getNode: mockGetNode,
+      setCenter: mockSetCenter,
     }),
     useStore: (selector: (state: { transform: [number, number, number] }) => unknown) =>
       selector({ transform: [0, 0, 1] }),
@@ -132,7 +140,7 @@ vi.mock('../edges/utils/cableRouteStore', () => {
     useCableRoute: () => undefined,
     useCableRoutes: () => emptyRoutes,
     publishCableRoutes: vi.fn(),
-    getCableRoute: () => undefined,
+    getCableRoute: (id: string) => mockPublishedRoutes.get(id),
   };
 });
 
@@ -235,6 +243,77 @@ describe('FlowCanvas', () => {
   it('renders correctly', () => {
     render(<FlowCanvas />);
     expect(screen.getByTestId('react-flow-mock')).toBeInTheDocument();
+  });
+
+  /**
+   * UI-AUDIT 2026-10-13 — UX-FOCUS-001.
+   *
+   * Der Klick auf eine Warnung dispatcht `planner-focus-element`. Vorher
+   * zentrierte der Canvas dafür auf den Mittelpunkt der beiden Bauteile plus
+   * fester Offsets (+100/+60) — bei orthogonal verlegten Trassen mit Umweg
+   * lag dort nichts. Jetzt ist die veröffentlichte Trasse die Quelle,
+   * dieselbe Geometrie, die `CableEdge` zeichnet (ADR 0014).
+   */
+  describe('planner-focus-element für Leitungen (UX-FOCUS-001)', () => {
+    const nodeRect = (id: string, x: number) => ({
+      id,
+      position: { x, y: 0 },
+      measured: { width: 192, height: 120 },
+    });
+
+    const dispatchFocus = (): void => {
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('planner-focus-element', { detail: { id: 'e1', elementType: 'edge' } })
+        );
+      });
+    };
+
+    beforeEach(() => {
+      mockPublishedRoutes.clear();
+      mockGetNode.mockReset();
+      mockSetCenter.mockReset();
+      mockGetNode.mockImplementation((id: string) =>
+        id === '1' ? nodeRect('1', 0) : id === '2' ? nodeRect('2', 600) : undefined
+      );
+    });
+
+    it('zentriert auf die Hüllbox der veröffentlichten Trasse', () => {
+      // U-Trasse: beide Bauteile liegen auf y=0, die Leitung läuft bis y=900.
+      mockPublishedRoutes.set('e1', {
+        waypoints: [
+          { x: 96, y: 60 },
+          { x: 96, y: 900 },
+          { x: 696, y: 900 },
+          { x: 696, y: 60 },
+        ],
+      });
+
+      render(<FlowCanvas />);
+      dispatchFocus();
+
+      // Mittelpunkt der Trassen-Hüllbox — NICHT der alte Bauteil-Mittelpunkt
+      // (396, 60) + (100, 60) = (496, 120).
+      expect(mockSetCenter).toHaveBeenCalledWith(396, 480, expect.objectContaining({ duration: 450 }));
+      const zoom = mockSetCenter.mock.calls[0]![2].zoom;
+      expect(zoom).toBeLessThan(1.15);
+      expect(zoom).toBeGreaterThan(0.25);
+    });
+
+    it('fällt ohne veröffentlichte Trasse auf die Bauteil-Mitte zurück', () => {
+      render(<FlowCanvas />);
+      dispatchFocus();
+
+      // Bauteil-Mittelpunkte (96, 60) und (696, 60) — ohne Magie-Offsets.
+      expect(mockSetCenter).toHaveBeenCalledWith(396, 60, expect.objectContaining({ zoom: 1.15 }));
+    });
+
+    it('eine unbekannte Leitung ohne Bauteile löst keine Kamerafahrt aus', () => {
+      mockGetNode.mockReturnValue(undefined);
+      render(<FlowCanvas />);
+      dispatchFocus();
+      expect(mockSetCenter).not.toHaveBeenCalled();
+    });
   });
 
   /**

@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
-import { CableRouteSync, useCableRoutes } from '../edges/utils/cableRouteStore';
+import { CableRouteSync, getCableRoute, useCableRoutes } from '../edges/utils/cableRouteStore';
 import { cssToken } from '../edges/utils/edgeColors';
 import { EmptyState } from '../ui/EmptyState';
 import {
@@ -27,6 +27,7 @@ import {
   PLANNER_MAX_ZOOM,
   PANE_WAIT_FRAMES,
   PLANNER_FIT_PADDING,
+  PLANNER_FOCUS_MAX_ZOOM,
   PLANNER_SNAP_GRID,
   NODE_FOOTPRINT,
   NODE_TOUCH_MARGIN,
@@ -46,7 +47,7 @@ import {
 } from './utils/flowInteraction';
 import { withNodeDragHandles } from './ui/NodeDragHandle';
 import { CanvasContextMenu, type ContextMenuState } from './ui/CanvasContextMenu';
-import { applyFocusHighlight } from './utils/focusHighlight';
+import { applyFocusHighlight, edgeFocusTarget } from './utils/focusHighlight';
 import {
   applyDomainFilter,
   DOMAINS,
@@ -222,11 +223,31 @@ export function FlowCanvas() {
       const source = edge ? getNode(edge.source) : undefined;
       const target = edge ? getNode(edge.target) : undefined;
       if (source && target) {
-        void setCenter(
-          (source.position.x + target.position.x) / 2 + 100,
-          (source.position.y + target.position.y) / 2 + 60,
-          { zoom: 1.05, duration: 450 }
-        );
+        // UI-AUDIT UX-FOCUS-001: Ziel ist die VERÖFFENTLICHTE Trasse — dieselbe
+        // Geometrie, die `CableEdge` zeichnet (ADR 0014). Vorher stand hier der
+        // Bauteil-Mittelpunkt plus fester Offsets `+100/+60`: Bei orthogonal
+        // verlegten Leitungen mit Umweg lag dort nichts, der Klick auf eine
+        // Warnung zoomte also ins Leere und die Regelverletzung blieb unsichtbar.
+        const bounds = document.querySelector('.react-flow')?.getBoundingClientRect();
+        const focus = edgeFocusTarget({
+          waypoints: getCableRoute(id)?.waypoints,
+          source: {
+            x: source.position.x,
+            y: source.position.y,
+            width: nodeWidth(source, NODE_FOOTPRINT.width),
+            height: nodeHeight(source, NODE_FOOTPRINT.height),
+          },
+          target: {
+            x: target.position.x,
+            y: target.position.y,
+            width: nodeWidth(target, NODE_FOOTPRINT.width),
+            height: nodeHeight(target, NODE_FOOTPRINT.height),
+          },
+          viewport: bounds ? { width: bounds.width, height: bounds.height } : undefined,
+          maxZoom: PLANNER_FOCUS_MAX_ZOOM,
+          minZoom: PLANNER_MIN_ZOOM,
+        });
+        void setCenter(focus.x, focus.y, { zoom: focus.zoom, duration: 450 });
       }
     };
     window.addEventListener('planner-fit-view', handleFitView);

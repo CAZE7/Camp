@@ -198,6 +198,19 @@ function FindingCard({
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">
             <strong>Problem:</strong> {toPlainExplanation(warning.message)}
           </p>
+          {/* UI-AUDIT RS-002: Befund aus einer älteren Routing-Berechnung.
+              Er bleibt sichtbar (kein Springen der Zähler, kein Verschlucken
+              bei einem dauerhaft fehlgeschlagenen Lauf), wird aber nicht als
+              Urteil über den aktuellen Stand ausgegeben. */}
+          {warning.provisional === true && (
+            <p
+              data-testid="warning-provisional"
+              className="mt-1 font-mono text-[11px] leading-relaxed text-ink-soft"
+            >
+              Vorläufig: geprüft gegen den vorherigen Routing-Stand — die Bewertung der aktuellen Eingabe
+              steht noch aus.
+            </p>
+          )}
           {(warning.measuredValue !== undefined || warning.expectedValue !== undefined) && !values && (
             <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
               Ist: {valueWithUnit(warning.measuredValue, warning.unit)}

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { useLiveValidation, type ValidationWarning } from './useLiveValidation';
 import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
 import { performAutoWiring } from '../../../lib/autoWire';
@@ -7,7 +7,13 @@ import { isStarterBattery } from '../../../lib/autoWire/validation';
 import { TEMPLATE_AUTARK } from '../templates';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
-import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import {
+  beginCableRouteRun,
+  clearCableRoutes,
+  failCableRouteRun,
+  publishCableRouteFinalValidation,
+  publishCableRouteResult,
+} from '../../edges/utils/cableRouteStore';
 
 /**
  * Befunde der Verifikations-Engine tragen `verify-`-IDs. Dieses Helferchen
@@ -736,5 +742,129 @@ describe('useLiveValidation', () => {
       expect(warning!.measuredValue).toMatch(/12 V/);
       expect(warning!.measuredValue).toMatch(/24 V/);
     });
+  });
+});
+
+/**
+ * UI-AUDIT 2026-10-13 — RS-002 (Nachzug Warn-Zentrale).
+ *
+ * `useLiveValidation` las den Final-Report über `useCableRouteFinalValidation()`
+ * und damit ohne Eingabe-Zuordnung. Während eines Laufs (Median 240–291 ms)
+ * standen die Routing-Befunde der VORGÄNGER-Eingabe in der Warn-Zentrale, als
+ * wären sie das Urteil über den aktuellen Plan.
+ */
+describe('useLiveValidation — Zuordnung der Routing-Befunde zur Eingabe (RS-002)', () => {
+  const lockedNodes: Node[] = [
+    { id: 'battery', type: 'battery', position: { x: 0, y: 0 }, data: { capacity: 100 } },
+    { id: 'load', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 60 } },
+  ];
+  const lockedEdges: Edge<CableEdgeData>[] = [
+    {
+      id: 'locked-wire',
+      source: 'battery',
+      target: 'load',
+      data: {
+        intent: 'locked',
+        locked: true,
+        lockedWaypoints: [
+          { x: 10, y: 10 },
+          { x: 20, y: 10 },
+        ],
+      },
+    },
+  ];
+  const invalidReport = {
+    status: 'INVALID',
+    counts: {
+      edgeNodeCollisions: 1,
+      edgeEdgeOverlaps: 0,
+      clearanceViolations: 0,
+      lockedRouteViolations: 1,
+    },
+    violations: [
+      { invariant: 'I1', edgeId: 'locked-wire', otherId: 'obstacle', detail: 'Segment trifft obstacle.' },
+    ],
+    lockedRouteViolations: [
+      { code: 'ROUTE-LOCK-ENDPOINT', edgeId: 'locked-wire', detail: 'Weg endet nicht am Anschluss.' },
+    ],
+    edgeCount: 1,
+  } as unknown as Parameters<typeof publishCableRouteResult>[0]['report'];
+  const gen = (hash: string, generation: number) => ({
+    hash,
+    generation,
+    revision: 1,
+    allowed: true,
+    converged: true,
+  });
+
+  const routingWarningsOf = (warnings: ValidationWarning[]) =>
+    warnings.filter((w) => w.category === 'routing');
+
+  afterEach(() => {
+    act(() => clearCableRoutes());
+  });
+
+  it('ein Report zur aktuellen Eingabe ergibt Befunde ohne Vorläufigkeits-Kennzeichnung', () => {
+    act(() => {
+      clearCableRoutes();
+      publishCableRouteResult({ routes: new Map(), report: invalidReport, generation: gen('h1', 1) });
+    });
+    const { result } = renderHook(() => useLiveValidation(lockedNodes, lockedEdges));
+    const routing = routingWarningsOf(result.current);
+    expect(routing.length).toBeGreaterThan(0);
+    expect(routing.every((w) => w.provisional === undefined)).toBe(true);
+  });
+
+  it('während eines neuen Laufs bleiben die Befunde stehen, gelten aber als vorläufig', () => {
+    act(() => {
+      clearCableRoutes();
+      publishCableRouteResult({ routes: new Map(), report: invalidReport, generation: gen('h1', 1) });
+    });
+    const { result } = renderHook(() => useLiveValidation(lockedNodes, lockedEdges));
+    const before = routingWarningsOf(result.current);
+
+    // Neue Eingabe angemeldet, Ergebnis noch nicht veröffentlicht.
+    act(() => {
+      beginCableRouteRun(gen('h2', 2));
+    });
+
+    const after = routingWarningsOf(result.current);
+    // Kein Springen der Zähler: dieselben Befunde, dieselben IDs.
+    expect(after.map((w) => w.id).sort()).toEqual(before.map((w) => w.id).sort());
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.every((w) => w.provisional === true)).toBe(true);
+  });
+
+  it('nach einem fehlgeschlagenen Lauf bleibt der letzte Befund sichtbar und vorläufig', () => {
+    act(() => {
+      clearCableRoutes();
+      publishCableRouteResult({ routes: new Map(), report: invalidReport, generation: gen('h1', 1) });
+    });
+    const { result } = renderHook(() => useLiveValidation(lockedNodes, lockedEdges));
+    expect(routingWarningsOf(result.current).length).toBeGreaterThan(0);
+
+    act(() => {
+      failCableRouteRun(gen('h2', 2), 'Kein Pfad gefunden');
+    });
+
+    const after = routingWarningsOf(result.current);
+    // Ein dauerhaft fehlgeschlagener Lauf darf den Befund nicht verschlucken.
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.every((w) => w.provisional === true)).toBe(true);
+  });
+
+  it('ein veröffentlichtes Ergebnis zur neuen Eingabe hebt die Vorläufigkeit auf', () => {
+    act(() => {
+      clearCableRoutes();
+      publishCableRouteResult({ routes: new Map(), report: invalidReport, generation: gen('h1', 1) });
+      beginCableRouteRun(gen('h2', 2));
+    });
+    const { result } = renderHook(() => useLiveValidation(lockedNodes, lockedEdges));
+    expect(routingWarningsOf(result.current).every((w) => w.provisional === true)).toBe(true);
+
+    act(() => {
+      publishCableRouteResult({ routes: new Map(), report: invalidReport, generation: gen('h2', 2) });
+    });
+    expect(routingWarningsOf(result.current).every((w) => w.provisional === undefined)).toBe(true);
   });
 });

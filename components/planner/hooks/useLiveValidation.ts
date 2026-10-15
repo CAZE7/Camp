@@ -27,7 +27,7 @@ import type { AutoWireConflict, AutoWireReport } from '../../../lib/autoWire/con
 // Stelle wie alle anderen Modellwert-Texte — keine zweite Implementierung.
 import { diagnosticText } from '../../../lib/safeText';
 import { isRouteLocked } from '../../../lib/electricalGraph/intent';
-import { useCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import { useCableRouteSnapshot } from '../../edges/utils/cableRouteStore';
 
 export interface ValidationWarning {
   id: string;
@@ -76,6 +76,18 @@ export interface ValidationWarning {
    * auszugeben wäre eine Behauptung, die die Engine gerade nicht trifft.
    */
   unverified?: boolean;
+  /**
+   * Der Befund stammt aus einem Routing-Ergebnis, das zu einer ÄLTEREN Eingabe
+   * gehört — ein neuer Lauf ist angekündigt, fehlgeschlagen oder nicht
+   * konvergiert (UI-AUDIT RS-002).
+   *
+   * Bewusst NICHT `unverified`: Das kennzeichnet eine Datenlücke („nicht
+   * entscheidbar"). Hier WURDE entschieden, nur nicht über den aktuellen
+   * Stand. Der Befund bleibt sichtbar — ihn während eines Laufs zu verwerfen
+   * ließe die Zähler springen und würde bei einem dauerhaft fehlgeschlagenen
+   * Lauf einen echten Befund verschlucken.
+   */
+  provisional?: boolean;
   /**
    * Strukturierte Befund-Details (Auftrag §14/§16): Betriebsstrom/Nennstrom/
    * Belastbarkeit, contributors, Iz-Faktoren. Die Warn-Zentrale zeigt daraus
@@ -218,7 +230,21 @@ export function useLiveValidation(
 ): ValidationWarning[] {
   // Quelle ist der vom globalen Router publizierte Final-Report (nicht der
   // Kanten-Tooltip und nicht der separate PlannerError-Store).
-  const routingReport = useCableRouteFinalValidation();
+  //
+  // UI-AUDIT RS-002 (Nachzug Warn-Zentrale): Der Report wird zusammen mit
+  // seiner Eingabe-Zuordnung gelesen. `useCableRouteFinalValidation()` allein
+  // lieferte während eines Laufs (Live-Pfad: Median 240–291 ms bei N=36/E=134)
+  // den Report der VORGÄNGER-Eingabe — dieselben Befunde standen dann in der
+  // Warn-Zentrale, ohne dass erkennbar war, dass sie gerade neu geprüft werden.
+  const routing = useCableRouteSnapshot();
+  const routingReport = routing.report;
+  /**
+   * `valid`/`invalid` sind genau die Phasen, in denen das veröffentlichte
+   * Ergebnis zur angemeldeten Eingabe gehört (s. `derivePhase` in
+   * `cableRouteStore.ts`). In `routing`, `error` und `not-converged` stammt
+   * der Report aus einem älteren Lauf.
+   */
+  const routingReportCurrent = routing.phase === 'valid' || routing.phase === 'invalid';
   return useMemo(() => {
     if (!nodes || !edges) return [];
 
@@ -881,6 +907,7 @@ export function useLiveValidation(
         source: 'Globaler Routing-Pass: Final-Validation der veröffentlichten Wegpunkte',
         remedy: 'Leitung entsperren, die Bauteile/Leitungsführung anpassen und bei Bedarf erneut fixieren.',
         message: violation.detail,
+        ...(routingReportCurrent ? {} : { provisional: true }),
       });
     }
     for (const violation of routingReport?.contractViolations ?? []) {
@@ -922,11 +949,15 @@ export function useLiveValidation(
         source: 'Globaler Routing-Pass: Lock-Snapshot-/Endpunktprüfung',
         remedy: lockRemedy(violation.code),
         message: violation.detail,
+        ...(routingReportCurrent ? {} : { provisional: true }),
       });
     }
 
     return warnings;
-  }, [nodes, edges, report, autoWireReport, routingReport]);
+    // `routingReportCurrent` ist aus `routing.phase` abgeleitet und gehört
+    // trotzdem in die Liste: Die Kennzeichnung der Routing-Befunde hängt an
+    // ihr, nicht am Report-Objekt allein (react-hooks/exhaustive-deps).
+  }, [nodes, edges, report, autoWireReport, routingReport, routingReportCurrent]);
 }
 
 /**

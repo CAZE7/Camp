@@ -37,6 +37,11 @@ describe('components/planner/constants', () => {
     // Kein Zwei-Frame-Retry mehr: Auf dem Handy ist die Plan-Pane beim Tippen
     // auf eine Katalog-Kachel noch hidden (E2E: Tap-to-Connect).
     expect(PANE_WAIT_FRAMES).toBeGreaterThanOrEqual(10);
+    // UI-AUDIT UX-FOCUS-001: EINE Fokus-Zoomstufe für Bauteile und Leitungen,
+    // innerhalb des zulässigen Zoom-Bereichs.
+    expect(plannerConstants.PLANNER_FOCUS_MAX_ZOOM).toBe(1.15);
+    expect(plannerConstants.PLANNER_FOCUS_MAX_ZOOM).toBeGreaterThanOrEqual(PLANNER_MIN_ZOOM);
+    expect(plannerConstants.PLANNER_FOCUS_MAX_ZOOM).toBeLessThanOrEqual(PLANNER_MAX_ZOOM);
     expect(plannerConstants).not.toHaveProperty('PLANNER_OVERVIEW_ZOOM');
     expect(plannerConstants).not.toHaveProperty('PLANNER_FULL_DETAIL_ZOOM');
   });

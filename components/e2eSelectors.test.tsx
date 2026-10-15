@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Sidebar } from './Sidebar';
 import { usePlannerStore } from '../store/usePlannerStore';
+import { ROUTING_STATUS_TESTID, ROUTING_TERMINAL_PHASES } from './planner/ui/RoutingStatusBadge';
 
 /**
  * components/e2eSelectors.test.tsx
@@ -170,5 +171,53 @@ describe('E2E-Selektoren — tatsächlich gerendert', () => {
     for (const required of ['battery', 'fuse', 'consumer', 'busbar', 'inverter', 'consumer230v']) {
       expect(types, `Kachel für ${required} fehlt`).toContain(required);
     }
+  });
+});
+
+/**
+ * UI-AUDIT 2026-10-13 — Routing-Phasen sind Teil des E2E-Vertrags.
+ *
+ * Das Routing-Badge hat seit RS-002 sechs Lebenszyklus-Zustände. Die
+ * Playwright-Specs laufen nicht in jedem lokalen Lauf (echter Browser), und
+ * `routing-stability.spec.ts` wartet auf einen ABGESCHLOSSENEN Lauf. Wäre eine
+ * neue Phase ohne Selektor geblieben — oder hätte der Wait nur `valid|invalid`
+ * abgedeckt —, wäre die Spec ins Zeitlimit gelaufen, obwohl die App einen
+ * korrekten Zustand zeigt. Deshalb wird die Kopplung hier ohne Browser geprüft.
+ */
+describe('Routing-Phasen ↔ E2E-Selektoren (RS-002)', () => {
+  const badgeSource = readFileSync(
+    join(REPO_ROOT, 'components', 'planner', 'ui', 'RoutingStatusBadge.tsx'),
+    'utf8'
+  );
+  const stabilitySpec = readFileSync(join(REPO_ROOT, 'tests', 'e2e', 'routing-stability.spec.ts'), 'utf8');
+
+  it('jede Routing-Phase hat einen data-testid, der im Badge gerendert wird', () => {
+    const phases = Object.keys(ROUTING_STATUS_TESTID);
+    // Vollständigkeit gegen die Phasen-Definition des Stores — sonst könnte
+    // die Tabelle hier schrumpfen, ohne dass es auffällt.
+    expect(phases.sort()).toEqual(['idle', 'routing', 'valid', 'invalid', 'not-converged', 'error'].sort());
+    const missing = phases.filter((phase) => {
+      const id = ROUTING_STATUS_TESTID[phase as keyof typeof ROUTING_STATUS_TESTID];
+      return !badgeSource.includes(`data-testid="${id}"`);
+    });
+    expect(missing, `Phase ohne gerenderten Selektor: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('der Wait auf einen abgeschlossenen Lauf deckt jede Terminal-Phase ab', () => {
+    const missing = ROUTING_TERMINAL_PHASES.filter(
+      (phase) => !stabilitySpec.includes(`data-testid="${ROUTING_STATUS_TESTID[phase]}"`)
+    );
+    expect(missing, `routing-stability.spec.ts wartet nicht auf: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('der Wait wartet NICHT auf die nicht-terminalen Phasen', () => {
+    // `idle` und `routing` bedeuten „noch nicht fertig". Ständen sie im Wait,
+    // würde die Spec sofort weiterlaufen und den eigentlichen Zustand nie prüfen.
+    const waitForBlock = stabilitySpec.slice(
+      stabilitySpec.indexOf('await expect('),
+      stabilitySpec.indexOf('.toBeVisible();')
+    );
+    expect(waitForBlock).not.toContain(ROUTING_STATUS_TESTID.idle);
+    expect(waitForBlock).not.toContain(ROUTING_STATUS_TESTID.routing);
   });
 });

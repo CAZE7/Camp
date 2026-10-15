@@ -254,3 +254,33 @@ describe('consequence — Folge-Zeile passt zum Befund', () => {
     expect(consequence(warning({ id: 'battery-capacity', category: 'estimation' }))).toContain('Reichweite');
   });
 });
+
+/**
+ * UI-AUDIT 2026-10-13 — RS-002 (Nachzug Warn-Zentrale).
+ *
+ * Ein Routing-Befund, der aus einer älteren Berechnung stammt, bleibt
+ * sichtbar — die Zähler dürfen nicht springen, und bei einem dauerhaft
+ * fehlgeschlagenen Lauf darf kein echter Befund verschwinden. Er darf aber
+ * nicht als Urteil über den aktuellen Stand ausgegeben werden.
+ */
+describe('WarningCenter — vorläufige Routing-Befunde (RS-002)', () => {
+  it('kennzeichnet einen Befund aus einer älteren Routing-Berechnung', () => {
+    openPanel([warning({ id: 'route-lock-I1-e1', category: 'routing', provisional: true })]);
+    const marker = screen.getByTestId('warning-provisional');
+    expect(marker.textContent).toContain('Vorläufig');
+    expect(marker.textContent).toContain('vorherigen Routing-Stand');
+  });
+
+  it('ein Befund zum aktuellen Routing-Stand trägt keine Vorläufigkeits-Zeile', () => {
+    openPanel([warning({ id: 'route-lock-I1-e1', category: 'routing' })]);
+    expect(screen.queryByTestId('warning-provisional')).not.toBeInTheDocument();
+  });
+
+  it('Vorläufig ist keine Datenlücke — die Folge-Zeile bleibt die Routing-Folge', () => {
+    // `unverified` und `provisional` sind verschiedene Aussagen: „nicht
+    // entscheidbar" gegen „entschieden, aber über einen älteren Stand".
+    openPanel([warning({ id: 'route-lock-I1-e1', category: 'routing', provisional: true })]);
+    expect(screen.getByText(/nicht routing-verifiziert/)).toBeInTheDocument();
+    expect(screen.queryByText(/Dieser Punkt ist ungeprüft/)).not.toBeInTheDocument();
+  });
+});
