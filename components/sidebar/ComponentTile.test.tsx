@@ -24,7 +24,7 @@ describe('ComponentTile — Klick fügt hinzu (B-05)', () => {
 
   it('a desktop click without moving adds the component at the visible centre', () => {
     const addSpy = vi.spyOn(drag, 'addAtVisibleCenter').mockImplementation(() => {});
-    const { container } = render(<ComponentTile comp={comp} />);
+    const { container } = render(<ComponentTile comp={comp} accent="default" />);
     const tile = within(container).getByRole('option', { name: /Batterie hinzufügen/ });
 
     fireEvent.pointerDown(tile, { pointerType: 'mouse', clientX: 100, clientY: 100 });
@@ -35,7 +35,7 @@ describe('ComponentTile — Klick fügt hinzu (B-05)', () => {
 
   it('a real drag (release far away) does not add on click', () => {
     const addSpy = vi.spyOn(drag, 'addAtVisibleCenter').mockImplementation(() => {});
-    const { container } = render(<ComponentTile comp={comp} />);
+    const { container } = render(<ComponentTile comp={comp} accent="default" />);
     const tile = within(container).getByRole('option', { name: /Batterie hinzufügen/ });
 
     fireEvent.pointerDown(tile, { pointerType: 'mouse', clientX: 100, clientY: 100 });

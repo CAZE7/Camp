@@ -9,7 +9,6 @@ describe('usePlannerActions — Automatisch verbinden (B-11)', () => {
   });
 
   it('runs the electric auto-wire only in the electric view', () => {
-    const autoWireSpy = vi.spyOn(usePlannerStore.getState(), 'autoWireSystem');
     const onFeedback = vi.fn();
     const { result } = renderHook(() =>
       usePlannerActions({ warnings: [], onFeedback, onRequestReset: () => {} })
@@ -18,11 +17,11 @@ describe('usePlannerActions — Automatisch verbinden (B-11)', () => {
     usePlannerStore.setState({ viewMode: 'water' });
     act(() => result.current.runAutoWire());
 
-    expect(onFeedback).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'info', message: expect.stringContaining('Wasser-Tab') })
-    );
-    // Im Wasser-Tab darf kein elektrischer Vorschlag entstehen.
+    expect(onFeedback).toHaveBeenCalledTimes(1);
+    const feedback = onFeedback.mock.calls[0]?.[0] as { type: string; message: string } | null | undefined;
+    expect(feedback?.type).toBe('info');
+    expect(feedback?.message).toContain('Wasser-Tab');
+    // Im Wasser-Tab darf kein elektrischer Vorschlag entstehen (weder Vorschau noch Lauf).
     expect(usePlannerStore.getState().autoWirePreview).toBeFalsy();
-    autoWireSpy.mockRestore();
   });
 });
