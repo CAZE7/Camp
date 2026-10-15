@@ -206,22 +206,16 @@ function calculateDailyConsumption(
   return dailyConsumptionAh;
 }
 
+/** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
+export const AUTARKY_NOT_CALCULATED = 'Nicht berechnet: kein Verbrauch eingetragen';
+
 function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number): string {
-  let autarkyHours: number;
-  if (usableCapacityAh === 0 && dailyConsumptionAh === 0) {
-    autarkyHours = Infinity;
-  } else if (usableCapacityAh === 0) {
-    autarkyHours = 0;
-  } else if (dailyConsumptionAh > 0) {
-    autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
-  } else {
-    autarkyHours = Infinity;
-  }
-
-  const autarkyDays = autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
-  const autarkyRemainderHours = autarkyHours === Infinity ? 0 : Math.floor(autarkyHours % 24);
-
-  return autarkyHours === Infinity ? 'Unendlich' : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
+  // QA B-02: Eine Vorlage ohne Verbrauchsangaben zeigte „Unendlich“. Das ist
+  // falsch — die Autonomie ist ohne Verbrauch nicht bestimmt.
+  if (!(dailyConsumptionAh > 0)) return AUTARKY_NOT_CALCULATED;
+  if (usableCapacityAh <= 0) return '0 Tage / 0 Stunden';
+  const autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
+  return `${Math.floor(autarkyHours / 24)} Tage / ${Math.floor(autarkyHours % 24)} Stunden`;
 }
 
 function calculateSolarMetrics(
