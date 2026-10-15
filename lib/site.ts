@@ -1,8 +1,12 @@
 /**
  * lib/site.ts — Herkunft und Basis-Pfad der Auslieferung an genau einer Stelle.
  *
- * Die Anwendung wird als statischer Export über GitHub Pages unter einem
- * Repository-Pfad ausgeliefert (`/Camp`). Absolute Adressen entstehen an
+ * Die Anwendung wird als statischer Export über GitHub Pages ausgeliefert,
+ * öffentlich aber unter der eigenen Domain `elektroplaner-camper.de` an der
+ * Wurzel (`public/CNAME`, Deploy baut ohne Basis-Pfad). Die frühere Herkunft
+ * `caze7.github.io` darf hier NICHT wieder auftauchen: Als Canonical hätte sie
+ * Google ausdrücklich gesagt, die eigene Domain sei nur die Kopie — genau
+ * dadurch fiel die Domain aus dem Index. Absolute Adressen entstehen an
  * mehreren Stellen: Canonical-Verweis, Open-Graph-URL, Sitemap-Eintrag und
  * der Sitemap-Verweis in `robots.txt`. Wären das vier eigene
  * Zeichenketten-Verkettungen, würde ein geänderter Basis-Pfad an genau einer
@@ -11,11 +15,11 @@
  *
  * Der Basis-Pfad kommt aus derselben Umgebungsvariablen, die
  * `next.config.mjs` als `basePath` setzt; ohne gesetzte Variable ist er leer
- * (Entwicklung und Prüfbau ohne Basis-Pfad).
+ * (Entwicklung, Prüfbau und die Auslieferung unter der eigenen Domain).
  */
 
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
-export const SITE_ORIGIN = 'https://caze7.github.io';
+export const SITE_ORIGIN = 'https://elektroplaner-camper.de';
 
 /** Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD). */
 export const SITE_NAME = 'Werft';

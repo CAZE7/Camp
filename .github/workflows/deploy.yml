@@ -113,12 +113,20 @@ jobs:
       - name: Pages konfigurieren
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-        with:
-          static_site_generator: next
+        # BEWUSST OHNE `static_site_generator: next`: Die Action würde sonst
+        # next.config.mjs patchen (siehe Kopfkommentar dort). Die Auslieferung
+        # läuft unter der eigenen Domain an der Wurzel (public/CNAME), nicht
+        # mehr unter caze7.github.io/Camp — ein Basis-Pfad `/Camp` würde
+        # Canonical, Sitemap und Assets auf Adressen zeigen lassen, die es
+        # unter elektroplaner-camper.de nicht gibt.
 
       - name: Build (Static Export)
         env:
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Eigene Domain = Auslieferung an der Wurzel, also KEIN Basis-Pfad.
+          # Nicht `steps.pages.outputs.base_path` verwenden: Das liefert für
+          # Projekt-Repos `/Camp` — die Adresse, die Google zuvor als
+          # Canonical bekam und die eigene Domain aus dem Index warf.
+          NEXT_PUBLIC_BASE_PATH: ''
         run: npm run build
 
       - name: Jekyll deaktivieren

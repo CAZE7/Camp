@@ -246,7 +246,11 @@ describe('GitHub-Actions-Workflows', () => {
     });
   });
 
-  it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
+  it('Pages-Build läuft ohne Basis-Pfad — eigene Domain statt github.io/Camp', () => {
+    // Regressionsschutz für den Canonical-Befund: Mit dem von configure-pages
+    // gelieferten `/Camp` zeigten Canonical, Sitemap und Assets unter
+    // elektroplaner-camper.de ins Leere, und Google bekam zuvor die
+    // github.io-Adresse als Original genannt.
     const workflow = readWorkflow('deploy.yml');
     const buildSteps = workflow.jobs.build?.steps ?? [];
     // configure-pages ist per SHA gepinnt — suche nach dem Action-Namen ohne Ref.
@@ -254,10 +258,15 @@ describe('GitHub-Actions-Workflows', () => {
     const staticBuild = buildSteps.find((step) => step.run?.trim() === 'npm run build');
 
     expect(configurePages?.id).toBe('pages');
+    // Ohne `static_site_generator` patcht die Action next.config.mjs nicht.
+    expect(configurePages?.with?.static_site_generator).toBeUndefined();
     expect(staticBuild?.with).toBeUndefined();
     expect(staticBuild?.env).toEqual({
-      NEXT_PUBLIC_BASE_PATH: '${{ steps.pages.outputs.base_path }}',
+      NEXT_PUBLIC_BASE_PATH: '',
     });
+    expect(readFileSync(join(process.cwd(), 'public', 'CNAME'), 'utf8').trim()).toBe(
+      'elektroplaner-camper.de'
+    );
   });
 
   it('basePath steht in Paarform — configure-pages ersetzt sonst den Schlüssel', () => {

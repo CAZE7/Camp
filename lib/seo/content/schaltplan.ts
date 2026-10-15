@@ -112,7 +112,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/planer/) — vom ersten Bauteil bis zur Stückliste.',
+        text: '[Beispiel-Schaltplan im Elektroplaner öffnen](/planer/?template=ladebooster-solar) — das Kastenwagen-Setup aus diesem Text steht dort fertig verkabelt mit LiFePO4, Ladebooster und Solar, vom ersten Bauteil bis zur Stückliste.',
       },
     },
   ],

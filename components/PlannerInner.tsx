@@ -9,6 +9,7 @@ import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
 import { PlannerStatusBar } from './planner/ui/PlannerStatusBar';
+import { usePlannerEntryPlan } from './planner/hooks/usePlannerEntryPlan';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
@@ -69,6 +70,9 @@ function PlannerShell() {
   const undo = usePlannerStore((state) => state.undo);
   const redo = usePlannerStore((state) => state.redo);
   const zoom = useFlowStore((state) => state.transform[2] ?? 1);
+  // Einstieg: geteilter Plan (#plan=) → Vorlage (?template=) → Beispiel-Setup
+  // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
+  const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
 
   // Auswahl öffnet den Inspector, leere Auswahl schließt ihn — dokumentierte
   // Slide-over-Semantik unterhalb des Andock-Breakpoints. Das Effect hängt an
@@ -197,6 +201,24 @@ function PlannerShell() {
 
       {/* Chrome: Menüleiste + Werkzeugleiste (+ geführte Schrittleiste). */}
       <PlannerDashboard />
+
+      {entryNotice && (
+        <div
+          role={entryNotice.type === 'error' ? 'alert' : 'status'}
+          aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
+          className="flex shrink-0 items-start gap-2 border-b border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
+        >
+          <span className="flex-1">{entryNotice.message}</span>
+          <button
+            type="button"
+            aria-label="Meldung schließen"
+            onClick={dismissEntryNotice}
+            className="cad-btn shrink-0 px-1"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <div
         data-testid="planner-workspace"
