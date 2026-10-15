@@ -10,6 +10,135 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## RS-001 — Routen und Final-Report wurden getrennt veröffentlicht (zerrissener Zustand) — **GELÖST (2026-10-13)**
+
+- **AREA:** Routing ↔ UI / Zustandsarchitektur
+- **FILE:** `components/edges/utils/cableRouteStore.ts` (Modul-Zustand,
+  `publishCableRoutes` / `publishCableRouteFinalValidation` /
+  `publishCableRouteGeneration`), Konsumenten: `components/planner/ui/RoutingStatusBadge.tsx`,
+  `components/planner/hooks/useLiveValidation.ts`, `components/planner/ui/GuidedPlanRail.tsx`
+- **DESCRIPTION:** Der Router-Zustand lag in DREI getrennten Modul-Variablen mit je
+  eigener Hörer-Menge: `current` (Wege), `currentValidation` (Report),
+  `currentGeneration` (Generation). `CableRouteSync` publizierte sie
+  nacheinander. Damit existierte ein Zeitpunkt, an dem die Geometrie der neuen
+  Generation gehörte und der Report der alten.
+- **BELEG (2026-10-13, vor der Änderung gemessen):** Ein Beobachter, der nach
+  jeder Benachrichtigung Route und Report liest, sah die Zustandsfolge
+  `1|VALID` → **`2|VALID`** → `2|INVALID`. Der mittlere Wert ist der
+  zerrissene Zustand: Weglänge der Generation 2 mit dem Urteil der
+  Generation 1. `RoutingStatusBadge` las genau diese beiden Werte und zeigte
+  in diesem Fenster die Regelverletzungen der VORGÄNGER-Eingabe zu den Wegen
+  der aktuellen.
+- **CURRENT BEHAVIOR (behoben):** Ein einziges unveränderliches
+  `CableRouteSnapshot`-Objekt mit EINER Hörer-Menge. `publishCableRouteResult`
+  wechselt Wege, Report, Generation und Phase in einem `commit`. Die alten
+  Publish-Funktionen bleiben als Kompatibilitäts-Zugänge erhalten und
+  schreiben in dasselbe Snapshot.
+- **SEVERITY:** mittel (falsche Sicherheitsaussage in der Anzeige)
+- **RELATED TEST:** `components/edges/utils/cableRouteStore.test.ts`
+  (Block „Atomare Veröffentlichung (UI-AUDIT RS-001)": genau eine
+  Benachrichtigung; beobachtete Folge ist `['2|INVALID']`, kein `2|VALID`),
+  `components/edges/utils/cableRouteSync.test.tsx`
+- **RELATED ISSUE:** RS-002, RS-003, ADR 0014 (eine Quelle für Kabelgeometrie)
+
+---
+
+## RS-002 — Veralteter Final-Report galt während eines Laufs als aktueller, gültiger Stand — **GELÖST (2026-10-13)**
+
+- **AREA:** Routing ↔ UI / Lebenszyklus
+- **FILE:** `components/edges/utils/cableRouteStore.ts`,
+  `components/planner/ui/RoutingStatusBadge.tsx`, `components/planner/ui/GuidedPlanRail.tsx`
+- **DESCRIPTION:** `tracker.begin()` publizierte die neue Generation VOR dem
+  Lauf; der Report trug keine Zuordnung zu einer Eingabe. Ein Leser konnte
+  damit nicht feststellen, ob der vorliegende Report zur angezeigten
+  Eingabe gehört.
+- **BELEG (2026-10-13):** Nach `publishCableRouteGeneration({generation: 2, …})`
+  lag weiterhin der Report der Generation 1 vor — und
+  `'generation' in report` war `false`. Der Live-Pfad braucht dafür messbar
+  lange: `npm run perf:edge-routing` meldet Median 240–291 ms bei N=36/E=134.
+  In diesem Fenster zeigte `RoutingStatusBadge` „Routing verifiziert" für
+  einen Plan, der noch gar nicht geroutet war, und `GuidedPlanRail` hakte
+  Schritt 5 über `report?.status === 'VALID'` ab.
+- **CURRENT BEHAVIOR (behoben):** Das Snapshot trägt `publishedHash` /
+  `publishedGeneration`. `derivePhase` liefert `routing`, solange
+  `publishedHash !== generation.hash` — der alte Report bleibt abrufbar, gilt
+  aber nicht mehr als aktueller Stand. Neue Badge-Zustände
+  `routing-status-stale` und `routing-status-error`; `GuidedPlanRail` prüft
+  jetzt `phase === 'valid'`.
+  **Nachtrag zweiter Durchgang (2026-10-13):** Der dritte Konsument war zunächst
+  übersehen worden — `useLiveValidation` las den Report weiter über
+  `useCableRouteFinalValidation()` und speiste damit Befunde der
+  VORGÄNGER-Eingabe in die Warn-Zentrale. Behoben über `useCableRouteSnapshot()`
+  und ein neues Feld `ValidationWarning.provisional`. Die Befunde bleiben
+  bewusst sichtbar (kein Springen der Zähler, kein Verschlucken bei einem
+  dauerhaft fehlgeschlagenen Lauf), werden aber nicht mehr als Urteil über den
+  aktuellen Stand ausgegeben. `provisional` ist ausdrücklich NICHT `unverified`
+  — das kennzeichnet eine Datenlücke, hier wurde über einen älteren Stand
+  entschieden. Gleichzeitig deckt `tests/e2e/routing-stability.spec.ts` jetzt
+  alle vier Terminal-Phasen ab; die Kopplung Selektor ↔ Phase prüft
+  `components/e2eSelectors.test.tsx` ohne Browser (`ROUTING_STATUS_TESTID` ist
+  als `Record<CableRoutePhase, string>` typisiert, eine neue Phase bricht damit
+  `npm run typecheck`).
+- **SEVERITY:** mittel (falsche Sicherheitsaussage für die Dauer jedes Laufs)
+- **RELATED TEST:** `components/edges/utils/cableRouteStore.test.ts`
+  (Block „Veraltete Ergebnisse"), `components/planner/ui/RoutingStatusBadge.test.tsx`
+  (Block „veraltete und fehlgeschlagene Läufe")
+- **RELATED ISSUE:** RS-001, RS-003, V2-ROUTE-001 (`lib/routing/generation.ts`)
+
+---
+
+## RS-003 — Ein fehlgeschlagener Routing-Lauf hatte keinen Fehlerzustand — **GELÖST (2026-10-13)**
+
+- **AREA:** Routing ↔ UI / Fehlerbehandlung
+- **FILE:** `components/edges/utils/cableRouteStore.ts` (`CableRouteSync`)
+- **DESCRIPTION:** `routeAllCables` lief ohne `try/catch` im gedrosselten
+  Timer-Lauf. Es gab weder einen Fehlerzustand noch eine Meldung; die
+  Oberfläche zeigte anschließend kommentarlos die Geometrie der alten
+  Generation weiter.
+- **BELEG (2026-10-13, Gegenprobe):** Mit entferntem `try/catch` schlagen die
+  drei Fehlerpfad-Tests in `cableRouteSync.test.tsx` fehl UND Vitest meldet
+  `Unhandled Errors` — die Ausnahme entkam dem `setTimeout`-Rückruf. Mit der
+  Fassung sind dieselben Tests grün.
+- **CURRENT BEHAVIOR (behoben):** `failCableRouteRun(status, message)` setzt
+  `phase = 'error'` und eine lesbare Meldung (`describeRoutingError`, kein
+  `[object Object]`), lässt Wege und Report aber unangetastet — ein Fehler
+  wirft den Plan nicht auf eine halbe oder leere Darstellung zurück. Ein
+  späterer erfolgreicher Lauf beendet den Fehlerzustand.
+- **SEVERITY:** mittel (stiller Zustand, unbehandelte Ausnahme)
+- **RELATED TEST:** `components/edges/utils/cableRouteSync.test.tsx`
+  (4 Tests, echter `ReactFlowProvider`-Pfad), `components/edges/utils/cableRouteStore.test.ts`
+  (Block „Fehlgeschlagener Lauf"), `components/planner/ui/RoutingStatusBadge.test.tsx`
+- **RELATED ISSUE:** RS-001, RS-002
+
+---
+
+## UX-FOCUS-001 — Der Warnungs-Fokus zentrierte auf den Bauteil-Mittelpunkt, nicht auf die Trasse — **GELÖST (2026-10-13)**
+
+- **AREA:** UI / Diagnose-Verlinkung
+- **FILE:** `components/planner/FlowCanvas.tsx` (`handleFocusElement`),
+  `components/planner/utils/focusHighlight.ts` (`edgeFocusTarget`),
+  `components/planner/constants.ts` (`PLANNER_FOCUS_MAX_ZOOM`)
+- **DESCRIPTION:** Ein Klick auf eine Warnung dispatcht
+  `planner-focus-element`. Für Leitungen zentrierte der Canvas auf den
+  Mittelpunkt der beiden Bauteile plus fester Offsets `+100/+60` bei
+  `zoom: 1.05`; für Bauteile galt `zoom: 1.15` mit den Fallback-Maßen
+  `200/120`. Die veröffentlichte Trasse — dieselbe Geometrie, die `CableEdge`
+  zeichnet — wurde nicht gelesen.
+- **CURRENT BEHAVIOR (behoben):** `edgeFocusTarget` berechnet Mittelpunkt und
+  Zoom aus der Hüllbox der veröffentlichten Wegpunkte (`getCableRoute(id)`),
+  mit benanntem Fallback auf die Bauteil-Mitte und einer Zoomstufe
+  `PLANNER_FOCUS_MAX_ZOOM` für beide Elementtypen. Bei einer U-Trasse liegt
+  der alte Zielpunkt nachweislich daneben: Bauteile auf `y = 0`, Trasse bis
+  `y = 900` — alter Fokus `(496, 120)`, neuer `(396, 480)`.
+- **SEVERITY:** mittel (Diagnose führt nicht zur Ursache)
+- **RELATED TEST:** `components/planner/utils/focusHighlight.test.ts`
+  (5 neue Tests, reine Funktion), `components/planner/FlowCanvas.test.tsx`
+  (Block „planner-focus-element für Leitungen", 3 Tests; Gegenprobe: mit der
+  alten Logik 2 davon rot)
+- **RELATED ISSUE:** ADR 0014 (eine Quelle für Kabelgeometrie)
+
+---
+
 ## ROUTE-009 — Kreuzungs-Ausweichlauf ist blind für gewichtete Clearance (p02-Kaskade)
 
 - **AREA:** Routing / Kostenmodell

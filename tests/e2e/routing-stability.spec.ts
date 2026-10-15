@@ -83,8 +83,22 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
 
   await openPlanner(page);
   await showCanvas(page);
+  // UI-AUDIT 2026-10-13 (RS-002): „Der erste Lauf ist fertig" heißt seit der
+  // Phasentrennung nicht mehr nur valid|invalid. Ein Lauf kann auch an der
+  // Konvergenzschranke enden oder fehlschlagen — beides sind Endzustände, und
+  // auf sie muss dieser Wait reagieren, sonst läuft er ins Zeitlimit, obwohl
+  // die App einen korrekten (wenn auch roten) Zustand zeigt. Die Selektoren
+  // sind die Terminal-Phasen aus `ROUTING_TERMINAL_PHASES`; geprüft ohne
+  // Browser von `components/e2eSelectors.test.tsx`.
   await expect(
-    page.locator('[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"]')
+    page.locator(
+      [
+        '[data-testid="routing-status-valid"]',
+        '[data-testid="routing-status-invalid"]',
+        '[data-testid="routing-status-not-converged"]',
+        '[data-testid="routing-status-error"]',
+      ].join(', ')
+    )
   ).toBeVisible();
   await waitForRoutingTraceToSettle(page);
 

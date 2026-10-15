@@ -5,7 +5,7 @@ import { Check, ChevronRight, Package, Plus, ScanSearch, SlidersHorizontal, Zap 
 import type { ValidationWarning } from '../hooks/useLiveValidation';
 import type { PlannerFlowNode } from '../../nodes/types';
 import { evaluateGuidedSteps, type GuidedEdgeRef, type GuidedStepAction } from '../utils/guidedSteps';
-import { useCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import { useCableRouteSnapshot } from '../../edges/utils/cableRouteStore';
 import type { VerificationVerdict } from '../../../lib/verify/types';
 
 /**
@@ -56,15 +56,19 @@ export function GuidedPlanRail({
   onOpenBom,
   onSwitchToExpertMode,
 }: GuidedPlanRailProps) {
-  // Routing-Gate: nur `VALID` gilt als fehlerfrei. `undefined` heißt „noch kein
-  // Routing-Ergebnis“ und zählt ebenfalls als nicht bestätigt.
-  const routing = useCableRouteFinalValidation();
+  // Routing-Gate: nur ein veröffentlichtes Ergebnis für die AKTUELLE Eingabe
+  // gilt als fehlerfrei. UI-AUDIT RS-002: `report?.status === 'VALID'` allein
+  // bestätigte während eines Laufs den Report der VORGÄNGER-Eingabe und
+  // hakte Schritt 5 damit an einem Plan ab, der noch gar nicht geroutet war.
+  // `phase === 'valid'` ist genau dann wahr, wenn der veröffentlichte Report
+  // zur angemeldeten Eingabe gehört (s. `derivePhase`).
+  const routing = useCableRouteSnapshot();
   const plan = evaluateGuidedSteps({
     nodes,
     edges,
     warnings,
     verdict,
-    routingValid: routing?.status === 'VALID',
+    routingValid: routing.phase === 'valid',
   });
   const critical = warnings.filter((warning) => warning.type === 'critical').length;
   const hints = warnings.length - critical;

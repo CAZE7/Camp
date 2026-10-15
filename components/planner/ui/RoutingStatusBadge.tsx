@@ -1,6 +1,42 @@
-import { AlertTriangle, CheckCircle2, Repeat2 } from 'lucide-react';
-import { useCableRouteFinalValidation, useCableRouteGeneration } from '../../edges/utils/cableRouteStore';
+import { AlertTriangle, CheckCircle2, OctagonAlert, Repeat2, RefreshCw } from 'lucide-react';
+import { useCableRouteSnapshot, type CableRoutePhase } from '../../edges/utils/cableRouteStore';
 import { totalViolations } from '../../../lib/routing/finalValidation';
+
+/**
+ * UI-AUDIT 2026-10-13 — Vertrag zwischen Routing-Phasen und E2E-Selektoren.
+ *
+ * Das Badge ist die einzige Stelle, an der der Routing-Lebenszyklus im DOM
+ * sichtbar wird. `tests/e2e/routing-stability.spec.ts` wartet auf diesen
+ * Zustand, läuft aber nicht in jedem lokalen Lauf (echter Browser). Damit eine
+ * neue Phase nicht unbemerkt ohne Selektor bleibt, ist die Zuordnung hier
+ * ausdrücklich ausformuliert und durch `components/e2eSelectors.test.tsx`
+ * gegen den Quelltext und die Spec geprüft.
+ *
+ * Der `Record`-Typ erzwingt Vollständigkeit zur Compile-Zeit: Kommt eine Phase
+ * in `CableRoutePhase` hinzu, bricht `npm run typecheck` so lange, bis sie hier
+ * einen Selektor hat.
+ */
+export const ROUTING_STATUS_TESTID: Readonly<Record<CableRoutePhase, string>> = {
+  idle: 'routing-status-idle',
+  routing: 'routing-status-stale',
+  valid: 'routing-status-valid',
+  invalid: 'routing-status-invalid',
+  'not-converged': 'routing-status-not-converged',
+  error: 'routing-status-error',
+};
+
+/**
+ * Phasen, in denen ein Routing-Lauf ABGESCHLOSSEN ist — Ergebnis, Regelverstoß,
+ * Konvergenzschranke oder Fehler. `idle` (noch nichts passiert) und `routing`
+ * (Lauf angekündigt) gehören nicht dazu: Wer auf „fertig" wartet, darf auf
+ * diese beiden nicht reagieren.
+ */
+export const ROUTING_TERMINAL_PHASES: readonly CableRoutePhase[] = [
+  'valid',
+  'invalid',
+  'not-converged',
+  'error',
+];
 
 /**
  * AUDIT F-07 — sichtbare Routing-Final-Gate-Anzeige.
@@ -22,8 +58,11 @@ import { totalViolations } from '../../../lib/routing/finalValidation';
  * Waypoints erzeugt hat — nicht eine Neuberechnung im Render-Pfad.
  */
 export function RoutingStatusBadge() {
-  const report = useCableRouteFinalValidation();
-  const generation = useCableRouteGeneration();
+  // UI-AUDIT RS-001/RS-002: EIN Snapshot statt zwei getrennter Abos.
+  // Vorher las das Badge den Report und die Generation aus zwei Zuständen,
+  // die nacheinander publiziert wurden — für die Dauer eines Laufs zeigte es
+  // damit die Regelverletzungen der VORGÄNGER-Eingabe als aktuellen Stand.
+  const { report, generation, phase, errorMessage } = useCableRouteSnapshot();
 
   // Spec #19 (ROUTING_NOT_CONVERGED): Wenn der Tracker für dieselbe Eingabe
   // zu viele Läufe gezählt hat und weitere Läufe verbietet, ist das ein
@@ -45,9 +84,63 @@ export function RoutingStatusBadge() {
     );
   }
 
+  // UI-AUDIT RS-003: Ein fehlgeschlagener Lauf. Die letzte Geometrie bleibt
+  // stehen (failCableRouteRun verwirft sie nicht) — das muss die Anzeige
+  // genauso sagen, sonst wirkt ein Fehler wie ein stiller Planverlust.
+  if (phase === 'error') {
+    return (
+      <span
+        data-testid="routing-status-error"
+        role="alert"
+        aria-live="polite"
+        aria-label="Routing fehlgeschlagen"
+        title={
+          `Der letzte Routing-Lauf ist fehlgeschlagen: ${errorMessage ?? 'unbekannter Fehler'}. ` +
+          (report
+            ? 'Die zuletzt geprüfte Trassenführung bleibt angezeigt; sie gehört zur vorherigen Eingabe. Verschiebe ein Bauteil leicht, um einen neuen Lauf auszulösen.'
+            : 'Es ist noch keine Trassenführung veröffentlicht. Verschiebe ein Bauteil leicht, um einen neuen Lauf auszulösen.')
+        }
+        className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
+      >
+        <OctagonAlert className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden xl:inline">Routing fehlgeschlagen</span>
+      </span>
+    );
+  }
+
+  // UI-AUDIT RS-002: Eingabe geändert, Ergebnis noch nicht veröffentlicht.
+  // Die angezeigten Wege gehören einer älteren Eingabe — das darf nicht als
+  // „verifiziert“ durchgehen. Der Report bleibt bewusst sichtbar (er ist der
+  // letzte geprüfte Stand), wird aber ausdrücklich als veraltet markiert.
+  if (phase === 'routing') {
+    const stale = report !== undefined;
+    const publishedEdges = report?.edgeCount ?? 0;
+    const detail = stale
+      ? `Die Eingabe hat sich geändert; ein neuer Routing-Lauf ist angekündigt. ` +
+        `Angezeigt wird noch der Stand der vorherigen Eingabe ` +
+        `(Generation ${generation?.generation ?? 0} läuft, veröffentlicht sind ` +
+        `${publishedEdges} Kanten aus einem früheren Lauf). ` +
+        `Die Bewertung wird ersetzt, sobald der Lauf fertig ist.`
+      : 'Der erste Routing-Lauf ist angekündigt; noch ist keine Trassenführung veröffentlicht.';
+    return (
+      <span
+        data-testid="routing-status-stale"
+        role="status"
+        aria-live="polite"
+        aria-label={stale ? 'Routing läuft, Anzeige veraltet' : 'Routing läuft'}
+        title={detail}
+        className="inline-flex h-11 items-center justify-center gap-1 rounded border border-border bg-accent px-2 text-xs font-semibold text-muted-foreground"
+      >
+        <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+        <span className="hidden xl:inline">{stale ? 'Routing läuft · veraltet' : 'Routing läuft'}</span>
+      </span>
+    );
+  }
+
   if (!report) {
     return (
       <span
+        data-testid="routing-status-idle"
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-border bg-accent px-2 text-xs font-semibold text-muted-foreground"
         title="Der Kabelrouting-Status wird nach dem ersten Routinglauf angezeigt."
       >

@@ -1,7 +1,13 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RoutingStatusBadge } from './RoutingStatusBadge';
-import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import {
+  beginCableRouteRun,
+  clearCableRoutes,
+  failCableRouteRun,
+  publishCableRouteFinalValidation,
+  publishCableRouteResult,
+} from '../../edges/utils/cableRouteStore';
 import { validateFinalRouting } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
@@ -86,5 +92,68 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     const ok = screen.getByTestId('routing-status-valid');
     expect(ok).toBeInTheDocument();
     expect(ok.getAttribute('aria-label')).toBe('Routing verifiziert');
+  });
+});
+
+/**
+ * UI-AUDIT 2026-10-13 — RS-002/RS-003 im Badge.
+ *
+ * Vorher las das Badge Report und Generation aus zwei getrennten Zuständen,
+ * die nacheinander publiziert wurden. Während eines Laufs (Live-Pfad: Median
+ * 240 ms bei N=36/E=134) zeigte es damit den Report der VORGÄNGER-Eingabe als
+ * „Routing verifiziert“. Beide neuen Zustände machen das sichtbar.
+ */
+describe('RoutingStatusBadge — veraltete und fehlgeschlagene Läufe', () => {
+  const validReport = { ...validateFinalRouting(route, cleanNodes), edgeCount: 1 };
+  const gen = (hash: string, generation: number) => ({
+    hash,
+    generation,
+    revision: 1,
+    allowed: true,
+    converged: true,
+  });
+
+  it('nennt einen laufenden Lauf veraltet, statt den alten VALID-Report zu bestätigen', () => {
+    clearCableRoutes();
+    render(<RoutingStatusBadge />);
+    act(() => {
+      publishCableRouteResult({ routes: new Map(), report: validReport, generation: gen('h1', 1) });
+    });
+    expect(screen.getByTestId('routing-status-valid')).toBeInTheDocument();
+
+    act(() => {
+      beginCableRouteRun(gen('h2', 2));
+    });
+
+    expect(screen.queryByTestId('routing-status-valid')).not.toBeInTheDocument();
+    const stale = screen.getByTestId('routing-status-stale');
+    expect(stale.getAttribute('aria-label')).toBe('Routing läuft, Anzeige veraltet');
+    expect(stale.getAttribute('title')).toContain('vorherigen Eingabe');
+  });
+
+  it('zeigt einen fehlgeschlagenen Lauf als Fehler und behält die Diagnose der letzten Prüfung', () => {
+    clearCableRoutes();
+    render(<RoutingStatusBadge />);
+    act(() => {
+      publishCableRouteResult({ routes: new Map(), report: validReport, generation: gen('h1', 1) });
+      failCableRouteRun(gen('h2', 2), 'Kein Pfad gefunden');
+    });
+
+    const failed = screen.getByTestId('routing-status-error');
+    expect(failed.getAttribute('aria-label')).toBe('Routing fehlgeschlagen');
+    expect(failed.getAttribute('title')).toContain('Kein Pfad gefunden');
+    expect(failed.getAttribute('title')).toContain('bleibt angezeigt');
+    expect(screen.queryByTestId('routing-status-valid')).not.toBeInTheDocument();
+  });
+
+  it('unterscheidet den ersten Lauf (ohne Vorergebnis) vom veralteten Stand', () => {
+    clearCableRoutes();
+    render(<RoutingStatusBadge />);
+    act(() => {
+      beginCableRouteRun(gen('h1', 1));
+    });
+    const running = screen.getByTestId('routing-status-stale');
+    expect(running.getAttribute('aria-label')).toBe('Routing läuft');
+    expect(running.getAttribute('title')).toContain('erste Routing-Lauf');
   });
 });

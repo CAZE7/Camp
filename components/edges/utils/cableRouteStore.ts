@@ -212,73 +212,257 @@ export function createThrottledRunner(
 /** Drossel-Fenster des Live-Re-Routings (ms). */
 export const ROUTE_THROTTLE_MS = 100;
 
-let current = new Map<string, PathResult>();
-const EMPTY_ROUTES: ReadonlyMap<string, PathResult> = new Map();
-const listeners = new Set<() => void>();
-
-/** Final-Validation-Report des zuletzt gerouteten Plans (AUDIT F-07). */
-let currentValidation: FinalValidationReport | undefined;
-const validationListeners = new Set<() => void>();
-
 /**
- * V2: Stand der zuletzt veröffentlichten Routen.
+ * Meldungstext für einen fehlgeschlagenen Routing-Lauf.
  *
- * Vorher war nicht feststellbar, zu WELCHER Eingabe die angezeigten Kabel
- * gehören. Mit Hash und Generation ist das prüfbar — und die
- * Konvergenzschranke (`MAX_ROUTE_REVISIONS_PER_GRAPH`) wird sichtbar, statt
- * als endlose Wiederholung im Hintergrund zu laufen.
+ * `String(error)` allein ergäbe für ein geworfenes Nicht-Error-Objekt
+ * `[object Object]` — genau der Fall, den die Lint-Regel
+ * `no-base-to-string` im Typ-Lint verbietet. Der Text landet sichtbar im
+ * Badge-Tooltip, er muss also lesbar sein.
  */
-let currentGeneration: RouteGenerationStatus | undefined;
-const generationListeners = new Set<() => void>();
-
-export const getCableRouteGeneration = (): RouteGenerationStatus | undefined => currentGeneration;
-
-export const publishCableRouteGeneration = (status: RouteGenerationStatus | undefined): void => {
-  currentGeneration = status;
-  generationListeners.forEach((l) => l());
-};
-
-const subscribeGeneration = (cb: () => void): (() => void) => {
-  generationListeners.add(cb);
-  return () => {
-    generationListeners.delete(cb);
-  };
-};
-
-export function useCableRouteGeneration(): RouteGenerationStatus | undefined {
-  return useSyncExternalStore(subscribeGeneration, getCableRouteGeneration, () => undefined);
+export function describeRoutingError(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === 'string' && error.length > 0) return error;
+  return 'Der Routing-Lauf ist fehlgeschlagen (unbekannter Fehler).';
 }
 
-/** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
-export const clearCableRoutes = (): void => {
-  current = new Map<string, PathResult>();
-  currentValidation = undefined;
-  currentGeneration = undefined;
-  listeners.forEach((l) => l());
-  validationListeners.forEach((l) => l());
-  generationListeners.forEach((l) => l());
+/**
+ * UI-AUDIT 2026-10-13 (Befund RS-001/RS-002): EIN Zustand statt drei.
+ *
+ * Vorher gab es hier drei getrennte Modul-Zustände mit je eigener
+ * Hörer-Menge: `current` (Routen), `currentValidation` (Report) und
+ * `currentGeneration` (Generation). `CableRouteSync` publizierte sie
+ * nacheinander. Zwei messbare Folgen:
+ *
+ *   RS-001 — **Zerrissene Veröffentlichung.** Zwischen
+ *   `publishCableRoutes(routes)` und `publishCableRouteFinalValidation(report)`
+ *   existiert ein Zustand, in dem die Geometrie der neuen Generation gehört
+ *   und der Report der alten. `RoutingStatusBadge` liest beide Werte und
+ *   zeigte in diesem Fenster die Regelverletzungen der VORGÄNGER-Eingabe zu
+ *   den Wegen der aktuellen — nachgewiesen: beobachtete Zustandsfolge
+ *   `1|VALID` → `2|VALID` → `2|INVALID` (Route 2 mit Report 1).
+ *
+ *   RS-002 — **Veralteter Report gilt als aktuell.** `tracker.begin()`
+ *   publizierte die neue Generation VOR dem Lauf, der Report trug aber keine
+ *   Zuordnung zu einer Eingabe. Während der gemessenen 240 ms Laufzeit
+ *   (Live-Pfad, N=36/E=134) stand damit „Routing verifiziert" an einem Plan,
+ *   der noch gar nicht geroutet war.
+ *
+ * Beides verschwindet durch ein einziges unveränderliches Snapshot-Objekt mit
+ * EINER Hörer-Menge: Routen, Report, Generation und Phase gehören entweder
+ * zusammen oder gar nicht.
+ */
+
+/** Lebenszyklus-Zustand der zuletzt veröffentlichten Kabelgeometrie. */
+export type CableRoutePhase =
+  /** Noch kein Lauf und kein Ergebnis. */
+  | 'idle'
+  /** Ein Lauf ist angekündigt; die angezeigte Geometrie gehört einer älteren Eingabe. */
+  | 'routing'
+  /** Veröffentliches Ergebnis erfüllt I1–I3 für die aktuelle Eingabe. */
+  | 'valid'
+  /** Veröffentlichtes Ergebnis verletzt mindestens eine Invariante. */
+  | 'invalid'
+  /** Die Konvergenzschranke blockiert weitere Läufe für dieselbe Eingabe. */
+  | 'not-converged'
+  /** Der Lauf ist fehlgeschlagen; die letzte gültige Geometrie bleibt stehen. */
+  | 'error';
+
+/** Der gesamte veröffentlichte Zustand des globalen Routers. */
+export interface CableRouteSnapshot {
+  /** Veröffentlichte Wege — die einzige Quelle für gezeichnete Kabel. */
+  readonly routes: ReadonlyMap<string, PathResult>;
+  /** Final-Validation-Report zu genau diesen Wegen. */
+  readonly report: FinalValidationReport | undefined;
+  /** Stand des Generationen-Zählers (inkl. Konvergenzschranke). */
+  readonly generation: RouteGenerationStatus | undefined;
+  /** Eingabe-Hash, zu dem `routes` und `report` gehören. */
+  readonly publishedHash: string | undefined;
+  /** Generationsnummer, zu der `routes` und `report` gehören. */
+  readonly publishedGeneration: number | undefined;
+  /** Abgeleiteter Lebenszyklus-Zustand. */
+  readonly phase: CableRoutePhase;
+  /** Fehlermeldung, wenn `phase === 'error'`. */
+  readonly errorMessage: string | undefined;
+}
+
+const EMPTY_SNAPSHOT: CableRouteSnapshot = {
+  routes: new Map<string, PathResult>(),
+  report: undefined,
+  generation: undefined,
+  publishedHash: undefined,
+  publishedGeneration: undefined,
+  phase: 'idle',
+  errorMessage: undefined,
 };
 
-export const getCableRoute = (id: string): PathResult | undefined => current.get(id);
+let currentSnapshot: CableRouteSnapshot = EMPTY_SNAPSHOT;
+const listeners = new Set<() => void>();
 
-const subscribe = (cb: () => void): (() => void) => {
+/**
+ * Anmeldung an Zustandswechsel des Routers.
+ *
+ * Öffentlich, weil derselbe Zugang auch außerhalb von React gebraucht wird
+ * (Diagnose, Tests): Er ist die einzige Möglichkeit, die Reihenfolge der
+ * Benachrichtigungen zu beobachten — und damit der Beweis, dass Geometrie und
+ * Report atomar wechseln.
+ */
+export const subscribeCableRouteSnapshot = (cb: () => void): (() => void) => {
   listeners.add(cb);
   return () => {
     listeners.delete(cb);
   };
 };
 
-export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
-  current = routes;
+const subscribe = subscribeCableRouteSnapshot;
+
+/** Ein Snapshot-Wechsel, eine Benachrichtigung — nie zwei. */
+const commit = (next: CableRouteSnapshot): void => {
+  currentSnapshot = next;
   listeners.forEach((l) => l());
 };
 
-export const publishCableRouteFinalValidation = (report: FinalValidationReport): void => {
-  currentValidation = report;
-  validationListeners.forEach((l) => l());
+/**
+ * Leitet die Phase aus dem Snapshot ab.
+ *
+ * `stale` ist der Kern von RS-002: Solange der veröffentlichte Hash nicht der
+ * Hash der angemeldeten Generation ist, gehört die angezeigte Geometrie einer
+ * älteren Eingabe. Sie darf dann weder „verifiziert" noch „geprüft" heißen.
+ */
+function derivePhase(next: {
+  report: FinalValidationReport | undefined;
+  generation: RouteGenerationStatus | undefined;
+  publishedHash: string | undefined;
+  phase: CableRoutePhase;
+  errorMessage: string | undefined;
+}): CableRoutePhase {
+  if (next.phase === 'error') return 'error';
+  if (next.generation && next.generation.allowed === false) return 'not-converged';
+  if (!next.report) return next.generation ? 'routing' : 'idle';
+  const matchesPendingInput = next.publishedHash === next.generation?.hash;
+  if (!matchesPendingInput) return 'routing';
+  return next.report.status === 'VALID' ? 'valid' : 'invalid';
+}
+
+/** Vollständiger, zusammengehöriger Zustand des Routers. */
+export const getCableRouteSnapshot = (): CableRouteSnapshot => currentSnapshot;
+
+export function useCableRouteSnapshot(): CableRouteSnapshot {
+  return useSyncExternalStore(subscribe, getCableRouteSnapshot, () => EMPTY_SNAPSHOT);
+}
+
+export const getCableRouteGeneration = (): RouteGenerationStatus | undefined => currentSnapshot.generation;
+
+/**
+ * Meldet einen Lauf an.
+ *
+ * Das ist bewusst KEINE Ergebnis-Veröffentlichung: Geometrie und Report der
+ * vorherigen Generation bleiben stehen (und sichtbar), während gerechnet wird.
+ * Geändert wird nur der Lebenszyklus — damit die Anzeige „wird geroutet /
+ * Anzeige veraltet" sagen kann, statt den alten Report als aktuell auszugeben.
+ */
+export const beginCableRouteRun = (status: RouteGenerationStatus): void => {
+  if (currentSnapshot.generation === status) return;
+  commit({
+    ...currentSnapshot,
+    generation: status,
+    phase: derivePhase({
+      report: currentSnapshot.report,
+      generation: status,
+      publishedHash: currentSnapshot.publishedHash,
+      phase: 'routing',
+      errorMessage: undefined,
+    }),
+    // Ein neuer Lauf beendet einen vorherigen Fehlerzustand: Er wird neu
+    // versucht, der alte Fehler beschreibt die Gegenwart nicht mehr.
+    errorMessage: undefined,
+  });
 };
 
-export const getCableRouteFinalValidation = (): FinalValidationReport | undefined => currentValidation;
+/**
+ * Atomare Veröffentlichung eines vollständigen Ergebnisses.
+ *
+ * Routen, Report, Generation und Phase wechseln in EINEM commit. Es gibt
+ * keinen Zeitpunkt, an dem ein Leser neue Wege mit einem alten Report sieht.
+ */
+export const publishCableRouteResult = (result: {
+  routes: ReadonlyMap<string, PathResult>;
+  report: FinalValidationReport;
+  generation: RouteGenerationStatus;
+}): void => {
+  const next = {
+    ...currentSnapshot,
+    routes: result.routes,
+    report: result.report,
+    generation: result.generation,
+    publishedHash: result.generation.hash,
+    publishedGeneration: result.generation.generation,
+    phase: 'idle' as CableRoutePhase,
+    errorMessage: undefined,
+  };
+  commit({ ...next, phase: derivePhase(next) });
+};
+
+/**
+ * Ein fehlgeschlagener Lauf.
+ *
+ * Die letzte Geometrie und ihr Report bleiben unverändert stehen — ein
+ * Fehler darf den Plan nicht auf eine halbe oder leere Darstellung
+ * zurückwerfen. Geändert wird nur der Lebenszyklus, plus Meldung.
+ */
+export const failCableRouteRun = (status: RouteGenerationStatus, message: string): void => {
+  commit({
+    ...currentSnapshot,
+    generation: status,
+    errorMessage: message,
+    phase: 'error',
+  });
+};
+
+/**
+ * Kompatibilitäts-Publish für Routen allein.
+ *
+ * Bleibt für Tests und Direktaufrufe erhalten, schreibt aber in dasselbe
+ * Snapshot — dadurch ist auch dieser Aufruf für sich genommen konsistent.
+ * Der produktive Pfad (`CableRouteSync`) nutzt `publishCableRouteResult`.
+ */
+export const publishCableRoutes = (routes: ReadonlyMap<string, PathResult>): void => {
+  const next = { ...currentSnapshot, routes };
+  commit({ ...next, phase: derivePhase(next) });
+};
+
+/** Kompatibilitäts-Publish für den Final-Report allein (s. oben). */
+export const publishCableRouteFinalValidation = (report: FinalValidationReport): void => {
+  const next = { ...currentSnapshot, report };
+  commit({ ...next, phase: derivePhase(next) });
+};
+
+/**
+ * Kompatibilitäts-Publish für die Generation allein.
+ *
+ * `undefined` setzt den Generationen-Stand zurück, ohne Geometrie oder Report
+ * anzufassen — das nutzen Reset-Pfade und Tests.
+ */
+export const publishCableRouteGeneration = (status: RouteGenerationStatus | undefined): void => {
+  if (status === undefined) {
+    commit({ ...currentSnapshot, generation: undefined });
+    return;
+  }
+  beginCableRouteRun(status);
+};
+
+export function useCableRouteGeneration(): RouteGenerationStatus | undefined {
+  return useSyncExternalStore(subscribe, getCableRouteGeneration, () => undefined);
+}
+
+/** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
+export const clearCableRoutes = (): void => {
+  commit(EMPTY_SNAPSHOT);
+};
+
+export const getCableRoute = (id: string): PathResult | undefined => currentSnapshot.routes.get(id);
+
+export const getCableRouteFinalValidation = (): FinalValidationReport | undefined => currentSnapshot.report;
 
 /**
  * AUDIT F-07: Baut aus genau den Waypoints, die `routeAllCables` für die UI
@@ -386,23 +570,16 @@ export function computeCableRouteFinalValidation(
     tightMarginRoutes: tight,
   };
 }
-const subscribeValidation = (cb: () => void): (() => void) => {
-  validationListeners.add(cb);
-  return () => {
-    validationListeners.delete(cb);
-  };
-};
-
 export function useCableRouteFinalValidation(): FinalValidationReport | undefined {
-  return useSyncExternalStore(subscribeValidation, getCableRouteFinalValidation, () => undefined);
+  return useSyncExternalStore(subscribe, getCableRouteFinalValidation, () => undefined);
 }
 
 /** Subscribe to the whole immutable route snapshot (e.g. FlowCanvas diagnostics). */
 export function useCableRoutes(): ReadonlyMap<string, PathResult> {
   return useSyncExternalStore(
     subscribe,
-    () => current,
-    () => EMPTY_ROUTES
+    () => currentSnapshot.routes,
+    () => EMPTY_SNAPSHOT.routes
   );
 }
 
@@ -502,19 +679,35 @@ export function CableRouteSync() {
       // bleiben stehen und der Zustand wird als „nicht konvergiert"
       // veröffentlicht. Kein Timer, keine wachsende Toleranz: ein Zähler.
       const status = tracker.begin(routingInputHash(nodeSignature, edgeSignature));
-      publishCableRouteGeneration(status);
+      // UI-AUDIT RS-002: Die Anmeldung ist KEIN Ergebnis. Sie hebt den
+      // Lebenszyklus auf `routing`, damit die Anzeige während der gemessenen
+      // Laufzeit (Live-Pfad: Median 240 ms bei N=36/E=134) nicht den Report
+      // der VORGÄNGER-Eingabe als „verifiziert“ ausgibt.
+      beginCableRouteRun(status);
       if (!status.allowed) return;
 
-      const routes = routeAllCables(nodes, edgeRefs);
+      try {
+        const routes = routeAllCables(nodes, edgeRefs);
 
-      // AUDIT F-07: Die Validierung prüft genau die Routen, die die UI zeichnet.
-      const report = computeCableRouteFinalValidation(nodes, edgeRefs, routes);
-      publishCableRoutes(routes);
-      publishCableRouteFinalValidation(report);
+        // AUDIT F-07: Die Validierung prüft genau die Routen, die die UI zeichnet.
+        const report = computeCableRouteFinalValidation(nodes, edgeRefs, routes);
+        // UI-AUDIT RS-001: EIN commit für Geometrie, Report und Generation.
+        // Nacheinander publizierte Teilzustände ließen einen Leser neue Wege
+        // mit dem Report der Vorgänger-Eingabe sehen (nachgewiesen: `2|VALID`).
+        publishCableRouteResult({ routes, report, generation: status });
 
-      if (routingDebugEnabled()) {
-        const snapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
-        logRoutingResult(snapshot, routes, report, pendingTriggersRef.current, Date.now() - startedAt);
+        if (routingDebugEnabled()) {
+          const traceSnapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
+          logRoutingResult(traceSnapshot, routes, report, pendingTriggersRef.current, Date.now() - startedAt);
+          pendingTriggersRef.current = [];
+        }
+      } catch (error) {
+        // UI-AUDIT RS-003: Ohne diese Fassung entkam ein Fehler dem
+        // gedrosselten Timer als unbehandelte Ausnahme; die Oberfläche zeigte
+        // danach kommentarlos die Geometrie der alten Generation weiter.
+        // Die letzte Geometrie bleibt bewusst stehen — ein Fehler darf den
+        // Plan nicht auf eine halbe oder leere Darstellung zurückwerfen.
+        failCableRouteRun(status, describeRoutingError(error));
         pendingTriggersRef.current = [];
       }
     }, ROUTE_THROTTLE_MS);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Edge, Node } from '@xyflow/react';
-import { applyNeighborhoodFocus, applyFocusHighlight } from './focusHighlight';
+import { applyNeighborhoodFocus, applyFocusHighlight, edgeFocusTarget } from './focusHighlight';
 
 describe('applyNeighborhoodFocus', () => {
   const node = (id: string, className?: string): Node => ({
@@ -79,5 +79,82 @@ describe('applyFocusHighlight — identitätsstabil', () => {
     const result = applyFocusHighlight(nodes, edges, null);
     expect(result.nodes).toBe(nodes);
     expect(result.edges).toBe(edges);
+  });
+});
+
+/**
+ * UI-AUDIT 2026-10-13 — UX-FOCUS-001.
+ *
+ * Der Canvas-Fokus einer Leitung orientierte sich am Mittelpunkt der beiden
+ * Bauteile plus fester Offsets (+100/+60). Bei orthogonal verlegten Trassen
+ * mit Umweg lag dort nichts — der Klick auf eine Warnung zoomte ins Leere.
+ */
+describe('edgeFocusTarget (UX-FOCUS-001)', () => {
+  const source = { x: 0, y: 0, width: 192, height: 120 };
+  const target = { x: 600, y: 0, width: 192, height: 120 };
+  const viewport = { width: 1200, height: 800 };
+
+  it('zentriert auf die veröffentlichte Trasse, nicht auf den Bauteil-Mittelpunkt', () => {
+    // U-Trasse: sie läuft weit nach unten, obwohl beide Bauteile auf y=0 liegen.
+    const waypoints = [
+      { x: 96, y: 60 },
+      { x: 96, y: 900 },
+      { x: 696, y: 900 },
+      { x: 696, y: 60 },
+    ];
+    const nodeMidpoint = { x: (96 + 696) / 2, y: (60 + 60) / 2 };
+
+    const focus = edgeFocusTarget({ waypoints, source, target, viewport });
+
+    expect(focus.y).toBe((60 + 900) / 2);
+    expect(focus.y).not.toBe(nodeMidpoint.y);
+    expect(focus.x).toBe((96 + 696) / 2);
+  });
+
+  it('fällt ohne veröffentlichte Trasse auf die Bauteil-Mitte zurück', () => {
+    const focus = edgeFocusTarget({ waypoints: undefined, source, target, viewport });
+    expect(focus).toEqual({
+      x: (0 + 192 / 2 + (600 + 192 / 2)) / 2,
+      y: (0 + 120 / 2 + (0 + 120 / 2)) / 2,
+      zoom: 1.15,
+    });
+  });
+
+  it('zoomt für lange Trassen heraus und bleibt innerhalb der Grenzen', () => {
+    const long = [
+      { x: 0, y: 0 },
+      { x: 6000, y: 4000 },
+    ];
+    const short = [
+      { x: 100, y: 100 },
+      { x: 140, y: 120 },
+    ];
+    expect(edgeFocusTarget({ waypoints: long, source, target, viewport }).zoom).toBeLessThan(0.2);
+    expect(edgeFocusTarget({ waypoints: short, source, target, viewport }).zoom).toBe(1.15);
+    expect(edgeFocusTarget({ waypoints: long, source, target, viewport, minZoom: 0.3 }).zoom).toBe(0.3);
+  });
+
+  it('eine nicht messbare Sichtfläche ergibt keinen NaN- oder Infinity-Zoom', () => {
+    const waypoints = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ];
+    for (const broken of [undefined, { width: 0, height: 0 }, { width: NaN, height: NaN }]) {
+      const focus = edgeFocusTarget({ waypoints, source, target, viewport: broken });
+      expect(Number.isFinite(focus.zoom)).toBe(true);
+      expect(Number.isFinite(focus.x)).toBe(true);
+      expect(Number.isFinite(focus.y)).toBe(true);
+    }
+  });
+
+  it('Wegpunkte ohne gültige Koordinaten werden ignoriert, nicht mitgerechnet', () => {
+    const waypoints = [
+      { x: 0, y: 0 },
+      { x: Number.NaN, y: 5 },
+      { x: 200, y: 100 },
+    ];
+    const focus = edgeFocusTarget({ waypoints, source, target, viewport });
+    expect(focus.x).toBe(100);
+    expect(focus.y).toBe(50);
   });
 });

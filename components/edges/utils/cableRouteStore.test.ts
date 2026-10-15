@@ -1,22 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Position, type Edge, type Node } from '@xyflow/react';
 import {
+  beginCableRouteRun,
   clearCableRoutes,
   computeCableRouteFinalValidation,
   createThrottledRunner,
+  describeRoutingError,
   edgeTopologySignature,
+  failCableRouteRun,
   getCableRoute,
   getCableRouteFinalValidation,
+  getCableRouteSnapshot,
   nodeLayoutSignature,
+  publishCableRouteResult,
   publishCableRoutes,
   publishCableRouteFinalValidation,
   ROUTE_THROTTLE_MS,
+  subscribeCableRouteSnapshot,
 } from './cableRouteStore';
 import { collectRoutableNodes } from './routableNodes';
 import type { RouteEdgeRef } from './routeAll';
 import type { RoutableNode } from './nodeGeometry';
 import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, type PathResult } from './pathfinding';
-import { totalViolations, validateFinalRouting } from '../../../lib/routing/finalValidation';
+import {
+  totalViolations,
+  validateFinalRouting,
+  type FinalValidationReport,
+} from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
 /**
@@ -486,5 +496,183 @@ describe('cableRouteStore-Publikation (R-9)', () => {
     publishCableRoutes(new Map());
     expect(getCableRoute('e1')).toBeUndefined();
     clearCableRoutes();
+  });
+});
+
+/**
+ * UI-AUDIT 2026-10-13 — Befunde RS-001/RS-002/RS-003.
+ *
+ * Vor der Zusammenfassung zu EINEM Snapshot gab es drei getrennte
+ * Modul-Zustände (Routen, Report, Generation) mit je eigener Hörer-Menge.
+ * `CableRouteSync` publizierte sie nacheinander. Nachgewiesene Folgen:
+ *
+ *   RS-001 — zwischen `publishCableRoutes` und
+ *            `publishCableRouteFinalValidation` sah ein Leser die Wege der
+ *            neuen Generation mit dem Report der alten (Zustandsfolge
+ *            `1|VALID` → `2|VALID` → `2|INVALID`).
+ *   RS-002 — `tracker.begin()` publizierte die neue Generation vor dem Lauf;
+ *            der Report trug keine Eingabe-Zuordnung, also galt der alte
+ *            Report während der Laufzeit als aktueller, gültiger Stand.
+ *   RS-003 — ein fehlgeschlagener Lauf hatte keinen Fehlerzustand; der
+ *            Gegenbeweis in `cableRouteSync.test.tsx` zeigt zusätzlich die
+ *            unbehandelte Ausnahme.
+ */
+describe('Atomare Veröffentlichung (UI-AUDIT RS-001)', () => {
+  const route = (n: number): PathResult =>
+    ({ waypoints: [{ x: n, y: n }], length: n }) as unknown as PathResult;
+  const report = (status: 'VALID' | 'INVALID'): FinalValidationReport =>
+    ({
+      status,
+      edgeCount: 1,
+      counts: { edgeNodeCollisions: 0, edgeEdgeOverlaps: 0, clearanceViolations: 0 },
+      violations: [],
+    }) as unknown as FinalValidationReport;
+
+  beforeEach(() => clearCableRoutes());
+  afterEach(() => clearCableRoutes());
+
+  it('publishCableRouteResult benachrichtigt genau einmal', () => {
+    const spy = vi.fn();
+    const unsubscribe = subscribeCableRouteSnapshot(spy);
+    publishCableRouteResult({
+      routes: new Map([['e1', route(2)]]),
+      report: report('VALID'),
+      generation: { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true },
+    });
+    unsubscribe();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('ein Leser sieht zu jeder Benachrichtigung Route und Report derselben Eingabe', () => {
+    publishCableRouteResult({
+      routes: new Map([['e1', route(1)]]),
+      report: report('VALID'),
+      generation: { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true },
+    });
+
+    const observed: string[] = [];
+    const unsubscribe = subscribeCableRouteSnapshot(() => {
+      const snap = getCableRouteSnapshot();
+      observed.push(`${snap.routes.get('e1')?.length ?? '-'}|${snap.report?.status ?? '-'}`);
+    });
+
+    publishCableRouteResult({
+      routes: new Map([['e1', route(2)]]),
+      report: report('INVALID'),
+      generation: { hash: 'h2', generation: 2, revision: 1, allowed: true, converged: true },
+    });
+    unsubscribe();
+
+    // Kein Zwischenzustand `2|VALID`: Geometrie und Report wechseln zusammen.
+    expect(observed).toEqual(['2|INVALID']);
+  });
+
+  it('ein VALID-Report ergibt phase "valid", ein INVALID-Report phase "invalid"', () => {
+    const generation = { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true };
+    publishCableRouteResult({ routes: new Map(), report: report('VALID'), generation });
+    expect(getCableRouteSnapshot().phase).toBe('valid');
+    publishCableRouteResult({ routes: new Map(), report: report('INVALID'), generation });
+    expect(getCableRouteSnapshot().phase).toBe('invalid');
+  });
+});
+
+describe('Veraltete Ergebnisse (UI-AUDIT RS-002)', () => {
+  const validReport = {
+    status: 'VALID',
+    edgeCount: 1,
+    counts: { edgeNodeCollisions: 0, edgeEdgeOverlaps: 0, clearanceViolations: 0 },
+    violations: [],
+  } as unknown as FinalValidationReport;
+
+  beforeEach(() => clearCableRoutes());
+  afterEach(() => clearCableRoutes());
+
+  it('eine angemeldete neue Eingabe macht den alten VALID-Report sichtbar veraltet', () => {
+    publishCableRouteResult({
+      routes: new Map(),
+      report: validReport,
+      generation: { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true },
+    });
+    expect(getCableRouteSnapshot().phase).toBe('valid');
+
+    beginCableRouteRun({ hash: 'h2', generation: 2, revision: 1, allowed: true, converged: true });
+
+    const snap = getCableRouteSnapshot();
+    // Der alte Report bleibt abrufbar, gilt aber nicht mehr als aktueller Stand.
+    expect(snap.report?.status).toBe('VALID');
+    expect(snap.phase).toBe('routing');
+    expect(snap.publishedHash).toBe('h1');
+    expect(snap.generation?.hash).toBe('h2');
+  });
+
+  it('veröffentlichte Ergebnisse derselben Eingabe bleiben "valid" (keine unnötige Neubewertung)', () => {
+    const generation = { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true };
+    publishCableRouteResult({ routes: new Map(), report: validReport, generation });
+    beginCableRouteRun(generation);
+    expect(getCableRouteSnapshot().phase).toBe('valid');
+  });
+
+  it('ohne Report und ohne Generation ist der Zustand "idle"', () => {
+    expect(getCableRouteSnapshot().phase).toBe('idle');
+    publishCableRoutes(new Map());
+    expect(getCableRouteSnapshot().phase).toBe('idle');
+  });
+
+  it('die Konvergenzschranke bleibt als eigener Zustand sichtbar', () => {
+    beginCableRouteRun({
+      hash: 'h1',
+      generation: 1,
+      revision: 5,
+      allowed: false,
+      converged: false,
+      reason: 'Konvergenzschranke erreicht',
+    });
+    expect(getCableRouteSnapshot().phase).toBe('not-converged');
+  });
+});
+
+describe('Fehlgeschlagener Lauf (UI-AUDIT RS-003)', () => {
+  const known = new Map([['e1', { waypoints: [{ x: 1, y: 1 }], length: 1 } as unknown as PathResult]]);
+  const knownReport = {
+    status: 'INVALID',
+    edgeCount: 1,
+    counts: { edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 },
+    violations: [],
+  } as unknown as FinalValidationReport;
+  const generation = { hash: 'h1', generation: 1, revision: 1, allowed: true, converged: true };
+
+  beforeEach(() => clearCableRoutes());
+  afterEach(() => clearCableRoutes());
+
+  it('behält Geometrie und Report und meldet den Fehler zur neuen Eingabe', () => {
+    publishCableRouteResult({ routes: known, report: knownReport, generation });
+    const failing = { hash: 'h2', generation: 2, revision: 1, allowed: true, converged: true };
+    failCableRouteRun(failing, 'boom');
+
+    const snap = getCableRouteSnapshot();
+    expect(snap.phase).toBe('error');
+    expect(snap.errorMessage).toBe('boom');
+    expect(snap.routes).toBe(known);
+    expect(snap.report).toBe(knownReport);
+    expect(snap.generation?.hash).toBe('h2');
+    expect(snap.publishedHash).toBe('h1');
+  });
+
+  it('describeRoutingError macht aus einem Nicht-Error-Objekt lesbaren Text', () => {
+    expect(describeRoutingError(new Error('kaputt'))).toBe('kaputt');
+    expect(describeRoutingError('text')).toBe('text');
+    expect(describeRoutingError({ detail: 1 })).not.toContain('[object Object]');
+    expect(describeRoutingError(undefined).length).toBeGreaterThan(0);
+  });
+
+  it('clearCableRoutes setzt den Zustand vollständig auf idle zurück', () => {
+    failCableRouteRun(generation, 'boom');
+    clearCableRoutes();
+    const snap = getCableRouteSnapshot();
+    expect(snap.phase).toBe('idle');
+    expect(snap.errorMessage).toBeUndefined();
+    expect(snap.routes.size).toBe(0);
+    expect(snap.report).toBeUndefined();
+    expect(snap.generation).toBeUndefined();
   });
 });
