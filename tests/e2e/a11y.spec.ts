@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+import { dismissOnboarding } from './helpers';
+
 /**
  * Automatisiertes Barrierefreiheits-Gate (ersetzt das frühere, händische
  * „Lighthouse 100 halten"-Versprechen durch einen erzwingbaren Check).
@@ -73,3 +75,57 @@ for (const { path, name } of PAGES) {
     ).toEqual([]);
   });
 }
+
+/**
+ * Barrierefreiheits-Gate der Blätter (M12).
+ *
+ * Der Durchlauf oben bewertet den Startzustand. Genau die Zustände, die in
+ * dieser Runde umgebaut wurden — Katalog als Blatt, Eigenschaften als Blatt,
+ * das `⋯`-Menü als Blatt —, waren bisher ungeprüft: Ein Blatt über der
+ * Zeichenfläche ist eine eigene Ebene mit eigenen Fokus- und Kontrastfragen.
+ * Geprüft wird auf dem Handy (dort sind es Blätter); ab 768 px sind dieselben
+ * Bereiche Spalten bzw. Dropdowns und werden vom Startzustand erfasst.
+ */
+test.describe('axe: Planer-Blätter auf dem Handy', () => {
+  for (const step of [
+    { name: 'Bauteilkatalog-Blatt', open: 'nav-tab-sidebar' },
+    { name: 'Eigenschaften-Blatt', open: 'nav-tab-inspector' },
+  ] as const) {
+    test(`${step.name} ohne kritische/schwere Verstöße`, async ({ page }) => {
+      const width = page.viewportSize()?.width ?? 0;
+      test.skip(width >= 768, 'Blätter gibt es nur unter 768 px.');
+
+      await page.goto('/planer/');
+      await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
+      // Der Einführungsdialog liegt beim Erstbesuch über allem und fängt
+      // Klicks ab — er ist selbst Teil der Startprüfung oben, hier geht es um
+      // die Blätter dahinter.
+      await dismissOnboarding(page);
+      await page.getByTestId(step.open).click();
+      await expect(page.getByTestId(step.open)).toHaveAttribute('aria-expanded', 'true');
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        // Wie oben: Der Editor-Canvas hat ein eigenes Bedienmodell.
+        .exclude('.react-flow')
+        .analyze();
+      const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+      expect(blocking, blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`).join('\n')).toEqual([]);
+    });
+  }
+
+  test('Werkzeugmenü (⋯) ohne kritische/schwere Verstöße', async ({ page }) => {
+    await page.goto('/planer/');
+    await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
+    await dismissOnboarding(page);
+    await page.getByTestId('action-more').click();
+    await expect(page.getByRole('menu', { name: 'Weitere Aktionen' })).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .exclude('.react-flow')
+      .analyze();
+    const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+    expect(blocking, blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`).join('\n')).toEqual([]);
+  });
+});

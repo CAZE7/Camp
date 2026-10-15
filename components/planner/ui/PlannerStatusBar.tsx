@@ -64,30 +64,57 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
     >
       {/* Erstes Kind bleibt der Koordinaten-Span (Vertrag des Komponententests
           und der Ort, an dem der Zeigerwert ohne Re-render landet). */}
-      <span ref={coordsRef} data-testid="statusbar-coords">
+      {/* Die Zeigerkoordinaten gibt es erst ab 1024 px: Die Zeile hatte sonst
+          539 px Inhalt in einem 375-px-Fenster (gemessen 2026-10-14) und war
+          zusätzlich eine waagerechte Scroll-Fläche mit versteckter Leiste —
+          der Prüfstand am rechten Rand lag außerhalb des Bildes. */}
+      <span
+        ref={coordsRef}
+        data-testid="statusbar-coords"
+        className="cad-statusbar__opt cad-statusbar__opt--coords"
+      >
         x — · y —
       </span>
-      <span className="cad-statusbar__sep" />
+      <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--coords" />
       <span>
-        {nodeCount} Bauteile · {edgeCount} Leitungen
+        {/* Unter 360 px ist „15 Bauteile · 23 Leitungen“ 150 px Text in einer
+            Zeile, die nur 320 px hat (gemessen: Zeile 355 px, rechter Rand
+            abgeschnitten). Dann steht dort die Kurzform. Beide Fassungen
+            liegen im DOM — die lange bleibt der Vertrag von
+            `PlannerStatusBar.test.tsx` (Testing Library findet auch
+            ausgeblendete Elemente), die kurze ist eine Anzeige-Variante. */}
+        <span className="cad-statusbar__long">
+          {nodeCount} Bauteile · {edgeCount} Leitungen
+        </span>
+        <span className="cad-statusbar__short">
+          {nodeCount} Bt · {edgeCount} Lt
+        </span>
       </span>
-      {/* Spannungsdomäne und Raster sind auf dem Handy nicht platzrelevant —
-          dort bleibt die Zeile einzeilig (Zoom und Prüfstand zuerst). */}
-      <span className="cad-statusbar__sep hidden md:inline-block" />
-      <span className="hidden md:inline">{viewMode === 'water' ? 'Brauch-/Grauwasser' : '12 V / 230 V'}</span>
-      <span className="cad-statusbar__sep hidden md:inline-block" />
-      <span className="hidden md:inline">Raster {gridMm} mm</span>
-      <span className="cad-statusbar__sep hidden md:inline-block" />
+      {/* Eine Rangfolge statt waagerechtem Scrollen: Der Planumfang und die
+          Zoomstufe stehen immer, der Prüfstand am rechten Rand ebenfalls (er
+          ist die sicherheitsrelevante Aussage). Domäne, Raster und Snap kommen
+          erst ab 1280 px dazu — dort ist die Zeile 1032 px breit und passt
+          (gemessen), darunter bliebe der Prüfstand unsichtbar. */}
+      <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
+      <span className="cad-statusbar__opt cad-statusbar__opt--facts">
+        {viewMode === 'water' ? 'Brauch-/Grauwasser' : '12 V / 230 V'}
+      </span>
+      <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
+      <span className="cad-statusbar__opt cad-statusbar__opt--facts">Raster {gridMm} mm</span>
+      <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
       <span>Zoom {Math.round(zoom * 100)} %</span>
-      <span className="cad-statusbar__sep hidden md:inline-block" />
-      <span className="hidden md:inline">Snap aktiv</span>
+      <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
+      <span className="cad-statusbar__opt cad-statusbar__opt--facts">Snap aktiv</span>
       <span className="cad-statusbar__sep" />
       {criticalCount > 0 ? (
         <span className="cad-statusbar__signal">
-          {criticalCount} kritisch · {warningCount} Warnungen
+          {criticalCount} kritisch
+          <span className="hidden md:inline"> · {warningCount} Warnungen</span>
         </span>
       ) : warningCount > 0 ? (
-        <span className="text-warning">{warningCount} Warnungen · kein kritischer Fehler</span>
+        <span className="text-warning">
+          {warningCount} Warnungen<span className="hidden md:inline"> · kein kritischer Fehler</span>
+        </span>
       ) : (
         <span className="cad-statusbar__ok">Keine Fehler</span>
       )}

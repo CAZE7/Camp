@@ -556,7 +556,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
         // (WCAG 2.5.3 „Label in Name").
         aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-3 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
+        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:px-3 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
       >
         {topType === 'critical' ? (
           <OctagonAlert className="h-4 w-4" aria-hidden="true" />
@@ -565,8 +565,24 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         ) : (
           <Info className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="whitespace-nowrap">{badgeLabel}</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="cad-warn-chip__text whitespace-nowrap">{badgeLabel}</span>
+        {/* Kompakt: Der vollständige Satz („14 von 24 kritisch“) braucht
+            ~190 px und verdrängt in der 44-px-Werkzeugleiste die Aktionsgruppe.
+            Unter 1400 px zeigt die Leiste nur die Zahl der schwersten Stufe; die
+            vollständige Aussage tragen `aria-label` und der Dialog.
+            Die Ziffer steht als CSS-Inhalt (`::after`, `data-compact`) an einem
+            Element **ohne Textknoten**: `textContent` der Leiste bleibt damit
+            der vollständige Satz — genau der Vertrag, den
+            `WarningCenter.test.tsx` festhält („2 von 3 kritisch“). */}
+        <span
+          className="cad-warn-chip__count whitespace-nowrap tabular-nums"
+          data-compact={counts.critical > 0 ? counts.critical : warnings.length}
+          aria-hidden="true"
+        />
+        <ChevronDown
+          className={`hidden h-4 w-4 transition-transform md:block ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
       </button>
 
       {open && (
