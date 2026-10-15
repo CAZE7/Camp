@@ -30,7 +30,7 @@ export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boo
           className="rounded p-1 transition-colors hover:bg-oxide/90"
           aria-label="Chat schließen"
         >
-          <X size={20} />
+          <X size={20} aria-hidden="true" />
         </button>
       </div>
       {children}
