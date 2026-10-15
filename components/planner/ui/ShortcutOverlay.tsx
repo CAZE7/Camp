@@ -13,6 +13,14 @@ import { X } from 'lucide-react';
 export function ShortcutOverlay() {
   const [open, setOpen] = useState(false);
 
+  // B-19 (QA-Bericht): Das Menü „Hilfe → Tastaturkürzel“ sendet das Ereignis
+  // `open-shortcut-overlay`, und niemand hat es empfangen. Jetzt öffnet es das Overlay.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener('open-shortcut-overlay', onOpen);
+    return () => window.removeEventListener('open-shortcut-overlay', onOpen);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -81,5 +89,6 @@ const ROWS: { keys: string; label: string }[] = [
   { keys: 'Strg+Y', label: 'Wiederholen' },
   { keys: 'Strg+S', label: 'Plan speichern' },
   { keys: 'Entf', label: 'Auswahl löschen' },
+  { keys: 'Esc', label: 'Auswahl aufheben / Dialog schließen' },
   { keys: '?', label: 'Diese Übersicht' },
 ];
