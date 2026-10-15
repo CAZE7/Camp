@@ -234,10 +234,16 @@ export function PlannerDashboard() {
         onOpenMenu={(menu) => setOpenMenu(menu)}
         status={
           <span className="hidden items-center gap-2 sm:flex">
+            {/* B-12 (QA-Bericht): Die Kopfzeile zählt die Ansicht, die offen ist —
+                im Wasser-Tab keine Elektrik-Zähler und keine Elektrik-Warnungen. */}
             <span className="text-muted-foreground">
-              {nodes.length} Bauteile · {edges.length} Leitungen
+              {viewMode === 'water'
+                ? `${waterNodes.length} Bauteile · ${waterEdges.length} Leitungen`
+                : `${nodes.length} Bauteile · ${edges.length} Leitungen`}
             </span>
-            {criticalCount > 0 && <span className="text-destructive">{criticalCount} kritisch</span>}
+            {viewMode !== 'water' && criticalCount > 0 && (
+              <span className="text-destructive">{criticalCount} kritisch</span>
+            )}
           </span>
         }
       />
