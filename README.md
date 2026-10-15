@@ -1,6 +1,6 @@
-# Werft — Elektrikplaner für den Camper-Ausbau
+# Elektroplaner — Schaltplan und Elektrik für den Camper-Ausbau
 
-Werft ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
+Elektroplaner ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
 per Klick oder Ziehen auf die Zeichenfläche, Leitungen automatisch
 verlegen lassen — und Querschnitte, Sicherungen und Spannungsfall rechnen
 sich nach konservativen VDE-Modellen selbst nach. Ohne Konto, ohne Server,
@@ -55,7 +55,7 @@ Zeichengesten und die Prüfung bleiben dieselben._
 _`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
 Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
 
-![Startseite der Werft mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
+![Startseite des Elektroplaners mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
 
 _Die Startseite bündelt Werkzeuge und Guides; jeder Kartenlink führt in eine
 indexierbare Wissens- oder Werkzeugseite — der Linkgraph ist Teil des
@@ -298,6 +298,7 @@ Branch Protection: `docs/CI.md`.
 | [0034](docs/adr/0034-port-korridor-nach-buendelgroesse.md)                  | Korridor nach Bündelgröße      | Die Port-Bündel-Freigabe ist `max(portFacingClearance, requiredPortCorridor(K))` — löst den Widerspruch zwischen 68 px Token und Fächerregel ab K = 4 (p02: 6 → 0 I3)                                                                        |
 | [0035](docs/adr/0035-auslaufkorridor-fremder-ansa.md)                       | Auslaufkorridor fremder Ports  | **verworfen, mit Messung belegt:** harte Sperre der Auslaufkorridore löst p11 (3 → 0), bricht aber die Versatz-Invarianz — Versuchsprotokoll, damit niemand denselben Weg zweimal geht                                                       |
 | [0036](docs/adr/0036-verifikations-reparatur-belegung.md)                   | Verifikations-Reparatur        | Der Gewinner wird gegen die verlegte Belegung geprüft (`priorVerdict`); eine port-gebundene Überdeckung (`hardEnds > 0`) löst `bestOccupancyRepair` mit Mittelachsen-Z-Lagen und Lane-Schritten — ROUTE-010/p11 **0/0/0**, Versatz-Gate PASS |
+| [0037](docs/adr/0037-eine-akzeptanzregel-fuer-die-nachbearbeitung.md)       | Akzeptanzregel Nachbearbeitung | Ein Vertrag für den C→D-Block: keine neue harte Verletzung, Freigabe nicht schlechter, wertgleich ΔLänge ≤ 0,5 %; Schritt-Gatter je Schritt gemessen verworfen (Versatz-Gate 2/49 auf 33 × I3), Verdrahtung als Kettenregel                  |
 
 ## Weitere Nachweise
 
@@ -315,7 +316,7 @@ Branch Protection: `docs/CI.md`.
 
 ## Daten im Browser
 
-Planstand und Einstellungen liegen im `localStorage` (`werft-planner-v1`).
+Planstand und Einstellungen liegen im `localStorage` (`elektroplaner-planner-v1`; frühere Stände unter `werft-planner-v1` werden beim ersten Aufruf automatisch übernommen).
 Beide Stores sind versioniert und haben defensive Migrationsfunktionen, damit
 ältere Stände nach Schema-Änderungen keine Laufzeitfehler erzeugen. Es werden
 keine Daten an einen Server gesendet.

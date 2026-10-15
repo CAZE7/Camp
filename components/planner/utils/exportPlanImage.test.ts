@@ -1,42 +1,71 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-/**
- * QA B-17: Der PNG-Export darf keine Auswahl-Rahmen ins Bild rendern. Die
- * Auswahl wird vor dem Rendern gelöst und danach wiederhergestellt.
- */
-const toPngMock = vi.fn();
-vi.mock('html-to-image', () => ({ toPng: (...args: unknown[]): unknown => toPngMock(...args) }));
+import { exportPlanImage, PLAN_WATERMARK_TEXT, watermarkBadgeLayout } from './exportPlanImage';
 
-describe('exportPlanImage · Auswahl (B-17)', () => {
+const toPngMock = vi.fn((..._args: unknown[]): Promise<string> => Promise.resolve(''));
+
+vi.mock('html-to-image', () => ({
+  toPng: (...args: unknown[]): Promise<string> => toPngMock(...args),
+}));
+
+vi.mock('../../../store/usePlannerStore', () => ({
+  usePlannerStore: {
+    getState: () => ({
+      viewMode: 'electric',
+      nodes: [{ id: 'battery-1', type: 'battery', position: { x: 0, y: 0 }, data: {} }],
+      edges: [],
+      waterNodes: [],
+      waterEdges: [],
+    }),
+  },
+}));
+
+describe('exportPlanImage — Foren-Export mit Wasserzeichen', () => {
   beforeEach(() => {
-    toPngMock.mockReset();
-    document.body.innerHTML = '<div class="react-flow"><div class="react-flow__viewport"></div></div>';
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
   });
 
-  it('löst die Auswahl während des Renderns und stellt sie danach wieder her', async () => {
-    const { usePlannerStore } = await import('../../../store/usePlannerStore');
-    const { exportPlanImage } = await import('./exportPlanImage');
-    usePlannerStore.setState({
-      viewMode: 'electric',
-      nodes: [
-        { id: 'a', type: 'battery', position: { x: 0, y: 0 }, data: {}, selected: true },
-        { id: 'b', type: 'battery', position: { x: 300, y: 0 }, data: {}, selected: false },
-      ] as never,
-      edges: [],
+  it('legt das Badge unten rechts in die Plan-Bounds', () => {
+    expect(watermarkBadgeLayout({ x: 100, y: 50, width: 900, height: 600 })).toEqual({
+      left: 660,
+      top: 598,
+      width: 340,
+    });
+  });
+
+  it('zeigt das Wasserzeichen nur während der Aufnahme und entfernt es danach', async () => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'react-flow';
+    const viewport = document.createElement('div');
+    viewport.className = 'react-flow__viewport';
+    wrapper.appendChild(viewport);
+    document.body.appendChild(wrapper);
+
+    let badgeTextDuringCapture: string | null = null;
+    toPngMock.mockImplementation(() => {
+      badgeTextDuringCapture = document.querySelector('[data-plan-watermark]')?.textContent ?? null;
+      return Promise.resolve('data:image/png;base64,mocked');
     });
 
-    let selectedDuringRender: boolean[] = [];
-    toPngMock.mockImplementation(() => {
-      selectedDuringRender = usePlannerStore.getState().nodes.map((n) => n.selected === true);
-      return Promise.resolve('data:image/png;base64,AAAA');
+    const clicks: string[] = [];
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      const element = originalCreateElement(tagName);
+      if (tagName === 'a') {
+        Object.defineProperty(element, 'click', {
+          value: () => clicks.push((element as HTMLAnchorElement).download),
+        });
+      }
+      return element;
     });
-    // Download-Link-Klick in jsdom unterdrücken.
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
     const result = await exportPlanImage();
 
     expect(result.type).toBe('success');
-    expect(selectedDuringRender).toEqual([false, false]);
-    expect(usePlannerStore.getState().nodes.map((n) => n.selected)).toEqual([true, false]);
+    expect(badgeTextDuringCapture).toContain(PLAN_WATERMARK_TEXT);
+    expect(badgeTextDuringCapture).toContain('elektroplaner-camper.de');
+    expect(document.querySelector('[data-plan-watermark]')).toBeNull();
+    expect(clicks).toEqual(['elektroplaner-camper-schaltplan.png']);
   });
 });

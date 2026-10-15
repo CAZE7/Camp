@@ -77,10 +77,19 @@ export function jsonLdFor(page: SeoPageContent) {
 export function SeoPage({
   page,
   children,
+  afterHeader,
 }: {
   page: SeoPageContent;
   /** Zusätzlicher Inhalt zwischen Abschnitten und Fragen (z. B. Themenverzeichnis). */
   children?: React.ReactNode;
+  /**
+   * Inhalt direkt unter der Kopfzeile (Überschrift und Einleitung) und VOR den
+   * Abschnitten — gedacht für den Schnellzugriff auf die Einzelrechner
+   * (`RechnerLeiste`). Bewusst ein eigener Slot und nicht Teil der Abschnitte:
+   * Die Reihenfolge „was ist das hier zuerst, was kann ich hier rechnen" ist
+   * eine Layout-, keine Inhaltsentscheidung.
+   */
+  afterHeader?: React.ReactNode;
 }) {
   const breadcrumb = breadcrumbsFor(page);
   const topic = topicOf(page.topicId);
@@ -103,6 +112,8 @@ export function SeoPage({
               <RichText text={page.lead} />
             </p>
           </header>
+
+          {afterHeader}
 
           {page.sections.map((section) => (
             <Section key={section.id} section={section} />
@@ -406,7 +417,7 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
       </div>
       <p className="caption-xs mt-4 text-ink-soft">
         Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege, Quellen
-        und Grenzen stehen offen, siehe <Link href="/ueber-werft/">Über Werft</Link>.
+        und Grenzen stehen offen, siehe <Link href="/ueber-elektroplaner/">Über Elektroplaner</Link>.
       </p>
     </section>
   );

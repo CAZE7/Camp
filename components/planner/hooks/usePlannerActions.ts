@@ -23,6 +23,8 @@ import {
   Ruler,
   Save,
   ScanSearch,
+  Share2,
+  LayoutTemplate,
   SlidersHorizontal,
   Sun,
   Snowflake,
@@ -42,6 +44,8 @@ import { requestConfirm } from '../../ui/ConfirmDialog';
 import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
+import { buildShareUrl } from '../../../store/sharePlan';
+import { isStarterPlan, PLANNER_TEMPLATES } from '../templates';
 import type { ValidationWarning } from './useLiveValidation';
 
 /**
@@ -96,6 +100,10 @@ export interface PlannerActions {
   runLayoutV2: () => Promise<void>;
   runCheck: () => void;
   exportImage: () => Promise<void>;
+  /** Kopiert den teilbaren Plan-Link (`#plan=…`) in die Zwischenablage. */
+  sharePlan: () => Promise<void>;
+  /** Lädt eine der drei Vorlagen (mit Rückfrage bei eigenem Plan). */
+  loadTemplate: (templateId: string) => void;
   saveProject: () => void;
   openProject: () => Promise<void>;
   openBom: () => void;
@@ -128,6 +136,11 @@ export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> =
  */
 export function dispatchPlannerEvent(name: string) {
   window.dispatchEvent(new CustomEvent(name));
+}
+
+/** Nach einem Planwechsel die Gesamtansicht zeigen — leicht verzögert, damit der neue Graph schon liegt. */
+function fitViewAfterEntry() {
+  window.setTimeout(() => dispatchPlannerEvent('planner-fit-view'), 50);
 }
 
 export function usePlannerActions({
@@ -295,6 +308,85 @@ export function usePlannerActions({
   }, [onFeedback]);
 
   /**
+   * Link zum Plan kopieren: Der Plan steckt komprimiert im Hash der Adresse
+   * (`store/sharePlan.ts`) — kein Server, kein Konto. Wer den Link in einem
+   * Forum postet, gibt Helfern denselben Plan zur Korrektur zurück.
+   * Klappt die Zwischenablage nicht, steht der Link sichtbar in der
+   * Adresszeile zum Kopieren von Hand — kein stilles Scheitern.
+   */
+  const sharePlan = useCallback(async () => {
+    const state = usePlannerStore.getState();
+    if (state.nodes.length === 0 && state.waterNodes.length === 0) {
+      onFeedback({
+        type: 'info',
+        message: 'Noch nichts zu teilen — platziere zuerst Bauteile oder lade eine Vorlage.',
+      });
+      return;
+    }
+    try {
+      const url = await buildShareUrl(
+        {
+          viewMode: state.viewMode,
+          season: state.season,
+          nodes: state.nodes,
+          edges: state.edges,
+          waterNodes: state.waterNodes,
+          waterEdges: state.waterEdges,
+        },
+        window.location.href
+      );
+      window.history.replaceState(null, '', url);
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        onFeedback({
+          type: 'success',
+          message:
+            'Link zum Plan kopiert — im Forum oder in der Gruppe einfügen, Helfer öffnen genau diesen Plan.',
+        });
+      } else {
+        onFeedback({
+          type: 'info',
+          message: 'Link steht in der Adresszeile — dort kopieren und weitergeben.',
+        });
+      }
+    } catch {
+      onFeedback({
+        type: 'error',
+        message: 'Link konnte nicht erstellt oder kopiert werden. Der Plan bleibt unverändert.',
+      });
+    }
+  }, [onFeedback]);
+
+  /**
+   * Vorlage laden (Toolbar „Vorlage laden“, Menü und Onboarding teilen sich
+   * diese eine Aktion über den Store). Ein eigener Plan wird nur nach
+   * Rückfrage ersetzt; das vorgeladene Beispiel-Setup zählt nicht als eigen.
+   */
+  const loadTemplate = useCallback(
+    (templateId: string) => {
+      const state = usePlannerStore.getState();
+      const template = PLANNER_TEMPLATES.find((entry) => entry.id === templateId);
+      const hasOwnPlan =
+        (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
+      if (
+        hasOwnPlan &&
+        !window.confirm(
+          'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
+        )
+      )
+        return;
+      state.applyTemplate(templateId);
+      setHasOnboarded(true);
+      fitViewAfterEntry();
+      onFeedback({
+        type: 'success',
+        message: template ? `Vorlage „${template.label}“ geladen.` : 'Vorlage geladen.',
+      });
+    },
+    [onFeedback, setHasOnboarded]
+  );
+
+  /**
    * Projekt speichern: lädt die Planungsdatei (JSON) herunter. Der Inhalt
    * kommt aus EINEM Store-Snapshot, nicht aus gerenderten Werten.
    */
@@ -385,9 +477,16 @@ export function usePlannerActions({
               run: openBom,
             },
             {
-              label: 'Plan als Bild exportieren',
+              label: 'Plan als Bild exportieren (PNG, für Foren)',
               icon: Camera,
+              testId: 'action-export-image',
               run: () => void exportImage(),
+            },
+            {
+              label: 'Link zum Plan kopieren',
+              icon: Share2,
+              testId: 'action-share-plan',
+              run: () => void sharePlan(),
             },
             {
               label: 'Projekt speichern (.json)',
@@ -557,6 +656,15 @@ export function usePlannerActions({
           ],
         },
         {
+          label: 'Vorlage laden',
+          items: PLANNER_TEMPLATES.map((template) => ({
+            label: template.label,
+            icon: LayoutTemplate,
+            testId: `action-template-${template.id}`,
+            run: () => loadTemplate(template.id),
+          })),
+        },
+        {
           label: 'Jahreszeit',
           items: [
             {
@@ -606,6 +714,8 @@ export function usePlannerActions({
       canUndo,
       detailLevel,
       exportImage,
+      sharePlan,
+      loadTemplate,
       saveProject,
       openProject,
       focusMode,
@@ -755,6 +865,8 @@ export function usePlannerActions({
     },
     runCheck,
     exportImage,
+    sharePlan,
+    loadTemplate,
     saveProject,
     openProject,
     openBom,

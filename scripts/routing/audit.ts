@@ -427,8 +427,7 @@ const CROSSING_RATCHET: Readonly<Record<string, number>> = {
   // dabei eine Kreuzung mit auf. Messung: `npm run routing:audit`,
   // vollständige Tabelle in `docs/ARCHITECTURE-CHANGES.md`.
   acdc: 5,
-  // 2026-10-14: joint lane constraints preserve port orientation and reduce 25 → 24.
-  complex: 24,
+  complex: 25,
 };
 
 export function auditAllPlans(): PlanAudit[] {

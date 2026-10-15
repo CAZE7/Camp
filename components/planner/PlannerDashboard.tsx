@@ -277,6 +277,8 @@ export function PlannerDashboard() {
         onCheck={actions.runCheck}
         onBom={actions.openBom}
         onExport={() => void actions.exportImage()}
+        onShare={() => void actions.sharePlan()}
+        onLoadTemplate={actions.loadTemplate}
         viewMode={viewMode}
         onSelectViewMode={setViewMode}
         focusMode={focusMode}

@@ -20,7 +20,7 @@ const config: Config = {
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       fontSize: {
-        /* Werft-Type-Scale (D-2): 12 / 13 / 14 / 16 / 20 / 24 / 32 px.
+        /* Marken-Type-Scale (D-2): 12 / 13 / 14 / 16 / 20 / 24 / 32 px.
          Einzige erlaubte Schriftgrößen — neue Stufen gehören nicht in die
          Skala, Größen unter 12 px sind für Lesbarkeit tabu. Die Zeilenhöhen
          folgen dem 4-px-Raster (×1.3–1.5 je Stufe, auf 4 px gerundet). */
@@ -33,7 +33,7 @@ const config: Config = {
         '2xl': ['2rem', { lineHeight: '2.5rem' }], // 32 — größte Stufe (Hero)
       },
       colors: {
-        // Werft-Surface-Skala (D-1): Werte liegen in app/globals.css —
+        // Marken-Surface-Skala (D-1): Werte liegen in app/globals.css —
         // einziger Ort mit Hex-/rgb-Angaben im Projekt. Die *-rgb-Zwillinge
         // dort geben Tailwind die Alpha-Komponente (bg-x/10, hover:
         // bg-primary/90, Ring-Tints …); Tokens ohne Zwilling (vordefiniert

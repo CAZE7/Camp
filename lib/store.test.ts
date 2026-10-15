@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { APP_PREFERENCES_STORAGE_KEY } from './storageKeys';
 import { useAppStore } from './store';
 
 describe('useAppStore', () => {
@@ -31,7 +32,7 @@ describe('useAppStore', () => {
     });
 
     expect(result.current.calculatedSolarWatts).toBe(400);
-    expect(window.localStorage.getItem('werft-app-preferences-v1')).toContain('400');
+    expect(window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY)).toContain('400');
   });
 
   it('persists onboarding and solar wattage', () => {
@@ -40,7 +41,7 @@ describe('useAppStore', () => {
       result.current.setHasOnboarded(true);
       result.current.setCalculatedSolarWatts(320);
     });
-    const saved = window.localStorage.getItem('werft-app-preferences-v1');
+    const saved = window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
     expect(saved).toContain('"hasOnboarded":true');
     expect(saved).toContain('"calculatedSolarWatts":320');
   });

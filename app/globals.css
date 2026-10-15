@@ -10,7 +10,7 @@
 }
 
 @layer base {
-  /* === Werft-Design-Tokens (Relaunch „Werft“, agent.md D-1) ==============
+  /* === Marken-Tokens (Relaunch, agent.md D-1) ==============
      app/globals.css ist die EINZIGE Farbquelle des Projekts — Komponenten
      enthalten keine Hex-/rgb-Werte. Drei Ebenen:
        1. Primärtokens (Hex): Surface-Skala (canvas/panel/raised), --rule
@@ -27,7 +27,7 @@
   :root {
     color-scheme: light;
 
-    /* Werft-Typo (D-2): Inter für die gesamte UI, Outfit ausschließlich für
+    /* Marken-Typo (D-2): Inter für die gesamte UI, Outfit ausschließlich für
        Display-Headlines, IBM Plex Mono für Werte/Maße. Die Type-Scale
        12/13/14/16/20/24/32 liegt in tailwind.config.ts (fontSize). */
     --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
@@ -58,7 +58,7 @@
     --warn: #8a5a0a;
     --error: #b3261e;
 
-    /* 2 · M7-Planer-Ebene (Namen bleiben; Werte aus der Werft-Skala).
+    /* 2 · M7-Planer-Ebene (Namen bleiben; Werte aus der Markenskala).
        Das missionsseitige Akzent-Token für die Selektions-Linie heißt
        --accent-line, damit der shadcn-Hover-Token --accent (Fläche!)
        frei bleibt. */
@@ -222,7 +222,7 @@
     --chart-5-rgb: var(--text-low-rgb);
   }
 
-  /* --- Dark Theme („Werft“ dunkel) --------------------------------------
+  /* --- Dark Theme (dunkle Markenpalette) --------------------------------------
      Seit dem Relaunch gilt dunkel seitenweit: layout.tsx setzt die `dark`-
      Klasse an <html> (Systemeinstellung, ohne eigenen Umschalter). Nur
      Ebene 1 wird neu definiert — Rollen und Aliase folgen automatisch.
@@ -296,7 +296,7 @@
     --warn-info-bg: rgba(122, 162, 247, 0.14);
     --warn-info-border: rgba(122, 162, 247, 0.4);
 
-    /* Ebene-1-Zwillinge der dunklen Werft-Palette (siehe :root, Punkt 5). */
+    /* Ebene-1-Zwillinge der dunklen Markenpalette (siehe :root, Punkt 5). */
     --surface-canvas-rgb: 19 21 24;
     --surface-panel-rgb: 25 28 31;
     --surface-raised-rgb: 33 37 41;
@@ -534,7 +534,7 @@
 
   /* --- D-6: Toolbar-Details — Tooltips & Shortcut-Badges --------------- */
   /* Icon-Toolbar-Buttons: zentriertes Icon, Tooltip via ::after (CSS-only,
-     ressourcenlos, im Werft-Stil: Panel-Fläche, 1-px-Linie, Mono). */
+     ressourcenlos, im Markenstil: Panel-Fläche, 1-px-Linie, Mono). */
   .tool-btn {
     position: relative;
   }
@@ -562,7 +562,7 @@
   .tool-btn:focus-visible::after {
     opacity: 1;
   }
-  /* Shortcut-Badge (kbd) im Werft-Stil */
+  /* Shortcut-Badge (kbd) im Markenstil */
   kbd.shortcut-key,
   .shortcut-key {
     display: inline-block;
@@ -577,7 +577,7 @@
     color: var(--text-med);
   }
 
-  /* --- D-6: Shortcut-Overlay (?) im Werft-Stil ------------------------- */
+  /* --- D-6: Shortcut-Overlay (?) im Markenstil ------------------------- */
   .shortcut-overlay {
     position: fixed;
     inset: 0;
@@ -1162,7 +1162,7 @@
   opacity: 0.4;
 }
 
-/* D-4: Zoom-Controls im Werft-Panel-Stil. React Flows mitgeliefertes
+/* D-4: Zoom-Controls im Marken-Panel-Stil. React Flows mitgeliefertes
    style.css härtert `#fefefe`-Buttons auf weißer Fläche mit #eee-Trennern —
    im dunklen Theme leuchteten die Buttons als weiße Kacheln aus der Fläche
    heraus. Token-Werte überschreiben beider Themes korrekt; das SVG folgt

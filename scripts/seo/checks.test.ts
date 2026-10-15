@@ -35,7 +35,7 @@ const SAUBERE_SEITE = `<!doctype html><html lang="de"><head>
 <meta property="og:title" content="Titel"/>
 <meta property="og:description" content="Beschreibung"/>
 <meta property="og:url" content="${ORIGIN}${BASE}/seite/"/>
-<meta property="og:site_name" content="Werft"/>
+<meta property="og:site_name" content="Elektroplaner"/>
 <meta property="og:locale" content="de_DE"/>
 <meta property="og:image" content="${ORIGIN}${BASE}/og/seite.png"/>
 <meta property="og:image:alt" content="Vorschaubild"/>

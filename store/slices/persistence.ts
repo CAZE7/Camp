@@ -1,6 +1,8 @@
 import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
 import { sanitizeEdgeDataBySchema } from '../../lib/edgeSchema'; // DOM-004
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
+
+import { LEGACY_PLANNER_STORAGE_KEY, PLANNER_STORAGE_KEY, withLegacyTakeover } from '../../lib/storageKeys';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
 import type { PlannerState } from './types';
@@ -185,9 +187,15 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
 }
 
 export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>> = {
-  name: 'werft-planner-v1',
+  name: PLANNER_STORAGE_KEY,
   version: PLANNER_STORAGE_VERSION,
-  storage: createJSONStorage(() => plannerDebouncedStorage),
+  // Die Übernahme sitzt VOR dem Debounce-Adapter: Gelesen wird beim
+  // Rehydrieren sofort, geschrieben wird der herübergeholte Stand erst mit
+  // dem nächsten Flush (oder beim Verlassen der Seite) — ein zusätzlicher
+  // Schreibvorgang, der den Start nicht aufhält.
+  storage: createJSONStorage(() =>
+    withLegacyTakeover(plannerDebouncedStorage, PLANNER_STORAGE_KEY, LEGACY_PLANNER_STORAGE_KEY)
+  ),
   migrate: (persisted, version) => migratePlannerPersisted(persisted, version),
   partialize: (state) => ({
     viewMode: state.viewMode,

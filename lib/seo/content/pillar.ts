@@ -181,6 +181,11 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
           description: 'Ertrag, Verschattung, Winterfall.',
         },
         {
+          href: '/camper-elektrik/ladebooster/',
+          label: 'Ladebooster im Camper auslegen',
+          description: 'Ladung aus der Lichtmaschine: Trennrelais oder DC-DC, 30 A oder 50 A.',
+        },
+        {
           href: '/camper-elektrik/mppt/',
           label: 'MPPT-Laderegler auslegen',
           description: 'Spannungsfenster, Kalt-Leerlaufspannung, Ströme.',
@@ -228,7 +233,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Der Camper-Elektroplaner prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. [Camper-Elektroplaner öffnen](/planer/).',
+        text: 'Der Camper-Elektroplaner prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. Hier kannst du einen [kostenlosen Camper-Schaltplan erstellen](/planer/).',
       },
     },
   ],
@@ -257,7 +262,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     { href: '/camper-elektrik/solar/', label: 'Solar auslegen' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
   ],
   sources: [
     {

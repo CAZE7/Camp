@@ -6,7 +6,7 @@ import { X } from 'lucide-react';
 /**
  * D-6 (baut M11-3 optisch weiter): Shortcut-Overlay per `?`.
  *
- * Öffnet sich mit `?` (Shift+/) und listet die Canvas-Kürzel im Werft-Stil.
+ * Öffnet sich mit `?` (Shift+/) und listet die Canvas-Kürzel im Elektroplaner-Stil.
  * Schließbar mit Escape, Klick auf den Schleier oder den Schließen-Button.
  * Der Fokus kehrt bei Schließen zur Auslöse-Taste zurück (WCAG 2.4.3).
  */

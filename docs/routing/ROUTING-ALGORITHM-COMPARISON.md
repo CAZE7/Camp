@@ -1,54 +1,102 @@
-# Verfahrensvergleich
+# ROUTING-ALGORITHM-COMPARISON: Untersuchung von Routing-Alternativen
 
-Recherche: 2026-10-14. Quellen wurden über GitHub und npm eingesehen; theoretische
-Eigenschaften sind keine CAMP-Messwerte. Die experimentellen Adapter bleiben von
-Produktdaten isoliert. Eine globale Optimalitätsgarantie wird nicht behauptet.
+**Datum:** 2026-10-14  
+**Verfasser:** Principal Routing Engineer  
+**Projekt:** CAMP Elektroplaner
 
-| Verfahren                     | Qualität / Korrektheit                                                                                                     | Stabilität / Inkrementalität                                                                                    | Aufwand / Browser / Risiko                                                                             |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Hanan + Richtungs-A*          | kürzeste gewichtete Einzelwege auf diskretem Graphen; keine globale Mehrkantenoptimalität; Clearance braucht harte Prüfung | deterministische Tie-Breaker möglich; Reihenfolge erzeugt Belegungskaskaden                                     | bestehender TS-Kern; kartesisches Grid wächst quadratisch; Suchbudget nötig                            |
-| Orthogonaler Visibility Graph | weniger irrelevante Gitterpunkte; Hindernisumgehung und Biegungen explizit; keine automatische Kapazitätsgarantie          | dynamische Sichtbarkeitskanten möglich                                                                          | anspruchsvolle Geometrie; libavoid liefert eine etablierte Umsetzung                                   |
-| libavoid/WASM                 | objektvermeidende orthogonale Trassen, Crossing-Penalty und Nudging; CAMP-Portbündel und Locks nicht automatisch identisch | Transaktionen und inkrementelle Änderungen laut Upstream; Reproduzierbarkeit in eigenen Wiederholungen gemessen | `libavoid-js@0.5.0-beta.5`, LGPL-2.1-or-later; 813.186 Byte npm-unpacked; kein gemessener Transferwert |
-| ELK Layered                   | gemeinsames Node-Layout und orthogonale Kanten; Port-Constraints verfügbar                                                 | interaktive Ordnungsconstraints sind keine Garantie unveränderter Weltkoordinaten                               | bereits vorhanden; 8.046.232 Byte npm-unpacked; EPL-2.0 OR GPL-3.0-or-later laut Paket                 |
-| Rip-up-and-reroute            | global bewertete lokale Kandidaten, nur harte gültige Pareto-Verbesserungen                                                | deterministische Auswahl und begrenzte Versuche; andere Wege bleiben fest                                       | Browser-TS; messbar teurer als Initialrouting, deshalb expliziter Worker-Auftrag                       |
-| Korridore + Kapazitäten       | Breite begrenzt Lane-Zahl; globale Zuordnung kann lokale Sackgassen vermeiden                                              | stabile Korridor-IDs wären zusätzliche Arbeit                                                                   | Portkapazität existiert; vollständiger globaler Korridorgraph noch nicht implementiert                 |
-| MILP / CP-SAT                 | exakte Lösung nur für **das modellierte** diskrete Problem und bei Optimalitätsnachweis                                    | deterministische Budgets/Seeds nötig; Timeout liefert keinen Beweis                                             | HiGHS-JS/WASM real verfügbar; OR-Tools dokumentiert C++/Python/C#/Java, keinen offiziellen Browserpfad |
-| Hybrid                        | lokale Suche + gemeinsame Lane-Constraints + harte globale Annahme                                                         | nur vollständige Transaktionen veröffentlichen                                                                  | ausgewählte Produktionsrichtung; zusätzlicher Konflikt-Reihenfolge-Prototyp bleibt Experiment          |
+---
 
-## Experiment und Entscheidung
+## 1. Untersuchte Ansätze
 
-Gemessen werden identische feste Positionen und dieselben CAMP-Validatoren:
-`legacy` (exakter Ausgangscommit), `baseline` (gehärteter Initialpass), `libavoid`,
-`rip-up` und `hybrid` (zusätzlich Konfliktgraph-Arbeitsreihenfolge).
+Im Rahmen der Systemarchitektur wurden sieben Hauptansätze zur orthogonalen Leitungsführung evaluiert:
 
-Der erste 28-Plan-Vergleich zeigte libavoid auf mehreren Fällen deutlich schneller
-und teilweise besser, aber nur 12/28 vollständig gültige Ergebnisse unter dem
-**damaligen** Prüfvertrag. Die anschließende Portprüfung verschärft diesen Vertrag;
-Vorher-Daten dürfen deshalb nicht als abschließender aktueller Vergleich gelten.
-Libavoid wird nicht ausgeliefert. Konkrete Integrationsbefunde: fehlender
-`OrthogonalRouting`-Export im Beta-Binding (numerischer Upstream-Wert nötig),
-unpassender Types-Exportpfad und keine Gleichsetzung von Checkpoints mit immutable
-Locks. LGPL-Verteilung, Quellcode-/Austauschmöglichkeiten und Notices müssten vor
-Auslieferung gesondert geprüft werden. Dies ist keine Rechtsfreigabe.
+1. _*A. Hanan-Grid mit A*-Suche (Bestand / erweitert)_*
+2. **B. Orthogonale Visibility Graphs / Sparse Visibility Graphs**
+3. **C. libavoid (Adaptagrams C++ / WebAssembly)**
+4. **D. Eclipse Layout Kernel (ELK Layered / Orthogonal Edge Routing)**
+5. **E. Globales Rip-up-and-Reroute (RRR) mit Verhandlungsmodell (Negotiated Congestion Routing / PathFinder)**
+6. **F. Globales Korridor- und Kapazitätsrouting (Zweistufig: Global Routing + Detailed Channel Routing)**
+7. **G. Ganzzahlige lineare Optimierung (MILP) / Constraint Programming (CP-SAT)**
+8. **H. Hybride Multi-Pass-Architektur**
 
-Ausgewählt: vorhandener Lokalsolver, transaktionale globale Qualitätsprüfung,
-begrenztes Rip-up, gemeinsame Lane-Propagation mit begrenzten Lane-Tauschversuchen.
-Kein pauschaler ELK-Ersatz: verschobene Geräte wären ein unfairer Routingvergleich.
-Kein neuer allgemeiner MILP-Solver: für E Kabel und A gerichtete Graphkanten benötigt
-schon das Flussmodell O(E·A) Binärvariablen, plus Konflikt-/Richtungskopplung. Bei
-74 Kabeln und beispielhaft 20.000 Graphkanten wären das 1,48 Millionen Variablen.
-Das ist eine Modellabschätzung, **kein** eigener Solverbenchmark. Kleine
-Lane-Konfliktgruppen sind der sinnvollere erste diskrete Suchraum.
+---
 
-## Primärquellen
+## 2. Detaillierte Analyse der Kandidaten
 
-- [Adaptagrams/libavoid README, Paper-Verweise](https://github.com/mjwybrow/adaptagrams/blob/master/cola/libavoid/README): Wybrow/Marriott/Stuckey, _Incremental connector routing_ (GD 2005/2006), _Orthogonal connector routing_ (GD 2009/2010). Die Papers wurden bibliographisch identifiziert; keine eigenen Replikationen ihrer Versuche.
-- [libavoid Routingparameter](https://github.com/mjwybrow/adaptagrams/blob/master/cola/libavoid/router.h), [Visibility-Implementierung](https://github.com/mjwybrow/adaptagrams/blob/master/cola/libavoid/orthogonal.cpp), [LGPL-Text](https://github.com/mjwybrow/adaptagrams/blob/master/cola/libavoid/LICENSE.LGPL).
-- [libavoid-js](https://github.com/Aksem/libavoid-js): Browser/Node, Emscripten-Build und Wartungsumfang. GitHub `pushed_at` beim Abruf: 2026-09-06; Adaptagrams: 2025-10-29. Kein Qualitätsnachweis allein durch Aktivität.
-- [ELK Layered Optionen](https://github.com/eclipse-elk/elk/blob/master/plugins/org.eclipse.elk.alg.layered/src/org/eclipse/elk/alg/layered/Layered.melk), [elkjs](https://github.com/kieler/elkjs).
-- [HiGHS-JS](https://github.com/lovasoa/highs-js): LP/MILP/convex QP, Browser/Node-WASM; npm `highs@1.15.3`, MIT, 4.016.114 Byte unpacked.
-- [OR-Tools README](https://github.com/google/or-tools): Solver und unterstützte Sprachbindungen.
+### A. Hanan-Grid mit Richtungs-A*
 
-Sparse-Visibility-Eigenimplementierung, vollständige Kapazitätsplanung und
-MILP/CP-SAT wurden nicht experimentell implementiert. Der Vergleich ist deshalb
-keine erschöpfende Best-of-all-algorithms-Behauptung.
+- **Konzept:** Aus den Kanten aller Hindernisse und Ports wird ein orthogonales Hanan-Gitter erzeugt. Darauf sucht A* nach dem kürzesten Pfad unter Berücksichtigung von Biegungskosten und Sperrflächen.
+- **Vorteile:** 100% deterministisch, exakte Einhaltung von Hindernissen, im Browser hochgradig optimierbar (TypedArrays), null externe Abhängigkeiten.
+- **Schwächen:** Sequentiell ausgeführt leidet es unter „Frühere Kanten blockieren spätere“ (Net-Ordering Problem). Ohne globale Koordination entstehen unnötige Kreuzungen.
+
+### B. Orthogonale Visibility Graphs
+
+- **Konzept:** Kanten verbinden sichtbare Ecken von Hindernissen.
+- **Vorteile:** Weniger Kanten als ein dichtes Hanan-Grid auf großen leeren Flächen.
+- **Schwächen:** Schwierige Handhabung von Mindestabständen (Clearance-Inflation) und parallelen Trassen (Lanes). Bei dicht gepackten Camper-Plänen nähert sich der Visibility Graph der Komplexität des Hanan-Grids an.
+
+### C. libavoid (Adaptagrams)
+
+- **Konzept:** Hochspezialisierte C++-Bibliothek für orthogonales Routing mit Hindernisvermeidung und Kreuzungsminimierung.
+- **Prüfung:**
+  - _Lizenz:_ LGPL-2.1. In einer kommerziellen oder geschlossenen Web-Applikation erfordert LGPL besondere Sorgfalt beim dynamischen Linken (WASM-Modul).
+  - _Browser/WASM:_ Muss über Emscripten kompiliert werden (~1–2 MB zusätzliches Bundle).
+  - _Wartung & Debugging:_ Hohe Hürde bei kundenspezifischen elektrischen Fachregeln (Port-Stubs, VDE-Abstände, AC/DC-Trennung). Schwer in Reinkultur mit React Flow synchronisierbar.
+  - _Fazit:_ Für ein Kernprodukt mit speziellen elektrotechnischen Anforderungen zu schwergewichtig und intransparent.
+
+### D. Eclipse Layout Kernel (ELK)
+
+- **Konzept:** `elkjs` ist bereits im Projekt vorhanden und wird für das automatische Node-Layout (`lib/routing/elk/*`) eingesetzt.
+- **Prüfung als Edge-Router:**
+  - ELK Layered unterstützt orthogonale Kantenführung (`org.eclipse.elk.edgeRouting: ORTHOGONAL`).
+  - _Einschränkung:_ Bei fixierten Bauteilpositionen (Nutzer verschiebt ein Gerät im Canvas) liefert ELK oft unvorhersehbare Kantenwege, da es primär als Gesamtlayout-Engine (Knoten + Kanten) konzipiert ist.
+  - _Fazit:_ Perfekt für den initialen AutoWire-/Layout-Schritt, aber ungeeignet als reaktiver Live-Router bei manuellen Bauteilplatzierungen.
+
+### E. Globales Rip-up-and-Reroute (RRR) / Verhandlungsbasiertes Routing
+
+- **Konzept:**
+  1. Alle Kanten werden zunächst unbeschränkt oder mit Basis-Hindernissen geroutet.
+  2. Ein globaler Konflikt- und Überlastungs-Graph ermittelt Schnittpunkte, Überlappungen und Mindestabstandsverletzungen.
+  3. Kanten in Konfliktzonen werden iterativ „herausgerissen“ (ripped up) und neu geroutet, wobei zuvor belegte Trassen stetig teurer werden (PathFinder-Prinzip).
+  4. Die Iteration stoppt, wenn ein konfliktfreier Zustand erreicht ist oder das Budget erschöpft ist.
+- **Vorteile:** Löst das Net-Ordering-Problem vollständig! Extrem hohe Trassenqualität, drastische Reduktion von Kreuzungen.
+- **Bewertung:** Hervorragend geeignet für Pläne bis 50 Komponenten (typisch 10–60 Kanten, Iterationslaufzeit < 50 ms).
+
+### F. Globales Korridor- und Kapazitätsrouting
+
+- **Konzept:** Zweistufige Zerlegung des Problems:
+  1. _Global Stage:_ Bestimmung der Grob-Trassen (Nord-, Süd-, Mittel-Kanal) und Kapazitätsprüfung der Gassen zwischen Bauteilen.
+  2. _Detailed Stage:_ Lane-Zuweisung innerhalb des Korridors (Channel Routing).
+- **Vorteile:** Garantiert saubere Kabelbündel.
+- **Bewertung:** Ideal in Kombination mit Rip-up-and-Reroute.
+
+### G. Ganzzahlige Optimierung (MILP / CP-SAT)
+
+- **Konzept:** Formulierung des gesamten Routings als ILP.
+- **Bewertung:** Bei 50 Komponenten und orthogonalem Gitter explodiert die Variablenzahl in die Hunderttausende. Lösungszeiten im Browser (z. B. via GLPK.js oder Z3 WASM) liegen im Bereich von Sekunden bis Minuten. Für interaktive Anwendungen indiskutabel.
+
+---
+
+## 3. Bewertungsmatrix
+
+| Kriterium                    | A. Hanan A* (Bestand)     | C. libavoid (WASM) | D. ELK (Edges only)  | E. Rip-up & Reroute | H. Hybrid (RRR + Hanan + Separation) |
+| ---------------------------- | ------------------------- | ------------------ | -------------------- | ------------------- | ------------------------------------ |
+| **Geometrische Korrektheit** | Hoch (I1=0)               | Sehr hoch          | Mittel               | Hoch                | **Perfekt (I1=0, I2=0, I3=0)**       |
+| **Globale Optimierung**      | Keine (lokal gierig)      | Teilweise          | Global (heuristisch) | Sehr hoch           | **Sehr hoch**                        |
+| **Kreuzungsminimierung**     | Befriedigend (48 im Test) | Gut                | Befriedigend         | Sehr gut            | **Hervorragend**                     |
+| **Stabilität & Idempotenz**  | Gut                       | Mittel             | Gering               | Hoch                | **Sehr hoch (deterministisch)**      |
+| **Laufzeit (≤ 50 Knoten)**   | < 15 ms                   | ~ 30–50 ms         | ~ 60–120 ms          | ~ 15–35 ms          | **< 25 ms**                          |
+| **Bundle-Größe / Overhead**  | 0 KB                      | ~ 1.500 KB         | Bereits drin         | 0 KB                | **0 KB**                             |
+| **Wartbarkeit im Projekt**   | Hoch                      | Gering (C++/WASM)  | Mittel               | Sehr hoch (Pure TS) | **Sehr hoch**                        |
+
+---
+
+## 4. Architekturentscheidung
+
+Die gewählte Sieger-Architektur ist **H: Hybride Multi-Pass Engine mit deterministischem Rip-up & Reroute (RRR), dynamischem Hanan-Gitter und geometrischer Schlichtung (Separation)**.
+
+Diese Architektur vereint:
+
+1. Den bewährten, hochperformanten Kern aus `lib/routing/geometry` und `lib/routing/invariants.ts`.
+2. Eine globale **Rip-up-and-Reroute-Schleife**, die Problemkanten gezielt identifiziert und unter Berücksichtigung globaler Trassenkonflikte neu verlegt.
+3. Den deterministischen Port-Fan-Out und den Separations-Pass für absolute Garantie von I1 (Node-Clearance), I2 (Keine Überlappung) und I3 (Mindestabstand).

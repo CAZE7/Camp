@@ -9,8 +9,11 @@
  *
  * Ablauf:
  *   1. package.json + package-lock.json in ein temporäres Verzeichnis kopieren.
- *   2. In der Kopie eine Dependency-Version verfälschen (nur package.json).
- *   3. `npm ci --dry-run` ausführen und erwarten, dass es mit EUSAGE scheitert.
+ *   2. In der Kopie die im Lockfile festgeschriebene Version einer Dependency
+ *      verfälschen — sie passt danach nicht mehr zur Range in `package.json`.
+ *   3. `npm ci --dry-run` ausführen, erwarten, dass es scheitert, und dass die
+ *      Meldung genau diese Dependency als Ursache nennt (siehe Schritt 2 unten:
+ *      npm meldet den Widerspruch mit zwei verschiedenen Codes).
  *   4. Zur Gegenprobe: unverändertes Paar muss die Prüfung bestehen.
  *
  * Aufruf:  npm run ci:verify-lockfile-gate
@@ -23,6 +26,12 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/**
+ * Die im Lockfile verfälschte Version. Sie existiert in keiner Registry — damit
+ * ist sie in jeder Meldung, die npm zum Scheitern bringt, wiederzufinden.
+ */
+const FAKE_VERSION = '0.0.0-desynchronisiert';
 
 /**
  * Führt `npm ci --dry-run` in `cwd` aus und liefert Exit-Code + Ausgabe.
@@ -101,7 +110,7 @@ try {
   // Die im Lockfile festgeschriebene Version passt danach nicht mehr zur
   // Range in package.json — exakt der Zustand nach einem Merge-Konflikt oder
   // einem manuell editierten package.json.
-  entry.version = '0.0.0-desynchronisiert';
+  entry.version = FAKE_VERSION;
   writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
 
   const broken = npmCiDryRun(brokenDir);
@@ -110,13 +119,59 @@ try {
     broken.code !== 0,
     `exit ${broken.code}`
   );
-  check(
-    'Fehlermeldung nennt die fehlende Synchronität',
-    /can only install packages when your package\.json and package-lock\.json/i.test(broken.output),
+
+  /**
+   * Der Fehlschlag muss aus der Verfälschung stammen — nicht aus einem
+   * Registry- oder Netzzufall, der auch einen gesunden Stand umbringt.
+   *
+   * Geprüft wird deshalb die Ursache statt eines Wortlauts. Die Gegenprobe aus
+   * Schritt 1 trägt die halbe Beweislast: gleiche Umgebung, gleicher Befehl,
+   * beide Kopien frisch — den Unterschied macht allein die eine verfälschte
+   * Lockfile-Version. Zusätzlich muss die Meldung eine der drei Spuren tragen,
+   * die nur diese Verfälschung erzeugen kann:
+   *
+   *   EUSAGE   `Invalid: lock file's <dep>@0.0.0-desynchronisiert does not
+   *            satisfy <dep>@3.0.129` — npm hat den Widerspruch im Lockfile
+   *            selbst erkannt.
+   *   ETARGET  `No matching version found for <dep>@…` — npm hat gegen den
+   *            Registry-Index aufgelöst. Diese Auflösung findet nur statt, weil
+   *            die verfälschte Version die Range aus `package.json` nicht mehr
+   *            erfüllt; der unverfälschte Lauf fragt den Index nicht.
+   *   Klartext `can only install packages when your package.json and
+   *            package-lock.json … are in sync`, gefolgt von der Liste der
+   *            betroffenen Pakete.
+   *
+   * Beide Codes sind am selben Commit mit derselben npm-Version (10.9.9)
+   * aufgetreten: Quality Gate erst EUSAGE (Run 38783421907, 18:11 UTC), sieben
+   * Minuten später ETARGET (Run 38784500652, 18:18 UTC). Eine Prüfung auf den
+   * genauen Wortlaut hätte daraus einen Flake gemacht, obwohl die Ursache beide
+   * Male dieselbe war.
+   */
+  const code = broken.output.match(/npm error code ([A-Z_]+)/)?.[1] ?? '(kein Code)';
+  const nenntSyncWortlaut = /can only install packages when your package\.json and package-lock\.json/i.test(
     broken.output
-      .split('\n')
-      .find((line) => line.includes('does not satisfy') || line.includes('npm error code')) ??
-      '(keine Meldung)'
+  );
+  const nenntFakeVersion = broken.output.includes(FAKE_VERSION);
+  // Was NICHT genügt: eine Meldung, die nur den Paketnamen nennt. Ein
+  // Netzausfall (`ENOTFOUND`) tut das auch — er würde den Beleg sonst
+  // stillschweigend bestehen.
+  const istBeleg = code === 'EUSAGE' || code === 'ETARGET' || nenntSyncWortlaut || nenntFakeVersion;
+  // Die ersten npm-Fehlerzeilen landen im CI-Log. Ohne sie ist ein roter Lauf
+  // wie der vom 2026-10-15 („npm error code ETARGET") nicht diagnostizierbar:
+  // Der Code allein sagt nicht, welches Paket npm nicht auflösen konnte.
+  const npmFehlerzeilen = broken.output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(
+      (line) => line.startsWith('npm error') && line !== 'npm error' && !line.startsWith('npm error code')
+    )
+    .slice(0, 3);
+  check(
+    'Fehlermeldung nennt die Ursache in der verfälschten Kopie',
+    istBeleg,
+    `${code}${nenntSyncWortlaut ? ' (mit Synchronitäts-Hinweis)' : ''}${
+      nenntFakeVersion ? `, nennt ${FAKE_VERSION}` : ''
+    } — ${npmFehlerzeilen.join(' | ') || '(keine npm-Fehlerzeile)'}`
   );
 } finally {
   rmSync(brokenDir, { recursive: true, force: true });

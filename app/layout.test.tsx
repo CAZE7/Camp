@@ -62,10 +62,10 @@ describe('RootLayout', () => {
   });
 
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {
-    expect(metadata.metadataBase?.toString()).toBe('https://caze7.github.io/');
+    expect(metadata.metadataBase?.toString()).toBe('https://elektroplaner-camper.de/');
     expect(metadata.title).toEqual({
-      default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Werft',
-      template: '%s | Werft',
+      default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Elektroplaner',
+      template: '%s | Elektroplaner',
     });
     // Ein vererbter Homepage-Canonical oder ein Homepage-Open-Graph auf einer
     // Fehlerroute wäre widersprüchlich. Indexierbare Seiten setzen beides über
@@ -73,37 +73,5 @@ describe('RootLayout', () => {
     expect(metadata.alternates).toBeUndefined();
     expect(metadata.openGraph).toBeUndefined();
     expect(metadata.twitter).toBeUndefined();
-  });
-
-  it('bindet das Google-Tag (gtag.js) im head ein', () => {
-    const element = RootLayout({
-      children: <div>Test</div>,
-    }) as React.ReactElement<{ children?: React.ReactNode }>;
-
-    const htmlChildren = React.Children.toArray(element.props.children);
-    const headElement = htmlChildren.find(
-      (child): child is React.ReactElement<{ children: React.ReactNode }> =>
-        React.isValidElement(child) && child.type === 'head'
-    );
-    expect(headElement).toBeDefined();
-
-    const headChildren = React.Children.toArray(headElement!.props.children);
-    const gtagScript = headChildren.find(
-      (child): child is React.ReactElement<{ src?: string; async?: boolean }> =>
-        React.isValidElement<{ src?: string; async?: boolean }>(child) &&
-        child.type === 'script' &&
-        child.props.src === 'https://www.googletagmanager.com/gtag/js?id=G-Q7E3XL4T34'
-    );
-    expect(gtagScript).toBeDefined();
-    expect(gtagScript?.props.async).toBe(true);
-
-    const configScript = headChildren.find(
-      (child): child is React.ReactElement<{ dangerouslySetInnerHTML?: { __html: string } }> =>
-        React.isValidElement<{ dangerouslySetInnerHTML?: { __html: string } }>(child) &&
-        child.type === 'script' &&
-        typeof child.props.dangerouslySetInnerHTML?.__html === 'string' &&
-        child.props.dangerouslySetInnerHTML.__html.includes('G-Q7E3XL4T34')
-    );
-    expect(configScript).toBeDefined();
   });
 });

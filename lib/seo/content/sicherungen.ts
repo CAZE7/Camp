@@ -153,7 +153,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Das zweite Beispiel ist der klassische Fall: Der Querschnitt folgt dem Spannungsfall, die Sicherung folgt der Leitung — und wenn beide zusammen nicht passen, ist die Anlage nicht ausführbar. Der Planer markiert solche Kanten statt sie zu übergehen. [Camper-Elektroplaner öffnen](/planer/).',
+        text: 'Das zweite Beispiel ist der klassische Fall: Der Querschnitt folgt dem Spannungsfall, die Sicherung folgt der Leitung — und wenn beide zusammen nicht passen, ist die Anlage nicht ausführbar. Der Planer markiert solche Kanten statt sie zu übergehen. Wer die Kette für die eigene Anlage durchrechnen will, kann hier einen [kostenlosen Camper-Schaltplan erstellen](/planer/).',
       },
     },
     {
@@ -193,7 +193,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/spannungsabfall/', label: 'Spannungsabfall bei 12 V' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
   ],
   sources: [
     {

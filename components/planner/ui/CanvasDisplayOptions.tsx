@@ -52,7 +52,7 @@ type ToggleButtonProps = {
 };
 
 /**
- * Filter-Chip im Werft-Stil: flache Panel-Fläche, Status über getönte
+ * Filter-Chip im Elektroplaner-Stil: flache Panel-Fläche, Status über getönte
  * Fläche + Rand in Leitungsfarbe — nicht über gesättigte Volltonflächen
  * (die dominierten das Canvas und standen im Widerspruch zur Text-Regel
  * „ein Akzent, Ruhe zuerst“). Die Volltonfarbe bleibt als Punkt erhalten.

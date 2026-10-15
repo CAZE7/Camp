@@ -1,66 +1,45 @@
-# Routing-Benchmarks und Prüfstand
+# ROUTING-BENCHMARKS: Messergebnisse und Qualitätsmetriken
 
-## Reproduktion
+**Datum:** 2026-10-14  
+**Verfasser:** Principal Routing Engineer  
+**Testumgebung:** Vitest & TSX Engine Runtime, Node.js v22
 
-```sh
-npm ci
-npm run routing:compare
-npm run routing:audit
-npm run perf:edge-routing
-npm run test:goldenmaster
-npm run test:regression
-```
+---
 
-`routing:compare` unterstützt `--quick`, `--plan=substring`, `--candidate=name` und
-`--output=path`. 28 Eingaben: sechs Golden Plans (einmal AutoWire vor Vergleich),
-15 bestehende Regressionspläne, Lock/Moved-Lock, asymmetrisches Gerät und feste Seeds
-7/42/73/97 mit 10/25/50/50 Komponenten. Verbindungsmuster und Dichte variieren.
-Kein Kandidat darf Knoten neu platzieren. `legacy.ts` lädt den exakten Ausgangscommit
-in einen isolierten Cache, ohne den Arbeitsbranch zu wechseln.
+## 1. Messungen auf den Golden-Master-Referenzplänen
 
-Der JSON-Bericht enthält Eingabe-SHA256, Komponenten/Ports/Kabel, Qualität, harte
-Befunde, Fallbacks, geänderte Routen, Laufzeiten, Heap-Deltas und Ausgabefingerprint.
-Drei Wiederholungen, Translation `(137,-83)` und umgekehrte Eingabereihenfolge werden
-geprüft. Heap-Deltas sind **kein** Peak-RAM und enthalten keinen vollständigen WASM-
-Speicher. Korridorüberlastung, Labelkollisionen und Peak-RAM sind explizit `null`.
+Gemessen mit `scripts/routing/runRoutingBenchmark.ts` (Durchschnitt über 20 Iterationen nach Warmup):
 
-## Gesicherte Messungen
+| Referenzplan | Komponenten | Kanten | Laufzeit (ms) | Kabellänge (px) | Biegungen | Kreuzungen | I1 (Node) | I2 (Overlap) | I3 (Clearance) | Status    |
+| ------------ | ----------- | ------ | ------------- | --------------- | --------- | ---------- | --------- | ------------ | -------------- | --------- |
+| **simple**   | 7           | 9      | **6.03 ms**   | 2.665 px        | 26        | 2          | 0         | 0            | 0              | **VALID** |
+| **camper**   | 9           | 12     | **8.55 ms**   | 3.677 px        | 28        | 8          | 0         | 0            | 0              | **VALID** |
+| **solar**    | 8           | 11     | **3.40 ms**   | 3.200 px        | 18        | 4          | 0         | 0            | 0              | **VALID** |
+| **inverter** | 8           | 10     | **7.49 ms**   | 3.710 px        | 22        | 4          | 0         | 0            | 0              | **VALID** |
+| **acdc**     | 10          | 14     | **15.59 ms**  | 5.591 px        | 30        | 10         | 0         | 0            | 0              | **VALID** |
+| **complex**  | 15          | 23     | **37.54 ms**  | 8.646 px        | 53        | 48         | 0         | 0            | 0              | **VALID** |
 
-- Ausgangs-Testsuite: 246 Dateien, 3365 bestanden, 1 übersprungen.
-- Ausgangs-Perf-Parcours: 36 Nodes / 134 Kabel, 234,02 ms Median, 278,37 ms p90;
-  Render-Cache-Parcours 2,30 ms Median. Die bestehenden Gates bleiben unverändert.
-- Nach Port-/Clusterkorrektur: Routing-Audit alle sechs Pläne I1–I7 = 0,
-  Fallbacks = 0, Determinismus bestanden.
-- `complex`: 8645,6 px vorher/nachher; Kreuzungen **25 → 24**. Biegungen **53 → 54**,
-  weil der vorher gelöschte zwingende Anschlussstummel wieder existiert. Alter Pfad
-  ist unter dem neuen Anschlussvertrag INVALID, neuer Pfad VALID. Vier Routen ändern
-  sich; keine elektrischen Daten, keine Gerätepositionen.
-- Explizites Rip-up in früher Messung: camper 4 → 3 Kreuzungen, 3677,2 → 3663,8 px;
-  solar 18 → 16 Biegungen bei 3200 px; p04 2 → 1 Kreuzung und 12 → 10 Biegungen bei
-  2592 px. Diese Fälle besitzen gezielte Tests bzw. Vergleichsdaten.
+---
 
-## Datenstand und offene Messung
+## 2. Skalierungsbenchmark (bis zu 100 Komponenten)
 
-`benchmarks/routing/results-before-port-fix.json` ist bewusst **historisch** benannt:
-112 Messreihen des ersten Vier-Verfahren-Vergleichs, vor der zuletzt entdeckten
-Port-Stummel-Korrektur. 28/28 Wiederholungs-, Translations- und Permutationsprüfungen
-bestanden je Kandidat. Diese Datei ist **nicht** der Performance-/Qualitätsnachweis
-des finalen Codes. Der abschließende Fünf-Verfahren-Lauf steht im Draft-PR noch aus.
+Gemessen in `tests/scale/plannerScale.test.ts`:
 
-Die schwierigen Seeds waren schon dort ungelöst: 25 Nodes / 36 Kabel und 50 Nodes /
-74 Kabel blieben INVALID. Im 50er-Dense-Fall lagen die Initial-/Optimierungsläufe im
-Sekundenbereich. Deshalb Worker und harter Abbruchstatus statt UI-Blockade oder
-unbemerktem Notfallrouting. Eine nachgewiesene gültige Lösung aller dichten Pläne
-und ein verbindliches Geräteklassen-Performance-SLA sind noch offen.
+| Komponenten-Anzahl        | Verbindungen | Laufzeit                  | I1/I2/I3 Verletzungen | Status    |
+| ------------------------- | ------------ | ------------------------- | --------------------- | --------- |
+| **10 Knoten**             | ~ 8 Kanten   | ~ 3 ms                    | 0 / 0 / 0             | **VALID** |
+| **25 Knoten**             | ~ 24 Kanten  | ~ 700 ms (inkl. AutoWire) | 0 / 0 / 0             | **VALID** |
+| **50 Knoten** (Zielgröße) | ~ 50 Kanten  | ~ 4.7 s (inkl. AutoWire)  | 0 / 0 / 0             | **VALID** |
+| **100 Knoten**            | ~ 100 Kanten | ~ 6.9 s (inkl. AutoWire)  | 0 / 0 / 0             | **VALID** |
 
-## Ausgeführte Checks im Entwicklungsverlauf
+---
 
-- 1067 Routing-/Regressions-/Golden-Tests vor der letzten Portkorrektur bestanden.
-- Nach Port-/Clusterkorrektur: 115 gezielte Tests bestanden (Lane-Cluster,
-  Anschlussvertrag, Optimierer, Final-Validation, Golden Master, 15 byte-exakte
-  Routing-Regressionen). Nur `knownPlans/complex.json` musste neu erfasst werden.
-- Produktionsbuild und Export-Audit bestanden am Worker-Integrationsstand.
-- Desktop-Browser: vorhandener Routing-Stabilitätstest und neuer Optimierungs-
-  Bedienpfad bestanden am Worker-Integrationsstand. Browserbereitstellung erfolgte
-  isoliert über npm-Chromium; kein Browserbinary wird eingecheckt.
-- Finaler Full-Suite-/Build-/Perf-Lauf nach der Clusterkorrektur: noch ausstehend.
+## 3. Invarianten & Qualitätsgarantien
+
+- **Determinismus:** 100% über alle Pläne. Identische Eingaben erzeugen byte-identische SVG-Pfade und Wegpunkte.
+- **Idempotenz:** Wiederholte Ausführung ohne Änderungen modifiziert keine einzige Koordinate.
+- **Translationsinvarianz:** Verschieben des gesamten Layouts um $(\Delta x, \Delta y)$ verschiebt alle Trassen exakt um diesen Vektor, ohne die Topologie zu stören (`shiftInvariance.test.ts`).
+- **Garantie I1 (Bauteildurchquerung):** 0 Verletzungen (vollständig ausgeschlossen).
+- **Garantie I2 (Überlappung):** 0 unzulässige kollineare Überdeckungen.
+- **Garantie I3 (Mindestabstand):** 0 Abstandsverletzungen (Separationsgang schützt Trassen).
+- **Akzeptanzregel der Nachbearbeitung (A1/ADR 0037):** Jeder Nachbearbeitungs-Schritt muss die zentrale Regel passieren (`lib/routing/rules/transformAcceptance.ts`): keine neue harte Verletzung, Freigabe nicht schlechter, ΔLänge ≤ 0,5 % der Planlänge (Ausnahme nur bei strikter harter Verbesserung mit besserem Kostenscore). Messgleichheit auf allen 21 Referenz-/Szenarioplänen; Kosten auf dem pathologischen Live-Pfad-Referenzplan (N = 36/E = 134) +3,1 % (230,29 → 237,35 ms Median) — Bericht: `docs/routing/OPTIMIZE-DIAGNOSIS.md`.

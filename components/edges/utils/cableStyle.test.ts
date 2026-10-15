@@ -11,7 +11,7 @@ import {
 
 describe('cableStrokeWidth', () => {
   it('draws backbone cables at 3 px (Dark Engineering) and normal cables at 2 px (D-4)', () => {
-    // Perfekte Lösung: MAIN 3px per Modul 2 (vorher 4px Werft)
+    // Perfekte Lösung: MAIN 3px per Modul 2 (vorher 4px im alten Theme)
     expect(cableStrokeWidth({ isBackbone: true })).toBe(3);
     expect(cableStrokeWidth({ isBackbone: false })).toBe(2);
     expect(BACKBONE_STROKE_WIDTH).toBe(3);

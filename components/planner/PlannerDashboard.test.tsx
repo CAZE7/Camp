@@ -152,6 +152,20 @@ describe('PlannerDashboard - Core Interactions', () => {
     // Der Pro-Modus-Schalter wurde entfernt; Fachdetails sind immer sichtbar.
   });
 
+  it('bietet Vorlage laden und Teilen schon im geführten Modus an', () => {
+    render(<PlannerDashboard />);
+
+    // Einstieg und Ausgang des Planers sind keine Experten-Aktionen: Sie
+    // bleiben sichtbar, während die Schrittleiste den Rest führt.
+    expect(screen.getByTestId('action-templates')).toBeInTheDocument();
+    expect(screen.getByTestId('action-share')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-templates'));
+    expect(screen.getByTestId('toolbar-template-minimalist')).toBeInTheDocument();
+    expect(screen.getByTestId('toolbar-template-kastenwagen')).toBeInTheDocument();
+    expect(screen.getByTestId('toolbar-template-autark')).toBeInTheDocument();
+  });
+
   it('supports keyboard navigation and focus restoration in the overflow menu', () => {
     render(<PlannerDashboard />);
     const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
@@ -478,7 +492,7 @@ describe('PlannerDashboard - Image Export', () => {
     await waitFor(() => {
       expect(toPng).toHaveBeenCalledWith(mockReactFlowElem, expect.any(Object));
       expect(createElementSpy).toHaveBeenCalledWith('a');
-      expect(mockLink.download).toBe('werft-schaltplan.png');
+      expect(mockLink.download).toBe('elektroplaner-camper-schaltplan.png');
       expect(mockLink.href).toBe('data:image/png;base64,mocked');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
     });

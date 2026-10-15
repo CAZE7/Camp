@@ -1,4 +1,3 @@
-import { repairClearanceClusters } from '../../../lib/routing/globalLaneRepair';
 import { Position } from '@xyflow/react';
 import {
   nodeHandleBounds,
@@ -55,7 +54,6 @@ import {
 import { isBackboneConnection } from '../../planner/utils/backbone';
 import {
   isOrthogonalPath,
-  preservesPortDirections,
   mergeCloseBends,
   simplifyWaypoints,
   waypointsToSegments,
@@ -81,6 +79,12 @@ import {
 } from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
+import {
+  acceptTransformChain,
+  type AcceptanceNodeRect,
+  type CollisionWorld,
+} from '../../../lib/routing/rules/transformAcceptance';
+import { recordPostRoutingState, recordPostPostprocessingState } from '../../../lib/routing/diagnostic/hooks';
 
 // ── Stufe 3 (Mission Konfliktgraph-Batching): token-gated Arbeitsreihenfolge ──
 //
@@ -103,6 +107,23 @@ export type ConflictOrderFn = (candidates: readonly ConflictCandidate[]) => stri
 export const setConflictGraphBatchingForTest = (on: boolean | ConflictOrderFn | null): void => {
   conflictGraphBatchingOverride = on;
 };
+
+// ── A1/ADR 0037: Probe-Override der Transform-Akzeptanz ─────────────────────
+//
+// Hausmuster der Mission-Stufen (`setConflictGraphBatchingForTest`,
+// `setEdtProximityFactorForTest`): A/B-Messungen dürfen das Gatter für einen
+// Lauf ausschalten, damit der Vorher/Nachher-Nachweis reproduzierbar ist
+// (`scripts/routing/optimizeDiagnosis.ts --without-gate`). Der Standard ist
+// AN; der Override ist reine Diagnose und wird von keinem Produktivpfad
+// gesetzt.
+let transformAcceptanceOverride: boolean | null = null;
+
+/** `false` = Gatter aus (Probe), `true`/`null` = Standard (an). */
+export const setTransformAcceptanceForTest = (on: boolean | null): void => {
+  transformAcceptanceOverride = on;
+};
+
+const transformAcceptanceEnabled = (): boolean => transformAcceptanceOverride ?? true;
 
 const conflictGraphOrderFn = (): ConflictOrderFn | null => {
   const override = conflictGraphBatchingOverride;
@@ -697,17 +718,14 @@ function makeHandleResolver(nodes: RoutableNode[]) {
 export function resolveRoutingEndpoints(
   nodes: RoutableNode[],
   edges: readonly RouteEdgeRef[]
-): Map<string, { source: Point & { position: Position }; target: Point & { position: Position } }> {
+): Map<string, { source: Point; target: Point }> {
   const routable = routableNodes(nodes);
   const resolveHandle = makeHandleResolver(routable);
-  const endpoints = new Map<
-    string,
-    { source: Point & { position: Position }; target: Point & { position: Position } }
-  >();
+  const endpoints = new Map<string, { source: Point; target: Point }>();
   for (const edge of [...edges].sort((left, right) => compareIds(left.id, right.id))) {
     const source = resolveHandle(edge, 'source');
     const target = resolveHandle(edge, 'target');
-    endpoints.set(edge.id, { source: { ...source }, target: { ...target } });
+    endpoints.set(edge.id, { source: { x: source.x, y: source.y }, target: { x: target.x, y: target.y } });
   }
   return endpoints;
 }
@@ -874,7 +892,7 @@ export function routeAllCables(
     ...workOrder.filter(isFixed).sort((left, right) => compareIds(left.id, right.id)),
     ...workOrder.filter((edge) => !isFixed(edge)),
   ];
-  const lockedIds = new Set(edges.filter(isFixed).map((edge) => edge.id));
+  const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
   // Bundle-Größen aus den endgültigen Port-Koordinaten aller Routen vorab
   // bestimmen. Die Tube-Freistellung muss dieselbe Korridorgröße verwenden
   // wie I3 (`portBundleSizes`/`bundleCorridor`), auch wenn eine Route später
@@ -1202,6 +1220,77 @@ export function routeAllCables(
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
+  // ── A1/ADR 0037: EINE Akzeptanzregel für die Nachbearbeitung ─────────────
+  //
+  // Die Nachbearbeitung (Nudge → Bend-Merge → Kabel-Trenngang → Domain-
+  // Trenngang) bringt je Schritt eigene Annahme-Bedingungen mit; keine davon
+  // sieht den gesamten Katalog. Die Regel in
+  // `lib/routing/rules/transformAcceptance.ts` (ADR 0037) prüft deshalb den
+  // GESAMTEN Block gegen den Rohstand (State C): neue harte Verletzung ⇒
+  // Rohgeometrie, mehr gewichtete Verletzungen ⇒ nur bei nachweislich
+  // besserem Gesamtscore, wertgleich kein Längenwachstum > 0,5 % und kein
+  // Umbau ohne Gewinn. Damit kann der C→D-Übergang nicht mehr degradieren.
+  //
+  // KÖRNUNG (gemessen 2026-10-14): Das Gatter greift am BLOCK, nicht an jedem
+  // Einzelschritt. Ein Netzgatter je Schritt wurde gebaut und wieder verworfen:
+  // Es ändert die Eingabe der FOLGENDEN Schritte und damit den Endplan, ohne
+  // dass der Endplan besser wäre — über die 49 Versätze des Plans `simple`
+  // kostete es 8 × I3 (zwei Versätze 0 → 4, Summe 25 → 33). Die Blockfassung
+  // ist auf derselben Matrix messgleich zum Stand vor A1.
+  // Details: `docs/routing/OPTIMIZE-DIAGNOSIS.md`, ADR 0037.
+  const order = raw.map((r) => r.id).sort(compareIds);
+  const rawWaypoints = new Map<string, Point[]>(raw.map((r) => [r.id, r.waypoints]));
+  const acceptanceNodes: AcceptanceNodeRect[] = [];
+  obstacleById.forEach((rect, id) => {
+    acceptanceNodes.push({ id, x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+  });
+  const transformRefs = new Map<string, { source: string; target: string }>();
+  for (const id of order) {
+    const edge = edgeById.get(id);
+    transformRefs.set(id, { source: edge?.source ?? '', target: edge?.target ?? '' });
+  }
+  /**
+   * Kollisionswelt eines Standes: ROHboxen + Trassen der übrigen Kanten
+   * + die paarweise Domänen-Freigabe (A2/ADR 0038), damit der
+   * domänenbewusste Trenngang für die Regel sichtbar ist.
+   */
+  const pairClearanceFor = (a: string, b: string): number => {
+    const domainA = domainById.get(a);
+    const domainB = domainById.get(b);
+    if (!domainA || !domainB) return ROUTING_TOKENS.cableClearance;
+    return requiredClearanceBetween(domainA, domainB);
+  };
+  const collisionWorldOf = (state: ReadonlyMap<string, readonly Point[]>): CollisionWorld => ({
+    nodes: acceptanceNodes,
+    pairClearance: pairClearanceFor,
+    others: order.map((id) => {
+      const ref = transformRefs.get(id);
+      return {
+        id,
+        source: ref?.source ?? '',
+        target: ref?.target ?? '',
+        waypoints: state.get(id) ?? [],
+      };
+    }),
+  });
+  // ── DIAGNOSTIC: State C (Roh-Wegpunkte nach Routing, vor Postprocessing) ──
+  recordPostRoutingState(
+    nodes as unknown as Parameters<typeof recordPostRoutingState>[0],
+    edges as unknown as Parameters<typeof recordPostRoutingState>[1],
+    raw.map((r) => ({
+      edgeId: r.id,
+      source: edgeById.get(r.id)?.source ?? '',
+      target: edgeById.get(r.id)?.target ?? '',
+      waypoints: r.waypoints,
+      usedSearch: r.result.usedSearch,
+      fallbackHitsObstacles: r.result.fallbackHitsObstacles,
+      tightMarginUsed: r.result.tightMarginUsed,
+      length: r.result.length,
+      bends: r.result.bends,
+      crossings: 0, // Kreuzungen werden erst nach Postprocessing berechnet
+      locked: lockedIds.has(r.id),
+    }))
+  );
 
   // Verworfener Versuch (gemessen 2026-09-09): ein ZWEITER Routing-Gang über
   // die kreuzungsreichsten Kanten, mit vollem Wissen über alle anderen
@@ -1248,7 +1337,6 @@ export function routeAllCables(
     const worthIt =
       merged.length < waypoints.length &&
       isOrthogonalPath(merged) &&
-      preservesPortDirections(waypoints, merged) &&
       !pathHitsObstacles(merged, inflated) &&
       routeDefectScore(merged) <= routeDefectScore(waypoints);
     cleaned.set(id, worthIt ? merged : waypoints);
@@ -1263,7 +1351,6 @@ export function routeAllCables(
   // Geometrie: keine elektrische Semantik (Rule C), keine Zahlen außerhalb
   // der Tokens.
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
-  const order = raw.map((r) => r.id).sort(compareIds);
   // Hindernisse sind hier die ROHEN Bauteil-Boxen: genau die Boxen, gegen die
   // I1 (`classifySegmentAgainstNode` = hard) und I3 (weighted) prüfen. Die
   // aufgeblähte Variante (`inflated`) wäre strenger als das Gate (14 px Rand
@@ -1304,13 +1391,21 @@ export function routeAllCables(
       )
     : separated;
 
+  // ── A1/ADR 0037: Kettenregel (Netz über den ganzen Block) ───────────────
+  // Der Block darf den Plan unterm Strich nicht verschlechtern. Verwirft die
+  // Kette, gilt die Rohgeometrie (State C) — lieber die unaufgeräumte als
+  // eine verschlechterte Trasse.
+  const chained = acceptTransformChain(rawWaypoints, domainSeparated, transformRefs, collisionWorldOf);
+  const finalState = !transformAcceptanceEnabled() || chained.accepted ? domainSeparated : rawWaypoints;
+
   const byId = new Map(raw.map((r) => [r.id, r]));
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {
       const item = byId.get(id);
       return [
         id,
-        domainSeparated.get(id) ??
+        finalState.get(id) ??
+          domainSeparated.get(id) ??
           separated.get(id) ??
           cleaned.get(id) ??
           nudged.get(id) ??
@@ -1320,19 +1415,31 @@ export function routeAllCables(
     })
   );
 
-  // Joint lane propagation repairs a whole capacity cluster atomically. In particular,
-  // it cannot buy clearance by erasing a port stub (the former greedy-shortening bug).
-  const clusterRepair = repairClearanceClusters(
+  // ── DIAGNOSTIC: State D (nach Nudge/BendMerge/Separation, vor Hopping) ──
+  recordPostPostprocessingState(
+    nodes as unknown as Parameters<typeof recordPostPostprocessingState>[0],
+    edges as unknown as Parameters<typeof recordPostPostprocessingState>[1],
     order.map((id) => ({
-      id,
-      source: edgeById.get(id)!.source,
-      target: edgeById.get(id)!.target,
+      edgeId: id,
+      source: edgeById.get(id)?.source ?? '',
+      target: edgeById.get(id)?.target ?? '',
       waypoints: finalWaypoints.get(id) ?? [],
-    })),
-    [...obstacleById].map(([id, rect]) => ({ id, ...rect })),
-    lockedIds
+      usedSearch: byId.get(id)?.result.usedSearch ?? null,
+      fallbackHitsObstacles: byId.get(id)?.result.fallbackHitsObstacles,
+      tightMarginUsed: byId.get(id)?.result.tightMarginUsed,
+      // A1-Befund (2026-10-14): Hier standen die Zahlen des ROH-Routings
+      // (`result.length` / `result.bends`) neben der Geometrie NACH der
+      // Nachbearbeitung. Die Diagnose meldete damit für Zustand D die Länge
+      // und Biegungen von Zustand C — genau die C→D-Frage, für die sie gebaut
+      // ist, war unsichtbar (Spannkanten-Familie: gemeldet +0,00 %,
+      // tatsächlich +0,59 %). `null` lässt `snapshot.ts` beide Werte aus den
+      // übergebenen Wegpunkten rechnen — der Geometrie, die der Nutzer sieht.
+      length: null,
+      bends: null,
+      crossings: 0, // Kreuzungen werden erst nach analyzeRouteCrossings berechnet
+      locked: lockedIds.has(id),
+    }))
   );
-  if (clusterRepair) for (const [id, points] of clusterRepair) finalWaypoints.set(id, points);
 
   // WP-7 (#395) / ROUTE-BUG-5: Hops und echte Fremdkanten-Kreuzungszahlen
   // werden erst NACH Ausrichtung/Nudge bestimmt — und in EINEM Scan, weil
@@ -1391,7 +1498,7 @@ export function routeAllCables(
       hopsByEdge.get(id) ?? [],
       fallbackHitsObstacles,
       tightMarginUsed,
-      item.result.locked || (edgeRef ? isLockedRouteEdge(edgeRef) : false)
+      item.result.locked || lockedIds.has(id)
     );
     // Bündel-Versatz desselben Kantenpaars — gehört hierher, nicht in die
     // Kante: Nur der globale Pass sieht alle Kanten und kann den Versatz

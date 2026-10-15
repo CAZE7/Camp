@@ -13,7 +13,7 @@ GitHub Pages.
 
 `output: 'export'` in `next.config.ts`. Die Anwendung wird zu statischem
 HTML/JS/CSS gebaut und ohne Server ausgeliefert. Der Planstand liegt im
-`localStorage` (Zustand `persist`, Schlüssel `werft-planner-v1`, versioniert
+`localStorage` (Zustand `persist`, Schlüssel `elektroplaner-planner-v1`, versioniert
 mit Migrationsfunktion).
 
 ## Konsequenzen

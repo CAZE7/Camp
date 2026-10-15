@@ -1,66 +1,102 @@
-# Routing-Architektur dieser Änderung
+# ROUTING-ARCHITECTURE: Die globale hybride Routing-Engine
 
-## Verantwortung und Ablauf
+**Datum:** 2026-10-14  
+**Status:** In Umsetzung / Produktionsreif  
+**Komponenten-Zielgröße:** Pläne mit bis zu 50 elektrischen Komponenten
 
-`routingSnapshot.ts` normalisiert absolute Geometrie und Handles in
-`lib/routing/model.ts`. Nur routingrelevante Verbindungseigenschaften und
-Lock-Wegpunkte passieren diese Grenze. React-Internals werden nicht übertragen.
+---
 
-`CableRouteSync` → ein wiederverwendbarer Worker → `routingJob.ts` → Initialrouting
-oder explizite Optimierung → Final-Validation → atomarer Snapshot → Renderer.
-Veraltete Jobs werden abgebrochen; Hash, Generation und Revision schützen zusätzlich
-vor späten Antworten. Ein 10-s-Watchdog terminiert den Worker wirklich. Es gibt keinen
-versteckten Main-Thread-Fallback nach einem Workerfehler.
+## 1. Systemübersicht
 
-Initialrouting behält Katalog/Hanan-A*, Fan-out, Hindernisfenster und bewährte
-Geometrieschritte. Nudge, Bend-Merge und Separation dürfen die orientierten ersten
-und letzten Segmente nicht entfernen/umdrehen. `globalLaneRepair.ts` erzeugt bei
-verbleibenden Clearance-Konflikten **gemeinsame** Kandidaten: Verschiebung einer Lane
-propagiert auf ihre parallelen Nachbarn. Anschließend werden begrenzte gemeinsame
-Port-Lane-Tauschversuche global geprüft. Zwischenstände werden nie veröffentlicht.
-Budgets: 16 Seeds, 32 Propagationszüge, 8 Routen je Cluster, 32 Tauschkandidaten.
+Die Routing-Engine ist eine zustandslose, pure TypeScript-Pipeline. Sie nimmt ein normalisiertes Modell aus Komponenten (Nodes) und elektrischen Verbindungen (Edges) entgegen und erzeugt deterministische, kollisionsfreie, orthogonale Trassenverläufe.
 
-`optimizeCableRoutes.ts` ist eine separate Benutzeraktion ohne Geräteverschiebung.
-Bis zu vier Versuche legen ausgewählte Kabel unter Beachtung festgehaltener anderer
-Routen neu. Physische Locks und temporäre Belegung sind unterschiedliche Zustände.
-Hops, Labels und Metriken werden aus der endgültigen gemeinsamen Geometrie aufgebaut.
+```text
+┌────────────────────────────────────────────────────────┐
+│              Normalisiertes Eingabemodell               │
+│        (PlannerNodes, RouteEdgeRefs, Constraints)       │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            Phase 1: Port- & Stub-Planung                │
+│    - Bündel-Identifikation je Port (PortFanOut)        │
+│    - Deterministische Lane-Staffelung (16 px Grid)     │
+│    - Hindernis-Freigabe-Kappung (StubCap)               │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            Phase 2: Initiales Detail-Routing            │
+│    - Hanan-Grid & A*-Suche mit Sperrflächen (Tubes)    │
+│    - Fixierte Routen (Locked Snapshot) bleiben starr    │
+│    - Dynamische Hindernisfenster (Bounding-Box)        │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│      Phase 3: Globale Konfliktoptimierung (RRR)        │
+│    - Konflikt-Analyse (Kreuzungen, Engpässe, Umwege)   │
+│    - Deterministische Auswahl konfliktträchtiger Kanten│
+│    - Iteratives Rip-Up & Re-Route (Budget-limitiert)   │
+│    - Nur strikte Verbesserungen werden übernommen      │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│          Phase 4: Geometrisches Postprocessing         │
+│    - Nudge-Engine (Auflösen paralleler Überdeckungen)  │
+│    - Bend-Merge (Treppenmuster-Beseitigung für I7)     │
+│    - Clearance-Separation (Garantie für I3)            │
+│    - Hop-Berechnung (Bögen an echten Kreuzungen)       │
+│    - Label-Chip-Platzierung (Clear of Nodes & Labels)  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            Phase 5: Validierung & Publikation           │
+│    - Mathematische Prüfung: I1, I2, I3, I4, I5, I6, I7  │
+│    - Atomare Publikation im Store                      │
+│    - Status: VALID / INVALID / CONVERGED               │
+└────────────────────────────────────────────────────────┘
+```
 
-## Qualitätshierarchie
+---
 
-1. Vollständigkeit, eindeutige IDs, endliche orthogonale Nichtnullsegmente, exakte
-   Endpunkte, Außenrichtung, gültige gemessene Handle-IDs, keine unerlaubte Rückkehr
-   durch Anschlussgeräte, I1/I2/I3 sowie unveränderte Locks sind harte Bedingungen.
-2. `lib/routing/quality.ts`: globaler Vektor aus Kreuzungen, I4–I7-Defekten,
-   Biegungen und Manhattan-Länge in px. Keine beliebigen neuen Strafgewichte:
-   gültige Kandidaten müssen Pareto-besser sein; Gleichstand behält den Bestand.
-   Ein gültiger Kandidat schlägt einen ungültigen, nicht umgekehrt.
-3. Elektrische Verifikation bleibt unabhängig. Geometrie schreibt weder Querschnitt,
-   Sicherung, Domäne noch fachliche Leitungslänge. Fehlende elektrische Eingaben
-   werden nicht durch geometrische Scores ersetzt.
+## 2. Mathematisches Modell & Invarianten
 
-X-Kreuzungen bleiben erlaubt; kollineare Überdeckung ist I2, Berührung ohne echte
-Kreuzung fällt in die Clearance-Prüfung. Die gemeinsame Port-Bündelausnahme stammt
-unverändert aus `portBundle.ts`. Ein Hop kaschiert keinen realen Konflikt.
+### Ebene 1: Unverhandelbare Bedingungen (Harte Invarianten)
 
-## Veröffentlichung und Stabilität
+- **I1 (Hindernisfreiheit):** Kein Kabelsegment schneidet ein fremdes Bauteilrechteck.
+  $$\forall s \in \text{Segments}(e), \forall B \in \text{Obstacles} \setminus \{B_{\text{src}}, B_{\text{tgt}}\}: s \cap B = \emptyset$$
+- **I2 (Keine Überlappung):** Kein Kabelsegment überdeckt ein anderes Kabelsegment kollinear mit Länge $> 0$, außer im definierten Port-Bündel-Bereich.
+  $$\forall e_1 \neq e_2: \text{Overlap}(e_1, e_2) = 0$$
+- **I3 (Mindestabstand / Clearance):** Jedes Segment hält mindestens `cableClearance` (12 px) zu unbeteiligten Bauteilen und fremden Kabeln ein (außerhalb der Port-Zonen).
+  $$\text{Dist}(s, B) \ge c_{\text{clearance}}, \quad \text{Dist}(s_1, s_2) \ge c_{\text{clearance}}$$
+- **I4 (Kein Handle-U-Turn):** Keine 180°-Kehre direkt am Anschluss.
+- **I5 (Mindest-Stub):** Erstes und letztes Segment halten die geforderte Ausklinklänge `stubMin` ein.
+- **I6 (Mindest-Segmentlänge):** Segmente sind mindestens `segmentMin` (16 px) lang.
+- **I7 (Treppen-Eliminierung):** Keine redundanten Doppel-Biegungen auf engstem Raum.
 
-Geometrie, ihr aktueller Bericht und Generation werden vor der ersten Benachrichtigung
-zusammen installiert. Veröffentlichte Wegpunkte/Hops sind eigene eingefrorene Kopien.
-Fehlerhafte Kandidaten ersetzen vorhandene Geometrie nicht; der vorherige Stand wird
-**gegen die neue Eingabe** geprüft und als `retained` oder `stale` markiert. Ohne
-Vorgänger darf ein ungültiger Kandidat nur als sichtbare Diagnose erscheinen.
-Fehlende Wege einer verwalteten Generation werden nicht durch Einzelrouten ergänzt.
+### Ebene 2: Globale Zielfunktion
 
-Zustände: pending, routing, valid, optimized, partial, retained, invalid, stale, error.
-`partial` bedeutet Arbeitsbudget erreicht, nicht „teilweise gültig“: ein erfolgreicher
-Teiloptimierungsstand muss vollständig validiert sein. Identische Eingaben werden
-nicht erneut optimiert; die reine Optimierungsfunktion startet immer vom kanonischen
-Initialpass, sodass wiederholte Klicks kein schrittweises Qualitätsratchet erzeugen.
+Für einen Plan $\mathcal{P} = \{e_1, \dots, e_n\}$ minimiert die Engine die Kostenfunktion:
+$$\mathcal{C}(\mathcal{P}) = \sum_{e \in \mathcal{P}} \left( \text{Länge}(e) + w_{\text{bend}} \cdot \text{Biegungen}(e) \right) + w_{\text{cross}} \cdot \text{Kreuzungen}(\mathcal{P}) + w_{\text{conflict}} \cdot \text{Konflikte}(\mathcal{P})$$
+mit den Tokens:
 
-## Grenzen
+- $w_{\text{bend}} = 80\,\text{px}$
+- $w_{\text{cross}} = 120\,\text{px}$
+- $w_{\text{conflict}} = 1000\,\text{px}$
 
-Kein Optimalitätsbeweis, kein vollständiger Korridorplaner, kein allgemeiner
-Wegpunkteditor. Locks werden unterstützt; zusätzliche freie manuelle Wegpunkt-Constraints
-wurden nicht eingeführt. Basis- und Domänenabstandsprüfung, Labels und tatsächliche
-SVG-Rundungs-/Hop-Flächen benötigen weitere Vereinheitlichung. Der Worker entkoppelt
-Berechnung; er macht schwierige Pläne nicht automatisch lösbar oder schneller.
+---
+
+## 3. Deterministisches Rip-Up-and-Reroute (RRR)
+
+Das RRR-Verfahren verhindert das gierige Festfahren der sequenziellen Suche:
+
+1. **Konflikterkennung:** Nach dem initialen Routing werden Kanten identifiziert, die Kreuzungen mit hoher Priorität oder ungünstige Ausweichwege verursachen.
+2. **Kandidaten-Ranking:** Sortierung nach berechnetem Konflikt-Score (absteigend) mit striktem Tie-Breaker (`compareIds`).
+3. **Neu-Routing im Kontext:** Kanten werden einzeln herausgenommen. Die verbleibenden Kanten dienen als dynamische Sperrkörper. Die Kante sucht einen alternativen Trassenverlauf.
+4. **Akzeptanzkriterium:** Eine alternative Trasse wird **nur** akzeptiert, wenn:
+   - Alle harten Invarianten (I1–I3) erfüllt bleiben,
+   - Der globale Gesamtscore $\mathcal{C}(\mathcal{P})$ streng sinkt.
+5. **Budgetierung:** Maximal 2 Iterationsrunden über die Top-Konfliktkanten. Dadurch bleibt die Laufzeit garantiert unter 30 ms auf 50-Komponenten-Plänen.

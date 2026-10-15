@@ -16,10 +16,14 @@ import {
   Wand2,
   Zap,
   Droplets,
+  LayoutTemplate,
+  Share2,
+  ChevronDown,
 } from 'lucide-react';
 import type { PlannerBusy, PlannerMenuGroup } from '../hooks/usePlannerActions';
 import type { PlannerMenuId } from '../hooks/usePlannerActions';
 import { handleMenuKeyDown } from './menuKeyboard';
+import { PLANNER_TEMPLATES } from '../templates';
 
 /**
  * Werkzeugleiste: die primären Aktionen des Planers, dauerhaft sichtbar.
@@ -42,6 +46,10 @@ export interface PlannerToolbarProps {
   onCheck: () => void;
   onBom: () => void;
   onExport: () => void;
+  /** Kopiert den teilbaren Plan-Link in die Zwischenablage. */
+  onShare?: () => void;
+  /** Lädt eine Vorlage aus `PLANNER_TEMPLATES`. */
+  onLoadTemplate?: (templateId: string) => void;
   viewMode: 'electric' | 'water';
   onSelectViewMode: (mode: 'electric' | 'water') => void;
   focusMode: boolean;
@@ -162,6 +170,64 @@ function OverflowMenu({
   );
 }
 
+/**
+ * Auffälliger Einstieg „Vorlage laden“ — auch im geführten Modus sichtbar,
+ * weil eine volle Zeichenfläche der schnellste Weg aus der Ratlosigkeit
+ * einer leeren ist. Die Einträge kommen aus `PLANNER_TEMPLATES` (dieselbe
+ * Liste wie Onboarding und Deep-Links).
+ */
+function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+  return (
+    <div
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        data-testid="action-templates"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="cad-btn cad-btn--primary"
+        data-tooltip="Fertiges Setup laden und anpassen"
+        title="Fertiges Setup laden und anpassen"
+      >
+        <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
+        <span>Vorlage laden</span>
+        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="cad-menu left-0 right-auto" role="menu" aria-label="Vorlage laden">
+          <p className="cad-menu__label">Fertiges Setup als Startpunkt</p>
+          {PLANNER_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              role="menuitem"
+              data-testid={`toolbar-template-${template.id}`}
+              onClick={() => {
+                onLoadTemplate(template.id);
+                setOpen(false);
+                buttonRef.current?.focus();
+              }}
+              className="cad-menu__item"
+            >
+              <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="flex-1 truncate">{template.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PlannerToolbar({
   busy,
   canUndo,
@@ -173,6 +239,8 @@ export function PlannerToolbar({
   onCheck,
   onBom,
   onExport,
+  onShare,
+  onLoadTemplate,
   viewMode,
   onSelectViewMode,
   focusMode,
@@ -224,6 +292,29 @@ export function PlannerToolbar({
             className="cad-toolbar__desktop-tool hidden md:inline-flex"
           />
         </div>
+
+        {/* Vorlagen und Teilen stehen auch im geführten Modus: Sie sind der
+          Einstieg (volle Fläche statt leerer) und der Ausgang (Plan ins Forum)
+          — keine Experten-Aktionen, die man verstecken müsste. */}
+        {(onLoadTemplate || onShare) && (
+          <>
+            <span className="cad-toolbar__sep" aria-hidden="true" />
+            <div className="cad-toolbar__group">
+              {onLoadTemplate && <TemplateMenuButton onLoadTemplate={onLoadTemplate} />}
+              {onShare && (
+                <ToolButton
+                  label="Link zum Plan kopieren"
+                  visibleLabel="Teilen"
+                  showLabel
+                  hint="Plan als Link weitergeben (ohne Konto)"
+                  icon={Share2}
+                  onClick={onShare}
+                  testId="action-share"
+                />
+              )}
+            </div>
+          </>
+        )}
 
         {!guidedMode && (
           <>

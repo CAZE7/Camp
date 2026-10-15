@@ -6,7 +6,7 @@ import { addComponent, autoWire, edgeCount, nodeCount, openPlanner } from './hel
  * Reload-Persistenz von Knoten und Kanten.
  *
  * Der Planer speichert mit Zustand `persist` im localStorage
- * (`werft-planner-v1`). Getestet wird das Verhalten, nicht die Implementierung:
+ * (`elektroplaner-planner-v1`; frühere Stände unter `werft-planner-v1` werden beim ersten Aufruf übernommen). Getestet wird das Verhalten, nicht die Implementierung:
  * nach einem echten Reload muss derselbe Plan dastehen.
  */
 test.describe('Persistenz über einen Reload', () => {
@@ -42,7 +42,7 @@ test.describe('Persistenz über einen Reload', () => {
     await openPlanner(page);
     await addComponent(page, 'battery');
 
-    const stored = await page.evaluate(() => window.localStorage.getItem('werft-planner-v1'));
+    const stored = await page.evaluate(() => window.localStorage.getItem('elektroplaner-planner-v1'));
     expect(stored, 'Kein persistierter Planstand gefunden').not.toBeNull();
 
     const parsed = JSON.parse(stored as string) as { version?: number; state?: unknown };

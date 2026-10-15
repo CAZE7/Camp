@@ -6,7 +6,8 @@ den Head-Branch-Namen; **alle** gemergten PRs je Head-Branch werden gelistet, ei
 kann mehrere haben). „via PR gemergt“ heißt: Es existiert mindestens ein **gemergter Pull
 Request mit genau diesem Head-Branch** — das Repo merged per Squash, deshalb meldet
 `git branch -r --merged` fast nichts. Erhoben am **2026-10-12**; Default-Branch zum
-Erhebungszeitpunkt: `feature/react-flow-cable-editor-7322653268250495059`. **Gelöscht wurde nichts.**
+Erhebungszeitpunkt: `feature/react-flow-cable-editor-7322653268250495059` (am 2026-10-12 erfolgreich
+auf `main` umgestellt). **Gemäß Betreiber-Vorgabe (BRANCHES_LOSCHEN=NEIN) wurde kein Remote-Branch gelöscht.**
 
 ## Zusammenfassung
 

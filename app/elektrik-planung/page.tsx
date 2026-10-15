@@ -420,6 +420,18 @@ export default function ElektrikPlanung() {
                   Planer im Vollbild öffnen
                 </Link>
                 <Link
+                  href="/planer/?template=ladebooster-solar"
+                  className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+                >
+                  Beispiel: LiFePO4 mit Ladebooster und Solar öffnen
+                </Link>
+                <Link
+                  href="/planer/?template=wochenende"
+                  className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+                >
+                  Beispiel: Wochenend-Camper ohne 230V öffnen
+                </Link>
+                <Link
                   href="/camper-elektrik/schaltplan/"
                   className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
                 >

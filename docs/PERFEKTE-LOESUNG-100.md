@@ -168,7 +168,7 @@ Dark auf `#0E1114`:
 
 ## Migration — Perfekt ohne Bruch
 
-Bestehende Werft-Tokens bleiben, DE erweitert. Im `.dark` zeigen alte `--wire-*` auf neue `--de-*`:
+Bestehende Marken-Tokens bleiben, DE erweitert. Im `.dark` zeigen alte `--wire-*` auf neue `--de-*`:
 
 ```css
 --wire-dc: var(--de-wire-dc-12v-plus);

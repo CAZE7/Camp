@@ -31,7 +31,7 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/camper-elektrik/', name: 'Elektrik-Pillar' },
   { path: '/camper-elektrik/kabelquerschnitt/', name: 'Kabelquerschnitt' },
   { path: '/rechner/spannungsabfall-12v/', name: 'Spannungsabfall-Rechner' },
-  { path: '/ueber-werft/', name: 'Über Werft' },
+  { path: '/ueber-elektroplaner/', name: 'Über Elektroplaner' },
 ];
 
 for (const { path, name } of PAGES) {

@@ -55,8 +55,8 @@ export function routingSnapshotNodes(snapshot: RoutingSnapshot): RoutableNode[] 
     type: node.type,
     data: {},
     position: { ...node.position },
-    width: node.width,
-    height: node.height,
+    width: nodeWidth(node, NODE_FALLBACK_WIDTH),
+    height: nodeHeight(node, NODE_FALLBACK_HEIGHT),
     handleBounds: node.handles
       ? { source: handles(node.handles.source), target: handles(node.handles.target) }
       : undefined,

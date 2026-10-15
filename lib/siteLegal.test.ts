@@ -20,21 +20,21 @@ import {
 
 /** Vollständig ausgefüllte Angaben — die Referenz für „fertig". */
 const filled: SiteLegal = {
-  providerName: 'Werft Ausbau GmbH',
+  providerName: 'Elektroplaner Ausbau GmbH',
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
-  email: 'kontakt@werft.example',
+  email: 'kontakt@elektroplaner.example',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 
 describe('isPlaceholderText', () => {
   it('erkennt die Marke, auch mitten im Text', () => {
     expect(isPlaceholderText(LEGAL_PLACEHOLDER)).toBe(true);
-    expect(isPlaceholderText(`Werft — ${LEGAL_PLACEHOLDER}`)).toBe(true);
+    expect(isPlaceholderText(`Elektroplaner — ${LEGAL_PLACEHOLDER}`)).toBe(true);
   });
 
   it('echte Angaben sind keine Platzhalter', () => {
-    expect(isPlaceholderText('Werft Ausbau GmbH')).toBe(false);
+    expect(isPlaceholderText('Elektroplaner Ausbau GmbH')).toBe(false);
     expect(isPlaceholderText('')).toBe(false);
   });
 });

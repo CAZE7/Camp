@@ -6,6 +6,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { requestConfirm } from '@/components/ui/ConfirmDialog';
+import { isStarterPlan, PLANNER_TEMPLATES } from './templates';
 
 const STROMQUELLEN = [
   { id: 'solar', label: 'Solar' },
@@ -21,23 +22,14 @@ const VERBRAUCHER = [
   { id: 'laptop', label: 'Laptop-Ladegerät' },
 ];
 
-const TEMPLATES = [
-  {
-    id: 'minimalist',
-    label: 'Minimal – einfache 12-V-Anlage',
-    desc: 'Batterie, Sicherungskasten, USB-Anschlüsse, LED-Licht und kleine Kühlbox.',
-  },
-  {
-    id: 'allrounder',
-    label: 'Allround – ausgewogene Standardanlage',
-    desc: '100-Ah-Lithium-Batterie, 150 W Solar, Ladebooster, 500-W-Wechselrichter und Kühlschrank.',
-  },
-  {
-    id: 'autark',
-    label: 'Autark – hoher Energiebedarf',
-    desc: '200-Ah-Lithium-Batterie, 400 W Solar, 1500-W-Wechselrichter, Kochfeld und Warmwasser.',
-  },
-];
+// Die drei Ausbaustufen kommen aus derselben Liste wie Toolbar-Auswahl und
+// Deep-Links (`PLANNER_TEMPLATES`) — ein Name hier, der dort fehlt, wäre ein
+// toter Knopf im ersten Dialog, den ein Besucher sieht.
+const TEMPLATES = PLANNER_TEMPLATES.map((template) => ({
+  id: template.id,
+  label: template.label,
+  desc: template.description,
+}));
 
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
@@ -47,7 +39,7 @@ export function OnboardingWizard() {
   const sourceCount = Object.values(sources).filter(Boolean).length;
   const consumerCount = Object.values(consumers).filter(Boolean).length;
   const totalSelected = sourceCount + consumerCount;
-  const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'allrounder' : 'minimalist';
+  const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'kastenwagen' : 'minimalist';
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
   const applyTemplate = usePlannerStore((state) => state.applyTemplate);
@@ -60,10 +52,16 @@ export function OnboardingWizard() {
    */
   const dismiss = useCallback(() => setHasOnboarded(true), [setHasOnboarded]);
 
+  // Das beim ersten Besuch vorgeladene Beispiel-Setup ist kein eigener Plan:
+  // Es zu ersetzen oder zu leeren braucht keine Rückfrage — sonst begrüßt der
+  // erste Dialog jeden Erstbesucher mit einem Bestätigungs-Popup.
+  const hasOwnPlan = (state: ReturnType<typeof usePlannerStore.getState>) =>
+    (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
+
   const startEmpty = async () => {
     const state = usePlannerStore.getState();
     if (
-      (state.nodes.length > 0 || state.waterNodes.length > 0) &&
+      hasOwnPlan(state) &&
       !(await requestConfirm(
         'Der aktuelle Plan wird geleert. Du kannst das anschließend rückgängig machen. Fortfahren?'
       ))
@@ -77,7 +75,7 @@ export function OnboardingWizard() {
   const handleApplyTemplate = async (templateId: string) => {
     const state = usePlannerStore.getState();
     if (
-      (state.nodes.length > 0 || state.waterNodes.length > 0) &&
+      hasOwnPlan(state) &&
       !(await requestConfirm(
         'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
       ))

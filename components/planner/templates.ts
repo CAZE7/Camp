@@ -466,8 +466,136 @@ export const TEMPLATE_AUTARK = {
   ] as Edge<CableEdgeData>[],
 };
 
+/**
+ * Klassisches Kastenwagen-Setup — der Plan, den ein Erstbesucher statt einer
+ * leeren Zeichenfläche sieht (siehe `STARTER_TEMPLATE_ID` unten).
+ *
+ * Bewusst als Ableitung des geprüften Allrounders statt als vierter
+ * handgepflegter Graph: Topologie, Querschnitte und Sicherungen bleiben
+ * dieselben belegten Werte; einziger Unterschied ist das 200-W-Modul, nach
+ * dem in Ratgebern und Foren gefragt wird (statt der 150 W des Allrounders).
+ */
+export const TEMPLATE_KASTENWAGEN = {
+  nodes: TEMPLATE_ALLROUNDER.nodes.map((node) =>
+    node.id === 'solar-1' ? { ...node, data: { ...node.data, label: '200W Solar', watts: 200 } } : node
+  ) as Node[],
+  edges: TEMPLATE_ALLROUNDER.edges,
+};
+
 export const TEMPLATES_DICT: Record<string, { nodes: Node[]; edges: Edge<CableEdgeData>[] }> = {
   minimalist: TEMPLATE_MINIMALIST,
   allrounder: TEMPLATE_ALLROUNDER,
   autark: TEMPLATE_AUTARK,
+  kastenwagen: TEMPLATE_KASTENWAGEN,
+  // Deep-Link-Aliasse (Ratgeber, SEO-Text unter dem Planer, Foren-Links):
+  // Dieselben Pläne unter den Namen, unter denen sie verlinkt werden.
+  wochenende: TEMPLATE_MINIMALIST,
+  'wochenend-camper': TEMPLATE_MINIMALIST,
+  'ladebooster-solar': TEMPLATE_KASTENWAGEN,
+  'autarker-kastenwagen': TEMPLATE_KASTENWAGEN,
+  'winter-autark': TEMPLATE_AUTARK,
+  'grosses-autark-setup': TEMPLATE_AUTARK,
 };
+
+/** Eine anwählbare Vorlage: kanonische Kennung plus alle Deep-Link-Namen. */
+export type PlannerTemplate = {
+  /** Kanonische Kennung in `TEMPLATES_DICT` (wird auch persistiert/verlinkt). */
+  id: string;
+  /** Sichtbarer Name, z. B. in der Toolbar-Auswahl „Vorlage laden“. */
+  label: string;
+  /** Ein Satz, was die Vorlage enthält — ehrlich zu den Werten im Graphen. */
+  description: string;
+  /** Alle Namen, die `?template=` zusätzlich zur Kennung akzeptiert. */
+  aliases: readonly string[];
+  /** Fertiger Deep-Link auf den Planer mit genau dieser Vorlage. */
+  href: string;
+};
+
+/**
+ * Die drei Ausbaustufen der Vorlagen-Auswahl — EINE Liste für Toolbar,
+ * Onboarding, Deep-Links aus dem Ratgeber und den SEO-Text unter dem Planer.
+ * Zwei Listen wären zwei Gelegenheiten, einen Namen zu verlinken, den der
+ * Planer nicht kennt.
+ */
+export const PLANNER_TEMPLATES: readonly PlannerTemplate[] = [
+  {
+    id: 'minimalist',
+    label: 'Wochenend-Camper',
+    description:
+      'Minicamper und Bulli ohne 230 V: Batterie, Sicherungskasten, LED-Licht, USB-Anschlüsse und Kühlbox.',
+    aliases: ['wochenende', 'wochenend-camper', 'minimal'],
+    href: '/planer/?template=wochenende',
+  },
+  {
+    id: 'kastenwagen',
+    label: 'Autarker Kastenwagen',
+    description:
+      'Sprinter und Ducato: 100 Ah LiFePO4, 200 W Solar mit MPPT, 30 A Ladebooster, Sicherungskasten und 500 W Wechselrichter.',
+    aliases: ['ladebooster-solar', 'autarker-kastenwagen', 'allrounder'],
+    href: '/planer/?template=kastenwagen',
+  },
+  {
+    id: 'autark',
+    label: 'Großes Autark-Setup',
+    description:
+      'Für lange Standzeiten und Winter: 200 Ah LiFePO4, 400 W Solar, Ladebooster, Landstrom, Standheizung und Wechselrichter mit Induktionskochfeld.',
+    aliases: ['winter-autark', 'grosses-autark-setup'],
+    href: '/planer/?template=autark',
+  },
+];
+
+/**
+ * Vorlage des ersten Starts. Wer noch keinen eigenen Plan gespeichert hat,
+ * sieht dieses komplett verkabelte Setup statt einer leeren Fläche — Kabel,
+ * Querschnitte und Bauteile sind sofort anklick- und änderbar.
+ */
+export const STARTER_TEMPLATE_ID = 'kastenwagen';
+
+/** Löst einen `?template=`-Wert (Kennung oder Alias, beliebige Schreibung) auf. */
+export function resolvePlannerTemplateId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '') return null;
+  for (const template of PLANNER_TEMPLATES) {
+    if (template.id === normalized || template.aliases.includes(normalized)) return template.id;
+  }
+  // Kanonische Kennungen der älteren Vorlagen bleiben gültig (Bestandslinks).
+  return normalized in TEMPLATES_DICT ? normalized : null;
+}
+
+/** Liest die gewünschte Vorlage aus einem Query-String (`?template=…`). */
+export function templateIdFromSearch(search: string): string | null {
+  return resolvePlannerTemplateId(new URLSearchParams(search).get('template'));
+}
+
+/**
+ * Darf die leere Fläche durch das Beispiel-Setup ersetzt werden? Nur, wenn
+ * weder ein persistierter Plan existiert noch ein Deep-Link einen anderen
+ * Plan bringt — ein gespeicherter (auch bewusst geleerter) Plan ist eine
+ * Nutzerentscheidung und wird nie überschrieben.
+ */
+export function shouldLoadStarterPlan(input: {
+  hasPersistedPlan: boolean;
+  nodeCount: number;
+  waterNodeCount: number;
+  hasEntryPlan: boolean;
+}): boolean {
+  return (
+    !input.hasPersistedPlan && !input.hasEntryPlan && input.nodeCount === 0 && input.waterNodeCount === 0
+  );
+}
+
+/**
+ * Ist der aktuelle Plan noch das unveränderte Beispiel-Setup? Dann ist er
+ * kein eigener Plan: Ersetzen oder Leeren braucht keine Rückfrage, die sonst
+ * jeden Erstbesucher im Onboarding mit einem Bestätigungsdialog begrüßt.
+ */
+export function isStarterPlan(nodes: readonly { id: string }[], edges: readonly { id: string }[]): boolean {
+  const starter = TEMPLATE_KASTENWAGEN;
+  if (nodes.length !== starter.nodes.length || edges.length !== starter.edges.length) return false;
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edgeIds = new Set(edges.map((edge) => edge.id));
+  return (
+    starter.nodes.every((node) => nodeIds.has(node.id)) && starter.edges.every((edge) => edgeIds.has(edge.id))
+  );
+}

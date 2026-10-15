@@ -38,7 +38,7 @@ abstrakte Namen („PlannerComponent“, „ComponentKind“); die Entsprechung 
 
 **Serialization:** nur die in `persistOptions.partialize` gelisteten Felder
 (`viewMode`, `season`, `nodes`, `edges`, `waterNodes`, `waterEdges`, `isSidebarOpen`,
-`isInspectorOpen`, `backboneGrouping`) → `localStorage['werft-planner-v1']`, Version `1`.
+`isInspectorOpen`, `backboneGrouping`) → `localStorage['elektroplaner-planner-v1']`, Version `1`.
 
 ---
 
@@ -222,7 +222,7 @@ Solar hat Vorrang; `acBatteryCharger` ist Mischdomäne; gespeicherte Domäne gew
 | --------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
 | Laufzeit-Schema | `lib/nodeSchema.ts`           | bekanntes Feld mit falschem Typ → **entfernen**; unbekanntes Feld → behalten             |
 | Migration       | `store/slices/persistence.ts` | RETTEN statt VERWERFEN: pro Element filtern, `data` neutralisieren, Feld-Schema anwenden |
-| Storage-Key     | `'werft-planner-v1'`          | Version 1; 0 → 1 ohne Feldumbenennung (nur Validierung)                                  |
+| Storage-Key     | `'elektroplaner-planner-v1'`  | Version 1; 0 → 1 ohne Feldumbenennung (nur Validierung)                                  |
 | Schreiben       | `store/storage.ts`            | Debounce 200 ms + Flush bei `pagehide`/`beforeunload`                                    |
 | IDs             | `lib/id.ts`                   | `crypto.randomUUID` → `crypto.getRandomValues` → `Math.random` (LAN-HTTP-sicher)         |
 
