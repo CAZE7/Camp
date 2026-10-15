@@ -57,6 +57,7 @@ import {
 import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
 import { PlannerModeSwitch, PLANNER_MODES } from './ui/PlannerModeSwitch';
 import { BatteryDesignatorContext, batteryDesignatorMap } from '../nodes/batteryDesignator';
+import { findingNodeIdSet } from './utils/findingMarkers';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -270,6 +271,7 @@ export function FlowCanvas() {
     setDetailLevel,
     plannerMode,
     setPlannerMode,
+    plannerErrors,
     isLayoutPending,
     autoStructurePending,
     structureAutoWiring,
@@ -306,6 +308,7 @@ export function FlowCanvas() {
       setDetailLevel: state.setDetailLevel,
       plannerMode: state.plannerMode,
       setPlannerMode: state.setPlannerMode,
+      plannerErrors: state.plannerErrors,
       isLayoutPending: state.isLayoutPending,
       autoStructurePending: state.autoStructurePending,
       structureAutoWiring: state.structureAutoWiring,
@@ -593,8 +596,18 @@ export function FlowCanvas() {
    * gemessene Routing-Geometrie und die gemeldete Oszillation verändert hat,
    * ist ohne Browser-Runtime-Trace nicht belegt.
    */
+  // QA B-21: Im Modus „Prüfung“ sind Bauteile mit Befund markiert. Die Markierung
+  // kommt aus demselben Befund-Store wie Kopf- und Fußzeile.
+  const findingNodeIds = useMemo(
+    () => findingNodeIdSet(plannerMode, plannerErrors),
+    [plannerMode, plannerErrors]
+  );
   const interactiveNodes = useMemo(() => {
-    return groupedNodes.map((node) => {
+    return groupedNodes.map((rawNode) => {
+      const node =
+        findingNodeIds.has(rawNode.id) && !isPresentationOnlyNode(rawNode)
+          ? { ...rawNode, className: [rawNode.className, 'planner-node-finding'].filter(Boolean).join(' ') }
+          : rawNode;
       if (isPresentationOnlyNode(node)) return node;
       const collision = node.id === collidingNodeId;
       if (!interaction.requiresDragHandle) {
@@ -608,7 +621,7 @@ export function FlowCanvas() {
             handleSelector: NODE_DRAG_HANDLE_SELECTOR,
           });
     });
-  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId, findingNodeIds]);
 
   const openContextMenu = React.useCallback(
     (

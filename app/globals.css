@@ -1012,6 +1012,11 @@
     outline: 3px solid var(--wire-error);
     outline-offset: 5px;
   }
+  /* QA B-21: Prüfmodus — Bauteile mit Befund bekommen eine gestrichelte Markierung. */
+  .react-flow__node.planner-node-finding {
+    outline: 2px dashed var(--destructive);
+    outline-offset: 4px;
+  }
   .react-flow__node.planner-backbone-group-node {
     pointer-events: none !important;
     z-index: -10 !important;
