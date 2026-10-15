@@ -417,7 +417,9 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              label: 'Zur Prüfung',
+              // B-16 (QA-Bericht): hieß „Zur Prüfung“, speichert aber nur lokal und
+              // öffnet keine Prüfung. Der Eintrag heißt jetzt wie die Aktion.
+              label: 'Plan speichern',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
