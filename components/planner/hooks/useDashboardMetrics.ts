@@ -17,6 +17,8 @@ import {
   VDE_CHARGE_DERATING_FACTOR,
 } from '@/lib/vde-standards';
 import { peukertExponentOf, usableCapacityWithPeukertAh } from '../../../lib/peukert'; // DOM-002-Nachpflege
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
+/** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -205,9 +207,6 @@ function calculateDailyConsumption(
 
   return dailyConsumptionAh;
 }
-
-/** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
-export const AUTARKY_NOT_CALCULATED = 'Nicht berechnet: kein Verbrauch eingetragen';
 
 function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number): string {
   // QA B-02: Eine Vorlage ohne Verbrauchsangaben zeigte „Unendlich“. Das ist
