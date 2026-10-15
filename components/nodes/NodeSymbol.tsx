@@ -158,8 +158,9 @@ const SYMBOLS: Record<
   conduit: { icon: Cable, code: 'WIRE', dinCode: 'W0', tone: 'node-symbol--measure' },
 };
 
-export function NodeSymbol({ kind }: { kind: NodeSymbolKind }) {
-  const { icon: Icon, dinIcon: DinIcon, code, tone, dinCode } = SYMBOLS[kind];
+export function NodeSymbol({ kind, dinCode: dinCodeOverride }: { kind: NodeSymbolKind; dinCode?: string }) {
+  const { icon: Icon, dinIcon: DinIcon, code, tone, dinCode: defaultDinCode } = SYMBOLS[kind];
+  const dinCode = dinCodeOverride ?? defaultDinCode;
 
   return (
     <div className={cn('node-symbol', tone)} aria-hidden="true" data-din={dinCode}>

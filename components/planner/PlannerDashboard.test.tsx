@@ -41,6 +41,7 @@ const planState = () => ({
   guidedMode: true as boolean,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  edges: [] as Array<{ id: string; selected?: boolean }>,
   focusElement: mockFocusElement,
   deleteSelected: vi.fn(),
 });
