@@ -533,7 +533,7 @@ Alle Blueprints sind lauffähige React-Komponenten mit Tailwind + CSS-Variablen,
 
 ## Anhang: Integration in bestehendes System
 
-Das bestehende Werft-System (`--surface-canvas`, `--wire-dc` etc.) bleibt erhalten für Abwärtskompatibilität. Dark Engineering erweitert es um `--de-*` Namespace.
+Das bestehende Marken-System (`--surface-canvas`, `--wire-dc` etc.) bleibt erhalten für Abwärtskompatibilität. Dark Engineering erweitert es um `--de-*` Namespace.
 
 Migration Pfad:
 

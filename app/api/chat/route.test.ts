@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call --
- * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Altbestand der Vorgängerversion (übernommen 2026-09): nutzt noch `any` für AI-SDK-
  * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
  *
  * AUDIT T1 ergänzt die abgeleiteten Regeln: `no-unsafe-*` ist dieselbe

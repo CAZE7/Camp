@@ -88,7 +88,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
         'Einzelrechner beantworten Einzelfragen. Der Camper-Elektroplaner verbindet sie: Bauteile setzen, verdrahten lassen — Querschnitt, Sicherung, Spannungsfall und Energiebilanz werden je Leitung geprüft, die Stückliste entsteht aus dem Plan.',
       ],
       links: [
-        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Kostenlosen Camper-Schaltplan erstellen' },
         { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen: Aufbau und Prüfung' },
       ],
       callout: {
@@ -103,7 +103,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
         'Die Rechner und der Planer benutzen dasselbe Modell: Kupfer-Leitfähigkeit κ = 58 m/(Ω·mm²) bei 20 °C, Strombelastbarkeiten nach DIN VDE 0298-4 (Verlegeart B2) mit Derating 0,7, Entladetiefen und Peukert-Exponenten je Chemie sowie die Solar- und Wechselrichter-Kennwerte der Auslieferung. Wo eine Größe eine Annahme ist, steht sie als Annahme in der Rechnung und als Eingabe im Rechner — nicht im Kleingedruckten.',
       ],
       links: [
-        { href: '/ueber-werft/', label: 'Über Werft: Methodik, Quellen und Grenzen' },
+        { href: '/ueber-elektroplaner/', label: 'Über Elektroplaner: Methodik, Quellen und Grenzen' },
         { href: '/camper-elektrik/', label: 'Camper-Elektrik planen: der Weg durch das Thema' },
       ],
     },
@@ -133,7 +133,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/spannungsabfall/', label: 'Spannungsabfall berechnen' },
     { href: '/tools/heizung/', label: 'Heizlast-Rechner' },
     { href: '/tools/dach/', label: 'Dach-Planer' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
   ],
   sources: [
     {

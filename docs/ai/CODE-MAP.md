@@ -338,7 +338,7 @@ CAMP
 
 - **Files:** `store/slices/persistence.ts` (`PLANNER_STORAGE_VERSION = 1`,
   `migratePlannerPersisted`, `persistOptions`), `store/storage.ts` (`createDebouncedStorage`, 200 ms).
-- **Storage-Key:** `werft-planner-v1` (ein Dokument, ein Versionsschritt).
+- **Storage-Key:** `elektroplaner-planner-v1` (früher `werft-planner-v1`, wird übernommen) (ein Dokument, ein Versionsschritt).
 - **Semantik:** RETTEN statt VERWERFEN (pro Element filtern, `data` neutralisieren,
   Feld-Schema anwenden).
 - **Tests:** `store/slices/persistence.test.ts`, `store/storage.test.ts`.

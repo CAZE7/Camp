@@ -55,8 +55,8 @@ async function seed(page, { withPlan }) {
     ({ plannerState, preferences }) => {
       localStorage.clear();
       if (plannerState) {
-        localStorage.setItem('werft-planner-v1', plannerState);
-        localStorage.setItem('werft-app-preferences-v1', preferences);
+        localStorage.setItem('elektroplaner-planner-v1', plannerState);
+        localStorage.setItem('elektroplaner-preferences-v1', preferences);
       }
     },
     {

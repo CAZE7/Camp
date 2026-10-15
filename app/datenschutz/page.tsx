@@ -22,8 +22,8 @@ export default function DatenschutzPage() {
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Lokale Speicherung</h2>
           <p>
-            Werft speichert Konfigurationen (z. B. Dach-Layout, Ausbau-Status) im Browser (LocalStorage).
-            Diese Daten verlassen dein Gerät nicht.
+            Elektroplaner speichert Konfigurationen (z. B. Dach-Layout, Ausbau-Status) im Browser
+            (LocalStorage). Diese Daten verlassen dein Gerät nicht.
           </p>
         </section>
 

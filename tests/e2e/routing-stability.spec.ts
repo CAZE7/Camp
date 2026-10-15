@@ -69,8 +69,8 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
 
   await page.addInitScript(
     ({ plannerState, preferences }) => {
-      localStorage.setItem('werft-planner-v1', plannerState);
-      localStorage.setItem('werft-app-preferences-v1', preferences);
+      localStorage.setItem('elektroplaner-planner-v1', plannerState);
+      localStorage.setItem('elektroplaner-preferences-v1', preferences);
       const debugWindow = window as unknown as {
         __PLANNER_ROUTING_DEBUG__?: boolean;
         __PLANNER_ROUTING_TRACE__?: TraceEvent[];

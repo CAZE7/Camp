@@ -7,7 +7,7 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * (AUDIT D3).
  */
 export type SaveFailure = {
-  /** Betroffener Storage-Key (z. B. `werft-planner-v1`). */
+  /** Betroffener Storage-Key (z. B. `elektroplaner-planner-v1`). */
   key: string;
   /** Meldung des Storage-Zugriffs, z. B. QuotaExceededError. */
   message: string;

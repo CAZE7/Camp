@@ -21,8 +21,18 @@
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
 export const SITE_ORIGIN = 'https://elektroplaner-camper.de';
 
-/** Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD). */
-export const SITE_NAME = 'Werft';
+/**
+ * Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD, Titelvorlage).
+ *
+ * „Elektroplaner" ist der Produktname, unter dem die Seite beworben wird und
+ * nach dem gesucht wird. Der frühere Name „Werft" tritt nur noch dort auf, wo
+ * er zur Sache gehört: in der Umleitung der alten Vertrauensadresse, in den
+ * Schlüsseln übernommener Browser-Stände und in datierten Berichten. In
+ * Kopfdaten, Fußzeile, Menüleiste und strukturierter Beschreibung darf er
+ * NICHT mehr stehen, weil er in Ergebnislisten als Marke neben den
+ * Wettbewerbern gelesen wird.
+ */
+export const SITE_NAME = 'Elektroplaner';
 
 /** Basis-Pfad des Exports, z. B. `/Camp`; leer bei Auslieferung unter `/`. */
 export const SITE_BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');

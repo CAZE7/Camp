@@ -47,7 +47,7 @@ Die Inhalte liegen als Daten in `lib/seo/content/` und werden von gemeinsamen Ge
 | /rechner/spannungsabfall-12v/      | rechner   | spannungsabfall rechner 12v             | Dieser Rechner bewertet eine Leitung, die es schon gibt oder geben … |
 | /rechner/batteriekapazitaet/       | rechner   | batteriekapazität camper berechnen ah   | Dieser Rechner beantwortet die Frage, wie groß die Aufbaubatterie s… |
 | /rechner/solaranlage/              | rechner   | camper solar wie viel watt              | Dieser Rechner beantwortet zwei Fragen in einer: Wie viel Modulleis… |
-| /ueber-werft/                      | vertrauen | wie genau rechnet der camper planer     | Werft ist ein Planungs- und Rechenwerkzeug für den Camper-Ausbau: E… |
+| /ueber-elektroplaner/              | vertrauen | wie genau rechnet der camper planer     | Werft ist ein Planungs- und Rechenwerkzeug für den Camper-Ausbau: E… |
 
 ## Prüfungen und ihre Aussage
 

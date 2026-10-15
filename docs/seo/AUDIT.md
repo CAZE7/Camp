@@ -44,7 +44,7 @@ Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte le
 | `/rechner/spannungsabfall-12v/` | rechner | 1042 | 1/10 | 4/21 | 2 | 662 | — |
 | `/tools/dach/` | werkzeug | 207 | 1/0 | 28/17 | 1 | 965 | react-flow |
 | `/tools/heizung/` | werkzeug | 436 | 1/0 | 28/16 | 1 | 797 | — |
-| `/ueber-werft/` | vertrauen | 1058 | 1/10 | 27/17 | 1 | 662 | — |
+| `/ueber-elektroplaner/` | vertrauen | 1058 | 1/10 | 27/17 | 1 | 662 | — |
 ```
 
 ## Kennzahlen
@@ -95,7 +95,7 @@ Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte le
 | wie viele solarpanels passen aufs dach          | teilweise | /tools/dach/                       | beispiel-ergaenzen    |
 | camper ausbau reihenfolge gewerke               | abgedeckt | /guides/ausbau-fahrplan/           | keine                 |
 | camper ausbau guide elektrik                    | teilweise | /guides/camper-ausbauguide/        | verlinkung-verbessern |
-| wie genau rechnet der camper planer             | abgedeckt | /ueber-werft/                      | keine                 |
+| wie genau rechnet der camper planer             | abgedeckt | /ueber-elektroplaner/              | keine                 |
 | elektrik vw t6 ausbau                           | luecke    | — (neu)                            | neue-seite            |
 | ladebooster camper lichtmaschine dimensionieren | luecke    | — (neu)                            | neue-seite            |
 | sinus wechselrichter unterschied reiner sinus   | teilweise | /camper-elektrik/wechselrichter/   | beispiel-ergaenzen    |

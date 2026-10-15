@@ -67,7 +67,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       path: '/og/elektrik-planung.png',
       width: 1200,
       height: 630,
-      alt: 'Werft — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
+      alt: 'Elektroplaner — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.9 },
     source: 'app/elektrik-planung/page.tsx',
@@ -90,17 +90,24 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
      *
      * `/elektrik-planung/` bleibt die Wissens- und Rechnerseite des Themas und
      * verweist kontextuell hierher (Linkgraph-Regel `kontextuelle-verwaiste-seite`).
+     *
+     * Titel und Beschreibung bedienen ausdrücklich die Anfrage nach einem
+     * kostenlosen Programme: „Programm" ist das Wort, mit dem in Deutschland
+     * nach Software gesucht wird, „kostenlos" die Bedingung, unter der die
+     * Zielgruppe überhaupt sucht. Der Wortlaut steht sowohl im Titel als auch
+     * in der Hauptüberschrift (`PlanerSeoContent`), damit Überschrift und
+     * Snippet dasselbe Versprechen geben.
      */
     path: '/planer/',
     label: 'Elektroplaner (Vollbild)',
     kind: 'werkzeug',
     indexability: 'index',
-    h1: 'Camper-Elektroplaner',
-    title: 'Camper-Schaltplan zeichnen: 12V/24V Elektroplaner online',
+    h1: 'Camper-Schaltplan kostenlos erstellen',
+    title: 'Kostenloses Programm für den Camper-Schaltplan',
     description:
-      'Kostenlos Camper-Schaltplan online zeichnen: LiFePO4, Ladebooster, MPPT und Solar setzen, Kabelquerschnitt und Sicherungen automatisch berechnen.',
+      'Kostenloses Programm für den Camper-Schaltplan: Bauteile setzen, verdrahten lassen und Querschnitt, Sicherung und Spannungsfall prüfen — ohne Anmeldung.',
     searchIntent:
-      'die ganze 12-V- und 230-V-Anlage als Schaltplan zeichnen und automatisch verdrahten lassen.',
+      'ein kostenloses Programm für den Camper-Schaltplan finden und die ganze Anlage damit zeichnen lassen.',
     topicId: 'camper-elektrik',
     priority: 'P0',
     // FAQPage + BreadcrumbList: Die Fragen stehen sichtbar unter der
@@ -270,6 +277,32 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P3',
     structuredData: [],
     source: 'app/design-system/page.tsx',
+  },
+  {
+    /**
+     * Alte Adresse der Vertrauensseite (`/ueber-werft/`).
+     *
+     * Der Pfad trug den früheren Produktnamen; die Seite liegt jetzt unter
+     * `/ueber-elektroplaner/`. Diese Route antwortet weiter mit einer
+     * Weiterleitung (meta refresh auf 0 Sekunden), damit bestehende Verweise
+     * nicht ins Leere laufen — sie gehört aber nicht in den Index: Zwei
+     * Adressen mit demselben Inhalt sind für Suchmaschinen Dubletten, und die
+     * Auszeichnung „Weiterleitung" würde in Ergebnislisten nur verwirren.
+     * Deshalb `noindex` und kein Sitemap-Eintrag.
+     */
+    path: '/ueber-werft/',
+    label: 'Weiterleitung: Über Elektroplaner',
+    kind: 'ansicht',
+    indexability: 'noindex',
+    h1: 'Weiterleitung: Über Elektroplaner',
+    title: 'Über Elektroplaner',
+    absoluteTitle: true,
+    description: 'Diese Adresse ist umgezogen: Die Vertrauensseite liegt jetzt unter /ueber-elektroplaner/.',
+    searchIntent: 'alte Adresse der Vertrauensseite — führt weiter, kein Inhalt für Ergebnislisten.',
+    topicId: 'vertrauen',
+    priority: 'P3',
+    structuredData: [],
+    source: 'app/ueber-werft/page.tsx',
   },
   {
     path: '/ki-assistent/',

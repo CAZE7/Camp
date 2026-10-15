@@ -31,7 +31,7 @@
 export const LEGAL_PLACEHOLDER = 'BITTE-EINTRAGEN';
 
 export type SiteLegal = {
-  /** Anbietername inkl. Rechtsformzusatz (§ 5 DDG Nr. 1), z. B. „Werft GmbH". */
+  /** Anbietername inkl. Rechtsformzusatz (§ 5 DDG Nr. 1), z. B. „Elektroplaner GmbH". */
   providerName: string;
   /** Straße und Hausnummer der ladungsfähigen Anschrift (§ 5 DDG Nr. 1). */
   street: string;

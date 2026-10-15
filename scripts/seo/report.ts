@@ -453,7 +453,7 @@ function visionBlocks(): PdfBlock[] {
         'Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der Spannungsabfall hatte keine eigene Rechnerseite, Batterie- und Solarrechnung existierten nur als Formeln.',
         `Die Werkzeuge erklären sich nicht: /tools/dach/ (${m.pages.find((page) => page.path === '/tools/dach/')?.words} Wörter) und /tools/heizung/ (${m.pages.find((page) => page.path === '/tools/heizung/')?.words} Wörter) haben keine Zwischenüberschrift und keinen erklärenden Text — sie liefern die Funktion, aber nicht die Antwort auf „wofür und wie lese ich das?".`,
         'Der Ausbauguide lud GSAP (rund 136 KB) im Erstaufbau einer Textseite; die Animation ist Dekoration und wird jetzt nachgeladen.',
-        'Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt und wo er irrt — diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-werft/.',
+        'Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt und wo er irrt — diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-elektroplaner/.',
         'Die Verlinkung war sternförmig: Alles hing an der Startseite. Jetzt führt ein Themenbaum von der Pillar in die Cluster und von jedem Cluster über ein bis zwei Schritte in den Planer.',
       ],
     },
@@ -484,7 +484,7 @@ function visionBlocks(): PdfBlock[] {
         ['Frage', 'Cluster', 'liest, rechnet nach, prüft eine Zahl', 'Link „Im Planer weiterrechnen"'],
         ['Rechnung', 'Rechner-Landingpage', 'gibt Werte ein, liest das Ergebnis', 'Übernahme in die Anlage'],
         ['Zeichnung', '/elektrik-planung/', 'legt Leitungen, prüft Fehlermeldungen', 'Stückliste, Ausdruck'],
-        ['Vertrauen', '/ueber-werft/', 'prüft Methodik, Quellen, Grenzen', 'teilt den Link weiter'],
+        ['Vertrauen', '/ueber-elektroplaner/', 'prüft Methodik, Quellen, Grenzen', 'teilt den Link weiter'],
       ],
       widths: [0.13, 0.24, 0.36, 0.27],
     },
@@ -567,7 +567,7 @@ function writeDoc(name: string, blocks: readonly PdfBlock[], title: string): voi
   mkdirSync(DOCS, { recursive: true });
   const markdown = `${renderMarkdown(blocks)}\n`;
   writeFileSync(join(DOCS, `${name}.md`), formatMarkdown(markdown, name), 'utf8');
-  writeFileSync(join(DOCS, `${name}.pdf`), renderPdf(blocks, { title, author: 'Werft — Camp' }));
+  writeFileSync(join(DOCS, `${name}.pdf`), renderPdf(blocks, { title, author: 'Elektroplaner — Camp' }));
 }
 
 function main(): void {

@@ -2,7 +2,7 @@
 
 Start here.
 
-CAMP („Werft“) ist ein **statischer** Next.js-Elektroplaner für Camper-12-V-/230-V-/Solar-Anlagen.
+CAMP („Elektroplaner“) ist ein **statischer** Next.js-Elektroplaner für Camper-12-V-/230-V-/Solar-Anlagen.
 Dieses Verzeichnis ist die autoritative Einstiegsdokumentation für Coding-Agents. Sie beschreibt
 **ausschließlich Dinge, die im Code nachweisbar sind**. Steht irgendwo `UNKNOWN` oder
 `NEEDS VERIFICATION`, ist die Frage offen und darf nicht durch Vermutung ersetzt werden.

@@ -90,7 +90,7 @@ Generiert:
 
 ## 5. Migration — Perfekt ohne Bruch
 
-Bestehende Werft-Tokens bleiben. Im `.dark`:
+Bestehende Marken-Tokens bleiben. Im `.dark`:
 
 ```css
 --wire-dc: var(--de-wire-dc-12v-plus);

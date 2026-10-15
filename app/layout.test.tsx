@@ -64,8 +64,8 @@ describe('RootLayout', () => {
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {
     expect(metadata.metadataBase?.toString()).toBe('https://elektroplaner-camper.de/');
     expect(metadata.title).toEqual({
-      default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Werft',
-      template: '%s | Werft',
+      default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Elektroplaner',
+      template: '%s | Elektroplaner',
     });
     // Ein vererbter Homepage-Canonical oder ein Homepage-Open-Graph auf einer
     // Fehlerroute wäre widersprüchlich. Indexierbare Seiten setzen beides über

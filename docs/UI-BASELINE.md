@@ -1,9 +1,9 @@
-# UI-BASELINE — Werft-Relaunch-Freeze
+# UI-BASELINE — Relaunch-Freeze
 
 Stand: 2026-09-06 · Baseline-Quelle: `3148348` (`stack/s-1 + routing-v2/wp-7`) ·
 Nachtrag 2026-09-28 (Freeze-Zustand präzisiert, zwei Tablet-Bilder neu aufgenommen — §4).
 
-Dieses Dokument ist der feste UI-Freeze-Punkt für den wiederhergestellten Werft-Stand.
+Dieses Dokument ist der feste UI-Freeze-Punkt für den wiederhergestellten Marken-Stand.
 Es schützt das Erscheinungsbild vor künftigen Architektur-Refactors: V2 darf auf die UI
 aufsetzen, aber die UI nicht wieder auf einen alten/monatsalten Zustand zurückwerfen.
 

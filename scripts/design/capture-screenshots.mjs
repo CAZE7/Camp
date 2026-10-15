@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Design-Dokumentation: Screenshots der Kernrouten für Vorher/Nachher-Vergleiche
- * (Design-Relaunch „Werft", agent.md D-1 bis D-9).
+ * (Design-Relaunch, agent.md D-1 bis D-9).
  *
  * Nutzung:
  *   node scripts/design/capture-screenshots.mjs --out docs/design/relaunch/before [--base-url http://127.0.0.1:3000]

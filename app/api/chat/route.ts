@@ -3,7 +3,7 @@
  * (`output: 'export'`) nicht — die App verweist ihn über
  * NEXT_PUBLIC_CHAT_API_URL auf einen externen Serverless-Endpoint.
  *
- * Typisierung (FOLLOW-UP aus dem Werft-Altbestand, 2026-10-02 erledigt):
+ * Typisierung (FOLLOW-UP aus dem Altbestand, 2026-10-02 erledigt):
  * Client-Nachrichten kommen als `unknown` herein und werden in
  * `validateMessages` zur Laufzeit geprüft; erst danach tragen sie den
  * `Message`-Typ. Datenbankzeilen werden an der Kante in benannte Row-Typen

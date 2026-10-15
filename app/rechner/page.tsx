@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { metadataFor } from '@/app/seoMetadata';
+import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 import { SeoPage } from '@/components/seo/SeoPage';
 import { RECHNER_HUB_CONTENT } from '@/lib/seo/content/rechner-hub';
 
@@ -8,5 +9,5 @@ import { RECHNER_HUB_CONTENT } from '@/lib/seo/content/rechner-hub';
 export const metadata: Metadata = metadataFor(RECHNER_HUB_CONTENT);
 
 export default function RechnerPage() {
-  return <SeoPage page={RECHNER_HUB_CONTENT} />;
+  return <SeoPage page={RECHNER_HUB_CONTENT} afterHeader={<RechnerLeiste variant="inline" />} />;
 }
