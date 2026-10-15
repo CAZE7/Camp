@@ -177,4 +177,26 @@ describe('ValidatingInput', () => {
     fireEvent.blur(input);
     expect(input.value).toBe('6000');
   });
+  // B-01 (QA-Bericht): „12,5“ W wurde als 125 W übernommen, weil das Feld
+  // `type="number"` war. Jetzt ein Textfeld, das das Dezimalkomma liest.
+  it('accepts the German decimal comma in float fields (B-01)', () => {
+    const onValidChange = vi.fn();
+    render(
+      <ValidatingInput
+        value={0}
+        isFloat
+        onValidChange={onValidChange}
+        rules={[COMMON_RULES.strictlyPositive]}
+        aria-label="test-input"
+      />
+    );
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    expect(input).toHaveAttribute('type', 'text');
+    expect(input).toHaveAttribute('inputmode', 'decimal');
+    fireEvent.change(input, { target: { value: '12,5' } });
+
+    expect(onValidChange).toHaveBeenCalledWith(12.5);
+    expect(onValidChange).not.toHaveBeenCalledWith(125);
+  });
 });
