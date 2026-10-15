@@ -41,6 +41,33 @@ interface ActionFeedback {
   onAction?: () => void;
 }
 
+/** Übersetzt einen Prüfbefund in den Store-Typ (eine Quelle für Zählung und Liste). */
+function warningToPlannerError(w: ValidationWarning) {
+  return createPlannerError({
+    code: plannerErrorCodeFromRuleId(w.ruleId),
+    severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
+    category: plannerErrorCategoryFromValidation(w.category, w.ruleId),
+    nodeIds: w.focusType === 'node' && w.focusId ? [w.focusId] : [],
+    edgeIds: w.focusType === 'edge' && w.focusId ? [w.focusId] : [],
+    message: w.title ?? w.message,
+    explanation: w.message,
+    suggestedFix: w.remedy,
+    details: {
+      ruleId: w.ruleId ?? null,
+      measuredValue: w.measuredValue ?? null,
+      expectedValue: w.expectedValue ?? null,
+      unit: w.unit ?? null,
+      source: w.source ?? null,
+    },
+  });
+}
+
+/** Schlüssel wie `dedupePlannerErrors`: gleiche Meldung zählt einmal. */
+export function warningDedupeKey(w: ValidationWarning): string {
+  const error = warningToPlannerError(w);
+  return `${error.code}|${error.severity}|${[...error.nodeIds].sort().join(',')}|${[...error.edgeIds].sort().join(',')}`;
+}
+
 export function PlannerDashboard() {
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
@@ -163,7 +190,16 @@ export function PlannerDashboard() {
         title: 'Wasserfluss verbessern',
         message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
       });
-    return [...liveWarnings, ...lockedMutationWarnings, ...supplemental];
+    // QA B-04: Kopfzeile, Fußzeile und Warnzentrale müssen dieselbe Zahl
+    // zeigen. Dieselbe Meldung (gleicher Code, gleiche Stufe, gleicher Fokus)
+    // zählt genau einmal — der Store dedupliziert genauso.
+    const seen = new Set<string>();
+    return [...liveWarnings, ...lockedMutationWarnings, ...supplemental].filter((w) => {
+      const key = warningDedupeKey(w);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
   /**
@@ -172,25 +208,7 @@ export function PlannerDashboard() {
    * einer anderen wären zwei Wahrheiten).
    */
   useEffect(() => {
-    const errors = warnings.map((w) =>
-      createPlannerError({
-        code: plannerErrorCodeFromRuleId(w.ruleId),
-        severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
-        category: plannerErrorCategoryFromValidation(w.category, w.ruleId),
-        nodeIds: w.focusType === 'node' && w.focusId ? [w.focusId] : [],
-        edgeIds: w.focusType === 'edge' && w.focusId ? [w.focusId] : [],
-        message: w.title ?? w.message,
-        explanation: w.message,
-        suggestedFix: w.remedy,
-        details: {
-          ruleId: w.ruleId ?? null,
-          measuredValue: w.measuredValue ?? null,
-          expectedValue: w.expectedValue ?? null,
-          unit: w.unit ?? null,
-          source: w.source ?? null,
-        },
-      })
-    );
+    const errors = warnings.map((w) => warningToPlannerError(w));
     setPlannerErrors(errors);
   }, [warnings, setPlannerErrors]);
 
