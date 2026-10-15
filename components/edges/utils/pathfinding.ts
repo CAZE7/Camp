@@ -1,4 +1,5 @@
-import { Position } from '@xyflow/react';
+import { portOutward } from '../../../lib/routing/model';
+import type { Position } from '@xyflow/react';
 import {
   nodeHeight,
   nodeOriginX,
@@ -252,19 +253,7 @@ export function remainingCostLowerBound(
   return len + bends * BEND_COST;
 }
 
-export const sourceExitVector = (position?: Position): Point => {
-  switch (position) {
-    case Position.Left:
-      return { x: -1, y: 0 };
-    case Position.Top:
-      return { x: 0, y: -1 };
-    case Position.Bottom:
-      return { x: 0, y: 1 };
-    case Position.Right:
-    default:
-      return { x: 1, y: 0 };
-  }
-};
+export const sourceExitVector = (position?: Position): Point => portOutward(position);
 
 export const targetEntryVector = (position?: Position): Point => {
   const d = sourceExitVector(position);

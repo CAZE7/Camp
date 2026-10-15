@@ -8,7 +8,7 @@ import {
   type Rect,
   type Segment,
 } from './pathfinding';
-import { hasMinimumStubs, pathLength } from '../../../lib/routing/geometry';
+import { hasMinimumStubs, pathLength, preservesPortDirections } from '../../../lib/routing/geometry';
 import {
   classifySegmentAgainstNode,
   classifySegmentAgainstSegment,
@@ -607,7 +607,7 @@ const obstacleHitCounts = (
  * der Aufrufer (streng sinkende Verstoßzahl).
  */
 const candidateIsAcceptable = (repaired: Point[], original: Working): boolean => {
-  if (!isOrthogonalPath(repaired)) return false;
+  if (!isOrthogonalPath(repaired) || !preservesPortDirections(original.points, repaired)) return false;
   const points = simplifyWaypoints(repaired);
   if (!hasMinimumStubs(points, requiredStubLength(points))) return false;
   if (routeDefectScore(repaired) > routeDefectScore(original.points) + EPS) return false;

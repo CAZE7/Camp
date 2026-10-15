@@ -38,6 +38,32 @@ vi.mock('./routeAll', async (importOriginal) => {
 
 const realRouteAllCables = hoisted.real as typeof routeAllModule.routeAllCables;
 
+/**
+ * jsdom stellt keinen `Worker` bereit; ohne Double würde jeder Lauf sofort im
+ * Fehlerpfad landen und die Veröffentlichung wäre gar nicht prüfbar.
+ *
+ * Das Double ersetzt ausschließlich den TRANSPORT: Es führt denselben Job
+ * in-Thread aus (`runRoutingJob` ruft genau das oben gemockte `routeAllCables`
+ * auf). Geometrie, Report, Generation und Phase entstehen weiterhin im
+ * Haupt-Thread — also genau dort, wo RS-001/002/003 saßen. Der Transport
+ * selbst ist durch `routingWorkerClient.test.ts` abgedeckt.
+ */
+vi.mock('./routingWorkerClient', async () => {
+  const { runRoutingJob } = await import('./routingJob');
+  return {
+    createRoutingWorkerClient: () => ({
+      cancel: (): void => undefined,
+      dispose: (): void => undefined,
+      // Wie der echte Transport ein Promise, das bei einem Fehler REJECTET —
+      // sonst würde der Fehlerpfad (RS-003) nicht denselben Weg gehen.
+      request: (
+        job: Parameters<typeof runRoutingJob>[0]
+      ): Promise<{ stale: false; result: ReturnType<typeof runRoutingJob> }> =>
+        Promise.resolve().then(() => ({ stale: false as const, result: runRoutingJob(job) })),
+    }),
+  };
+});
+
 const edges: Edge[] = [{ id: 'e1', source: 'a', target: 'b', data: {} }];
 
 const nodesAt = (offset: number): Node[] => [
@@ -103,7 +129,7 @@ describe('CableRouteSync — Veröffentlichung und Fehlerpfad (UI-AUDIT RS-001/0
     expect(snap.errorMessage).toBeUndefined();
   });
 
-  it('ein fehlgeschlagener Lauf lässt die letzte Geometrie und ihren Report unangetastet', async () => {
+  it('ein fehlgeschlagener Lauf lässt die Geometrie stehen und gibt kein Urteil über die neue Eingabe aus', async () => {
     view = render(<Harness ns={nodesAt(0)} />);
     await waitForSettledRun();
 
@@ -121,13 +147,18 @@ describe('CableRouteSync — Veröffentlichung und Fehlerpfad (UI-AUDIT RS-001/0
 
     await waitFor(() => expect(getCableRouteSnapshot().phase).toBe('error'));
     const after = getCableRouteSnapshot();
-    // Geometrie und Report sind dieselben Objekte — nichts wurde verworfen.
-    expect(after.routes).toBe(known);
-    expect(after.report).toBe(knownReport);
+    // Die Geometrie bleibt stehen — ein Fehler wirft den Plan nicht auf eine
+    // halbe oder leere Darstellung zurück. (Identität wird nicht geprüft: Der
+    // Veröffentlichungspfad friert Wege bewusst unveränderlich ein.)
+    expect(after.routes.get('e1')?.waypoints).toEqual(knownRoute.waypoints);
+    // Der Fehler ist sichtbar, und das Urteil der VORGÄNGER-Eingabe wird nicht
+    // als Urteil über den aktuellen Stand ausgegeben (RS-002 + RS-003).
     expect(after.errorMessage).toContain('boom');
+    expect(['valid', 'invalid']).not.toContain(after.phase);
+    // Das veröffentlichte Ergebnis gehört ausdrücklich NICHT zur neuen Eingabe.
+    expect(after.publishedHash).not.toBe(after.generation?.hash);
     // Der Fehler gehört zur NEUEN Eingabe, nicht still zur alten.
     expect(after.generation?.hash).not.toBe(generation.hash);
-    expect(after.publishedHash).toBe(generation.hash);
   });
 
   it('ein geworfenes Nicht-Error-Objekt ergibt eine lesbare Meldung, kein [object Object]', async () => {
@@ -158,7 +189,9 @@ describe('CableRouteSync — Veröffentlichung und Fehlerpfad (UI-AUDIT RS-001/0
     vi.mocked(routeAllModule.routeAllCables).mockImplementation(realRouteAllCables);
     view.rerender(<Harness ns={nodesAt(80)} />);
 
-    await waitFor(() => expect(getCableRouteSnapshot().errorMessage).toBeUndefined());
-    expect(['valid', 'invalid']).toContain(getCableRouteSnapshot().phase);
+    // Auf die TERMINALE Phase warten: `beginCableRouteRun` löscht die
+    // Fehlermeldung bereits bei der Anmeldung, also bevor das Ergebnis da ist.
+    await waitFor(() => expect(['valid', 'invalid']).toContain(getCableRouteSnapshot().phase));
+    expect(getCableRouteSnapshot().errorMessage).toBeUndefined();
   });
 });

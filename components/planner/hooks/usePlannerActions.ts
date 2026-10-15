@@ -19,6 +19,7 @@ import {
   Plus,
   FolderOpen,
   Redo2,
+  Route,
   Ruler,
   Save,
   ScanSearch,
@@ -37,6 +38,7 @@ import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../.
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
 import type { ValidationWarning } from './useLiveValidation';
@@ -626,9 +628,30 @@ export function usePlannerActions({
    * nur ein Menü (die Chrome-Leiste hält genau ein offenes Menü), deshalb gibt es
    * nie zwei Elemente mit derselben Kennung.
    */
+  // Dieselbe Sperrbedingung wie der Knopf in der Werkzeugleiste (ein Modul,
+  // eine Wahrheit): Der `⋯`-Eintrag darf nicht anklickbar sein, während der
+  // Knopf gesperrt ist.
+  const optimizeRouting = useOptimizeRoutingCommand();
+
   const overflow = useMemo<PlannerMenuGroup[]>(
     () => [
       { items: menus.werkzeuge[0]!.items },
+      {
+        /* Zugang zur Kabel-Optimierung, wenn der Knopf auf 320 px aus der
+           Werkzeugleiste weicht (globals.css §7a). Dieselbe Aktion, dieselbe
+           Sperrbedingung (`useOptimizeRoutingCommand`) — nur ein anderer Weg
+           dorthin. */
+        label: 'Kabelrouting',
+        items: [
+          {
+            label: 'Kabel optimieren',
+            icon: Route,
+            testId: 'action-optimize-routing',
+            disabled: optimizeRouting.disabled,
+            run: optimizeRouting.run,
+          },
+        ],
+      },
       {
         label: 'Ausgabe',
         items: [
@@ -696,6 +719,7 @@ export function usePlannerActions({
       guidedMode,
       menus,
       onRequestReset,
+      optimizeRouting,
       season,
       setDetailLevel,
       setGuidedMode,

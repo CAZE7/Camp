@@ -9,7 +9,7 @@ import {
   type GeometryNode,
   type RoutableNode,
 } from './nodeGeometry';
-import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, nodeObstacleMap } from './pathfinding';
+import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH } from './pathfinding';
 import { collectRoutableNodes } from './routableNodes';
 import {
   createRoutingTraceSnapshot,
@@ -23,19 +23,19 @@ import {
   type RoutingTraceSnapshot,
   type RoutingTraceTriggerReference,
 } from './routingDebug';
-import {
-  totalViolations,
-  validateFinalRouting,
-  type FinalValidationReport,
-} from '../../../lib/routing/finalValidation';
+import type { FinalValidationReport } from '../../../lib/routing/finalValidation';
 import {
   createRouteGenerationTracker,
   routingInputHash,
   type RouteGenerationStatus,
 } from '../../../lib/routing/generation';
-import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
-import { resolveRoutingEndpoints, routeAllCables, type RouteEdgeRef } from './routeAll';
+import { type RouteEdgeRef } from './routeAll';
 import { isRouteLocked } from '../../../lib/electricalGraph/intent';
+import { selectRoutingPublication } from '../../../lib/routing/publication';
+import { computeCableRouteFinalValidation } from './routeValidation';
+export { computeCableRouteFinalValidation } from './routeValidation';
+import { createRoutingWorkerClient } from './routingWorkerClient';
+import { routingSnapshot, routingSnapshotNodes } from './routingSnapshot';
 import type { PathResult } from './pathfinding';
 
 /**
@@ -113,7 +113,7 @@ type EdgeTopologySignatureInput = Pick<Edge, 'id' | 'source' | 'target' | 'sourc
  * So fließen die Routing-Einstellungen in den Hash ein — ohne Abhängigkeit
  * von der Geometrie-Schicht.
  */
-export const ROUTING_TOKENS_VERSION = 3;
+export const ROUTING_TOKENS_VERSION = 4;
 
 export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput[]): string {
   const parts: string[] = [];
@@ -212,6 +212,11 @@ export function createThrottledRunner(
 /** Drossel-Fenster des Live-Re-Routings (ms). */
 export const ROUTE_THROTTLE_MS = 100;
 
+let optimizeCurrentPlan: (() => void) | undefined;
+/** Explicit user operation; never mutates nodes, electrical fields or edge intent. */
+export const requestCableRouteOptimization = (): void => {
+  optimizeCurrentPlan?.();
+};
 /**
  * Meldungstext für einen fehlgeschlagenen Routing-Lauf.
  *
@@ -464,112 +469,94 @@ export const getCableRoute = (id: string): PathResult | undefined => currentSnap
 
 export const getCableRouteFinalValidation = (): FinalValidationReport | undefined => currentSnapshot.report;
 
+const ownedRoutes = new WeakSet<PathResult>();
+function immutableRoute(route: PathResult): PathResult {
+  if (ownedRoutes.has(route)) return route;
+  const copy = {
+    ...route,
+    waypoints: route.waypoints.map((point) => Object.freeze({ ...point })),
+    hops: route.hops?.map((hop) => Object.freeze({ ...hop })),
+  };
+  Object.freeze(copy.waypoints);
+  if (copy.hops) Object.freeze(copy.hops);
+  Object.freeze(copy);
+  ownedRoutes.add(copy);
+  return copy;
+}
+
+/** Atomically install geometry, its verdict and generation BEFORE notifying any reader. */
+export function publishCableRouteSnapshot(
+  routes: Map<string, PathResult>,
+  report: FinalValidationReport | undefined,
+  generation: RouteGenerationStatus
+): void {
+  const next = {
+    ...currentSnapshot,
+    routes: new Map<string, PathResult>([...routes].map(([id, route]) => [id, immutableRoute(route)])),
+    report,
+    generation,
+    // Nur ein Ergebnis mit Urteil gehört zu dieser Eingabe. Ohne Report ist die
+    // Geometrie ausdrücklich nicht als geprüft ausgezeichnet (UI-AUDIT RS-002).
+    publishedHash: report ? generation.hash : undefined,
+    publishedGeneration: report ? generation.generation : undefined,
+    phase: 'idle' as CableRoutePhase,
+    errorMessage: undefined,
+  };
+  commit({ ...next, phase: derivePhase(next) });
+}
+
+/** Validate both alternatives against this input; never carry a VALID verdict across an edit. */
+export function completeCableRouteGeneration(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  status: RouteGenerationStatus,
+  routes?: Map<string, PathResult>,
+  error?: string
+): boolean {
+  const publishedGeneration = currentSnapshot.generation;
+  if (
+    publishedGeneration &&
+    (publishedGeneration.hash !== status.hash ||
+      publishedGeneration.generation !== status.generation ||
+      publishedGeneration.revision !== status.revision)
+  )
+    return false;
+  // Deleted edges must disappear even when preserving a previous generation.
+  const ids = new Set(edges.map((edge) => edge.id));
+  const previous = new Map<string, PathResult>([...currentSnapshot.routes].filter(([id]) => ids.has(id)));
+  const candidateReport = routes ? computeCableRouteFinalValidation(nodes, edges, routes) : undefined;
+  const choice = selectRoutingPublication({
+    candidate: routes,
+    candidateReport,
+    previous,
+    previousReport: computeCableRouteFinalValidation(nodes, edges, previous),
+    hasPrevious: previous.size > 0,
+    error,
+  });
+  publishCableRouteSnapshot(choice.routes, choice.report, {
+    ...status,
+    state:
+      choice.state === 'valid' && status.optimization
+        ? status.optimization.budgetExhausted
+          ? 'partial'
+          : 'optimized'
+        : choice.state,
+    geometryHash: choice.routes === routes ? status.hash : publishedGeneration?.geometryHash,
+    reason:
+      choice.reason ??
+      (status.optimization
+        ? `${status.optimization.accepted} Verbesserungen in ${status.optimization.attempted} Versuchen. ${status.optimization.budgetExhausted ? 'Arbeitsbudget erreicht; kein Optimalitätsnachweis.' : 'Kandidaten geprüft; kein Optimalitätsnachweis.'}`
+        : undefined),
+  });
+  return true;
+}
+
 /**
  * AUDIT F-07: Baut aus genau den Waypoints, die `routeAllCables` für die UI
  * geliefert hat, den Final-Validation-Report. Reine Funktion, damit der
  * Router-Kontext nicht gemockt werden muss und der Report im Test
  * deterministisch reproduzierbar ist.
  */
-export function computeCableRouteFinalValidation(
-  nodes: RoutableNode[],
-  edges: readonly RouteEdgeRef[],
-  routes: Map<string, PathResult>
-): FinalValidationReport {
-  // Reine Darstellungs-Knoten sind kein Prüfgegenstand: Würde der Rahmen des
-  // Hauptstromkreises ungefiltert übergeben, könnte eine Leitung, die ein
-  // Kern-Bauteil verlässt, den Rahmenrand schneiden und als I1 erscheinen,
-  // obwohl kein Kabel durch ein Bauteil läuft (siehe `routableNodes.ts`).
-  nodes = collectRoutableNodes(nodes).routable;
-  const routed: RoutedEdge[] = [];
-  for (const edge of edges) {
-    const route = routes.get(edge.id);
-    if (route)
-      routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: route.waypoints });
-  }
-  const obstacleById = nodeObstacleMap(nodes);
-  const rects: NodeRect[] = [];
-  for (const node of nodes) {
-    const rect = obstacleById.get(node.id);
-    if (rect) rects.push({ id: node.id, ...rect });
-  }
-  const report = validateFinalRouting(routed, rects);
-  const endpoints = resolveRoutingEndpoints(nodes, edges);
-  const lockedRouteViolations: NonNullable<FinalValidationReport['lockedRouteViolations']> = [];
-  for (const edge of edges) {
-    if (!isRouteLocked(edge)) continue;
-    const snapshot = edge.data?.lockedWaypoints;
-    if (!Array.isArray(snapshot) || snapshot.length < 2) {
-      lockedRouteViolations.push({
-        code: 'ROUTE-LOCK-MISSING',
-        edgeId: edge.id,
-        detail:
-          'Die fixierte Leitung hat keinen gespeicherten Wegpunktsnapshot; ihre ursprüngliche Trasse kann nicht verifiziert werden.',
-      });
-      continue;
-    }
-    if (snapshot.some((point) => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
-      lockedRouteViolations.push({
-        code: 'ROUTE-LOCK-INVALID',
-        edgeId: edge.id,
-        detail: 'Der gespeicherte Wegpunktsnapshot enthält ungültige Koordinaten.',
-      });
-      continue;
-    }
-    const route = routes.get(edge.id);
-    if (!route) {
-      lockedRouteViolations.push({
-        code: 'ROUTE-LOCK-GEOMETRY',
-        edgeId: edge.id,
-        detail: 'Für die fixierte Leitung wurde keine Route veröffentlicht.',
-      });
-      continue;
-    }
-    const sameGeometry =
-      route.waypoints.length === snapshot.length &&
-      route.waypoints.every(
-        (point, index) => point.x === snapshot[index]!.x && point.y === snapshot[index]!.y
-      );
-    if (!sameGeometry) {
-      lockedRouteViolations.push({
-        code: 'ROUTE-LOCK-GEOMETRY',
-        edgeId: edge.id,
-        detail: 'Die veröffentlichte Trasse weicht vom gespeicherten, fixierten Weg ab.',
-      });
-      continue;
-    }
-    const expected = endpoints.get(edge.id);
-    const first = snapshot[0]!;
-    const last = snapshot[snapshot.length - 1]!;
-    if (
-      expected &&
-      (first.x !== expected.source.x ||
-        first.y !== expected.source.y ||
-        last.x !== expected.target.x ||
-        last.y !== expected.target.y)
-    ) {
-      lockedRouteViolations.push({
-        code: 'ROUTE-LOCK-ENDPOINT',
-        edgeId: edge.id,
-        detail: 'Die fixierte Trasse endet nicht mehr an den aktuellen Anschlusspunkten der Bauteile.',
-      });
-    }
-  }
-  let tight = 0;
-  for (const edge of edges) {
-    if (routes.get(edge.id)?.tightMarginUsed) tight += 1;
-  }
-  const counts =
-    lockedRouteViolations.length > 0
-      ? { ...report.counts, lockedRouteViolations: lockedRouteViolations.length }
-      : report.counts;
-  return {
-    ...report,
-    status: totalViolations(counts) === 0 ? 'VALID' : 'INVALID',
-    counts,
-    ...(lockedRouteViolations.length > 0 ? { lockedRouteViolations } : {}),
-    tightMarginRoutes: tight,
-  };
-}
 export function useCableRouteFinalValidation(): FinalValidationReport | undefined {
   return useSyncExternalStore(subscribe, getCableRouteFinalValidation, () => undefined);
 }
@@ -663,7 +650,8 @@ export function CableRouteSync() {
   const generationRef = useRef(createRouteGenerationTracker());
   useLayoutEffect(() => {
     const tracker = generationRef.current;
-    const runner = createThrottledRunner(() => {
+    const worker = createRoutingWorkerClient();
+    const run = async (optimize = false) => {
       const startedAt = Date.now();
       const state = store.getState();
       // InternalNodes tragen die vom Router konsumierten Maße und Handle-Bounds.
@@ -678,7 +666,17 @@ export function CableRouteSync() {
       // die Schranke, wird NICHT erneut geroutet — die bestehenden Routen
       // bleiben stehen und der Zustand wird als „nicht konvergiert"
       // veröffentlicht. Kein Timer, keine wachsende Toleranz: ein Zähler.
-      const status = tracker.begin(routingInputHash(nodeSignature, edgeSignature));
+      const hash = routingInputHash(nodeSignature, edgeSignature);
+      // Unveränderte Eingaben haben bereits eine deterministische Antwort;
+      // ein optimiertes Ergebnis darf nicht zurückgesetzt werden.
+      const publishedBefore = getCableRouteGeneration();
+      if (
+        publishedBefore?.hash === hash &&
+        getCableRouteFinalValidation() &&
+        (!optimize || publishedBefore.optimization)
+      )
+        return;
+      const status = tracker.begin(hash);
       // UI-AUDIT RS-002: Die Anmeldung ist KEIN Ergebnis. Sie hebt den
       // Lebenszyklus auf `routing`, damit die Anzeige während der gemessenen
       // Laufzeit (Live-Pfad: Median 240 ms bei N=36/E=134) nicht den Report
@@ -686,43 +684,90 @@ export function CableRouteSync() {
       beginCableRouteRun(status);
       if (!status.allowed) return;
 
+      // Own the input before asynchronous computation; never read a mutable InternalNode on reply.
+      const input = routingSnapshot(nodes, edgeRefs);
+      const inputNodes = routingSnapshotNodes(input);
+      let published: boolean;
       try {
-        const routes = routeAllCables(nodes, edgeRefs);
-
-        // AUDIT F-07: Die Validierung prüft genau die Routen, die die UI zeichnet.
-        const report = computeCableRouteFinalValidation(nodes, edgeRefs, routes);
-        // UI-AUDIT RS-001: EIN commit für Geometrie, Report und Generation.
-        // Nacheinander publizierte Teilzustände ließen einen Leser neue Wege
-        // mit dem Report der Vorgänger-Eingabe sehen (nachgewiesen: `2|VALID`).
-        publishCableRouteResult({ routes, report, generation: status });
-
-        if (routingDebugEnabled()) {
-          const traceSnapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
-          logRoutingResult(traceSnapshot, routes, report, pendingTriggersRef.current, Date.now() - startedAt);
-          pendingTriggersRef.current = [];
-        }
+        const outcome = await worker.request({ snapshot: input, optimize });
+        if (outcome.stale) return;
+        published = completeCableRouteGeneration(
+          inputNodes,
+          input.edges,
+          { ...status, optimization: outcome.result.optimization },
+          new Map(outcome.result.routes)
+        );
       } catch (error) {
         // UI-AUDIT RS-003: Ohne diese Fassung entkam ein Fehler dem
         // gedrosselten Timer als unbehandelte Ausnahme; die Oberfläche zeigte
         // danach kommentarlos die Geometrie der alten Generation weiter.
         // Die letzte Geometrie bleibt bewusst stehen — ein Fehler darf den
-        // Plan nicht auf eine halbe oder leere Darstellung zurückwerfen.
+        // Plan nicht auf eine halbe oder leere Darstellung zurückwerfen. Er
+        // wird ausdrücklich NICHT als Ergebnis der aktuellen Eingabe
+        // veröffentlicht: das wäre RS-002 in neuem Gewand.
         failCableRouteRun(status, describeRoutingError(error));
         pendingTriggersRef.current = [];
+        return;
       }
+      // Ein überholter Lauf schreibt nichts; die jüngere Generation bleibt
+      // unangetastet (stale Ergebnisse überschreiben nie neuere).
+      if (!published) return;
+      // Geometrie und Urteil kommen aus DEMSELBEN Snapshot, das soeben atomar
+      // veröffentlicht wurde — nicht aus zwei getrennten Modul-Variablen.
+      const settled = getCableRouteSnapshot();
+      const routes = settled.routes;
+      const report = settled.report;
+
+      if (routingDebugEnabled() && report) {
+        const traceSnapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
+        logRoutingResult(traceSnapshot, routes, report, pendingTriggersRef.current, Date.now() - startedAt);
+        pendingTriggersRef.current = [];
+      }
+    };
+    const runner = createThrottledRunner(() => {
+      void run();
     }, ROUTE_THROTTLE_MS);
+    const optimize = () => {
+      runner.cancel();
+      void run(true);
+    };
+    optimizeCurrentPlan = optimize;
     runnerRef.current = runner;
     return () => {
       runner.cancel();
+      worker.dispose();
       runnerRef.current = null;
+      if (optimizeCurrentPlan === optimize) optimizeCurrentPlan = undefined;
     };
   }, [store]);
 
   useLayoutEffect(() => {
     const runner = runnerRef.current;
-    if (runner) runner.schedule();
+    if (runner) {
+      // Clear the verdict immediately, including the trailing-throttle window.
+      const state = store.getState();
+      const { routable } = collectRoutableNodes(state.nodeLookup.values());
+      const hash = routingInputHash(nodeLayoutSignature(routable), edgeTopologySignature(state.edges));
+      const publishedGeneration = getCableRouteGeneration();
+      if (publishedGeneration?.hash !== hash) {
+        publishCableRouteSnapshot(
+          new Map<string, PathResult>([...getCableRouteSnapshot().routes]),
+          undefined,
+          {
+            hash,
+            generation: (publishedGeneration?.generation ?? 0) + 1,
+            revision: 0,
+            allowed: true,
+            converged: true,
+            state: 'pending',
+            geometryHash: publishedGeneration?.geometryHash,
+          }
+        );
+      }
+      runner.schedule();
+    }
     return () => runner?.cancel();
-  }, [signatureState.routing]);
+  }, [signatureState.routing, store]);
 
   return null;
 }

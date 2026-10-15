@@ -323,3 +323,91 @@ vorhanden (`git reflog` zeigte nur `clone` und `checkout`). Die Code-Änderungen
 lagen unverändert im Arbeitsverzeichnis. Alle Messungen dieses Nachtrags sind
 nach einer erneuten `npm ci` entstanden. Wer den Bericht nachprüft, muss
 `npm ci` zuerst ausführen.
+
+## 12. Nachtrag — Vereinigung mit PR #529 (2026-10-16)
+
+Der Zweig dieses Audits stand auf `498c57b`. Während der Arbeit zog die
+Feature-Basis auf `1cbc6e24` weiter (6 Commits, 78 Dateien), darunter PR #529
+`feat(routing): add validated global optimization and worker publication`.
+PR #529 baute **denselben Store parallel um** — 280 Zeilen in
+`components/edges/utils/cableRouteStore.ts`. `git merge-tree` wies genau
+**eine** echte Inhaltskollision nach (die übrigen vier überlappenden Dateien
+mergten automatisch).
+
+### 12.1 Was PR #529 brachte
+
+|                                    | PR #529                                                                                                                                        | dieser Audit                                                                                           |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Zustand                            | weiterhin **drei** getrennte Modul-Variablen mit je eigener Hörer-Menge                                                                        | **ein** unveränderliches Snapshot, eine Hörer-Menge                                                    |
+| neu                                | `publishCableRouteSnapshot`, `completeCableRouteGeneration`, `requestCableRouteOptimization`, Worker-Transport, `ROUTING_TOKENS_VERSION` 3 → 4 | `CableRoutePhase`, `useCableRouteSnapshot`, `publishedHash`, `beginCableRouteRun`, `failCableRouteRun` |
+| Phasen-Modell                      | keines                                                                                                                                         | Kern von RS-001/002/003                                                                                |
+| `computeCableRouteFinalValidation` | nach `routeValidation.ts` ausgelagert und re-exportiert                                                                                        | lag inline im Store                                                                                    |
+
+Beide Seiten waren unübernehmbar: PR #529s `OptimizeRoutingButton.tsx` und
+`routingPublication.test.ts` rufen die neuen APIs auf, und umgekehrt fehlte
+PR #529 das Phasen-Modell.
+
+### 12.2 Auflösung
+
+1. **Ein Zustand bleibt die einzige Quelle.** `publishCableRouteSnapshot` und
+   `completeCableRouteGeneration` schreiben jetzt über denselben `commit` in
+   dasselbe Snapshot — die drei Modul-Variablen und die drei Hörer-Mengen sind
+   weg. `publishedHash` wird nur gesetzt, wenn ein Urteil vorliegt; ohne Report
+   ist die Geometrie ausdrücklich nicht als geprüft ausgezeichnet.
+2. **Worker und Optimierung bleiben unverändert erhalten.** Der Lauf bleibt
+   asynchron über `createRoutingWorkerClient`, die Validated-Global-Optimization
+   über `selectRoutingPublication` entscheidet weiter, ob Kandidat oder
+   vorheriger Stand veröffentlicht wird.
+3. **Der Fehlerpfad veröffentlicht kein Ergebnis.** PR #529 reichte den Fehler
+   als `error`-Parameter an `completeCableRouteGeneration` und publizierte dann
+   den vorherigen Stand **als Ergebnis der neuen Eingabe** — das ist RS-002 in
+   neuem Gewand. Jetzt läuft der Fehler über `failCableRouteRun`: Geometrie
+   bleibt stehen, Phase wird `error`, `publishedHash` zeigt weiterhin auf die
+   alte Eingabe.
+4. **`computeCableRouteFinalValidation`** kommt aus `routeValidation.ts`. Die
+   dortige Fassung ist eine **Obermenge** der inline-Fassung dieses Audits
+   (zusätzlich `validateRouteContract`, Handle-Existenz `ROUTE-INPUT`,
+   `ROUTE-OWN-NODE`); die Inline-Kopie wurde entfernt, nichts ging verloren.
+
+### 12.3 Folgen für die Tests
+
+`cableRouteSync.test.tsx` braucht ein Worker-Double: jsdom stellt keinen
+`Worker` bereit, ohne Double endet jeder Lauf sofort im Fehlerpfad. Das Double
+ersetzt ausschließlich den **Transport** — es führt `runRoutingJob` in-Thread
+aus, das genau das gemockte `routeAllCables` aufruft. Der Transport selbst ist
+durch `routingWorkerClient.test.ts` abgedeckt.
+
+Zwei Zusicherungen wurden an die vereinigte Semantik angepasst, keine
+abgeschwächt:
+
+- _Geometrie überlebt einen Fehler:_ vorher Objekt-Identität (`toBe`), jetzt
+  Inhalt (`waypoints` per `toEqual`). PR #529 friert Wege beim Veröffentlichen
+  bewusst unveränderlich ein — Identität kann dort nie gelten. Neu hinzu kam
+  die stärkere Aussage, dass das Ergebnis ausdrücklich **nicht** zur neuen
+  Eingabe gehört (`publishedHash !== generation.hash`).
+- _Ein späterer Lauf beendet den Fehlerzustand:_ gewartet wird jetzt auf die
+  **terminale** Phase. `beginCableRouteRun` löscht die Fehlermeldung bereits
+  bei der Anmeldung — die alte Wartevorschrift hätte zu früh gegriffen.
+
+### 12.4 Gates nach der Vereinigung
+
+| Gate                                                   | Wert                                                 |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| `vitest run`                                           | 254 Dateien / 3440 Tests, **9 fehlgeschlagen**       |
+| `lint`, `format:check`, `typecheck`, `typecheck:tests` | grün                                                 |
+| `routing:audit`                                        | I1–I7 = 0 in allen 6 Plänen, fallback 0, determ true |
+| `test:regression`                                      | 68 grün                                              |
+| `test:goldenmaster`                                    | 13 grün                                              |
+| `npm run build`                                        | grün, 31 Seiten, Export-Prüfung grün                 |
+
+**Die 9 Fehler sind nicht von diesem Merge verursacht.** Nachweis: dieselben
+neun Tests in denselben fünf Dateien scheitern auf der reinen Basis `1cbc6e24`
+in einem separaten Worktree, ohne jede Änderung von hier — die Liste der
+fehlgeschlagenen Testnamen ist byte-identisch (`diff` leer). Betroffen:
+`app/handleGeometry.test.ts`, `components/edges/utils/routeAll.test.ts`,
+`scripts/routing/portBundleModel.test.ts`, `scripts/routing/portCapacity.test.ts`,
+`scripts/routing/shiftInvariance.test.ts`. Keine dieser Dateien wurde von
+diesem Zweig angefasst. Die Basis ist damit **vor** diesem Merge rot.
+
+Weiterhin offen und unverändert: Playwright-E2E ist in der
+Entwicklungsumgebung nicht ausführbar (Browser-Download gesperrt).

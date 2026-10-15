@@ -56,6 +56,11 @@ export const ROUTING_TERMINAL_PHASES: readonly CableRoutePhase[] = [
  *
  * Die Anzeige liest denselben Report, den der Router beim Publizieren der
  * Waypoints erzeugt hat — nicht eine Neuberechnung im Render-Pfad.
+ *
+ * Breite (M12): Unterhalb von `2xl` bleibt nur das Symbol (~34 px) — die
+ * ausgeschriebene Zeile ist bis zu 253 px breit und verdrängte in der
+ * Werkzeugleiste die Aktionen. Der zugängliche Name (`aria-label`) und der
+ * Tooltip nennen den Zustand in jeder Breite vollständig.
  */
 export function RoutingStatusBadge() {
   // UI-AUDIT RS-001/RS-002: EIN Snapshot statt zwei getrennter Abos.
@@ -75,11 +80,43 @@ export function RoutingStatusBadge() {
         role="alert"
         aria-live="polite"
         aria-label="Routing konvergiert nicht"
-        title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Es entsteht keine Endlosschleife; der letzte gültige Stand wird angezeigt. Ein kleines Verschieben eines Bauteils löst das Problem üblicherweise.`}
+        title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Weitere Läufe wurden gestoppt. Der angezeigte Stand muss gegen die aktuellen Anschlüsse geprüft werden.`}
         className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
       >
         <Repeat2 className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden xl:inline">Routing: Konvergenzfehler</span>
+        <span className="cad-tb-explain">Routing: Konvergenzfehler</span>
+      </span>
+    );
+  }
+
+  if (generation?.state && generation.state !== 'valid' && generation.state !== 'invalid') {
+    // Zustandstabelle statt zusammengesetzter Kennung: Jeder Zustand nennt
+    // Beschriftung UND `data-testid` ausdrücklich. Beides war vorher implizit
+    // (`routing-status-${state}` im JSX), wodurch die Kennung nur zur Laufzeit
+    // existierte — `components/e2eSelectors.test.tsx` („jede getByTestId-
+    // Verwendung in tests/e2e ist im Anwendungscode vorhanden") konnte sie
+    // nicht finden und schlug fehl, obwohl `tests/e2e/routing-optimization.spec.ts`
+    // genau darauf wartet. Die Kennungen sind unverändert.
+    const states = {
+      optimized: { label: 'Routing: Optimierung geprüft', testId: 'routing-status-optimized' },
+      partial: { label: 'Routing: teilweise optimiert', testId: 'routing-status-partial' },
+      pending: { label: 'Routing: neu zu berechnen', testId: 'routing-status-pending' },
+      routing: { label: 'Routing: in Bearbeitung', testId: 'routing-status-routing' },
+      retained: { label: 'Routing: vorheriger gültiger Stand', testId: 'routing-status-retained' },
+      stale: { label: 'Routing: veraltete Geometrie', testId: 'routing-status-stale' },
+      error: { label: 'Routing: Berechnung fehlgeschlagen', testId: 'routing-status-error' },
+    };
+    const label = states[generation.state].label;
+    return (
+      <span
+        data-testid={states[generation.state].testId}
+        role="status"
+        aria-label={label}
+        title={generation.reason ?? 'Die sichtbare Geometrie ist noch nicht für diese Eingabe bestätigt.'}
+        className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
+      >
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+        <span className="cad-tb-explain">{label}</span>
       </span>
     );
   }
@@ -145,7 +182,7 @@ export function RoutingStatusBadge() {
         title="Der Kabelrouting-Status wird nach dem ersten Routinglauf angezeigt."
       >
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" aria-hidden="true" />
-        <span className="hidden xl:inline">Routing: wartet</span>
+        <span className="cad-tb-explain">Routing: wartet</span>
       </span>
     );
   }
@@ -173,13 +210,16 @@ export function RoutingStatusBadge() {
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-success/40 bg-success/10 px-2 text-xs font-semibold text-success"
       >
         <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden xl:inline">Routing verifiziert</span>
+        <span className="cad-tb-explain">Routing verifiziert</span>
       </span>
     );
   }
 
   const countText = total === 1 ? '1 Regelverletzung' : `${total} Regelverletzungen`;
   const causes = [
+    ...((report.counts.contractViolations ?? 0) > 0
+      ? [`Unvollständige oder gelöste Routen: ${report.counts.contractViolations}`]
+      : []),
     ...(report.counts.edgeNodeCollisions > 0
       ? [`I1 Bauteil-Kollisionen: ${report.counts.edgeNodeCollisions}`]
       : []),
@@ -224,7 +264,7 @@ export function RoutingStatusBadge() {
       className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
     >
       <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-      <span className="hidden xl:inline">Routing prüfen · {countText}</span>
+      <span className="cad-tb-explain">Routing prüfen · {countText}</span>
     </span>
   );
 }
