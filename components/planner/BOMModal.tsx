@@ -93,7 +93,7 @@ export function BOMModal() {
       summary: snapshot.summary,
       assessment,
       generatedAt: new Date().toISOString(),
-      projectName: 'Camp-Elektroplan',
+      projectName: 'Camper-Elektroplaner',
     });
     if (!openPrintReport(html)) {
       setCopyError(

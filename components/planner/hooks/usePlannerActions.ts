@@ -215,6 +215,17 @@ export function usePlannerActions({
   }, []);
 
   const runAutoWire = useCallback(() => {
+    // B-11 (QA-Bericht): „Automatisch verbinden“ ist die ELEKTRIK-Verdrahtung.
+    // Im Wasser-Tab schlug sie Batterie und Smart Shunt vor. Dort gibt es
+    // keinen Auto-Lauf; der Befehl wird nicht ausgeführt, sondern erklärt.
+    if (usePlannerStore.getState().viewMode === 'water') {
+      onFeedback({
+        type: 'info',
+        message:
+          'Automatisch verbinden gilt für die Elektrik. Im Wasser-Tab verbindest du Schläuche, Pumpe und Tanks von Hand.',
+      });
+      return;
+    }
     flashBusy('wire');
     autoWireSystem();
     // Spec #29: Der Vorschlag wird bei Konflikten erst nach Bestätigung
