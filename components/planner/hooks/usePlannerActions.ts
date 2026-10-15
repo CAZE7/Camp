@@ -38,6 +38,7 @@ import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../.
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { requestConfirm } from '../../ui/ConfirmDialog';
 import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
@@ -326,9 +327,9 @@ export function usePlannerActions({
     const hasContent = state.nodes.length + state.waterNodes.length > 0;
     if (
       hasContent &&
-      !window.confirm(
+      !(await requestConfirm(
         `Der aktuelle Plan wird durch „${picked.name}“ ersetzt. Mit Rückgängig (Strg+Z) lässt sich der Wechsel zurücknehmen. Fortfahren?`
-      )
+      ))
     ) {
       return;
     }

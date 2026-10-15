@@ -13,6 +13,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
+import { ConfirmDialogHost, requestConfirm } from './ui/ConfirmDialog';
 import { CanvasSkeleton } from './ui/Skeleton';
 import { Frame, Layers, Minimize2, Settings2, Droplets, X, Undo2, Redo2, Zap } from 'lucide-react';
 import { useAppStore } from '../lib/store';
@@ -144,12 +145,11 @@ function PlannerShell() {
         const state = usePlannerStore.getState();
         if (state.selectedNodes.length > 0 || state.selectedEdges.length > 0) {
           event.preventDefault();
-          if (
-            window.confirm(
-              'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
-            )
-          )
-            state.deleteSelected();
+          void requestConfirm(
+            'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
+          ).then((ok) => {
+            if (ok) usePlannerStore.getState().deleteSelected();
+          });
         }
       }
     };
@@ -250,6 +250,7 @@ function PlannerShell() {
       className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans ${focusMode ? 'planner-shell--focus' : ''} ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
     >
       {!hasOnboarded && <OnboardingWizard />}
+      <ConfirmDialogHost />
       <ShortcutOverlay />
 
       {/* Chrome: Menüleiste + Werkzeugleiste (+ geführte Schrittleiste). */}

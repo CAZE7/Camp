@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { requestConfirm } from '../../ui/ConfirmDialog';
 import {
   ArrowDown,
   ArrowLeft,
@@ -62,12 +63,12 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
     ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
   }, []);
 
-  const deleteTarget = () => {
+  const deleteTarget = async () => {
     const targetLabel = state.targetType === 'node' ? state.label || 'Dieses Bauteil' : 'Diese Leitung';
     if (
-      !window.confirm(
+      !(await requestConfirm(
         `${targetLabel} wirklich löschen? Du kannst die Aktion anschließend mit Rückgängig wiederherstellen.`
-      )
+      ))
     )
       return;
     const store = usePlannerStore.getState();
@@ -226,7 +227,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
             type="button"
             role="menuitem"
             className={`${ITEM_CLASS} text-destructive`}
-            onClick={deleteTarget}
+            onClick={() => void deleteTarget()}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             Löschen
