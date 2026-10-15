@@ -1248,9 +1248,24 @@ rel="preload" as="font">`, Adresse aus dem Asset-Import statt gepflegtem
   meldete den Hauptfall als BESTANDEN, obwohl npm nie gelaufen war. Es ist zudem in
   keinem Workflow aufgerufen worden. Jetzt `spawnSync` mit Befehlsstring, und als
   Schritt `Lockfile-Gate bewiesen?` im Quality Gate verdrahtet.
+- **FÜNFTES (verwandter Befund, behoben 2026-10-15):** Derselbe Beweisschritt
+  prüfte den **Wortlaut** der npm-Meldung
+  (`can only install packages when your package.json and package-lock.json …`).
+  npm 10.9.9 meldet einen Lockfile-Widerspruch aber je nach Auflösungsweg
+  entweder als `EUSAGE` (Widerspruch im Lockfile erkannt) oder als `ETARGET`
+  (`No matching version found for …`, Registry-Auflösung zuerst). Beides trat am
+  selben Commit innerhalb von sieben Minuten auf: `EUSAGE` in Run 38783421907
+  (18:11 UTC, Schritt grün), `ETARGET` in Run 38784500652 (18:18 UTC, Schritt
+  rot) — der Job brach damit nach 40 s ab, bevor Lint, Typecheck und Tests
+  überhaupt liefen. Der Beweis hängt jetzt an der **Ursache** statt an der
+  Formulierung: `EUSAGE` oder `ETARGET`, der Synchronitäts-Klartext oder die
+  verfälschte Version `0.0.0-desynchronisiert` im Text. Ein Netzausfall
+  (`ENOTFOUND`) besteht die Prüfung weiterhin nicht, auch wenn er den
+  Paketnamen nennt — die ersten npm-Fehlerzeilen stehen dafür im CI-Log.
 - **WORKAROUND:** keiner mehr nötig.
 - **RELATED TEST:** `scripts/ci/workflows.test.ts` (erzwingt die 1:1-Kopie von
-  `docs/ci/workflows/`), `tests/e2e/touch.spec.ts`
+  `docs/ci/workflows/`), `tests/e2e/touch.spec.ts`,
+  `npm run ci:verify-lockfile-gate`
 - **RELATED ISSUE:** AGENTS.md §9 (Touch First-Class), M11-2 (Platzierung),
   AUDIT T7 (Deploy-Trigger), `docs/CI.md`
 
