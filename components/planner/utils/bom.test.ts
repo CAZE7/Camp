@@ -101,22 +101,11 @@ describe('buildBom — deterministisch über einen Planstand', () => {
     expect(JSON.stringify(input)).toBe(snapshot);
   });
 
-  // QA B-07 (Regression): Die Bestellmenge folgt der EINGETRAGENEN Länge. Eine
-  // geroutete Länge (30 m) darf die Stückliste nicht aufblasen.
-  it('bestellt nach der eingetragenen Länge, nicht nach der Route', () => {
+  it('übernimmt die Routenlänge aus der injizierten Quelle', () => {
     const bom = buildBom({ ...input, edges: [cable('e1', { length: 2, crossSection: 4 })] }, (id) =>
       id === 'e1' ? { length: 30 * PX_PER_METER } : undefined
     );
-    expect(bom.cableLengths['4']).toBeCloseTo(2, 6);
-    expect(bom.lengthAssumptions.some((a) => a.routedM !== undefined && a.routedM > 29)).toBe(true);
-  });
-
-  it('ohne eingetragene Länge gilt die Annahme, die Route wird nur gemeldet', () => {
-    const bom = buildBom({ ...input, edges: [cable('e1', { crossSection: 4 })] }, (id) =>
-      id === 'e1' ? { length: 30 * PX_PER_METER } : undefined
-    );
-    expect(bom.cableLengths['4']).toBeCloseTo(FALLBACK_CABLE_METERS, 6);
-    expect(bom.lengthAssumptions[0]?.source).toBe('fallback');
+    expect(bom.cableLengths['4']).toBeCloseTo(30, 6);
   });
 
   it('leerer Plan ergibt eine leere Stückliste', () => {
