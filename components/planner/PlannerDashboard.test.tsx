@@ -319,7 +319,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   it('reports the Dagre fallback honestly instead of claiming ELK', async () => {
@@ -329,7 +329,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     openMoreMenu();
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
-    await waitFor(() => expect(screen.getByText(/Dagre-Fallback/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Raster-Anordnung angewendet/)).toBeInTheDocument());
   });
 
   it('dispatches planner-fit-view when clicking the Übersicht (fit view) action', () => {
@@ -354,13 +354,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
-    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan ordnen');
+    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan automatisch ordnen');
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('action-tidy'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   /**

@@ -263,14 +263,14 @@ export function PlannerToolbar({
                 onClick={onTidy}
                 disabled={busy !== null}
                 className="cad-btn cad-toolbar__desktop-tidy"
-                title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
+                title="Plan automatisch anordnen (bei Ausfall: Raster-Layout). Rückgängig ist möglich."
               >
                 {busy === 'layoutV2' ? (
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 ) : (
                   <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                 )}
-                <span>Plan ordnen</span>
+                <span>Plan automatisch ordnen</span>
               </button>
             </div>
 

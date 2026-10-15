@@ -246,12 +246,15 @@ export function usePlannerActions({
       outcome = { applied: false, reason: 'error' };
     }
     if (outcome.applied) {
+      // B-15 (QA): Nach dem Anordnen die Gesamtansicht neu einpassen, sonst
+      // bleibt der Zoom auf dem alten Ausschnitt (44 %, Beschriftungen unlesbar).
+      window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
       onFeedback({
         type: outcome.engine === 'elk' ? 'success' : 'info',
         message:
           outcome.engine === 'elk'
-            ? 'Plan mit ELK global strukturiert. Rückgängig ist möglich.'
-            : 'ELK nicht rechtzeitig fertig — Raster-Layout (Dagre-Fallback) angewendet. Rückgängig ist möglich.',
+            ? 'Plan automatisch angeordnet. Rückgängig ist möglich.'
+            : 'Automatische Anordnung war nicht rechtzeitig fertig — Raster-Anordnung angewendet. Rückgängig ist möglich.',
       });
     } else if (outcome.reason === 'empty') {
       onFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
@@ -520,7 +523,7 @@ export function usePlannerActions({
             },
             { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
             {
-              label: 'Plan ordnen (ELK)',
+              label: 'Plan automatisch ordnen',
               icon: Network,
               testId: 'action-layout-v2-menu',
               run: () => void runLayoutV2(),

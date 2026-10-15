@@ -476,7 +476,7 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in"
+          className="flex max-h-[min(40rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
@@ -665,7 +665,7 @@ export function ExpertPanel() {
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
             </svg>
           </span>
-          <span className="expert-fab__copy relative flex flex-col items-start text-left">
+          <span className="expert-fab__copy relative hidden flex-col items-start text-left sm:flex">
             <span className="text-sm font-black leading-tight">Hilfe &amp; Fachwissen</span>
             <span className="text-xs font-bold leading-tight text-paper/80">
               {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Details und Normen'}

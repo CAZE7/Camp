@@ -55,7 +55,7 @@ import {
   resolveMinimapPalette,
 } from './utils/domainFilter';
 import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
-import { PlannerModeSwitch } from './ui/PlannerModeSwitch';
+import { PlannerModeSwitch, PLANNER_MODES } from './ui/PlannerModeSwitch';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -886,13 +886,31 @@ export function FlowCanvas() {
           {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
               beantwortet, welche Frage gerade bearbeitet wird. */}
           {viewMode === 'electric' && (
-            <Panel position="top-center" className="m-2 sm:m-3">
+            <Panel position="top-center" className="m-2 w-[calc(100%-1rem)] sm:m-3 sm:w-auto">
               <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
             </Panel>
           )}
 
+          {/* B-20/B-21 (QA): Physisch und Prüfung erklären sich in einer Zeile —
+              sonst sieht „Physisch“ aus wie „Planung“, und die Prüfansicht hat
+              keine Legende. Die Erklärung kommt aus dem Modus-Katalog. */}
+          {viewMode === 'electric' && plannerMode !== 'planung' && (
+            <Panel position="top-center" className="m-2 !mt-14 max-w-[calc(100%-1rem)] sm:m-3 sm:!mt-16">
+              <p
+                data-testid="planner-mode-caption"
+                className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
+              >
+                <span className="font-semibold">
+                  {PLANNER_MODES.find((option) => option.mode === plannerMode)?.label}:{' '}
+                </span>
+                {PLANNER_MODES.find((option) => option.mode === plannerMode)?.question}
+              </p>
+            </Panel>
+          )}
+
+          {/* B-10a (QA): Auf dem Handy liegt die Ansicht unter dem Modus-Umschalter, nicht darüber. */}
           {viewMode === 'electric' && (
-            <Panel position="top-right" className="m-2 sm:m-3">
+            <Panel position="top-right" className="!mr-2 !mt-14 sm:!m-3">
               <CanvasDisplayOptions
                 activeDomains={activeDomains}
                 onToggleDomain={toggleDomain}

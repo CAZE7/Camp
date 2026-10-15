@@ -227,6 +227,14 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
           id="canvas-display-options-panel"
           role="group"
           aria-label="Anzeige und Filter"
+          // B-22 (QA): Eine Auswahl im Popover schließt es — es bleibt nicht
+          // offen über dem Umschalter stehen.
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest('button') && !target.closest('[aria-label="Ansichtsoptionen schließen"]')) {
+              setOpen(false);
+            }
+          }}
           className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] border border-rule-strong bg-surface-raised p-3"
         >
           <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-border pb-2">
