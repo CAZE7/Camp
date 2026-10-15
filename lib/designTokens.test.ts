@@ -86,8 +86,8 @@ const PLANNER_TOKENS = [
   'error',
 ] as const;
 
-/** Werft-Relaunch (D-1): die primäre Token-Ebene muss hell + dunkel existieren. */
-const WERFT_TOKENS = [
+/** Relaunch (D-1): die primäre Token-Ebene muss hell + dunkel existieren. */
+const MARKEN_TOKENS = [
   'surface-canvas',
   'surface-panel',
   'surface-raised',
@@ -109,7 +109,7 @@ describe('M7-1 — Planer-Design-Tokens', () => {
     expect(darkTokens.has(name)).toBe(true);
   });
 
-  it.each(WERFT_TOKENS)('Werft: --%s ist in hell und dunkel definiert (D-1)', (name) => {
+  it.each(MARKEN_TOKENS)('Marke: --%s ist in hell und dunkel definiert (D-1)', (name) => {
     expect(rootTokens.has(name)).toBe(true);
     expect(darkTokens.has(name)).toBe(true);
   });
@@ -204,7 +204,7 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
   });
 });
 
-describe('D-1 Werft-Token-Fundament — Kontraste WCAG AA', () => {
+describe('D-1 Marken-Token-Fundament — Kontraste WCAG AA', () => {
   const textPairs = [
     ['text-high', 'surface-canvas'],
     ['text-high', 'surface-panel'],
@@ -289,7 +289,7 @@ describe('D-1 — RGB-Triplets als Alpha-Zwillinge der Farbtokens', () => {
     const config = readFileSync(resolve(process.cwd(), 'tailwind.config.ts'), 'utf8');
     const referenced = [...config.matchAll(/rgb\(var\(--([\w-]+)-rgb\)/g)].map((m) => m[1]!).filter(Boolean);
     expect(referenced.length).toBeGreaterThan(10);
-    // DE-Tokens leben in dark-engineering.css, Werft-Tokens in globals.css — beide gelten als :root Quelle
+    // DE-Tokens leben in dark-engineering.css, Marken-Tokens in globals.css — beide gelten als :root Quelle
     const deCssForTwins = (() => {
       try {
         return readFileSync(resolve(process.cwd(), 'app/dark-engineering.css'), 'utf8');
@@ -314,7 +314,7 @@ describe('D-1 — RGB-Triplets als Alpha-Zwillinge der Farbtokens', () => {
   });
 });
 
-describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css', () => {
+describe('D-1 Marken-Token-Hygiene — keine Farbliterale außerhalb globals.css', () => {
   const ROOTS = ['app', 'components', 'lib', 'store'] as const;
   const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;
 
@@ -335,7 +335,7 @@ describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css'
   }
 
   /**
-   * Werft-Altbestand (Dateien aus dem Werft-Stamm, übernommen 2026-09):
+   * Altbestand (Dateien aus dem früheren Stamm, übernommen 2026-09):
    * Sie nutzen noch Palettenklassen/Farbliterale und sind NOCH NICHT auf
    * Design-Tokens umgestellt (FOLLOW-UP: Tokenisierung). Bewusst als
    * explizite Ausnahmeliste statt globaler Schwächung dieser Regel —
@@ -490,7 +490,7 @@ describe('DE — Dark Engineering Token-Vollständigkeit & Kontraste', () => {
     expect(combined).toContain('.react-flow__edge-path');
   });
 
-  // Kontrast-Checks für DE-Tokens — gleiche Logik wie Werft, aber auf DE
+  // Kontrast-Checks für DE-Tokens — gleiche Logik wie die Marken-Ebene, aber auf DE
   function deColorOf(block: Map<string, string>, name: string): string {
     let value: string | undefined = block.get(name) ?? deRoot.get(name) ?? rootTokens.get(name);
     if (!value) throw new Error(`DE Token --${name} fehlt`);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument --
- * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Altbestand der Vorgängerversion (übernommen 2026-09): nutzt noch `any` für AI-SDK-
  * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
  *
  * AUDIT T1 ergänzt `no-unsafe-argument`: Der Mock-Rückgabewert wird mit

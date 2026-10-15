@@ -1,6 +1,6 @@
-# Werft — Elektrikplaner für den Camper-Ausbau
+# Elektroplaner — Schaltplan und Elektrik für den Camper-Ausbau
 
-Werft ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
+Elektroplaner ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
 per Klick oder Ziehen auf die Zeichenfläche, Leitungen automatisch
 verlegen lassen — und Querschnitte, Sicherungen und Spannungsfall rechnen
 sich nach konservativen VDE-Modellen selbst nach. Ohne Konto, ohne Server,
@@ -55,7 +55,7 @@ Zeichengesten und die Prüfung bleiben dieselben._
 _`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
 Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
 
-![Startseite der Werft mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
+![Startseite des Elektroplaners mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
 
 _Die Startseite bündelt Werkzeuge und Guides; jeder Kartenlink führt in eine
 indexierbare Wissens- oder Werkzeugseite — der Linkgraph ist Teil des
@@ -316,7 +316,7 @@ Branch Protection: `docs/CI.md`.
 
 ## Daten im Browser
 
-Planstand und Einstellungen liegen im `localStorage` (`werft-planner-v1`).
+Planstand und Einstellungen liegen im `localStorage` (`elektroplaner-planner-v1`; frühere Stände unter `werft-planner-v1` werden beim ersten Aufruf automatisch übernommen).
 Beide Stores sind versioniert und haben defensive Migrationsfunktionen, damit
 ältere Stände nach Schema-Änderungen keine Laufzeitfehler erzeugen. Es werden
 keine Daten an einen Server gesendet.

@@ -13,9 +13,9 @@ endobj
 << /Length 5792 >>
 stream
 BT /F2 21 Tf 1 0 0 1 56.00 756.89 Tm (Camp SEO - Analyse und Vision) Tj ET
-BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Suchraum, Befunde und Zielbild für die organische Sichtbarkeit - Stand 2026-10-03 - Commit) Tj ET
-BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (2854f82) Tj ET
-BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-03 - Commit: `2854f82` \(2026-10-03\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Suchraum, Befunde und Zielbild für die organische Sichtbarkeit - Stand 2026-10-15 - Commit) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (d31044e) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-15 - Commit: `d31044e` \(2026-10-15\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
 BT /F1 9 Tf 1 0 0 1 56.00 676.04 Tm (JavaScript gemessen.) Tj ET
 BT /F2 14 Tf 1 0 0 1 56.00 640.54 Tm (Ausgangslage) Tj ET
 0.85 0.85 0.85 RG 0.8 w 56 632.54 m 539.28 632.54 l S
@@ -84,12 +84,12 @@ BT /F1 10 Tf 1 0 0 1 56.00 112.54 Tm (kennen, die wir nicht kennen.) Tj ET
 endstream
 endobj
 5 0 obj
-<< /Length 6222 >>
+<< /Length 6238 >>
 stream
 BT /F2 14 Tf 1 0 0 1 56.00 751.89 Tm (Befunde aus dem Audit) Tj ET
 0.85 0.85 0.85 RG 0.8 w 56 743.89 m 539.28 743.89 l S
 BT /F1 10 Tf 1 0 0 1 56.00 725.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 725.89 Tm (Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 26 - Pillar, elf Cluster, vier) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 725.89 Tm (Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 28 - Pillar, elf Cluster, vier) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 710.89 Tm (Rechner-Landingpages und eine Vertrauensseite.) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 693.89 Tm (-) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 693.89 Tm (Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der) Tj ET
@@ -104,7 +104,7 @@ BT /F1 10 Tf 1 0 0 1 74.00 599.89 Tm (Der Ausbauguide lud GSAP \(rund 136 KB\) i
 BT /F1 10 Tf 1 0 0 1 74.00 584.89 Tm (wird jetzt nachgeladen.) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 567.89 Tm (-) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 567.89 Tm (Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 552.89 Tm (und wo er irrt - diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-werft/.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 552.89 Tm (und wo er irrt - diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-elektroplaner/.) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 535.89 Tm (-) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 535.89 Tm (Die Verlinkung war sternförmig: Alles hing an der Startseite. Jetzt führt ein Themenbaum von der Pillar in) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 520.89 Tm (die Cluster und von jedem Cluster über ein bis zwei Schritte in den Planer.) Tj ET
@@ -153,7 +153,7 @@ BT /F1 9 Tf 1 0 0 1 238.81 110.09 Tm (legt Leitungen, prüft Fehlermeldungen) Tj 
 BT /F1 9 Tf 1 0 0 1 412.79 110.09 Tm (Stückliste, Ausdruck) Tj ET
 0.8 0.8 0.8 RG 0.5 w 56 103.39 m 539.28 103.39 l S
 BT /F1 9 Tf 1 0 0 1 60.00 90.39 Tm (Vertrauen) Tj ET
-BT /F1 9 Tf 1 0 0 1 122.83 90.39 Tm (/ueber-werft/) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 90.39 Tm (/ueber-elektroplaner/) Tj ET
 BT /F1 9 Tf 1 0 0 1 238.81 90.39 Tm (prüft Methodik, Quellen, Grenzen) Tj ET
 BT /F1 9 Tf 1 0 0 1 412.79 90.39 Tm (teilt den Link weiter) Tj ET
 0.8 0.8 0.8 RG 0.5 w 56 83.69 m 539.28 83.69 l S
@@ -245,7 +245,7 @@ endobj
 << /Type /Catalog /Pages 10 0 R >>
 endobj
 12 0 obj
-<< /Title (Camp SEO - Analyse und Vision) /Author (Werft - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261003000000Z) >>
+<< /Title (Camp SEO - Analyse und Vision) /Author (Elektroplaner - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261015000000Z) >>
 endobj
 xref
 0 13
@@ -255,15 +255,15 @@ xref
 0000000214 00000 n 
 0000000309 00000 n 
 0000006153 00000 n 
-0000012427 00000 n 
-0000017791 00000 n 
-0000017943 00000 n 
-0000018095 00000 n 
-0000018247 00000 n 
-0000018317 00000 n 
-0000018368 00000 n 
+0000012443 00000 n 
+0000017807 00000 n 
+0000017959 00000 n 
+0000018111 00000 n 
+0000018263 00000 n 
+0000018333 00000 n 
+0000018384 00000 n 
 trailer
 << /Size 13 /Root 11 0 R /Info 12 0 R >>
 startxref
-18515
+18539
 %%EOF

@@ -1,5 +1,11 @@
 /**
- * lib/seo/content/ueber-werft.ts — Vertrauensseite `/ueber-werft/` (§19).
+ * lib/seo/content/ueber-elektroplaner.ts — Vertrauensseite
+ * `/ueber-elektroplaner/` (§19).
+ *
+ * Die Seite trug bis Oktober 2026 den Pfad `/ueber-werft/` nach dem früheren
+ * Namen des Werkzeugs. Der alte Pfad bleibt als Umleitungsseite erreichbar
+ * (`app/ueber-werft/page.tsx`), damit bestehende Verweise weiterlaufen; im
+ * Index steht nur noch diese Adresse.
  *
  * Sie beantwortet die Frage „warum kann ich diesen Zahlen glauben?" mit dem,
  * was im Projekt tatsächlich nachprüfbar ist: Quellen, Rechenwege, Grenzen,
@@ -18,17 +24,17 @@ const CAPACITY_ROWS = (['ato', 'midi', 'anl', 'mrbf'] as const).map((type) => [
   `${FUSE_BREAKING_CAPACITY_A[type].toLocaleString('de-DE')} A`,
 ]);
 
-export const UEBER_WERFT_CONTENT: SeoPageContent = {
-  path: '/ueber-werft/',
-  slug: 'ueber-werft',
+export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
+  path: '/ueber-elektroplaner/',
+  slug: 'ueber-elektroplaner',
   topicId: 'vertrauen',
   kind: 'vertrauen',
-  title: 'Über Werft: Projekt, Methodik und Grenzen',
+  title: 'Über Elektroplaner: Projekt, Methodik und Grenzen',
   absoluteTitle: true,
   description:
-    'Werft ist ein Planungswerkzeug für den Camper-Ausbau. Was es rechnet, worauf es sich stützt, was es nicht kann — und wie die Seiten entstehen.',
-  h1: 'Über Werft',
-  lead: 'Werft ist ein Planungs- und Rechenwerkzeug für den Camper-Ausbau: Elektrik, Dach, Heizlast. Diese Seite erklärt, wie die Zahlen entstehen, worauf sie sich stützen und wo die Grenzen liegen — damit jede Zahl auf ihre Weise überprüfbar bleibt.',
+    'Elektroplaner ist ein kostenloses Planungswerkzeug für den Camper-Ausbau: was es rechnet, worauf es sich stützt und wo die Grenzen liegen.',
+  h1: 'Über Elektroplaner',
+  lead: 'Elektroplaner ist ein kostenloses Planungs- und Rechenwerkzeug für den Camper-Ausbau: Elektrik, Dach, Heizlast. Diese Seite erklärt, wie die Zahlen entstehen, worauf sie sich stützen und wo die Grenzen liegen — damit jede Zahl auf ihre Weise überprüfbar bleibt.',
   priority: 'P1',
   changeFrequency: 'monthly',
   sitemapPriority: 0.6,
@@ -38,8 +44,8 @@ export const UEBER_WERFT_CONTENT: SeoPageContent = {
       id: 'projekt',
       heading: 'Das Projekt',
       body: [
-        'Werft entstand aus einer wiederkehrenden Beobachtung: Beim Camper-Ausbau entscheidet die PLANUNG über Sicherheit und Kosten — und gleichzeitig ist die Planung der Teil, für den es die wenigsten Werkzeuge gibt. Ein Kabelquerschnitt wird über den Daumen gewählt, eine Batterie nach Bauchgefühl, und der Fehler fällt im ersten Winter auf.',
-        'Deshalb ist Werft kein Katalog und kein Blog mit Rechnern, sondern eine Werkstatt: Der Kern ist der Camper-Elektroplaner — Bauteile setzen, verbinden lassen, und dabei werden Querschnitt, Sicherung, Spannungsfall und Energiebilanz für jede Leitung geprüft. Dazu kommen Einzelrechner für die Fragen, die man vor dem Plan beantwortet: Kabel, Batterie, Solar, Heizlast, Dachbelegung.',
+        'Elektroplaner entstand aus einer wiederkehrenden Beobachtung: Beim Camper-Ausbau entscheidet die PLANUNG über Sicherheit und Kosten — und gleichzeitig ist die Planung der Teil, für den es die wenigsten Werkzeuge gibt. Ein Kabelquerschnitt wird über den Daumen gewählt, eine Batterie nach Bauchgefühl, und der Fehler fällt im ersten Winter auf.',
+        'Deshalb ist Elektroplaner kein Katalog und kein Blog mit Rechnern, sondern eine Werkstatt: Der Kern ist der Camper-Elektroplaner — Bauteile setzen, verbinden lassen, und dabei werden Querschnitt, Sicherung, Spannungsfall und Energiebilanz für jede Leitung geprüft. Dazu kommen Einzelrechner für die Fragen, die man vor dem Plan beantwortet: Kabel, Batterie, Solar, Heizlast, Dachbelegung.',
       ],
     },
     {
@@ -100,7 +106,7 @@ export const UEBER_WERFT_CONTENT: SeoPageContent = {
       heading: 'Grenzen',
       list: {
         items: [
-          'Werft ersetzt keine Elektrofachkraft: Die 230-V-Anlage im Fahrzeug braucht Aufbau und Abnahme durch eine qualifizierte Person.',
+          'Elektroplaner ersetzt keine Elektrofachkraft: Die 230-V-Anlage im Fahrzeug braucht Aufbau und Abnahme durch eine qualifizierte Person.',
           'Das Modell kennt keine Alterung, keine Zyklenzahl und keine Garantien von Bauteilen.',
           'Mechanische Fragen — Verlegung, Scheuerschutz, Befestigung, Brandverhalten, Zuladung — sind keine Rechengrößen.',
           'Batteriedaten einzelner Produkte (Ladespannungen, Temperaturfenster, BMS-Schwellen) stehen nicht im Modell; die Datenblätter der Hersteller sind dort die Quelle.',

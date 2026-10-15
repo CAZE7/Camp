@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { metadataFor } from '@/app/seoMetadata';
+import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 import { SeoPage } from '@/components/seo/SeoPage';
 import { TopicIndex } from '@/components/seo/TopicIndex';
 import { CAMPER_ELEKTRIK_PILLAR } from '@/lib/seo/content/pillar';
@@ -18,7 +19,12 @@ export const metadata: Metadata = metadataFor(CAMPER_ELEKTRIK_PILLAR);
 
 export default function CamperElektrikPage() {
   return (
-    <SeoPage page={CAMPER_ELEKTRIK_PILLAR}>
+    <SeoPage
+      page={CAMPER_ELEKTRIK_PILLAR}
+      // Schnellzugriff auf die Einzelrechner: Der Hub beantwortet die Frage
+      // „in welcher Reihenfolge?", die Rechner die Frage „welche Zahl?".
+      afterHeader={<RechnerLeiste variant="inline" />}
+    >
       <TopicIndex topicId="camper-elektrik" />
     </SeoPage>
   );

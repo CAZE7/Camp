@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+import {
+  APP_PREFERENCES_STORAGE_KEY,
+  LEGACY_APP_PREFERENCES_STORAGE_KEY,
+  withLegacyTakeover,
+} from './storageKeys';
+
 export interface AppState {
   calculatedSolarWatts: number;
   setCalculatedSolarWatts: (watts: number) => void;
@@ -45,9 +51,11 @@ export const useAppStore = create<AppState>()(
       setHasOnboarded: (val) => set({ hasOnboarded: val }),
     }),
     {
-      name: 'werft-app-preferences-v1',
+      name: APP_PREFERENCES_STORAGE_KEY,
       version: APP_STORAGE_VERSION,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() =>
+        withLegacyTakeover(localStorage, APP_PREFERENCES_STORAGE_KEY, LEGACY_APP_PREFERENCES_STORAGE_KEY)
+      ),
       migrate: (persisted, version) => migrateAppPersisted(persisted, version) as AppState,
       partialize: (state) => ({
         calculatedSolarWatts: state.calculatedSolarWatts,

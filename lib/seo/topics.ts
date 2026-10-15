@@ -95,6 +95,15 @@ export const TOPICS: readonly Topic[] = [
     summary: 'AGM und Gel: 50 % Entladetiefe, Ladekennlinie und der Vergleich mit LiFePO4.',
   },
   {
+    id: 'ladebooster',
+    label: 'Ladebooster',
+    parent: 'camper-elektrik',
+    path: '/camper-elektrik/ladebooster/',
+    role: 'cluster',
+    summary:
+      'Ladung aus der Lichtmaschine: Trennrelais oder DC-DC, 30 A oder 50 A — und welcher Querschnitt dazu gehört.',
+  },
+  {
     id: 'solar',
     label: 'Solar',
     parent: 'camper-elektrik',
@@ -163,8 +172,8 @@ export const TOPICS: readonly Topic[] = [
   },
   {
     id: 'vertrauen',
-    label: 'Über Werft',
-    path: '/ueber-werft/',
+    label: 'Über Elektroplaner',
+    path: '/ueber-elektroplaner/',
     role: 'nebenbereich',
     summary: 'Wie Camp rechnet, worauf es sich stützt und wo die Grenzen des Modells liegen.',
   },

@@ -62,9 +62,14 @@ export const PLANER_FUNKTIONEN: readonly string[] = [
  */
 export const PLANER_FAQ: readonly FaqEntry[] = [
   {
-    question: 'Mit welchem kostenlosen Programm kann ich einen Camper-Schaltplan erstellen?',
+    question: 'Gibt es ein kostenloses Programm für den Camper-Schaltplan?',
     answer:
-      'Mit diesem Elektroplaner direkt im Browser: Bauteile wie LiFePO4-Batterie, Ladebooster, MPPT-Regler und Sicherungskasten auf die Zeichenfläche ziehen, verbinden — Kabelquerschnitte, Sicherungen und Spannungsabfall werden automatisch berechnet und die Stückliste entsteht aus dem Plan. Anders als Zeichenprogramme wie Draw.io rechnet der Planer elektrisch mit. Er kostet nichts, braucht kein Konto und speichert den Plan lokal im Browser.',
+      'Ja — dieser Elektroplaner läuft direkt im Browser, kostet nichts und braucht kein Konto. Bauteile wie LiFePO4-Batterie, Ladebooster, MPPT-Regler und Sicherungskasten auf die Zeichenfläche ziehen, verbinden: Kabelquerschnitte, Sicherungen und Spannungsabfall werden automatisch berechnet, die Stückliste entsteht aus dem Plan. Der Unterschied zu einem Zeichenprogramm ist, dass der Planer elektrisch mitrechnet statt nur zu malen.',
+  },
+  {
+    question: 'Muss ich das Programm installieren oder herunterladen?',
+    answer:
+      'Nein. Der Planer ist eine Web-Anwendung: Er öffnet sich im Browser, es gibt nichts zu installieren und keine Datei herunterzuladen. Der Plan wird lokal im Browser gespeichert (localStorage) und überlebt einen Neustart; ein Konto oder eine Anmeldung ist nicht nötig. Auch die Rechner auf den Themenseiten laufen vollständig im Browser — es werden keine Eingaben an einen Server übertragen.',
   },
   {
     question: 'Wie berechnet der Planer den Kabelquerschnitt?',
@@ -74,12 +79,17 @@ export const PLANER_FAQ: readonly FaqEntry[] = [
   {
     question: 'Trennrelais oder Ladebooster — was gehört in den Schaltplan?',
     answer:
-      'Für LiFePO4-Bordbatterien der Ladebooster (DC-DC-Lader): Er lädt mit geregelter Kennlinie und begrenztem Strom, was ein Trennrelais nicht kann — es verbindet Starter- und Bordbatterie nur direkt und überlässt den Ladestrom dem Zufall. Im Planer gibt es den Ladebooster als eigenes Bauteil zwischen Starterbatterie und Sammelschiene; ein Trennrelais ist bewusst kein Bauteil, weil es für moderne Lithium-Systeme die falsche Empfehlung wäre.',
+      'Für LiFePO4-Bordbatterien der Ladebooster (DC-DC-Lader): Er lädt mit geregelter Kennlinie und begrenztem Strom, was ein Trennrelais nicht kann — es verbindet Starter- und Bordbatterie nur direkt und überlässt den Ladestrom dem Zufall. Im Planer gibt es den Ladebooster als eigenes Bauteil zwischen Starterbatterie und Sammelschiene; ein Trennrelais ist bewusst kein Bauteil. Wann sich welcher Ladestrom lohnt und welcher Querschnitt dazugehört, steht unter [Ladebooster im Camper auslegen](/camper-elektrik/ladebooster/).',
   },
   {
     question: 'Welche Sicherungen und Massepunkte brauche ich im 12V-Schaltplan?',
     answer:
       'Jede Plusleitung wird unmittelbar an ihrer Quelle abgesichert — die Hauptsicherung sitzt höchstens 0,2 m hinter dem Batteriepol (ISO 10133), danach schützt der Sicherungskasten die einzelnen Verbraucherkreise. Die Sicherungsgröße folgt immer der Belastbarkeit der Leitung, nicht dem Verbraucher. Alle Minusleitungen laufen über eine Minus-Sammelschiene (Busbar) und einen zentralen Massepunkt zurück zur Batterie; der Planer verdrahtet diese Rückwege bei „Automatisch verbinden“ gleich mit.',
+  },
+  {
+    question: 'Für welche Fahrzeuge und Spannungen passt der Planer?',
+    answer:
+      'Für Kastenwagen, Wohnmobile, Busse und Selbstausbauten mit 12 V oder 24 V — also für die Bordnetzspannungen, mit denen im Fahrzeug tatsächlich gearbeitet wird. Der Planer kennt Bauteile und Rechenregeln, keine Fahrzeugdaten: Du gibst an, was du einbaust (Batteriekapazität, Ladeleistung, Verbraucher) und wo die Leitung liegt (Länge), nicht das Fahrzeugmodell. Fahrzeugspezifische Details wie Steckerbelegungen, D+-Signal oder Anschlussorte sind deshalb nicht Teil des Planers — dafür gilt die Werkstattliteratur des Herstellers.',
   },
   {
     question: 'Bleibt mein Schaltplan privat, und was kostet der Planer?',

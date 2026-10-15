@@ -8,6 +8,7 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { PlannerFlowNode, PlannerWaterEdge } from '../../../store/slices/types';
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
+import { LEGACY_PLANNER_STORAGE_KEY, PLANNER_STORAGE_KEY } from '@/lib/storageKeys';
 import {
   isStarterPlan,
   shouldLoadStarterPlan,
@@ -34,11 +35,14 @@ import {
 
 export type EntryPlanNotice = { type: 'success' | 'error' | 'info'; message: string } | null;
 
-const PLANNER_STORAGE_KEY = 'werft-planner-v1';
-
 function hasPersistedPlan(): boolean {
   try {
-    return window.localStorage.getItem(PLANNER_STORAGE_KEY) !== null;
+    // Beide Schlüssel: Der Plan kann noch unter dem früheren Namen liegen,
+    // wenn der Store in diesem Seitenaufruf noch nicht rehydriert wurde.
+    return (
+      window.localStorage.getItem(PLANNER_STORAGE_KEY) !== null ||
+      window.localStorage.getItem(LEGACY_PLANNER_STORAGE_KEY) !== null
+    );
   } catch {
     // Blockierter Speicher (z. B. Privatmodus): Dann gibt es keinen
     // gespeicherten Plan, den man schützen müsste — das Beispiel darf laden.

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PLANNER_STORAGE_KEY } from '../../../lib/storageKeys';
 import { TEMPLATE_MINIMALIST } from '../templates';
 import { encodeSharePlan } from '../../../store/sharePlan';
 import { usePlannerEntryPlan } from './usePlannerEntryPlan';
@@ -53,7 +54,7 @@ describe('usePlannerEntryPlan — Einstieg in den Planer', () => {
   });
 
   it('lässt einen gespeicherten Plan unangetastet (kein Beispiel darüber)', async () => {
-    window.localStorage.setItem('werft-planner-v1', '{"state":{"nodes":[]},"version":1}');
+    window.localStorage.setItem(PLANNER_STORAGE_KEY, '{"state":{"nodes":[]},"version":1}');
     render(<Probe />);
 
     // Dem Effekt einen Durchlauf geben — danach darf nichts geladen sein.

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { PIXEL_MARKER } from './pixelMarker';
 
 /**
- * D-9 / UI-BASELINE: Visuelles Gate des Werft-Relaunchs.
+ * D-9 / UI-BASELINE: Visuelles Gate des Relaunchs.
  *
  * Kernrouten als Pixel-Baselines — hell + dunkel (System-Schema, siehe
  * SystemThemeSync), 375/768/1440 px (die drei AGENTS-Breakpoints; das

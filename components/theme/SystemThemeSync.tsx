@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 /**
- * Werft-Relaunch (D-1): Dark Mode seitenweit.
+ * Relaunch (D-1): Dark Mode seitenweit.
  *
  * Die `dark`-Klasse hängt an <html> und folgt der Systemeinstellung
  * (`prefers-color-scheme`) — derselbe Mechanismus, den der Planer über

@@ -18,7 +18,7 @@ import type { PlannerState } from './slices/types';
  *   store/slices/persistence.ts  localStorage-Vertrag (Version/Migration)
  *
  * Persist wird bewusst hier (und nicht pro Slice) angewendet: Der gespeicherte
- * Stand ist EIN Dokument ('werft-planner-v1') mit gemeinsamen Versionsschritt.
+ * Stand ist EIN Dokument ('elektroplaner-planner-v1') mit gemeinsamen Versionsschritt.
  * Zwei persistierte Slices würden zwei Versionspläne bedeuten, die bei
  * Migrationen gegen einander laufen können.
  */

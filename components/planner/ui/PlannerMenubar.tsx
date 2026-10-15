@@ -136,8 +136,8 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
             (`/planer/`) trägt bewusst keine Kopfleiste der Website, weil sie
             der Zeichenfläche Fensterhöhe kosten würde. Der Ausgang liegt dafür
             dort, wo ihn jede Anwendung hat — auf der Marke in der Titelleiste. */}
-        <Link href="/" className="cad-menubar__home" title="Werft — zur Startseite">
-          Werft
+        <Link href="/" className="cad-menubar__home" title="Elektroplaner — zur Startseite">
+          Elektroplaner
         </Link>
         <span className="cad-menubar__project-name" title="Automatisch lokal gespeicherter Plan">
           {projectName}

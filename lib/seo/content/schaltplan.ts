@@ -112,7 +112,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: '[Beispiel-Schaltplan im Elektroplaner öffnen](/planer/?template=ladebooster-solar) — das Kastenwagen-Setup aus diesem Text steht dort fertig verkabelt mit LiFePO4, Ladebooster und Solar, vom ersten Bauteil bis zur Stückliste.',
+        text: 'Hier lässt sich ein [kostenloser Camper-Schaltplan erstellen](/planer/?template=ladebooster-solar) — das Kastenwagen-Setup aus diesem Text steht dort fertig verkabelt mit LiFePO4, Ladebooster und Solar, vom ersten Bauteil bis zur Stückliste.',
       },
     },
   ],
@@ -138,7 +138,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage im Camper' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
     { href: '/guides/ausbau-fahrplan/', label: 'Reihenfolge der Gewerke' },
   ],
   sources: [

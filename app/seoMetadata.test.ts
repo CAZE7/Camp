@@ -32,7 +32,14 @@ describe('SEO-Metadaten und Inventar', () => {
     for (const page of nonIndexablePages()) {
       expect(metadataForPage(page.path).robots, page.path).toEqual({ index: false, follow: true });
     }
-    expect(nonIndexablePages().map((page) => page.path)).toEqual(['/design-system/', '/ki-assistent/']);
+    // `/ueber-werft/` ist die Umleitung der alten Vertrauensadresse: Sie
+    // antwortet weiter, damit bestehende Verweise nicht ins Leere laufen, darf
+    // aber nicht als zweite Seite zur selben Aussage in den Index geraten.
+    expect(nonIndexablePages().map((page) => page.path)).toEqual([
+      '/design-system/',
+      '/ueber-werft/',
+      '/ki-assistent/',
+    ]);
   });
 
   it('stoppt unbekannte Routen und abweichende Inhaltsmetadaten', () => {

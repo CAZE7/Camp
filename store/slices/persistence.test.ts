@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { PLANNER_STORAGE_KEY, LEGACY_PLANNER_STORAGE_KEY } from '../../lib/storageKeys';
 import {
   PLANNER_STORAGE_VERSION,
   migratePlannerPersisted,
@@ -20,7 +21,7 @@ const validEdge = { id: 'e1', source: 'bat', target: 'fuse', type: 'cableEdge', 
 
 describe('persistOptions — Speicher-Vertrag', () => {
   it('fixiert Namen und Version (beide sind Teil des Contracts mit Alt-Ständen)', () => {
-    expect(persistOptions.name).toBe('werft-planner-v1');
+    expect(persistOptions.name).toBe(PLANNER_STORAGE_KEY);
     expect(persistOptions.version).toBe(PLANNER_STORAGE_VERSION);
     expect(typeof persistOptions.migrate).toBe('function');
   });
@@ -349,5 +350,25 @@ describe('Messwerte sind kein Planinhalt', () => {
     expect(subset.waterNodes[0]).not.toHaveProperty('height');
     // Der Planinhalt selbst bleibt vollständig.
     expect(subset.nodes[0]).toMatchObject({ id: 'bat', type: 'battery', data: {} });
+  });
+
+  it('holt einen Plan vom alten Schlüssel herüber (Namenswechsel ohne Datenverlust)', () => {
+    // `persistOptions.storage` ist die JSON-Fassung: Sie liefert schon den
+    // geparsten Stand, so wie ihn die Rehydrierung weiterreicht.
+    const plan = JSON.stringify({ state: { nodes: [validNode], edges: [validEdge] }, version: 1 });
+    window.localStorage.setItem(LEGACY_PLANNER_STORAGE_KEY, plan);
+
+    const gelesen = persistOptions.storage!.getItem(PLANNER_STORAGE_KEY) as {
+      state: { nodes: { id: string }[] };
+      version: number;
+    };
+
+    // Gelesen wird der alte Stand unter dem neuen Schlüssel — sonst startete
+    // ein Bestandsnutzer nach dem Relaunch mit leerer Zeichenfläche.
+    expect(gelesen.version).toBe(1);
+    expect(gelesen.state.nodes.map((node) => node.id)).toEqual(['bat']);
+
+    window.localStorage.removeItem(LEGACY_PLANNER_STORAGE_KEY);
+    window.localStorage.removeItem(PLANNER_STORAGE_KEY);
   });
 });

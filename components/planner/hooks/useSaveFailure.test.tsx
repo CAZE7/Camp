@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useSaveFailure } from './useSaveFailure';
+import { PLANNER_STORAGE_KEY } from '../../../lib/storageKeys';
 import { createDebouncedStorage, resetSaveFailure } from '../../../store/storage';
 
 /**
@@ -24,7 +25,7 @@ describe('useSaveFailure (AUDIT D3)', () => {
   /** Setzt den Wert und lässt den Debounce-Timer innerhalb von `act` feuern. */
   const write = (storage: { setItem: (key: string, value: string) => void }, value: string) => {
     act(() => {
-      storage.setItem('werft-planner-v1', value);
+      storage.setItem(PLANNER_STORAGE_KEY, value);
       vi.advanceTimersByTime(200);
     });
   };
@@ -52,7 +53,7 @@ describe('useSaveFailure (AUDIT D3)', () => {
     write(storage, '{plan:1}');
 
     expect(result.current).not.toBeNull();
-    expect(result.current?.key).toBe('werft-planner-v1');
+    expect(result.current?.key).toBe(PLANNER_STORAGE_KEY);
     expect(result.current?.message).toContain('QuotaExceededError');
   });
 

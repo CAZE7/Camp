@@ -5,6 +5,7 @@ import { metadataForPage } from '@/app/seoMetadata';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 
 /**
  * D-7 Startseite: Hero mit klarem Nutzenversprechen, die drei Werkzeuge
@@ -103,6 +104,11 @@ export default function Home() {
             Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
           </p>
         </section>
+
+        {/* Schnellzugriff auf die fünf Einzelrechner: Wer mit einer konkreten
+            Zahl im Kopf kommt („reicht meine Batterie?"), kommt hier ohne
+            Umweg über das Themenverzeichnis an den passenden Rechner. */}
+        <RechnerLeiste className="mt-12" />
 
         {/* Werkzeuge — drei Karten im selben Card-System + Fahrplan */}
         <section aria-labelledby="werkzeuge-heading" className="mt-12">

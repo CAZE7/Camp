@@ -11,6 +11,7 @@ import { AGM_CONTENT } from './agm';
 import { BATTERIE_CONTENT } from './batterie';
 import { BATTERIEKAPAZITAET_CONTENT } from './batteriekapazitaet';
 import { KABELQUERSCHNITT_CONTENT } from './kabelquerschnitt';
+import { LADEBOOSTER_CONTENT } from './ladebooster';
 import { LIFEPO4_CONTENT } from './lifepo4';
 import { MPPT_CONTENT } from './mppt';
 import { CAMPER_ELEKTRIK_PILLAR } from './pillar';
@@ -21,7 +22,7 @@ import { SOLARANLAGE_CONTENT } from './solaranlage';
 import { SOLAR_CONTENT } from './solar';
 import { SPANNUNGSABFALL_CONTENT } from './spannungsabfall';
 import { SPANNUNGSABFALL_12V_CONTENT } from './spannungsabfall-12v';
-import { UEBER_WERFT_CONTENT } from './ueber-werft';
+import { UEBER_ELEKTROPLANER_CONTENT } from './ueber-elektroplaner';
 import { WECHSELRICHTER_CONTENT } from './wechselrichter';
 import type { SeoPageContent } from '../types';
 
@@ -38,9 +39,10 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   WECHSELRICHTER_CONTENT,
   AC_230V_CONTENT,
   SCHALTPLAN_CONTENT,
+  LADEBOOSTER_CONTENT,
   RECHNER_HUB_CONTENT,
   SPANNUNGSABFALL_12V_CONTENT,
   BATTERIEKAPAZITAET_CONTENT,
   SOLARANLAGE_CONTENT,
-  UEBER_WERFT_CONTENT,
+  UEBER_ELEKTROPLANER_CONTENT,
 ];

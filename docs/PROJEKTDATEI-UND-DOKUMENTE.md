@@ -16,7 +16,7 @@ und dokumentiert wird. Sie beschreibt auch, was **nicht** geprüft wird.
 | Druckbericht (PDF über Druckdialog) | Stückliste → „Druckbericht (PDF)“ | `components/planner/utils/printReport.ts`            |
 | Freigabestatus                      | Stückliste, Kopf des Berichts     | `components/planner/utils/releaseStatus.ts`          |
 
-Die lokale Speicherung im Browser (`werft-planner-v1`) bleibt unverändert; die
+Die lokale Speicherung im Browser (`elektroplaner-planner-v1`; früher `werft-planner-v1`) bleibt unverändert; die
 Projektdatei ist die **zusätzliche** Sicherung außerhalb des Browsers.
 
 ## 2. Projektdatei (Format 1)

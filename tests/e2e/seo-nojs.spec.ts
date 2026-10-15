@@ -1,6 +1,23 @@
 import { expect, test } from '@playwright/test';
 
+import { pageByPath } from '../../lib/seo/inventory';
+
 test.use({ javaScriptEnabled: false });
+
+/**
+ * Überschrift aus dem Seiteninventar statt als zweite Zeichenkette.
+ *
+ * Vorher stand der Text hier abgeschrieben — und blieb beim Umbau von
+ * `/planer/` („Camper-Elektroplaner" → „Camper-Schaltplan kostenlos
+ * erstellen") stehen. Genau das soll diese Prüfung nicht mehr zulassen: Sie
+ * vergleicht jetzt den ausgelieferten Export mit dem Inventar, aus dem Titel,
+ * Brotkrumen und strukturierte Beschreibung stammen.
+ */
+function h1Of(path: string): string {
+  const page = pageByPath(path);
+  if (!page) throw new Error(`Route ${path} fehlt im SEO-Inventar.`);
+  return page.h1;
+}
 
 test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScript', async ({ page }) => {
   await page.goto('/');
@@ -39,7 +56,7 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
   // bietet einen Weg zurück — ein leeres Fenster wäre eine Sackgasse.
   await page.goto('/planer/');
   await expect(page.locator('main h1')).toHaveCount(1);
-  await expect(page.locator('main h1')).toHaveText('Camper-Elektroplaner');
+  await expect(page.locator('main h1')).toHaveText(h1Of('/planer/'));
   await expect(page.locator('main')).toContainText('Der Elektroplaner lädt');
   // `exact`: Die serverseitige Brotkrumenspur und der Rückweg-Link im
   // Ladehinweis führen beide zur selben Seite — gemeint ist der Rückweg.

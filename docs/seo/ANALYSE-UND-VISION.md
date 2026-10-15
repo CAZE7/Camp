@@ -1,8 +1,8 @@
 # Camp SEO — Analyse und Vision
 
-_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-03 · Commit 2854f82_
+_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-15 · Commit d31044e_
 
-Stand: 2026-10-03 · Commit: `2854f82` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-15 · Commit: `d31044e` (2026-10-15) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ausgangslage
 
@@ -26,11 +26,11 @@ Zwei Absichten fehlen bewusst: „Kaufen" (Produkt- und Preisvergleiche) und „
 
 ## Befunde aus dem Audit
 
-- Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 26 — Pillar, elf Cluster, vier Rechner-Landingpages und eine Vertrauensseite.
+- Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 28 — Pillar, elf Cluster, vier Rechner-Landingpages und eine Vertrauensseite.
 - Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der Spannungsabfall hatte keine eigene Rechnerseite, Batterie- und Solarrechnung existierten nur als Formeln.
 - Die Werkzeuge erklären sich nicht: /tools/dach/ (207 Wörter) und /tools/heizung/ (436 Wörter) haben keine Zwischenüberschrift und keinen erklärenden Text — sie liefern die Funktion, aber nicht die Antwort auf „wofür und wie lese ich das?".
 - Der Ausbauguide lud GSAP (rund 136 KB) im Erstaufbau einer Textseite; die Animation ist Dekoration und wird jetzt nachgeladen.
-- Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt und wo er irrt — diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-werft/.
+- Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt und wo er irrt — diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-elektroplaner/.
 - Die Verlinkung war sternförmig: Alles hing an der Startseite. Jetzt führt ein Themenbaum von der Pillar in die Cluster und von jedem Cluster über ein bis zwei Schritte in den Planer.
 
 ## Zielbild
@@ -46,12 +46,12 @@ Quer dazu stehen zwei Zusagen, die für ein Thema mit Sicherheitsbezug nicht opt
 
 ## Funnel: von der Suche in den Planer
 
-| Stufe     | Seite               | Was der Nutzer tut                    | Was danach folgt               |
-| --------- | ------------------- | ------------------------------------- | ------------------------------ |
-| Frage     | Cluster             | liest, rechnet nach, prüft eine Zahl  | Link „Im Planer weiterrechnen" |
-| Rechnung  | Rechner-Landingpage | gibt Werte ein, liest das Ergebnis    | Übernahme in die Anlage        |
-| Zeichnung | /elektrik-planung/  | legt Leitungen, prüft Fehlermeldungen | Stückliste, Ausdruck           |
-| Vertrauen | /ueber-werft/       | prüft Methodik, Quellen, Grenzen      | teilt den Link weiter          |
+| Stufe     | Seite                 | Was der Nutzer tut                    | Was danach folgt               |
+| --------- | --------------------- | ------------------------------------- | ------------------------------ |
+| Frage     | Cluster               | liest, rechnet nach, prüft eine Zahl  | Link „Im Planer weiterrechnen" |
+| Rechnung  | Rechner-Landingpage   | gibt Werte ein, liest das Ergebnis    | Übernahme in die Anlage        |
+| Zeichnung | /elektrik-planung/    | legt Leitungen, prüft Fehlermeldungen | Stückliste, Ausdruck           |
+| Vertrauen | /ueber-elektroplaner/ | prüft Methodik, Quellen, Grenzen      | teilt den Link weiter          |
 
 Der Übergang von der Rechnung in den Planer ist der wichtigste Klick der ganzen Struktur. Deshalb steht er auf jeder Inhaltsseite als eigener Abschnitt, und deshalb gibt es keine Popups und keine Zwischenseiten: Wer eine Zahl sucht, bekommt sie zuerst.
 
