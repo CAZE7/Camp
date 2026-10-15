@@ -162,12 +162,16 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
       }
     }
     const crossSection = String(cs || 2.5);
-    cableLengths[crossSection] = (cableLengths[crossSection] || 0) + length.meters;
-    if (length.source === 'fallback' || lengthsDiverge(length)) {
+    // QA B-07: Die Stückliste bestellt nach der EINGETRAGENEN Länge. Die gerouteten
+    // Werte gehen nur als Hinweis in die Annahmen ein — nie als Bestellmenge.
+    // Die Querschnittsrechnung oben bleibt unverändert (elektrische Semantik).
+    const orderMeters = length.storedM ?? FALLBACK_CABLE_METERS;
+    cableLengths[crossSection] = (cableLengths[crossSection] || 0) + orderMeters;
+    if (length.storedM === undefined || lengthsDiverge(length)) {
       lengthAssumptions.push({
         label: `${labelOf(edge.source)} → ${labelOf(edge.target)}`,
-        meters: length.meters,
-        source: length.source,
+        meters: orderMeters,
+        source: length.storedM === undefined ? 'fallback' : length.source,
         storedM: length.storedM,
         routedM: length.routedM,
       });
@@ -181,12 +185,14 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
     // Wasserstrecken legt kein AutoWire an — jede eingetragene Länge ist eine
     // Nutzereingabe.
     const length = edgeLengthOf(routeOf(edge.id)?.length, edge.data?.length, FALLBACK_PIPE_METERS);
-    pipeLengths[type] = (pipeLengths[type] || 0) + length.meters;
-    if (length.source === 'fallback' || lengthsDiverge(length)) {
+    // QA B-07: Bestellmenge nach der eingetragenen Länge, wie bei Kabeln.
+    const orderMeters = length.storedM ?? FALLBACK_PIPE_METERS;
+    pipeLengths[type] = (pipeLengths[type] || 0) + orderMeters;
+    if (length.storedM === undefined || lengthsDiverge(length)) {
       lengthAssumptions.push({
         label: `${type === 'gray' ? 'Abwasser' : 'Frischwasser'} ${edge.source} → ${edge.target}`,
-        meters: length.meters,
-        source: length.source,
+        meters: orderMeters,
+        source: length.storedM === undefined ? 'fallback' : length.source,
         storedM: length.storedM,
         routedM: length.routedM,
       });
