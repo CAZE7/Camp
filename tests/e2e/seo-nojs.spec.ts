@@ -41,7 +41,9 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText('Camper-Elektroplaner');
   await expect(page.locator('main')).toContainText('Der Elektroplaner lädt');
-  await expect(page.getByRole('link', { name: /Camper-Elektrik berechnen/ })).toHaveAttribute(
+  // `exact`: Die serverseitige Brotkrumenspur und der Rückweg-Link im
+  // Ladehinweis führen beide zur selben Seite — gemeint ist der Rückweg.
+  await expect(page.getByRole('link', { name: 'Camper-Elektrik berechnen', exact: true })).toHaveAttribute(
     'href',
     /\/elektrik-planung\/?$/
   );

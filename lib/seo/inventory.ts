@@ -82,8 +82,11 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
      * Statuszeile) und stand dort als `h-dvh`-Block zwischen Rechner, Normtext
      * und Fragen — unter der 48-px-Kopfleiste der Website und über dem Seitenfuß.
      * Zwei Anwendungen (Dokument und Editor) teilten sich ein Scroll-Dokument.
-     * Auf eigener Route ist der Editor das Dokument: kein Text drumherum, kein
-     * Versatz, die Zeichenfläche beginnt bei y = 0.
+     * Auf eigener Route füllt der Editor den ersten Bildschirm: kein Text
+     * davor, kein Versatz, die Zeichenfläche beginnt bei y = 0. Darunter —
+     * erst nach einem Bildschirm Scrollen — steht der statische Erklärtext
+     * mit FAQ (`PlanerSeoContent`), damit Crawler mehr sehen als den
+     * Ladezustand der Client-Anwendung.
      *
      * `/elektrik-planung/` bleibt die Wissens- und Rechnerseite des Themas und
      * verweist kontextuell hierher (Linkgraph-Regel `kontextuelle-verwaiste-seite`).
@@ -93,14 +96,17 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Camper-Elektroplaner',
-    title: 'Camper-Elektroplaner: Schaltplan im Vollbild zeichnen',
+    title: 'Camper-Schaltplan zeichnen: 12V/24V Elektroplaner online',
     description:
-      'Schaltplan für die Camper-Elektrik im Vollbild zeichnen: Bauteile setzen, automatisch verdrahten, Querschnitt und Sicherung prüfen — Stückliste inklusive.',
+      'Kostenlos Camper-Schaltplan online zeichnen: LiFePO4, Ladebooster, MPPT und Solar setzen, Kabelquerschnitt und Sicherungen automatisch berechnen.',
     searchIntent:
       'die ganze 12-V- und 230-V-Anlage als Schaltplan zeichnen und automatisch verdrahten lassen.',
     topicId: 'camper-elektrik',
     priority: 'P0',
-    structuredData: ['WebPage', 'WebApplication'],
+    // FAQPage + BreadcrumbList: Die Fragen stehen sichtbar unter der
+    // Anwendung (`PlanerSeoContent`), die Brotkrumen beschreiben den Weg
+    // Startseite → Planer. Ohne sichtbare Entsprechung kein Schema.
+    structuredData: ['WebPage', 'BreadcrumbList', 'WebApplication', 'FAQPage'],
     ogImage: {
       path: '/og/elektrik-planung.png',
       width: 1200,

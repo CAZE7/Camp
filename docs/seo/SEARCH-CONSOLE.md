@@ -12,6 +12,23 @@ Entscheidungen vortäuscht.
 
 Diese Datei beschreibt, wie aus `annahme` belastbare Daten werden.
 
+## Nach dem Domainwechsel (einmalig, vor der ersten Auswertung)
+
+Seit dem Canonical-Fix ist `https://elektroplaner-camper.de` die einzige
+öffentliche Adresse (`SITE_ORIGIN` in `lib/site.ts`, Auslieferung an der
+Wurzel ohne Basis-Pfad, `public/CNAME`). Vorher zeigte der Canonical auf
+`caze7.github.io` — Google wertete die eigene Domain dadurch als Kopie und
+indexierte `site:elektroplaner-camper.de` mit 0 Seiten. Deshalb einmalig:
+
+1. Search-Console-Property für `elektroplaner-camper.de` anlegen/bestätigen.
+2. `https://elektroplaner-camper.de/sitemap.xml` einreichen.
+3. Für `/`, `/planer/` und `/elektrik-planung/` „Indexierung beantragen“.
+4. Im Quelltext einer ausgelieferten Seite kontrollieren, dass Canonical,
+   `og:url`, Sitemap und `robots.txt` auf `elektroplaner-camper.de` zeigen.
+
+Die Arbeitsliste für die Nutzergewinnung bis zum Wirken der Indexierung
+steht in `docs/marketing/erste-500-nutzer.md`.
+
 ## Voraussetzungen
 
 - Die Seite ist unter der in `lib/site.ts` hinterlegten Adresse erreichbar
