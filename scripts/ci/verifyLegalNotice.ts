@@ -22,7 +22,12 @@
  * Im Quality Gate läuft der Wächter bewusst nicht: Ein Pull Request ist keine
  * Veröffentlichung.
  *
- * Auszufüllen: `SITE_LEGAL` in `lib/siteLegal.ts` (fünf Felder, ein Ort).
+ * Auszufüllen: `SITE_LEGAL` in `lib/siteLegal.ts` (elf Felder, ein Ort). Die
+ * Pflicht hängt an der Rechtsform (`entityType`): Name, Anschrift, E-Mail und
+ * verantwortliche Person immer, bei einem Unternehmen zusätzlich
+ * Vertretungsberechtigte und Registerangaben. Telefon und USt-IdNr. sind
+ * optional — leer heißt „nicht vorhanden", die Platzhalter-Marke heißt
+ * „noch nicht entschieden" (gemeldet, aber kein Deploy-Stopp).
  *
  * Aufruf (CI):  npx tsx scripts/ci/verifyLegalNotice.ts
  * Aufruf (lokal): npm run ci:verify-legal-notice
@@ -31,7 +36,13 @@
 import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LEGAL_FIELD_LABELS, SITE_LEGAL, missingLegalFields, type SiteLegal } from '../../lib/siteLegal';
+import {
+  LEGAL_FIELD_LABELS,
+  SITE_LEGAL,
+  missingLegalFields,
+  undecidedOptionalFields,
+  type SiteLegal,
+} from '../../lib/siteLegal';
 
 /** Ort der Angaben — in jeder Meldung genannt, damit sie handhabbar ist. */
 export const LEGAL_SOURCE_PATH = 'lib/siteLegal.ts';
@@ -46,6 +57,12 @@ export type GateMode = 'warn' | 'block';
 export type LegalNoticeCheck = {
   /** Offene Felder (leer = Impressum vollständig). */
   missing: Array<keyof SiteLegal>;
+  /**
+   * Optionale Angaben, die noch nicht entschieden sind (Telefon, USt-IdNr.).
+   * Sie sind kein Mangel — aber eine unentschiedene Angabe ist auch keine
+   * bewusste Entscheidung. Sie werden gemeldet, ohne den Deploy zu stoppen.
+   */
+  undecided: Array<keyof SiteLegal>;
   ok: boolean;
   /** Klartext für CI-Log — immer mit Grund und nächstem Schritt, nie ein nacktes „fail". */
   message: string;
@@ -68,28 +85,40 @@ export type GateDecision = {
  */
 export function checkLegalNotice(legal: SiteLegal = SITE_LEGAL): LegalNoticeCheck {
   const missing = missingLegalFields(legal);
+  const undecided = undecidedOptionalFields(legal);
   const total = Object.keys(LEGAL_FIELD_LABELS).length;
 
   if (missing.length === 0) {
+    const note =
+      undecided.length === 0
+        ? ''
+        : `\nOptionale Angaben ohne Entscheidung (kein Mangel, aber bitte bewusst setzen): ` +
+          undecided.map((field) => LEGAL_FIELD_LABELS[field]).join(', ') +
+          '.\n';
     return {
       missing,
+      undecided,
       ok: true,
-      message: `Impressum vollständig: alle ${total} Pflichtangaben sind in ${LEGAL_SOURCE_PATH} eingetragen.`,
+      message: `Impressum vollständig: alle Pflichtangaben sind in ${LEGAL_SOURCE_PATH} eingetragen.${note}`,
     };
   }
 
   const fields = missing.map((field) => `  - ${LEGAL_FIELD_LABELS[field]} → \`${field}\``).join('\n');
+  const optional =
+    undecided.length > 0 ? undecided.map((field) => LEGAL_FIELD_LABELS[field]).join(', ') : null;
   return {
     missing,
+    undecided,
     ok: false,
     message:
-      `Impressum unvollständig: ${missing.length} von ${total} Pflichtangaben fehlen in ${LEGAL_SOURCE_PATH}.\n` +
+      `Impressum unvollständig: ${missing.length} Pflichtangabe(n) fehlen in ${LEGAL_SOURCE_PATH}.\n` +
       `${fields}\n` +
       `Die Seite wird öffentlich ausgeliefert (GitHub Pages); ohne diese Angaben ist die\n` +
       `Anbieterkennzeichnung nach § 5 DDG unvollständig und abmahnfähig.\n` +
       `Beheben: SITE_LEGAL in ${LEGAL_SOURCE_PATH} ausfüllen (Betreiber-Angaben, nicht\n` +
       `erfinden). Die Seite zeigt bis dahin ihre Aufforderungstexte statt einer halben\n` +
-      `Anschrift.`,
+      `Anschrift.` +
+      (optional ? `\nOptional und noch unentschieden: ${optional}.\n` : ''),
   };
 }
 
@@ -127,6 +156,12 @@ export function decideLegalNoticeGate(params: { result: LegalNoticeCheck; mode: 
   }
 
   const list = result.missing.map((field) => `- ${LEGAL_FIELD_LABELS[field]} (\`${field}\`)`).join('\n');
+  const optional =
+    result.undecided.length > 0
+      ? `\n\nOptionale Angaben ohne Entscheidung (kein Mangel): ${result.undecided
+          .map((field) => LEGAL_FIELD_LABELS[field])
+          .join(', ')}.`
+      : '';
   const consequence =
     mode === 'block'
       ? '🛑 **Deploy gestoppt** (`LEGAL_NOTICE_GATE=block`): Angaben eintragen und erneut deployen.'
@@ -140,7 +175,7 @@ export function decideLegalNoticeGate(params: { result: LegalNoticeCheck; mode: 
       `❗ Unvollständig — ${result.missing.length} Pflichtangabe(n) fehlen in \`${LEGAL_SOURCE_PATH}\`:\n\n` +
       `${list}\n\n` +
       `Die Seite wird öffentlich ausgeliefert; ohne diese Angaben ist die Anbieterkennzeichnung\n` +
-      `nach § 5 DDG unvollständig und abmahnfähig.\n\n${consequence}\n`,
+      `nach § 5 DDG unvollständig und abmahnfähig.${optional}\n\n${consequence}\n`,
   };
 }
 
