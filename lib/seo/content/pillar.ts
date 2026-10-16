@@ -258,6 +258,10 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
     { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/tools/dach/', label: 'Dach-Planer: Panels und Dachluke platzieren' },
+    { href: '/tools/heizung/', label: 'Heizlast-Rechner: passende Heizleistung finden' },
+    { href: '/guides/ausbau-fahrplan/', label: 'Ausbau-Fahrplan: Reihenfolge der Gewerke' },
+    { href: '/guides/camper-ausbauguide/', label: 'Camper-Ausbauguide: Technik, Normen und Praxis' },
   ],
   sources: [
     {
