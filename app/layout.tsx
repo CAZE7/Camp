@@ -8,7 +8,8 @@ import mono500LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin
 import type { Metadata, Viewport } from 'next';
 
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
-import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
+import { SITE_NAME, SITE_ORIGIN } from '@/lib/site';
+import { siteGraph } from '@/lib/siteIdentity';
 
 /**
  * Kopfdaten der gesamten Auslieferung.
@@ -45,36 +46,15 @@ export const viewport: Viewport = {
   // Die Systemhelligkeit meldet `color-scheme` aus dem Stylesheet.
 };
 
-/** Beschreibung von Website und Organisation — einmal für die Auslieferung. */
+/**
+ * Beschreibung von Website und Organisation — einmal für die Auslieferung.
+ *
+ * Die Knoten stehen in `lib/siteIdentity.ts`: Kontaktangabe und `sameAs`
+ * erscheinen nur, wenn sie belegt sind (Impressumsangaben bzw. konfigurierte
+ * Profile). Hier wird nur noch serialisiert.
+ */
 function siteDescriptionJsonLd() {
-  const graph = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebSite',
-        '@id': siteNodeId('website'),
-        url: siteUrl('/'),
-        name: SITE_NAME,
-        inLanguage: 'de-DE',
-        publisher: { '@id': siteNodeId('organization') },
-      },
-      {
-        '@type': 'Organization',
-        '@id': siteNodeId('organization'),
-        name: SITE_NAME,
-        url: siteUrl('/'),
-        inLanguage: 'de-DE',
-        logo: {
-          '@type': 'ImageObject',
-          url: siteUrl('/og/werft-mark.png'),
-          width: 512,
-          height: 512,
-        },
-      },
-    ],
-  };
-
-  return JSON.stringify(graph).replaceAll('<', '\\u003c');
+  return JSON.stringify(siteGraph()).replaceAll('<', '\\u003c');
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

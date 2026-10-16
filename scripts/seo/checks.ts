@@ -568,7 +568,14 @@ export function checkStructuredData(
   for (const [index, types] of nodeTypes.entries()) {
     if (types.length === 0) add('fehler', 'json-ld', `Knoten ${index + 1} ohne @type.`);
 
-    for (const value of Object.values(nodes[index]!)) {
+    for (const [property, value] of Object.entries(nodes[index]!)) {
+      // `sameAs` ist per Definition ein Verweis auf eine fremde Adresse: Ein
+      // Profil, ein Kanal, ein Repository derselben Marke. Die Regel „alle
+      // Adressen im Markup zeigen auf diese Herkunft" gilt für die eigenen
+      // Verweise (`url`, `@id`, `logo`) — für `sameAs` wäre sie falsch und
+      // würde genau die Angaben verbieten, die den Knoten wertvoll machen.
+      if (property === 'sameAs') continue;
+
       const visit = (item: unknown): void => {
         if (typeof item === 'string' && /^https?:\/\//i.test(item)) {
           try {
