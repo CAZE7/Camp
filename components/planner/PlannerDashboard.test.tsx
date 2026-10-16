@@ -25,6 +25,7 @@ const mockClearPlan = vi.fn();
 const mockSetGuidedMode = vi.fn();
 const mockFocusElement = vi.fn();
 const mockEdges: Array<{ id: string; source: string; target: string; data: Record<string, unknown> }> = [];
+let mockWaterWarning: string | null = null;
 const mockLockedMutationErrors: Array<{
   code: 'ROUTING_LOCKED_MUTATION';
   severity: 'warning';
@@ -52,7 +53,7 @@ vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: Object.assign(
     vi.fn((selector: (state: unknown) => unknown) => {
       const state = {
-        viewMode: 'electric',
+        viewMode: mockState.viewMode,
         setViewMode: mockSetViewMode,
         season: 'summer',
         setSeason: mockSetSeason,
@@ -62,11 +63,11 @@ vi.mock('../../store/usePlannerStore', () => ({
         systemMessage: null,
         setSystemMessage: vi.fn(),
         focusElement: mockFocusElement,
-        nodes: [],
+        nodes: mockState.nodes,
         edges: mockEdges,
-        waterNodes: [],
+        waterNodes: mockState.waterNodes,
         waterEdges: [],
-        waterWarning: null,
+        waterWarning: mockWaterWarning,
         undo: mockUndo,
         redo: mockRedo,
         canUndo: true,
@@ -120,6 +121,10 @@ describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {
@@ -139,7 +144,7 @@ describe('PlannerDashboard - Core Interactions', () => {
 
     // Expert actions remain reachable in the overflow menu.
     openMoreMenu();
-    expect(screen.getByRole('menuitem', { name: 'Automatisch verbinden' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Auto-verbinden — Vorschlag prüfen/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /^Stückliste/ })).toBeInTheDocument();
     expect(screen.getByText(/Plan prüfen/)).toBeInTheDocument();
     expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
@@ -255,6 +260,10 @@ describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {
@@ -271,6 +280,54 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
     const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
     expect(event.type).toBe('show-bom-modal');
+  });
+
+  it('hält den Prüfbericht im mobilen Werkzeugleisten-Statusbereich erreichbar', () => {
+    mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
+    render(<PlannerDashboard />);
+
+    const mobileAccess = screen.getByTestId('verification-seal-mobile-access');
+    expect(mobileAccess.className).toContain('inline-flex');
+    expect(mobileAccess.className).not.toContain('hidden');
+    expect(within(mobileAccess).getByTestId('verification-seal-toggle')).toBeInTheDocument();
+  });
+
+  it('zählt elektrische Befunde nicht in der Wasseransicht', () => {
+    mockState.viewMode = 'water';
+    mockLockedMutationErrors.push({
+      code: 'ROUTING_LOCKED_MUTATION',
+      severity: 'warning',
+      category: 'routing',
+      nodeIds: [],
+      edgeIds: ['electric-edge'],
+      message: 'Elektrischer Befund gehört nicht in den Wasserbericht.',
+      suggestedFix: 'Wechsle zur Elektrikansicht.',
+    });
+
+    render(<PlannerDashboard />);
+    expect(screen.getByText('Keine Hinweise')).toBeInTheDocument();
+    expect(screen.queryByText(/Elektrischer Befund/)).not.toBeInTheDocument();
+    mockLockedMutationErrors.splice(0);
+  });
+
+  it('öffnet Fachwissen sowohl über das Hilfemenü als auch über die Werkzeugleiste', () => {
+    const helpMenuRender = render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    openMenu('hilfe');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hilfe & Fachwissen' }));
+    expect(dispatchEventSpy.mock.calls.map(([event]) => (event as Event).type)).toContain(
+      'planner-open-expert-panel'
+    );
+
+    helpMenuRender.unmount();
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hilfe & Fachwissen' }));
+    expect(dispatchEventSpy.mock.calls.map(([event]) => (event as Event).type)).toEqual([
+      'planner-open-expert-panel',
+      'planner-open-expert-panel',
+    ]);
   });
 
   it('calls autoWireSystem from the toolbar primary action in expert mode', () => {
@@ -433,6 +490,10 @@ describe('PlannerDashboard - Image Export', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {

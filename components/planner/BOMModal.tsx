@@ -20,6 +20,7 @@ import {
 } from './utils/bom';
 import { downloadTextFile } from './utils/fileIO';
 import { buildPrintReportHtml, openPrintReport } from './utils/printReport';
+import { subscribeToBomModalOpen } from './utils/bomModalEvents';
 
 /**
  * Stückliste — Dialog. Die Berechnung liegt in `utils/bom.ts` (eine Quelle für
@@ -61,8 +62,7 @@ export function BOMModal() {
       setCopyError(null);
       setOpen(true);
     };
-    window.addEventListener('show-bom-modal', handleShowBom);
-    return () => window.removeEventListener('show-bom-modal', handleShowBom);
+    return subscribeToBomModalOpen(handleShowBom);
   }, []);
 
   const componentEntries = useMemo(() => Object.entries(bomData.counts), [bomData.counts]);
@@ -128,9 +128,12 @@ export function BOMModal() {
       onClose={() => setOpen(false)}
       title="Stückliste"
       description="Das brauchst du für den aktuellen Plan. Verwendet wird je Strecke die größere aus eingetragener (oder angenommener) und gerouteter Länge (der Router kennt Umwege, eine Luftlinie unterschätzt). Abweichungen und fehlende Längen stehen unten ausdrücklich – rechne für die Montage trotzdem eine Reserve hinzu."
-      className="max-w-2xl"
+      className="min-h-0 min-w-0 max-w-2xl"
     >
-      <div className="flex-1 space-y-6 overflow-y-auto p-5">
+      <div
+        data-testid="bom-scroll-body"
+        className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
+      >
         {assessment && (
           <section
             aria-labelledby="bom-status"

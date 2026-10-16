@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BOMModal } from './BOMModal';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { PX_PER_METER } from '../../lib/units';
+import { requestBomModalOpen } from './utils/bomModalEvents';
 
 /**
  * AUDIT L1 — die Stückliste nennt Längen und muss ihre Quelle kennen.
@@ -141,6 +142,23 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Schließen'));
     expect(screen.queryByText('Stückliste')).not.toBeInTheDocument();
+  });
+
+  it('öffnet sich, wenn die Aktion vor dem Lazy-Import des Dialogs ausgelöst wurde', async () => {
+    act(() => requestBomModalOpen());
+    render(<BOMModal />);
+    expect(await screen.findByText('Stückliste')).toBeInTheDocument();
+  });
+
+  it('hält den Stücklisteninhalt in einem begrenzten vertikalen Scrollbereich', async () => {
+    render(<BOMModal />);
+    openBom();
+
+    expect(await screen.findByText('Stückliste')).toBeInTheDocument();
+    const body = screen.getByTestId('bom-scroll-body');
+    expect(body.className).toContain('min-h-0');
+    expect(body.className).toContain('overflow-y-auto');
+    expect(body.className).toContain('overflow-x-hidden');
   });
 });
 

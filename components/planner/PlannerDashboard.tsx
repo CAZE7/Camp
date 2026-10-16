@@ -128,6 +128,25 @@ export function PlannerDashboard() {
     [lockedMutationErrors, edges]
   );
   const warnings = useMemo(() => {
+    // Der Prüfbericht ist domänenspezifisch: elektrische Regeln gehören nicht
+    // in den Wasser-Tab. Für Wasser gibt es derzeit den expliziten Hinweis aus
+    // dem Flussrichtungs-Check; sobald weitere Wasserregeln existieren, werden
+    // sie hier gemeinsam mit ihm angezeigt.
+    if (viewMode === 'water') {
+      return waterWarning
+        ? [
+            {
+              id: 'water-flow-hint',
+              category: 'topology',
+              type: 'info',
+              title: 'Wasserfluss verbessern',
+              ruleId: 'WATER-FLOW-DIRECT',
+              message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
+            } satisfies ValidationWarning,
+          ]
+        : [];
+    }
+
     const supplemental: ValidationWarning[] = [];
     // Landstrom/RCD wird nicht dupliziert: die kanonische Regel `missing-rcd-*`
     // liefert useLiveValidation (Rule A2) — inklusive Node-Fokus. Eine
@@ -155,16 +174,8 @@ export function PlannerDashboard() {
     // Leerrohr-Füllgrad wird hier NICHT zweitgeprüft: Die Regel AMP-006 der
     // Verifikations-Engine rechnet ihn und meldet fehlende Angaben als „nicht
     // entscheidbar“ statt mit einem unterstellten Kabel (Regel M).
-    if (waterWarning)
-      supplemental.push({
-        id: 'water-flow-hint',
-        category: 'topology',
-        type: 'info',
-        title: 'Wasserfluss verbessern',
-        message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
-      });
     return [...liveWarnings, ...lockedMutationWarnings, ...supplemental];
-  }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
+  }, [viewMode, liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
   /**
    * Die Warnzentrale zeigt genau die Befunde, die das Dashboard bewertet hat:
@@ -292,7 +303,7 @@ export function PlannerDashboard() {
             {viewMode === 'electric' && <RoutingStatusBadge />}
             {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
             {viewMode === 'electric' && nodes.length > 0 && (
-              <span className="hidden md:inline-flex">
+              <span className="inline-flex" data-testid="verification-seal-mobile-access">
                 <VerificationSeal summary={verification} />
               </span>
             )}
@@ -355,7 +366,7 @@ export function PlannerDashboard() {
             type="button"
             aria-label="Meldung schließen"
             onClick={() => setFeedback(null)}
-            className="cad-btn shrink-0 px-1"
+            className="cad-btn min-h-11 min-w-11 shrink-0 justify-center px-1"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

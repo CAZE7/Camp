@@ -60,16 +60,7 @@ export type UiSlice = Pick<
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   viewMode: 'electric',
   setViewMode: (mode) =>
-    set((state) => ({
-      viewMode: mode,
-      selectedNodes: [],
-      selectedEdges: [],
-      firstTappedHandle: null,
-      nodes: state.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)),
-      edges: state.edges.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)),
-      waterNodes: state.waterNodes.map((node) => (node.selected ? { ...node, selected: false } : node)),
-      waterEdges: state.waterEdges.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)),
-    })),
+    set((state) => (state.viewMode === mode ? state : { viewMode: mode, firstTappedHandle: null })),
   isSidebarOpen: true,
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),

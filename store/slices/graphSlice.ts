@@ -416,7 +416,29 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         ? withHistory(state, { waterEdges: nextEdges })
         : { waterEdges: nextEdges };
     }),
-  onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
+  onSelectionChange: (params) =>
+    set((state) => {
+      // Beim Wechsel der Domäne meldet React Flow für die neu eingeblendete
+      // (noch leere) Zeichenfläche eine leere Auswahl. Die Auswahl der gerade
+      // ausgeblendeten Domäne bleibt dabei erhalten; eine echte neue Auswahl
+      // ersetzt sie, ein Pane-Tipp hebt sie anschließend explizit auf.
+      if (params.nodes.length > 0 || params.edges.length > 0) {
+        return { selectedNodes: params.nodes, selectedEdges: params.edges };
+      }
+      const inactiveNodes =
+        state.viewMode === 'water'
+          ? state.selectedNodes.filter((selected) => state.nodes.some((node) => node.id === selected.id))
+          : state.selectedNodes.filter((selected) =>
+              state.waterNodes.some((node) => node.id === selected.id)
+            );
+      const inactiveEdges =
+        state.viewMode === 'water'
+          ? state.selectedEdges.filter((selected) => state.edges.some((edge) => edge.id === selected.id))
+          : state.selectedEdges.filter((selected) =>
+              state.waterEdges.some((edge) => edge.id === selected.id)
+            );
+      return { selectedNodes: inactiveNodes, selectedEdges: inactiveEdges };
+    }),
 
   // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
   // markiert sie als ausgewählt (ReactFlow-Highlight + Inspector) und passt die Ansicht ein.
@@ -784,28 +806,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     );
   },
   autoWireSystem: () => {
-    // Spec #29 (Auto-Wire Review): Der Knopf berechnet den Vorschlag vor,
-    // wendet ihn aber NICHT direkt an. Der Nutzer sieht im Review-Dialog,
-    // was passiert (neue/geheilte/entfernte Kanten, Konflikte, offene
-    // Fragen) und drückt »Anwenden« oder »Abbrechen«. Sieht der Vorschlag
-    // sauber aus (keine Konflikte, keine Fragen), wird er SOFORT angewendet
-    // — der Nutzer bekommt keine leere Bestätigung für einen trivialen Lauf.
+    // Auto-Wire ist zunächst immer nur eine Vorschau. Auch ein konfliktfreier
+    // Vorschlag verändert weder Leitungen noch Bauteile, bis der Nutzer im
+    // Review-Dialog ausdrücklich „Vorschlag anwenden“ bestätigt.
     get().previewAutoWire();
-    const preview = get().autoWirePreview;
-    if (!preview) return;
-    // Dialog nur, wenn es KRITISCHE Konflikte oder offene Fragen gibt.
-    // Reine Hinweise (healed-user-edge, AUTO-SHUNT-BYPASS u. ä.) werden
-    // automatisch angewendet — der Nutzer sieht das Ergebnis im Report,
-    // der über den Store abrufbar bleibt, muss aber nicht bestätigen.
-    const hasCritical = preview.report.conflicts.some((c) => c.severity === 'critical');
-    const hasQuestions = preview.report.questions.length > 0;
-    if (hasCritical || hasQuestions) {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('planner-auto-wire-review'));
-      }
-      return;
-    }
-    get().applyAutoWirePreview();
   },
   /** Berechnet Auto-Wire als Preview, ohne den echten Graphen zu verändern. */
   previewAutoWire: () => {

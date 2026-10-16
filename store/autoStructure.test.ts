@@ -42,8 +42,9 @@ beforeEach(() => {
 });
 
 describe('Auto-Wire → ELK-Strukturierung', () => {
-  it('fordert nach dem Verbinden eine Struktur an', () => {
+  it('fordert nach bestätigtem Verbinden eine Struktur an', () => {
     usePlannerStore.getState().autoWireSystem();
+    usePlannerStore.getState().applyAutoWirePreview();
 
     const state = usePlannerStore.getState();
     expect(state.autoStructurePending).toBe(true);
@@ -61,8 +62,9 @@ describe('Auto-Wire → ELK-Strukturierung', () => {
     expect(state.autoStructurePending).toBe(false);
   });
 
-  it('ordnet den verbundenen Plan per ELK — ohne zweiten Undo-Schritt', async () => {
+  it('ordnet den bestätigten Vorschlag per ELK — ohne zweiten Undo-Schritt', async () => {
     usePlannerStore.getState().autoWireSystem();
+    usePlannerStore.getState().applyAutoWirePreview();
     const wired = usePlannerStore.getState();
     const historyAfterWiring = wired.historyPast.length;
     const positionsBefore = new Map(wired.nodes.map((node) => [node.id, { ...node.position }]));
@@ -88,8 +90,9 @@ describe('Auto-Wire → ELK-Strukturierung', () => {
     expect(usePlannerStore.getState().autoStructurePending).toBe(false);
   }, 30_000);
 
-  it('verwirft die offene Struktur, wenn der Nutzer zurückgeht', () => {
+  it('verwirft die offene Struktur, wenn der Nutzer nach Bestätigung zurückgeht', () => {
     usePlannerStore.getState().autoWireSystem();
+    usePlannerStore.getState().applyAutoWirePreview();
     expect(usePlannerStore.getState().autoStructurePending).toBe(true);
 
     usePlannerStore.getState().undo();

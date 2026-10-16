@@ -20,6 +20,8 @@ export const EDGE_TYPES = { cableEdge: CableEdge };
 
 export const PLANNER_MIN_ZOOM = 0.25;
 export const PLANNER_MAX_ZOOM = 2;
+/** Initial fit is intentionally more legible than the later explicit overview. */
+export const PLANNER_INITIAL_FIT_MIN_ZOOM = 0.4;
 export const PLANNER_FIT_PADDING = 0.2;
 
 /**

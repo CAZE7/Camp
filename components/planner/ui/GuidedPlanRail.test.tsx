@@ -95,7 +95,7 @@ describe('GuidedPlanRail', () => {
 
     const primary = screen.getByTestId('guided-primary-action');
     expect(primary).toHaveTextContent('Automatisch verbinden');
-    expect(primary.querySelector('.cad-rail__action-label-compact')).toHaveTextContent('Verbinden');
+    expect(primary.querySelector('.cad-rail__action-label-compact')).toHaveTextContent('Vorschau');
 
     fireEvent.click(primary);
     expect(actions.onAutoWire).toHaveBeenCalledTimes(1);

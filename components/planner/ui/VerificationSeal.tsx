@@ -118,7 +118,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] overflow-y-auto overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 
@@ -180,7 +180,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </ul>
           </div>
 
-          <p className="border-t border-border pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+          <p className="break-all border-t border-border pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
             Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
             <br />
             Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}

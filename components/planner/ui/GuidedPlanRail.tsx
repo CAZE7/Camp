@@ -87,7 +87,7 @@ export function GuidedPlanRail({
         ? 'Batterie'
         : 'Schutz'
       : plan.activeStep.action.kind === 'autowire'
-        ? 'Verbinden'
+        ? 'Vorschau'
         : plan.activeStep.action.kind === 'warnings'
           ? 'Prüfen'
           : 'Stückliste';

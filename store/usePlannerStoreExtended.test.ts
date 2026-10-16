@@ -547,6 +547,8 @@ function runAutoWire(nodes: Node[], extra?: Partial<{ season: 'summer' | 'winter
   });
   act(() => {
     usePlannerStore.getState().autoWireSystem();
+    // This test helper models the user's explicit confirmation in the review.
+    usePlannerStore.getState().applyAutoWirePreview();
   });
   const state = usePlannerStore.getState();
   return { nodes: state.nodes, edges: state.edges, season: state.season };
@@ -688,6 +690,49 @@ function assertFusesMatchVde(edges: Edge<CableEdgeData>[]) {
 function connectionKeys(edges: Edge[]): Set<string> {
   return new Set(edges.map((e) => `${e.source}|${e.target}|${e.sourceHandle || ''}|${e.targetHandle || ''}`));
 }
+
+describe('Auto-Wire-Vorschau braucht immer ausdrückliche Bestätigung', () => {
+  it('ändert den Graphen erst durch applyAutoWirePreview', () => {
+    const nodes = [
+      makeNode('battery-1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('load-1', 'consumer', { label: 'Kühlbox', watts: 60 }),
+    ];
+    usePlannerStore.setState({
+      viewMode: 'electric',
+      nodes,
+      edges: [],
+      waterNodes: [],
+      waterEdges: [],
+      season: 'summer',
+      waterWarning: null,
+      firstTappedHandle: null,
+      selectedNodes: [],
+      selectedEdges: [],
+      historyPast: [],
+      historyFuture: [],
+      canUndo: false,
+      canRedo: false,
+      autoWirePreview: null,
+      autoWireReport: null,
+    });
+
+    act(() => usePlannerStore.getState().autoWireSystem());
+
+    const preview = usePlannerStore.getState();
+    expect(preview.autoWirePreview).not.toBeNull();
+    expect(preview.nodes).toBe(nodes);
+    expect(preview.edges).toEqual([]);
+    expect(preview.historyPast).toHaveLength(0);
+    expect(preview.canUndo).toBe(false);
+
+    act(() => preview.applyAutoWirePreview());
+    const applied = usePlannerStore.getState();
+    expect(applied.autoWirePreview).toBeNull();
+    expect(applied.nodes).not.toBe(nodes);
+    expect(applied.edges.length).toBeGreaterThan(0);
+    expect(applied.historyPast).toHaveLength(1);
+  });
+});
 
 describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   it('Szenario 1 — Minimal: nur Batterie + 1 Verbraucher', () => {
@@ -1047,6 +1092,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
 
     act(() => {
       usePlannerStore.getState().autoWireSystem();
+      usePlannerStore.getState().applyAutoWirePreview();
     });
     const after = usePlannerStore
       .getState()

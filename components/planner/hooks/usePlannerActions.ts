@@ -38,6 +38,7 @@ import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../.
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { requestBomModalOpen } from '../utils/bomModalEvents';
 import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
@@ -203,6 +204,14 @@ export function usePlannerActions({
     []
   );
 
+  // Ein langlebiger Listener statt einer Registrierung pro Vorschau: Wird ein
+  // Vorschlag abgebrochen, bleibt kein veralteter Erfolgs-Handler zurück.
+  useEffect(() => {
+    const onApplied = () => onFeedback(autoWireFeedbackFor(usePlannerStore.getState().nodes));
+    window.addEventListener('planner-auto-wired', onApplied);
+    return () => window.removeEventListener('planner-auto-wired', onApplied);
+  }, [onFeedback]);
+
   /**
    * Kurze Rückmeldung am Werkzeugknopf (150–350 ms). Kein Dauer-Spinner: Die
    * Aktion selbst ist synchron, die Anzeige soll nur die Aufnahme bestätigen.
@@ -216,14 +225,7 @@ export function usePlannerActions({
   const runAutoWire = useCallback(() => {
     flashBusy('wire');
     autoWireSystem();
-    // Spec #29: Der Vorschlag wird bei Konflikten erst nach Bestätigung
-    // angewendet — Erfolgs-Feedback deshalb erst nach `planner-auto-wired`.
-    const onApplied = () => {
-      onFeedback(autoWireFeedbackFor(usePlannerStore.getState().nodes));
-      window.removeEventListener('planner-auto-wired', onApplied);
-    };
-    window.addEventListener('planner-auto-wired', onApplied);
-  }, [autoWireSystem, flashBusy, onFeedback]);
+  }, [autoWireSystem, flashBusy]);
 
   const runLayoutV2 = useCallback(async () => {
     setBusy('layoutV2');
@@ -266,7 +268,7 @@ export function usePlannerActions({
     }
   }, [warnings.length, flashBusy, onFeedback]);
 
-  const openBom = useCallback(() => dispatchPlannerEvent('show-bom-modal'), []);
+  const openBom = useCallback(() => requestBomModalOpen(), []);
   const openWarnings = useCallback(() => dispatchPlannerEvent('open-warning-center'), []);
   const openShortcuts = useCallback(() => dispatchPlannerEvent('open-shortcut-overlay'), []);
   const openCatalog = useCallback(() => dispatchPlannerEvent('planner-open-catalog'), []);
@@ -499,8 +501,9 @@ export function usePlannerActions({
         {
           items: [
             {
-              label: 'Automatisch verbinden',
+              label: 'Auto-verbinden — Vorschlag prüfen',
               icon: Wand2,
+              hint: 'Übernahme erst nach Bestätigung',
               testId: 'action-autowire-menu',
               run: runAutoWire,
             },
@@ -560,6 +563,11 @@ export function usePlannerActions({
       hilfe: [
         {
           items: [
+            {
+              label: 'Hilfe & Fachwissen',
+              icon: Info,
+              run: () => dispatchPlannerEvent('planner-open-expert-panel'),
+            },
             {
               label: 'Tastaturkürzel',
               hint: '?',
@@ -662,6 +670,16 @@ export function usePlannerActions({
             icon: Maximize2,
             testId: 'action-fit-view',
             run: () => dispatchPlannerEvent('planner-fit-view'),
+          },
+        ],
+      },
+      {
+        label: 'Hilfe',
+        items: [
+          {
+            label: 'Hilfe & Fachwissen',
+            icon: Info,
+            run: () => dispatchPlannerEvent('planner-open-expert-panel'),
           },
         ],
       },

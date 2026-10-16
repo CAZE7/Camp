@@ -12,7 +12,6 @@ import {
   type Viewport,
   type Node,
 } from '@xyflow/react';
-import { Map as MapIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -27,6 +26,7 @@ import {
   PLANNER_MAX_ZOOM,
   PANE_WAIT_FRAMES,
   PLANNER_FIT_PADDING,
+  PLANNER_INITIAL_FIT_MIN_ZOOM,
   PLANNER_FOCUS_MAX_ZOOM,
   PLANNER_SNAP_GRID,
   NODE_FOOTPRINT,
@@ -809,7 +809,7 @@ export function FlowCanvas() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
-          fitViewOptions={{ padding: PLANNER_FIT_PADDING }}
+          fitViewOptions={{ padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }}
           minZoom={PLANNER_MIN_ZOOM}
           maxZoom={PLANNER_MAX_ZOOM}
           snapToGrid
@@ -907,13 +907,13 @@ export function FlowCanvas() {
           {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
               beantwortet, welche Frage gerade bearbeitet wird. */}
           {viewMode === 'electric' && (
-            <Panel position="top-center" className="m-2 sm:m-3">
+            <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
               <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
             </Panel>
           )}
 
           {viewMode === 'electric' && (
-            <Panel position="top-right" className="m-2 sm:m-3">
+            <Panel position="top-right" className="planner-display-options-panel m-2 sm:m-3">
               <CanvasDisplayOptions
                 activeDomains={activeDomains}
                 onToggleDomain={toggleDomain}
@@ -944,23 +944,6 @@ export function FlowCanvas() {
                 <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
                 {traceLabel}
               </div>
-            </Panel>
-          )}
-
-          {rawNodes.length > 8 && (
-            <Panel position="bottom-left" className="mb-36 ml-2 md:hidden">
-              <button
-                type="button"
-                data-testid="mobile-overview"
-                onClick={() => {
-                  void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
-                }}
-                className="cad-btn cad-btn--line min-h-12 gap-2 px-3"
-                aria-label="Planübersicht anzeigen"
-              >
-                <MapIcon className="h-5 w-5" aria-hidden="true" />
-                Übersicht
-              </button>
             </Panel>
           )}
 
