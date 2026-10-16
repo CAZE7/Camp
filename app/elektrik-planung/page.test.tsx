@@ -1,123 +1,56 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ELEKTRIK_FAQ } from '@/components/elektrik/electricContent';
 import ElektrikPlanung from './page';
-
-// Attrappe bleibt absichtlich stehen: Sie ist der Draht, an dem die
-// Negativ-Assertion unten erkennt, ob die Anwendung wieder in diese Seite
-// eingebettet wird (dasselbe Muster wie in `app/page.test.tsx`).
-vi.mock('../../components/Planner', () => ({
-  default: () => <div data-testid="mock-planner">Mocked Planner</div>,
-}));
 
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock('next/navigation', () => ({
-  usePathname: () => '/elektrik-planung',
-}));
-
-describe('ElektrikPlanung', () => {
+/**
+ * Die alte Adresse ist nach dem Umzug ein Stub. Der Test hält fest, was der
+ * Stub leisten muss:
+ *
+ *  - genau eine Hauptüberschrift, die dem Inventar entspricht (die
+ *    Exportprüfung vergleicht sie),
+ *  - ein sichtbarer Verweis auf den neuen Ort (auch ohne JavaScript),
+ *  - der Meta-Refresh als Automatik dahinter.
+ */
+describe('ElektrikPlanung (Stub nach dem Umzug)', () => {
   it('führt die Seite mit genau einer Hauptüberschrift', () => {
     render(<ElektrikPlanung />);
 
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
-    expect(headings[0]).toHaveTextContent('Camper-Elektrik berechnen');
+    expect(headings[0]).toHaveTextContent('Diese Seite ist umgezogen');
   });
 
-  it('gliedert die Inhalte in Abschnitte mit eigener Überschrift', () => {
+  it('verweist sichtbar auf den neuen Ort', () => {
     render(<ElektrikPlanung />);
 
-    for (const title of [
-      'Kabelquerschnitt und Absicherung berechnen',
-      'Physikalische Grundlagen',
-      'Absicherung und Normen',
-      'Schaltplan zeichnen und automatisch verdrahten',
-      'Häufige Fragen zur Wohnmobil-Elektrik',
-    ]) {
-      expect(screen.getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
-    }
+    expect(screen.getByRole('link', { name: 'Zur neuen Seite' }).getAttribute('href')).toMatch(
+      /^\/camper-elektrik\/?$/
+    );
+    expect(screen.getByRole('link', { name: 'Camper-Elektroplaner öffnen' }).getAttribute('href')).toMatch(
+      /^\/planer\/?$/
+    );
   });
 
-  it('verknüpft jedes Eingabefeld mit Beschriftung und Hilfetext', () => {
+  it('stellt den Meta-Refresh auf die neue Adresse', () => {
     render(<ElektrikPlanung />);
 
-    const current = screen.getByLabelText('Betriebsstrom I in Ampere');
-    const length = screen.getByLabelText('Einfache Leitungslänge L in Metern');
-
-    for (const field of [current, length]) {
-      expect(field).toHaveAttribute('type', 'number');
-      expect(field).toHaveAttribute('inputmode', 'decimal');
-
-      const describedBy = field.getAttribute('aria-describedby');
-      expect(describedBy).toBeTruthy();
-      expect(document.getElementById(describedBy!)).not.toBeNull();
-    }
+    // React 19 hebt `<meta>` in den Dokumentkopf — dort steht er auch im
+    // ausgelieferten HTML.
+    const refresh = document.head.querySelector('meta[http-equiv="refresh"]');
+    expect(refresh).not.toBeNull();
+    expect(refresh?.getAttribute('content')).toContain('/camper-elektrik/');
   });
 
-  it('nennt nach der Eingabe Querschnitt, Spannungsfall und Sicherung', () => {
-    render(<ElektrikPlanung />);
-
-    fireEvent.change(screen.getByLabelText('Betriebsstrom I in Ampere'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('Einfache Leitungslänge L in Metern'), { target: { value: '5' } });
-
-    const result = screen.getByRole('status');
-    expect(result).toHaveTextContent('6,0 mm²');
-    expect(result).toHaveTextContent('0,29 V');
-    expect(result).toHaveTextContent('10 A');
-  });
-
-  it('meldet Eingaben außerhalb der Normreihe sichtbar', () => {
-    render(<ElektrikPlanung />);
-
-    fireEvent.change(screen.getByLabelText('Betriebsstrom I in Ampere'), { target: { value: '200' } });
-    fireEvent.change(screen.getByLabelText('Einfache Leitungslänge L in Metern'), {
-      target: { value: '10' },
-    });
-
-    expect(screen.getByRole('status')).toHaveTextContent('Außerhalb der Normreihe');
-  });
-
-  it('zeigt im Akkordeon dieselben Fragen, die maschinenlesbar hinterlegt sind', () => {
+  it('rendert den Rechner der alten Seite nicht mehr', () => {
     const { container } = render(<ElektrikPlanung />);
 
-    const summaries = Array.from(container.querySelectorAll('summary')).map((element) =>
-      element.textContent?.trim()
-    );
-    expect(summaries).toEqual(ELEKTRIK_FAQ.map((entry) => entry.question));
-
-    const script = container.querySelector('script[type="application/ld+json"]');
-    expect(script).not.toBeNull();
-
-    const graph = JSON.parse(script!.textContent ?? '{}') as {
-      '@graph': Array<Record<string, unknown>>;
-    };
-    const faq = graph['@graph'].find((node) => node['@type'] === 'FAQPage');
-    const questions = (faq?.['mainEntity'] ?? []) as Array<{ name: string }>;
-    expect(questions.map((question) => question.name)).toEqual(summaries);
-  });
-
-  it('verweist auf die Planer-Seite, statt die Anwendung einzubetten', () => {
-    render(<ElektrikPlanung />);
-
-    // Die Zeichenanwendung hat eine eigene Route (`/planer/`, volles
-    // Browserfenster). Steht sie wieder als Block in diesem Artikel, teilen
-    // sich Dokument und Editor ein Scroll-Dokument — genau der Zustand, der
-    // mit dem Umzug abgeschafft wurde.
-    expect(screen.queryByTestId('mock-planner')).not.toBeInTheDocument();
-
-    // `#planer` bleibt als Ankerziel erhalten: Die Themenseiten
-    // (`components/seo/SeoPage.tsx`) und die Knöpfe oben auf der Seite
-    // verweisen darauf. Ein verschwundenes Fragment meldet die Exportprüfung
-    // als `interner-anker-tot`.
-    const abschnitt = document.getElementById('planer');
-    expect(abschnitt, 'Abschnitt #planer fehlt').not.toBeNull();
-    expect(within(abschnitt!).getByRole('link', { name: /Planer im Vollbild öffnen/ })).toHaveAttribute(
-      'href',
-      '/planer/'
-    );
+    // Der Rechner ist mit auf `/camper-elektrik/` gewandert. Stand er noch
+    // hier, gäbe es die Startseite des Themas doppelt.
+    expect(container.querySelector('#rechner-strom')).toBeNull();
   });
 });

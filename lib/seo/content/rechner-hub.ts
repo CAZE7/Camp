@@ -2,7 +2,7 @@
  * lib/seo/content/rechner-hub.ts — Übersicht `/rechner/`.
  *
  * Die Übersicht führt ALLE Rechenwerkzeuge der Auslieferung zusammen, auch die
- * bestehenden (`/elektrik-planung/`, `/tools/heizung/`, `/tools/dach/`). Damit
+ * bestehenden (`/camper-elektrik/`, `/tools/heizung/`, `/tools/dach/`). Damit
  * gibt es genau eine Seite, die „welche Rechner gibt es?" beantwortet — eine
  * zweite Liste wäre eine zweite Wahrheit.
  */

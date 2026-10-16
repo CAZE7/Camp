@@ -156,6 +156,13 @@ export const TOPICS: readonly Topic[] = [
     summary: 'Nötige Heizleistung aus Fahrzeuggröße, Dämmung und Wunschtemperatur bestimmen.',
   },
   {
+    id: 'vorlagen',
+    label: 'Vorlagen',
+    role: 'nebenbereich',
+    summary:
+      'Ausbau-Vorlagen für typische Fahrzeuge: Wochenend, autark und groß — mit Stückliste, Rechenweg und Grenzen.',
+  },
+  {
     id: 'ausbau',
     label: 'Ausbau',
     role: 'nebenbereich',

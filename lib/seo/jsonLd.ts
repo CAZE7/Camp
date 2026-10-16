@@ -53,6 +53,14 @@ export function webPageNode(input: {
   mainEntityId?: string;
   hasPartIds?: readonly string[];
   breadcrumbId?: string;
+  /**
+   * Stand der fachlichen Durchsicht (ISO-Monat, z. B. `2026-10`).
+   *
+   * Nur setzen, wenn die Seite dasselbe Datum sichtbar nennt — eine
+   * maschinenlesbare Änderungsangabe ohne sichtbaren Gegenpart ist eine
+   * Behauptung, die niemand prüfen kann.
+   */
+  dateModified?: string;
   /** `CollectionPage` für Übersichten, sonst `WebPage`. */
   type?: Extract<StructuredDataType, 'WebPage' | 'CollectionPage'>;
 }): JsonLdNode {
@@ -67,6 +75,7 @@ export function webPageNode(input: {
     isPartOf: websiteRef(),
     publisher: publisherRef(),
   };
+  if (input.dateModified) node['dateModified'] = input.dateModified;
   if (input.mainEntityId) node['mainEntity'] = { '@id': input.mainEntityId };
   if (input.hasPartIds && input.hasPartIds.length > 0) {
     node['hasPart'] = input.hasPartIds.map((id) => ({ '@id': id }));

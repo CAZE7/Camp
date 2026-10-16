@@ -20,7 +20,7 @@ describe('sitemap', () => {
   it('listet jede ausgelieferte Seite genau einmal', () => {
     const urls = entries.map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
-    expect(urls).toContain(siteUrl('/elektrik-planung/'));
+    expect(urls).toContain(siteUrl('/camper-elektrik/'));
   });
 
   it('bildet alle Adressen unter dem Basis-Pfad der Auslieferung', () => {
@@ -30,10 +30,26 @@ describe('sitemap', () => {
     }
   });
 
-  it('führt keine Zeitstempel — die Seite behauptet keine Änderung, die nicht geprüft ist', () => {
+  it('führt Zeitstempel nur, wo der Inhalt durchgesehen wurde', () => {
+    // Der Zeitstempel kommt aus dem Inventar (`contentRevision`) — nicht aus
+    // der Bauzeit. Wo der Inhalt nicht geprüft wurde, steht keiner: eine
+    // ehrliche Lücke ist besser als ein behauptetes Datum.
     for (const entry of entries) {
-      expect(entry).not.toHaveProperty('lastModified');
+      const route = SITEMAP_ROUTES.find((candidate) => candidate.path === new URL(entry.url).pathname);
+      expect(route).toBeDefined();
+      if (route?.contentRevision) {
+        expect(entry.lastModified).toBe(route.contentRevision);
+      } else {
+        expect(entry).not.toHaveProperty('lastModified');
+      }
     }
+  });
+
+  it('nennt keinen Zeitstempel für Seiten ohne dokumentierten Stand', () => {
+    const ohneStand = entries.filter((entry) => !entry.lastModified);
+    // Die Rechtsseiten tragen keinen fachlichen Stand — dort behauptet die
+    // Sitemap nichts, was im Text steht.
+    expect(ohneStand.map((entry) => new URL(entry.url).pathname)).toContain('/impressum/');
   });
 
   it('gibt Priorität und Änderungsfrequenz im gültigen Bereich an', () => {

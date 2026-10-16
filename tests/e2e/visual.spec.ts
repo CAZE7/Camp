@@ -17,11 +17,13 @@ import { PIXEL_MARKER } from './pixelMarker';
  *
  * Route `planung`: Der Planer ist auf die eigene Anwendungsroute `/planer/`
  * umgezogen (volles Browserfenster, ohne Website-Kopfleiste) und wird dort
- * eingefroren; `elektrik-wissen` hält die Wissens- und Rechnerseite
- * `/elektrik-planung/`, auf der er vorher als Block im Artikel stand. Beide
+ * eingefroren; `camper-elektrik` hält die Wissens- und Rechnerseite
+ * `/camper-elektrik/`, auf der er vorher als Block im Artikel stand. Beide
  * Baselines sind nach dem Umzug neu zu ziehen — der Weg dafür ist der
  * Workflow `.github/workflows/baselines.yml`
  * (`npx playwright test tests/e2e/visual.spec.ts --update-snapshots`).
+ * Die Startseite braucht ebenfalls eine neue Baseline, seit sie das
+ * Vorlagen-Raster zeigt.
  *
  * Schwelle: 2 % abweichende Pixel (maxDiffPixelRatio) — tolerant gegen
  * Anti-Aliasing, hart gegen Layout-/Farb-Brüche. Baselines liegen in
@@ -50,7 +52,7 @@ const ROUTES: Array<{ path: string; name: string; fullPage: boolean; ready?: str
   { path: '/tools/dach/', name: 'dach', fullPage: false },
   { path: '/tools/heizung/', name: 'heizung', fullPage: false },
   { path: '/planer/', name: 'planung', fullPage: false, ready: 'planner-shell' },
-  { path: '/elektrik-planung/', name: 'elektrik-wissen', fullPage: false },
+  { path: '/camper-elektrik/', name: 'camper-elektrik', fullPage: false },
   { path: '/impressum/', name: 'impressum', fullPage: true },
 ];
 

@@ -31,7 +31,7 @@ const BASE_URL = argValue('--base-url', process.env.DESIGN_BASE_URL ?? 'http://1
 /** Kernrouten des Relaunchs (agent.md D-3/D-9). */
 const ROUTES = [
   { name: 'start', path: '/' },
-  { name: 'planer', path: '/elektrik-planung' },
+  { name: 'planer', path: '/camper-elektrik' },
   { name: 'dach', path: '/tools/dach' },
   { name: 'heizung', path: '/tools/heizung' },
   { name: 'guide-fahrplan', path: '/guides/ausbau-fahrplan' },

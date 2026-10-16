@@ -64,6 +64,12 @@ type PageMetadataInput = {
    * der in Ergebnislisten stehen soll.
    */
   index?: boolean;
+  /**
+   * Adresse, auf die das Canonical zeigen soll — für Seiten, die auf eine
+   * andere Adresse umziehen. Ohne diese Angabe zeigt das Canonical auf die
+   * Seite selbst.
+   */
+  canonicalPath?: string;
 };
 
 /** Baut die Kopfdaten einer Seite aus Titel, Beschreibung und Pfad. */
@@ -74,20 +80,24 @@ export function pageMetadata({
   image = DEFAULT_PREVIEW_IMAGE,
   absoluteTitle = false,
   index = true,
+  canonicalPath,
 }: PageMetadataInput): Metadata {
-  const url = siteUrl(path);
   const imageUrl = siteUrl(image.path);
+  // Bei einem Umzug zeigt das Canonical auf das Ziel — und `og:url` mit,
+  // weil die Vorschaukarte sonst auf die alte Adresse zeigt. Ohne Umzug ist
+  // das Ziel die Seite selbst.
+  const canonicalUrl = siteUrl(canonicalPath ?? path);
 
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: canonicalUrl },
     robots: index ? INDEXABLE_ROBOTS : NOINDEX_ROBOTS,
     openGraph: {
       type: 'website',
       locale: 'de_DE',
       siteName: SITE_NAME,
-      url,
+      url: canonicalUrl,
       title,
       description,
       images: [{ url: imageUrl, width: image.width, height: image.height, alt: image.alt }],

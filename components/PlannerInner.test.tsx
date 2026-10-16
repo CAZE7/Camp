@@ -5,7 +5,7 @@ import PlannerInner from './PlannerInner';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/elektrik-planung',
+  usePathname: () => '/camper-elektrik',
 }));
 
 vi.mock('./planner/PlannerSidebar', () => ({

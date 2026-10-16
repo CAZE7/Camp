@@ -195,6 +195,37 @@ describe('checkStructuredData', () => {
     );
   });
 
+  it('lässt die Profile in sameAs zu — sie zeigen per Definition nach außen', () => {
+    // `sameAs` verweist auf ein Profil, einen Kanal, ein Repository. Die
+    // Regel „alle Adressen zeigen auf diese Herkunft" gilt für die eigenen
+    // Verweise; für `sameAs` wäre sie falsch.
+    const html = graph([
+      {
+        '@type': 'Organization',
+        '@id': `${ORIGIN}${BASE}/#organization`,
+        name: 'Werft',
+        url: `${ORIGIN}${BASE}/`,
+        sameAs: ['https://github.com/beispiel/werft', 'https://www.youtube.com/@beispiel'],
+      },
+    ]);
+    const rules = checkStructuredData('f', html, { origin: ORIGIN, basePath: BASE }).map((f) => f.rule);
+    expect(rules).not.toContain('json-ld-adresse');
+  });
+
+  it('meldet eine fremde Adresse auch dann, wenn sie neben sameAs steht', () => {
+    const html = graph([
+      {
+        '@type': 'Organization',
+        '@id': `${ORIGIN}${BASE}/#organization`,
+        name: 'Werft',
+        url: 'https://fremde-domain.test/',
+        sameAs: ['https://github.com/beispiel/werft'],
+      },
+    ]);
+    const rules = checkStructuredData('f', html, { origin: ORIGIN, basePath: BASE }).map((f) => f.rule);
+    expect(rules).toContain('json-ld-adresse');
+  });
+
   it('lässt eine vollständige Beschreibung durch', () => {
     const html = graph([
       { '@type': 'WebSite', '@id': `${ORIGIN}${BASE}/#website`, url: `${ORIGIN}${BASE}/` },

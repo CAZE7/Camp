@@ -44,8 +44,10 @@ describe('HeatingCalculatorPage', () => {
   it('renders the initial layout correctly', () => {
     render(<HeatingCalculatorPage />);
 
-    // Check main titles and headers
-    expect(screen.getByText(/Heizlast-Rechner/i)).toBeInTheDocument();
+    // Check main titles and headers — der Erklärblock unter dem Werkzeug
+    // nennt den Rechner ebenfalls, deshalb wird die erste Übereinstimmung
+    // geprüft.
+    expect(screen.getAllByText(/Heizlast-Rechner/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/Wunsch-Temperatur/i)).toBeInTheDocument();
     expect(screen.getByText(/Außen-Temperatur/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Isolierung/i).length).toBeGreaterThan(0);

@@ -16,8 +16,6 @@ import RoofSolarNode from '@/components/nodes/RoofSolarNode';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
 import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
@@ -184,253 +182,251 @@ function DachPlanerInner() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  /*
+   * Die Seite liefert nur das Werkzeug. Rahmen (`SiteHeader`, `main`,
+   * `SiteFooter`) und der erklärende Text stehen im Server-Layout
+   * (`app/tools/dach/layout.tsx`): So bleibt der Text eine Server-Komponente
+   * und landet nicht im JavaScript-Bündel der Client-Seite.
+   */
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <SiteHeader />
-      <main id="main" className="flex flex-1 flex-col">
-        {/* Sub-Header mit Titel + Watt-KPI */}
-        <div className="border-b border-rule bg-bone px-5 py-3">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
-              >
-                ← Zurück
-              </Link>
-              <span aria-hidden="true" className="h-6 w-px bg-rule" />
-              <h1 className={cn('font-display text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                Dach-Planer
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="label-eyebrow text-ink-soft">Solarleistung gesamt</p>
-                <p className="measure text-xl font-semibold text-ink">
-                  {totalRoofSolarWatts} <span className="caption-xs font-semibold text-ink-soft">W</span>
-                </p>
-              </div>
-              <Link
-                href="/planer"
-                className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 sm:inline-flex"
-              >
-                Im Schaltplan öffnen
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
+    <>
+      {/* Sub-Header mit Titel + Watt-KPI */}
+      <div className="border-b border-rule bg-bone px-5 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink">
+              ← Zurück
+            </Link>
+            <span aria-hidden="true" className="h-6 w-px bg-rule" />
+            <h1 className={cn('font-display text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
+              Dach-Planer
+            </h1>
           </div>
-        </div>
-
-        {/* Onboarding */}
-        {onboardingOpen && placementCount === 0 && (
-          <div className="border-b border-rule bg-warn-info-bg px-5 py-3">
-            <div className="mx-auto flex max-w-5xl items-start justify-between gap-3">
-              <div className="flex items-start gap-3 text-sm text-warn-info">
-                <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <div>
-                  <p className="font-semibold">So planst du dein Dach in 3 Schritten:</p>
-                  <ol className="mt-1 list-decimal pl-5">
-                    <li>Fahrzeug links auswählen.</li>
-                    <li>
-                      Solarpanel oder Dachfenster hinzufügen (Button „+ Aufs Dach") oder auf die Fläche
-                      ziehen.
-                    </li>
-                    <li>
-                      Position, Größe und Watt rechts anpassen — Gesamt-Watt wandert automatisch in den
-                      Schaltplan.
-                    </li>
-                  </ol>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOnboardingOpen(false)}
-                className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
-                aria-label="Anleitung schließen"
-              >
-                <XIcon className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          {/* Sidebar */}
-          <aside
-            tabIndex={0}
-            className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r"
-          >
-            <div className="space-y-3">
-              <Label htmlFor="dach-vehicle-select" className="label-eyebrow text-ink-soft">
-                Fahrzeug Modell
-              </Label>
-              <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
-                <SelectTrigger
-                  id="dach-vehicle-select"
-                  aria-label="Fahrzeug Modell"
-                  className="h-12 border-rule bg-bone text-sm font-medium"
-                >
-                  <SelectValue placeholder="Fahrzeug auswählen" />
-                </SelectTrigger>
-                <SelectContent className="border-rule">
-                  {vehicleTemplates.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} {vehicle.version}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="caption-xs text-ink-soft">
-                Nutzbare Dachfläche:{' '}
-                <strong className="text-ink">
-                  {roofWidthCm} × {roofHeightCm} cm
-                </strong>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="label-eyebrow text-ink-soft">Solarleistung gesamt</p>
+              <p className="measure text-xl font-semibold text-ink">
+                {totalRoofSolarWatts} <span className="caption-xs font-semibold text-ink-soft">W</span>
               </p>
             </div>
-
-            <div className="mt-6 space-y-3">
-              <Label className="label-eyebrow text-ink-soft">Komponenten</Label>
-
-              {/* Solarpanel-Karte: Drag + Tap-to-place-Button */}
-              <div
-                className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-copper"
-                draggable
-                onDragStart={(e) => onDragStart(e, 'roofSolar')}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div>Solarpanel</div>
-                    <div className="caption-xs measure text-copper">200 W · 100 × 60 cm</div>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addNode('roofSolar')}
-                    aria-label="Solarpanel aufs Dach setzen"
-                    className="min-h-11 gap-1 border-copper text-copper hover:bg-paper"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Aufs Dach
-                  </Button>
-                </div>
-                <p className="caption-xs mt-2 text-ink-soft">
-                  Ziehen oder tippen — auf Mobilgeräten nur der Button.
-                </p>
-              </div>
-
-              {/* Dachfenster-Karte */}
-              <div
-                className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-warn-info"
-                draggable
-                onDragStart={(e) => onDragStart(e, 'roofWindow')}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div>Dachfenster</div>
-                    <div className="caption-xs measure text-warn-info">40 × 40 cm</div>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addNode('roofWindow')}
-                    aria-label="Dachfenster aufs Dach setzen"
-                    className="min-h-11 gap-1 border-warn-info text-warn-info hover:bg-paper"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Aufs Dach
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Validierungsliste */}
-            {invalidNodes.length > 0 && (
-              <div className="mt-6 space-y-2">
-                <Label className="label-eyebrow text-warn-critical">Hinweise</Label>
-                <ul className="space-y-2" role="alert">
-                  {invalidNodes.map((n) => {
-                    const text = describeOverrun(n, roofWidthCm, roofHeightCm);
-                    if (!text) return null;
-                    return (
-                      <li key={n.id} className="warn-card warn-card-critical text-sm">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                        <span>{text}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-
-            {/* Überlappungswarnung */}
-            {overlappingNodes.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <Label className="label-eyebrow text-warn-warning">Überlappung</Label>
-                <ul className="space-y-2" role="alert">
-                  {overlappingNodes.map((n) => (
-                    <li key={n.id} className="warn-card warn-card-warning text-sm">
-                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>
-                        {n.data.label || (n.type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster')} überlappt
-                        sich mit einem anderen Element. Verschiebe es, damit keine Abschattung oder Kollision
-                        entsteht.
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Empfehlungshinweis */}
-            {placementCount > 0 && invalidNodes.length === 0 && overlappingNodes.length === 0 && (
-              <div className="warn-card warn-card-ok mt-6 text-sm">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <span>Alle Elemente liegen sicher und ohne Überlappung in der Safe Zone.</span>
-              </div>
-            )}
-
-            {/* Mobile CTA */}
             <Link
               href="/planer"
-              className="mt-6 flex min-h-12 items-center justify-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper sm:hidden"
+              className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 sm:inline-flex"
             >
               Im Schaltplan öffnen
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-          </aside>
-
-          {/* Canvas */}
-          <div
-            className="react-flow-wrapper relative min-h-[60vh] flex-1"
-            ref={reactFlowWrapper}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-          >
-            <ReactFlow
-              nodes={nodes}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              fitView
-              minZoom={0.2}
-              maxZoom={2}
-            >
-              <Background />
-              <Controls />
-              <DachPanel
-                selectedNode={selectedNode}
-                updateSelectedNodeWatts={updateSelectedNodeWatts}
-                updateSelectedNodeWidth={updateSelectedNodeWidth}
-                updateSelectedNodeHeight={updateSelectedNodeHeight}
-                totalRoofSolarWatts={totalRoofSolarWatts}
-              />
-            </ReactFlow>
           </div>
         </div>
-      </main>
-      <SiteFooter />
-    </div>
+      </div>
+
+      {/* Onboarding */}
+      {onboardingOpen && placementCount === 0 && (
+        <div className="border-b border-rule bg-warn-info-bg px-5 py-3">
+          <div className="mx-auto flex max-w-5xl items-start justify-between gap-3">
+            <div className="flex items-start gap-3 text-sm text-warn-info">
+              <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">So planst du dein Dach in 3 Schritten:</p>
+                <ol className="mt-1 list-decimal pl-5">
+                  <li>Fahrzeug links auswählen.</li>
+                  <li>
+                    Solarpanel oder Dachfenster hinzufügen (Button „+ Aufs Dach") oder auf die Fläche ziehen.
+                  </li>
+                  <li>
+                    Position, Größe und Watt rechts anpassen — Gesamt-Watt wandert automatisch in den
+                    Schaltplan.
+                  </li>
+                </ol>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOnboardingOpen(false)}
+              className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
+              aria-label="Anleitung schließen"
+            >
+              <XIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* Sidebar */}
+        <aside
+          tabIndex={0}
+          className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r"
+        >
+          <div className="space-y-3">
+            <Label htmlFor="dach-vehicle-select" className="label-eyebrow text-ink-soft">
+              Fahrzeug Modell
+            </Label>
+            <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
+              <SelectTrigger
+                id="dach-vehicle-select"
+                aria-label="Fahrzeug Modell"
+                className="h-12 border-rule bg-bone text-sm font-medium"
+              >
+                <SelectValue placeholder="Fahrzeug auswählen" />
+              </SelectTrigger>
+              <SelectContent className="border-rule">
+                {vehicleTemplates.map((vehicle) => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                    {vehicle.brand} {vehicle.model} {vehicle.version}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="caption-xs text-ink-soft">
+              Nutzbare Dachfläche:{' '}
+              <strong className="text-ink">
+                {roofWidthCm} × {roofHeightCm} cm
+              </strong>
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <Label className="label-eyebrow text-ink-soft">Komponenten</Label>
+
+            {/* Solarpanel-Karte: Drag + Tap-to-place-Button */}
+            <div
+              className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-copper"
+              draggable
+              onDragStart={(e) => onDragStart(e, 'roofSolar')}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div>Solarpanel</div>
+                  <div className="caption-xs measure text-copper">200 W · 100 × 60 cm</div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addNode('roofSolar')}
+                  aria-label="Solarpanel aufs Dach setzen"
+                  className="min-h-11 gap-1 border-copper text-copper hover:bg-paper"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Aufs Dach
+                </Button>
+              </div>
+              <p className="caption-xs mt-2 text-ink-soft">
+                Ziehen oder tippen — auf Mobilgeräten nur der Button.
+              </p>
+            </div>
+
+            {/* Dachfenster-Karte */}
+            <div
+              className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-warn-info"
+              draggable
+              onDragStart={(e) => onDragStart(e, 'roofWindow')}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div>Dachfenster</div>
+                  <div className="caption-xs measure text-warn-info">40 × 40 cm</div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addNode('roofWindow')}
+                  aria-label="Dachfenster aufs Dach setzen"
+                  className="min-h-11 gap-1 border-warn-info text-warn-info hover:bg-paper"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Aufs Dach
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Validierungsliste */}
+          {invalidNodes.length > 0 && (
+            <div className="mt-6 space-y-2">
+              <Label className="label-eyebrow text-warn-critical">Hinweise</Label>
+              <ul className="space-y-2" role="alert">
+                {invalidNodes.map((n) => {
+                  const text = describeOverrun(n, roofWidthCm, roofHeightCm);
+                  if (!text) return null;
+                  return (
+                    <li key={n.id} className="warn-card warn-card-critical text-sm">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                      <span>{text}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Überlappungswarnung */}
+          {overlappingNodes.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <Label className="label-eyebrow text-warn-warning">Überlappung</Label>
+              <ul className="space-y-2" role="alert">
+                {overlappingNodes.map((n) => (
+                  <li key={n.id} className="warn-card warn-card-warning text-sm">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span>
+                      {n.data.label || (n.type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster')} überlappt sich
+                      mit einem anderen Element. Verschiebe es, damit keine Abschattung oder Kollision
+                      entsteht.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Empfehlungshinweis */}
+          {placementCount > 0 && invalidNodes.length === 0 && overlappingNodes.length === 0 && (
+            <div className="warn-card warn-card-ok mt-6 text-sm">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <span>Alle Elemente liegen sicher und ohne Überlappung in der Safe Zone.</span>
+            </div>
+          )}
+
+          {/* Mobile CTA */}
+          <Link
+            href="/planer"
+            className="mt-6 flex min-h-12 items-center justify-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper sm:hidden"
+          >
+            Im Schaltplan öffnen
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </aside>
+
+        {/* Canvas */}
+        <div
+          className="react-flow-wrapper relative min-h-[60vh] flex-1"
+          ref={reactFlowWrapper}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+        >
+          <ReactFlow
+            nodes={nodes}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            fitView
+            minZoom={0.2}
+            maxZoom={2}
+          >
+            <Background />
+            <Controls />
+            <DachPanel
+              selectedNode={selectedNode}
+              updateSelectedNodeWatts={updateSelectedNodeWatts}
+              updateSelectedNodeWidth={updateSelectedNodeWidth}
+              updateSelectedNodeHeight={updateSelectedNodeHeight}
+              totalRoofSolarWatts={totalRoofSolarWatts}
+            />
+          </ReactFlow>
+        </div>
+      </div>
+    </>
   );
 }
 

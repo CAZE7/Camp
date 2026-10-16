@@ -116,6 +116,18 @@ jobs:
         with:
           static_site_generator: next
 
+      - name: Veröffentlichungsadresse stimmt? (Custom Domain)
+        # Der Deploy baut mit dem Basis-Pfad, den die Pages-Einstellungen
+        # melden (Schritt „Pages konfigurieren" oben). Stimmt der nicht zur
+        # Custom Domain an der Wurzel, zeigen Canonical und Sitemap ins Leere
+        # und die Assets werden unter einem Pfad gesucht, den es nicht gibt.
+        # Der Wächter bricht den Deploy ab, bevor eine halb verlinkte Seite
+        # veröffentlicht wird — die Einrichtung der Custom Domain in den
+        # Pages-Einstellungen ist Sache des Betreibers, kein Build-Parameter.
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run ci:verify-publication-origin
+
       - name: Build (Static Export)
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}

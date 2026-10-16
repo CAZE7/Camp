@@ -80,7 +80,7 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
   },
   {
     // Die Anwendungsroute (`/planer/`) bedient die Zeichnen-Intention; die
-    // Wissensroute (`/elektrik-planung/`) darunter bleibt für „Planer online"
+    // Wissensroute (`/camper-elektrik/`) darunter bleibt für „Planer online"
     // mit Rechner und Normtext zuständig (siehe Eintrag `elektroplaner`).
     id: 'elektroplaner-vollbild',
     query: 'camper schaltplan zeichnen programm',
@@ -96,7 +96,7 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     id: 'elektroplaner',
     query: 'wohnmobil elektrik planer online',
     intent: 'planung',
-    page: '/elektrik-planung/',
+    page: '/camper-elektrik/',
     coverage: 'abgedeckt',
     gap: null,
     priority: 'P0',
@@ -375,6 +375,41 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     gap: 'Der Guide erklärt Elektrik im Überblick, verlinkt aber noch nicht systematisch in das Elektrik-Cluster.',
     priority: 'P1',
     action: 'verlinkung-verbessern',
+    source: 'annahme',
+  },
+
+  // ── Ausbau-Vorlagen ──────────────────────────────────────────────────────
+  {
+    id: 'vorlage-wochenend',
+    query: 'camper elektrik vorlage wochenend',
+    intent: 'planung',
+    page: '/vorlagen/wochenend/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
+    id: 'vorlage-autark',
+    query: 'autarker camper stückliste elektrik',
+    intent: 'planung',
+    page: '/vorlagen/autark/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
+    id: 'vorlage-gross',
+    query: 'camper 24 volt ausbau vorlage',
+    intent: 'planung',
+    page: '/vorlagen/grossraum/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
     source: 'annahme',
   },
 

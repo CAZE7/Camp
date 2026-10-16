@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
-    "build": "next build && tsx scripts/seo/auditExport.ts",
+    "build": "next build && tsx scripts/seo/auditExport.ts && tsx scripts/seo/writeLlmsTxt.ts",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "pretest": "node scripts/check-node-version.mjs",
     "test": "vitest run",
@@ -14,6 +14,7 @@
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
     "ci:verify-deploy-trigger": "tsx scripts/ci/verifyDeployTrigger.ts",
     "ci:verify-legal-notice": "tsx scripts/ci/verifyLegalNotice.ts",
+    "ci:verify-publication-origin": "tsx scripts/ci/verifyPublicationOrigin.ts",
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
     "routing:audit": "tsx scripts/routing/audit.ts",
