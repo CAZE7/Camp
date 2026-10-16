@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ComponentType } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Loader2 } from 'lucide-react';
 
 type ChatProps = { defaultOpen?: boolean };
 type ChatComponent = ComponentType<ChatProps>;
@@ -44,7 +44,7 @@ export default function AssistantLauncher() {
         className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent disabled:cursor-wait disabled:opacity-70"
       >
         {loading ? (
-          <span aria-hidden="true">…</span>
+          <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         ) : (
           <MessageSquare className="h-5 w-5" aria-hidden="true" />
         )}
