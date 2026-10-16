@@ -5,8 +5,10 @@ test.use({ javaScriptEnabled: false });
 test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScript', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('main h1')).toHaveCount(1);
-  await expect(page.locator('main h1')).toHaveText('Camper planen — erst der Plan, dann das Blech.');
-  await expect(page.locator('main')).toContainText('Dach, Elektrik, Heizung und Sicherheit an einem Ort.');
+  await expect(page.locator('main h1')).toHaveText('Camper-Ausbau planen: Elektrik, Dach und Heizlast');
+  await expect(page.locator('main')).toContainText(
+    'Beim Camper-Ausbau entscheidet die Planung über Sicherheit, Kosten und Nacharbeit.'
+  );
   await expect(page.getByRole('link', { name: 'Schaltplan starten' })).toHaveAttribute(
     'href',
     /\/planer\/?$/
@@ -39,7 +41,7 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
   // bietet einen Weg zurück — ein leeres Fenster wäre eine Sackgasse.
   await page.goto('/planer/');
   await expect(page.locator('main h1')).toHaveCount(1);
-  await expect(page.locator('main h1')).toHaveText('Camper-Elektroplaner');
+  await expect(page.locator('main h1')).toHaveText('Camper-Schaltplan online erstellen (12V/24V)');
   await expect(page.locator('main')).toContainText('Der Elektroplaner lädt');
   await expect(page.getByRole('link', { name: /Camper-Elektrik berechnen/ })).toHaveAttribute(
     'href',

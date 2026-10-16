@@ -8,7 +8,7 @@ import { pageByPath } from '@/lib/seo/inventory';
 /**
  * app/planer/page.tsx — der Camper-Elektroplaner als eigene Seite.
  *
- * Warum eine eigene Route und kein Abschnitt auf `/elektrik-planung/`:
+ * Warum eine eigene Route und kein Abschnitt auf `/camper-elektrik/`:
  * Der Planer ist ein Editor mit eigener Anwendungsshell (Menüleiste,
  * Werkzeugleiste, drei Spalten, Statuszeile) und fester Mindestbreite. Auf der
  * Wissensseite stand er als `h-dvh`-Block zwischen Rechner, Normtext und

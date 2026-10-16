@@ -11,7 +11,9 @@ describe('Home Page', () => {
   it('renders the main sections', () => {
     render(<Home />);
 
-    expect(screen.getByRole('heading', { name: /Camper planen/i, level: 1 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Camper-Ausbau planen: Elektrik, Dach und Heizlast/i, level: 1 })
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Guides/i, level: 2 })).toBeInTheDocument();
   });
 

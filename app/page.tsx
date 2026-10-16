@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, CalendarCheck, Flame, Map as MapIcon, Sun, Zap } from 'lucide-react';
 import { metadataForPage } from '@/app/seoMetadata';
+import { pageByPath } from '@/lib/seo/inventory';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
@@ -13,6 +14,19 @@ import { PageStructuredData } from '@/components/seo/PageStructuredData';
  */
 
 export const metadata: Metadata = metadataForPage('/');
+
+/**
+ * Startseite: Titel, Überschrift und Beschreibung stehen im Seiteninventar
+ * (`lib/seo/inventory.ts`) — dieselbe Quelle wie Canonical, Sitemap und die
+ * Exportprüfung. Der inhaltliche Stand ebenso: Er ist der sichtbare
+ * Gegenpart zu `dateModified` im Markup und zu `<lastmod>` in der Sitemap.
+ */
+const SEITE = pageByPath('/');
+if (!SEITE) throw new Error('Die Startseite fehlt im SEO-Inventar.');
+
+/** Überschrift und inhaltlicher Stand aus derselben Inventarzeile. */
+const SEITEN_H1 = SEITE.h1;
+const SEITEN_STAND = SEITE.contentRevision;
 
 const TOOLS = [
   {
@@ -78,12 +92,28 @@ export default function Home() {
         {/* Hero — ein H1, ein Nutzenversprechen, ein primärer CTA */}
         <section className="prose-measure">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-ink md:text-2xl">
-            Camper planen — erst der Plan, dann das Blech.
+            {SEITEN_H1}
           </h1>
           <p className="mt-3 text-base text-ink-soft">
-            Dach, Elektrik, Heizung und Sicherheit an einem Ort. Für Heimwerker ohne Fachwissen — mit Zahlen,
-            die auch für den TÜV funktionieren.
+            Beim Camper-Ausbau entscheidet die Planung über Sicherheit, Kosten und Nacharbeit. Werft bündelt
+            dafür die Werkzeuge an einem Ort: den 12V-/24V-Elektroplaner mit automatischer Querschnitts- und
+            Sicherungsrechnung, den Dach-Planer für Solar und Luken, den Heizlast-Rechner sowie Einzelrechner
+            für Batterie, Spannungsabfall und Solarertrag.
           </p>
+          <div className="mt-4 space-y-3 text-base leading-relaxed text-ink-soft">
+            <p>
+              Die Reihenfolge ist bewusst einfach: erst den Ausbau-Fahrplan lesen, dann Dach und Elektrik
+              rechnen, danach den Schaltplan zeichnen und die Heizlast prüfen. Jede Zahl kommt mit Formel,
+              Annahmen und Grenzen — kein Blindvertrauen in eine schwarze Box. Dein Plan bleibt lokal im
+              Browser; ein Konto brauchst du nicht.
+            </p>
+            <p>
+              Zielgruppe sind Heimwerker ohne Elektro-Ausbildung, die trotzdem mit Normen und physikalischen
+              Grenzen arbeiten wollen (u. a. Strombelastbarkeit nach DIN VDE 0298-4, Schutzorgan nahe der
+              Quelle nach ISO 10133). Werft ersetzt keine Fachkraft und keine Abnahme — aber es ersetzt das
+              Raten am Küchentisch.
+            </p>
+          </div>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href="/planer"
@@ -99,9 +129,12 @@ export default function Home() {
               Erst den Fahrplan lesen
             </Link>
           </div>
-          <p className="caption-xs mt-4 text-ink-soft">
-            Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
-          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="caption-xs text-ink-soft">
+              Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
+            </p>
+            <p className="caption-xs text-ink-soft">Fachlich geprüft: {SEITEN_STAND}</p>
+          </div>
         </section>
 
         {/* Werkzeuge — drei Karten im selben Card-System + Fahrplan */}
