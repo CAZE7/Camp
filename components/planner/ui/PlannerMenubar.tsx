@@ -58,7 +58,10 @@ function MenuDropdown({
       id={id}
       role="menu"
       aria-label="Menü"
-      className="cad-menu"
+      /* Auf dem Handy als Blatt über der Fußleiste (`planner-menubar-sheet`):
+         Der Auslöser steht dort in einer waagerecht scrollenden Reihe, ein
+         Dropdown an seinem Rand läge außerhalb des Fensters. */
+      className="cad-menu planner-menubar-sheet left-0"
       onKeyDown={(event) => handleMenuKeyDown(event, onClose)}
     >
       {groups.map((group, index) => (

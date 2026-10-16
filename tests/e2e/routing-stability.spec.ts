@@ -112,6 +112,9 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
     )
   ).toBe(true);
 
+  // B-22: Eine Auswahl im Popover schließt es. Vor dem erneuten Klick deshalb
+  // den Auslöser wieder öffnen, falls die Anzeigeoptionen kompakt sind.
+  if (hasCompactDisplayOptions) await displayOptions.click();
   await backboneToggle.click();
   await expect(page.locator('.react-flow__node[data-id="__planner-backbone-group"]')).toHaveCount(1);
   await waitForRoutingTraceToSettle(page);
@@ -120,7 +123,8 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
   // The compact mobile/tablet display controls stay open after a toggle. Close
   // them before selecting a node so the click cannot hit an overlapping
   // detail-level button instead of the node.
-  if (hasCompactDisplayOptions) {
+  // B-22: Eine Auswahl schließt das Popover bereits; nur schließen, falls offen.
+  if (hasCompactDisplayOptions && (await displayOptions.getAttribute('aria-expanded')) === 'true') {
     await page.getByRole('button', { name: 'Ansichtsoptionen schließen' }).click();
     await expect(displayOptions).toHaveAttribute('aria-expanded', 'false');
   }

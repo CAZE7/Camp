@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FloatingMetricsCard } from './FloatingMetricsCard';
 import React from 'react';
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 
 // Mock the stores and hooks
 const mockPlannerStore = vi.fn();
@@ -111,5 +112,24 @@ describe('FloatingMetricsCard', () => {
     expect(screen.getByText('Solarleistung')).toBeInTheDocument();
     // It should render "450W" and NOT literal "${calculatedSolarWatts}W"
     expect(screen.getByText('450 W')).toBeInTheDocument();
+  });
+});
+
+/** QA B-02 (Regression): Ohne Verbrauch steht nicht „Unendlich“, sondern der Grund dazu. */
+describe('FloatingMetricsCard · Autonomie ohne Verbrauch (B-02)', () => {
+  it('erklärt, was fehlt, statt Unendlich anzuzeigen', () => {
+    mockDashboardMetrics.mockReturnValue({
+      autarkyStr: AUTARKY_NOT_CALCULATED,
+      dailyConsumptionAh: 0,
+      chargingTimeStr: 'Kein Ladegerät',
+      solarNodesCount: 0,
+      totalSolarVoltage: 0,
+      totalSolarAmps: 0,
+      hasDirectBatteryToConsumer: false,
+    });
+    render(<FloatingMetricsCard />);
+    fireEvent.click(screen.getByRole('button', { name: /Aktueller Status/ }));
+    expect(screen.getByText(/Bei Verbrauchern die Nutzung in h\/Tag eintragen/)).toBeInTheDocument();
+    expect(screen.queryByText('Unendlich')).not.toBeInTheDocument();
   });
 });

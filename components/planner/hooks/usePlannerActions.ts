@@ -19,6 +19,7 @@ import {
   Plus,
   FolderOpen,
   Redo2,
+  Route,
   Ruler,
   Save,
   ScanSearch,
@@ -39,6 +40,8 @@ import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../.
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { requestConfirm } from '../../ui/ConfirmDialog';
+import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
 import { buildShareUrl } from '../../../store/sharePlan';
@@ -225,6 +228,17 @@ export function usePlannerActions({
   }, []);
 
   const runAutoWire = useCallback(() => {
+    // B-11 (QA-Bericht): „Automatisch verbinden“ ist die ELEKTRIK-Verdrahtung.
+    // Im Wasser-Tab schlug sie Batterie und Smart Shunt vor. Dort gibt es
+    // keinen Auto-Lauf; der Befehl wird nicht ausgeführt, sondern erklärt.
+    if (usePlannerStore.getState().viewMode === 'water') {
+      onFeedback({
+        type: 'info',
+        message:
+          'Automatisch verbinden gilt für die Elektrik. Im Wasser-Tab verbindest du Schläuche, Pumpe und Tanks von Hand.',
+      });
+      return;
+    }
     flashBusy('wire');
     autoWireSystem();
     // Spec #29: Der Vorschlag wird bei Konflikten erst nach Bestätigung
@@ -245,12 +259,15 @@ export function usePlannerActions({
       outcome = { applied: false, reason: 'error' };
     }
     if (outcome.applied) {
+      // B-15 (QA): Nach dem Anordnen die Gesamtansicht neu einpassen, sonst
+      // bleibt der Zoom auf dem alten Ausschnitt (44 %, Beschriftungen unlesbar).
+      window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
       onFeedback({
         type: outcome.engine === 'elk' ? 'success' : 'info',
         message:
           outcome.engine === 'elk'
-            ? 'Plan mit ELK global strukturiert. Rückgängig ist möglich.'
-            : 'ELK nicht rechtzeitig fertig — Raster-Layout (Dagre-Fallback) angewendet. Rückgängig ist möglich.',
+            ? 'Plan automatisch angeordnet. Rückgängig ist möglich.'
+            : 'Automatische Anordnung war nicht rechtzeitig fertig — Raster-Anordnung angewendet. Rückgängig ist möglich.',
       });
     } else if (outcome.reason === 'empty') {
       onFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
@@ -416,9 +433,9 @@ export function usePlannerActions({
     const hasContent = state.nodes.length + state.waterNodes.length > 0;
     if (
       hasContent &&
-      !window.confirm(
+      !(await requestConfirm(
         `Der aktuelle Plan wird durch „${picked.name}“ ersetzt. Mit Rückgängig (Strg+Z) lässt sich der Wechsel zurücknehmen. Fortfahren?`
-      )
+      ))
     ) {
       return;
     }
@@ -514,7 +531,9 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              label: 'Zur Prüfung',
+              // B-16 (QA-Bericht): hieß „Zur Prüfung“, speichert aber nur lokal und
+              // öffnet keine Prüfung. Der Eintrag heißt jetzt wie die Aktion.
+              label: 'Plan speichern',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
@@ -603,7 +622,7 @@ export function usePlannerActions({
             },
             { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
             {
-              label: 'Plan ordnen (ELK)',
+              label: 'Plan automatisch ordnen',
               icon: Network,
               testId: 'action-layout-v2-menu',
               run: () => void runLayoutV2(),
@@ -736,9 +755,30 @@ export function usePlannerActions({
    * nur ein Menü (die Chrome-Leiste hält genau ein offenes Menü), deshalb gibt es
    * nie zwei Elemente mit derselben Kennung.
    */
+  // Dieselbe Sperrbedingung wie der Knopf in der Werkzeugleiste (ein Modul,
+  // eine Wahrheit): Der `⋯`-Eintrag darf nicht anklickbar sein, während der
+  // Knopf gesperrt ist.
+  const optimizeRouting = useOptimizeRoutingCommand();
+
   const overflow = useMemo<PlannerMenuGroup[]>(
     () => [
       { items: menus.werkzeuge[0]!.items },
+      {
+        /* Zugang zur Kabel-Optimierung, wenn der Knopf auf 320 px aus der
+           Werkzeugleiste weicht (globals.css §7a). Dieselbe Aktion, dieselbe
+           Sperrbedingung (`useOptimizeRoutingCommand`) — nur ein anderer Weg
+           dorthin. */
+        label: 'Kabelrouting',
+        items: [
+          {
+            label: 'Kabel optimieren',
+            icon: Route,
+            testId: 'action-optimize-routing',
+            disabled: optimizeRouting.disabled,
+            run: optimizeRouting.run,
+          },
+        ],
+      },
       {
         label: 'Ausgabe',
         items: [
@@ -806,6 +846,7 @@ export function usePlannerActions({
       guidedMode,
       menus,
       onRequestReset,
+      optimizeRouting,
       season,
       setDetailLevel,
       setGuidedMode,

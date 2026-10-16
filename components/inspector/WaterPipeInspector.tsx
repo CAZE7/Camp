@@ -52,7 +52,6 @@ export function WaterPipeInspector({
         </label>
         <ValidatingInput
           id={`${edge.id}-pipe-length`}
-          type="number"
           min="0.1"
           step="0.1"
           isFloat

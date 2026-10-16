@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
-import { SearchX } from 'lucide-react';
+import { SearchX, X } from 'lucide-react';
 import {
   DEFAULT_OPEN_CATEGORY,
   deviceAssistant,
@@ -14,6 +14,12 @@ import { SidebarSearch } from './sidebar/SidebarSearch';
 interface SidebarProps {
   mode?: 'electric' | 'water';
   onMobileAdd?: () => void;
+  /**
+   * Schließt das Blatt auf dem Handy. Der Knopf erscheint nur dort
+   * (`md:hidden`): Ab Tablet ist der Katalog eine Spalte mit eigenem
+   * Einklapp-Griff an der Panelkante.
+   */
+  onCloseMobile?: () => void;
 }
 
 /**
@@ -29,7 +35,7 @@ interface SidebarProps {
  * Komposition. Daten und reine Funktionen liegen in `sidebar/catalog.ts`,
  * Hinzufügen und Ghost-Drag in `sidebar/drag.ts`.
  */
-export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
+export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
   const listRef = useRef<HTMLDivElement>(null);
@@ -81,8 +87,22 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
     >
       <div className="cad-panel__head">
         <h2 className="panel-title">Komponenten</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {isSearching ? `${resultCount} Treffer` : `${activeComponents.length} Bauteile`}
+        <span className="flex items-center gap-2">
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {/* B-18 (QA): Die Zahl ist der Katalog, nicht der Plan — sonst zeigt ein leerer Plan „14 Bauteile“. */}
+            {isSearching ? `${resultCount} Treffer` : `${activeComponents.length} im Katalog`}
+          </span>
+          {onCloseMobile && (
+            <button
+              type="button"
+              data-testid="sidebar-close"
+              onClick={onCloseMobile}
+              className="cad-btn h-11 w-11 justify-center md:hidden"
+              aria-label="Bauteilkatalog schließen"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          )}
         </span>
       </div>
 
@@ -90,7 +110,13 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
         <SidebarSearch value={searchTerm} onChange={setSearchTerm} onEnter={focusFirstRow} />
       </div>
 
-      <div ref={listRef} className="cad-panel__body cad-scroll">
+      <div
+        ref={listRef}
+        /* Scroll-Körper des Katalogs: E2E-Vertrag für „das Panel scrollt nur
+           sich selbst" (tests/e2e/scroll-architecture.spec.ts). */
+        data-testid="sidebar-scroll"
+        className="cad-panel__body cad-scroll"
+      >
         {hasAnyResult ? (
           <>
             {categories.map((category) => (

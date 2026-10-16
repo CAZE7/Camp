@@ -38,6 +38,9 @@ import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 import { resolveRoutingEndpoints, routeAllCables, type RouteEdgeRef } from './routeAll';
 import { isRouteLocked } from '../../../lib/electricalGraph/intent';
 import type { PathResult } from './pathfinding';
+import { selectRoutingPublication } from '../../../lib/routing/publication';
+import { optimizeCableRoutes } from './optimizeCableRoutes';
+import { computeCableRouteFinalValidation as validateCableRouteContract } from './routeValidation';
 
 /**
  * R-9 (Cache-/Re-Routing-Korrektheit): Layout-Signaturen.
@@ -419,6 +422,94 @@ export function useCableRoute(id: string): PathResult | undefined {
  * Sitzt als Kind von <ReactFlow>, sieht gemessene Nodes/Handles,
  * routet alle Kanten einmal und veröffentlicht das Ergebnis zum Nudging.
  */
+/**
+ * Atomar Geometrie, Befund und Generation gemeinsam veröffentlichen, BEVOR ein
+ * Leser benachrichtigt wird (Feature-Branch: Routing-Publikation).
+ */
+const ownedRoutes = new WeakSet<PathResult>();
+function immutableRoute(route: PathResult): PathResult {
+  if (ownedRoutes.has(route)) return route;
+  const copy = {
+    ...route,
+    waypoints: route.waypoints.map((point) => Object.freeze({ ...point })),
+    ...(route.hops ? { hops: route.hops.map((hop) => Object.freeze({ ...hop })) } : {}),
+  } as PathResult;
+  Object.freeze(copy.waypoints);
+  if (copy.hops) Object.freeze(copy.hops);
+  Object.freeze(copy);
+  ownedRoutes.add(copy);
+  return copy;
+}
+
+export function publishCableRouteSnapshot(
+  routes: Map<string, PathResult>,
+  report: FinalValidationReport | undefined,
+  generation: RouteGenerationStatus
+): void {
+  current = new Map([...routes].map(([id, route]) => [id, immutableRoute(route)]));
+  currentValidation = report;
+  currentGeneration = generation;
+  listeners.forEach((listener) => listener());
+  validationListeners.forEach((listener) => listener());
+  generationListeners.forEach((listener) => listener());
+}
+
+/**
+ * Validiert Kandidat UND vorherigen Stand gegen die aktuelle Eingabe. Ein
+ * ungültiger Kandidat ersetzt niemals einen gültigen Stand; veraltete
+ * Generationen werden verworfen. Gibt `false` zurück, wenn die Eingabe
+ * inzwischen überholt ist.
+ */
+export function completeCableRouteGeneration(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  status: RouteGenerationStatus,
+  routes?: Map<string, PathResult>,
+  error?: string
+): boolean {
+  if (
+    currentGeneration &&
+    (currentGeneration.hash !== status.hash ||
+      currentGeneration.generation !== status.generation ||
+      currentGeneration.revision !== status.revision)
+  )
+    return false;
+  // Gelöschte Kanten verschwinden auch dann, wenn ein früherer Stand erhalten bleibt.
+  const ids = new Set(edges.map((edge) => edge.id));
+  const previous = new Map([...current].filter(([id]) => ids.has(id)));
+  const candidateReport = routes ? validateCableRouteContract(nodes, edges, routes) : undefined;
+  const choice = selectRoutingPublication({
+    candidate: routes,
+    candidateReport,
+    previous,
+    previousReport: validateCableRouteContract(nodes, edges, previous),
+    hasPrevious: previous.size > 0,
+    error,
+  });
+  publishCableRouteSnapshot(choice.routes, choice.report, {
+    ...status,
+    state:
+      choice.state === 'valid' && status.optimization
+        ? status.optimization.budgetExhausted
+          ? 'partial'
+          : 'optimized'
+        : choice.state,
+    geometryHash: choice.routes === routes ? status.hash : currentGeneration?.geometryHash,
+    reason:
+      choice.reason ??
+      (status.optimization
+        ? `${status.optimization.accepted} Verbesserungen in ${status.optimization.attempted} Versuchen. ${status.optimization.budgetExhausted ? 'Arbeitsbudget erreicht; kein Optimalitätsnachweis.' : 'Kandidaten geprüft; kein Optimalitätsnachweis.'}`
+        : undefined),
+  });
+  return true;
+}
+
+let optimizeCurrentPlan: (() => void) | undefined;
+/** Explizite Nutzeraktion; verändert weder Knoten, elektrische Felder noch Kantenabsicht. */
+export const requestCableRouteOptimization = (): void => {
+  optimizeCurrentPlan?.();
+};
+
 export function CableRouteSync() {
   const store = useStoreApi();
   // v12: `nodeLookup` enthält gemessene Maße, absolute Position und Handles.
@@ -551,6 +642,55 @@ export function CableRouteSync() {
     if (runner) runner.schedule();
     return () => runner?.cancel();
   }, [signatureState.routing]);
+
+  // Optimierung ist eine explizite Nutzeraktion: sie startet immer von der
+  // kanonischen Erstroutung und veröffentlicht nur einen validierten Stand.
+  useLayoutEffect(() => {
+    const tracker = generationRef.current;
+    const optimize = () => {
+      runnerRef.current?.cancel();
+      const state = store.getState();
+      const all = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+      const { routable: nodes } = collectRoutableNodes(all);
+      const edgeRefs = state.edges as RouteEdgeRef[];
+      const hash = routingInputHash(nodeLayoutSignature(nodes), edgeTopologySignature(edgeRefs));
+      const status = tracker.begin(hash);
+      publishCableRouteGeneration({
+        ...status,
+        state: 'routing',
+        geometryHash: currentGeneration?.geometryHash,
+      });
+      if (!status.allowed) return;
+      try {
+        const { routes, summary } = optimizeCableRoutes(nodes, edgeRefs);
+        completeCableRouteGeneration(
+          nodes,
+          edgeRefs,
+          {
+            ...status,
+            optimization: {
+              attempted: summary.attempted,
+              accepted: summary.accepted,
+              budgetExhausted: summary.budgetExhausted,
+            },
+          },
+          routes
+        );
+      } catch (error) {
+        completeCableRouteGeneration(
+          nodes,
+          edgeRefs,
+          status,
+          undefined,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    };
+    optimizeCurrentPlan = optimize;
+    return () => {
+      if (optimizeCurrentPlan === optimize) optimizeCurrentPlan = undefined;
+    };
+  }, [store]);
 
   return null;
 }

@@ -1,6 +1,7 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
+import { collidingNodeIds, findNearestFreePosition } from '../../components/planner/utils/collision';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
@@ -226,6 +227,23 @@ function lockedEdgeMutations(
     if (movedEndpoint) mutations.push({ edge, action: 'move', nodeId: movedEndpoint });
   }
   return mutations;
+}
+
+/**
+ * QA B-03: Ein Drop legt das Bauteil nicht blind auf andere Bauteile. Die
+ * nächste freie Fläche in der aktiven Ansicht gewinnt (dieselbe Regel wie
+ * der Klick-Pfad im Canvas).
+ */
+function freePositionFor(
+  state: { viewMode: string; nodes: Node[]; waterNodes: Node[] },
+  type: string,
+  position: { x: number; y: number }
+): { x: number; y: number } {
+  const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
+  const candidate = { id: 'new-component', type, data: {}, position };
+  // Ein freier Drop bleibt, wo er fallen gelassen wurde; nur ein Treffer sucht neu.
+  if (collidingNodeIds(candidate, domainNodes).length === 0) return position;
+  return findNearestFreePosition(candidate, domainNodes);
 }
 
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
@@ -1035,7 +1053,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       y: event.clientY,
     });
 
-    get().addNode(type, label, position, wattsStr ? Number(wattsStr) : undefined);
+    get().addNode(
+      type,
+      label,
+      freePositionFor(get(), type, position),
+      wattsStr ? Number(wattsStr) : undefined
+    );
   },
   onCustomDrop: (event, screenToFlowPosition) => {
     // AUDIT T1: `event as CustomEvent` ist `CustomEvent<any>` — damit liefen
@@ -1058,7 +1081,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       y: clientY,
     });
 
-    get().addNode(type, label, position, watts);
+    get().addNode(type, label, freePositionFor(get(), type, position), watts);
   },
   addNode: (type, label, position, watts?: number) => {
     const newNode: Node = {

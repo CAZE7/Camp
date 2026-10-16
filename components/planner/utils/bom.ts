@@ -147,6 +147,10 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
     const isAc = edge.data?.edgeDomain === 'AC_230V';
     let cs = edge.data?.crossSection;
     const routed = routeOf(edge.id);
+    // QA B-07 — bewusste Entscheidung: Die Stückliste nimmt die GRÖßERE Länge
+    // (eingetragen oder geroutet). Die eingetragene Länge ist oft die Luftlinie
+    // (AutoWire) und damit zu kurz (AUDIT L1, Referenzplan camper). Eine reine
+    // Nutzerlänge würde zu kurz bestellen. Der Widerspruch wird gemeldet.
     const length = edgeLengthOf(
       routed?.length,
       edge.data?.length,

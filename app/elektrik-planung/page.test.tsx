@@ -49,7 +49,8 @@ describe('ElektrikPlanung', () => {
     const length = screen.getByLabelText('Einfache Leitungslänge L in Metern');
 
     for (const field of [current, length]) {
-      expect(field).toHaveAttribute('type', 'number');
+      // QA B-01: Textfeld mit Dezimal-Tastatur statt type="number" (Dezimalkomma).
+      expect(field).toHaveAttribute('type', 'text');
       expect(field).toHaveAttribute('inputmode', 'decimal');
 
       const describedBy = field.getAttribute('aria-describedby');

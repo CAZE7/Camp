@@ -23,6 +23,9 @@ interface ComponentTileProps {
 export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: ComponentTileProps) {
   const Icon = comp.icon;
   const desktopDragStarted = useRef(false);
+  // B-05 (QA-Bericht): Desktop-Klick ohne Ziehen. Die Druckposition merken, um
+  // einen Antippen-Klick von einem echten Ziehen zu unterscheiden.
+  const pressPoint = useRef<{ x: number; y: number } | null>(null);
   const keyboardAddHandled = useRef(false);
   const rowRef = useRef<HTMLButtonElement>(null);
 
@@ -45,6 +48,7 @@ export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: Compone
         'lg:cursor-grab'
       )}
       onPointerDown={(event) => {
+        pressPoint.current = { x: event.clientX, y: event.clientY };
         desktopDragStarted.current = handlePointerDown(event, comp);
       }}
       onKeyDown={(event) => {
@@ -57,13 +61,18 @@ export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: Compone
           onNavigate?.(event.key === 'ArrowDown' ? 1 : -1);
         }
       }}
-      onClick={() => {
+      onClick={(event) => {
         // A started mouse ghost drag owns this click, even if it was released
-        // outside the canvas. Every other activation (touch, pen, assistive
-        // technology) adds directly at the current canvas centre.
+        // outside the canvas — ausser die Maus hat sich praktisch nicht bewegt
+        // (B-05): dann ist es ein Klick und fügt wie das Antippen hinzu.
+        // Every other activation (touch, pen, assistive technology) adds
+        // directly at the current canvas centre.
         if (desktopDragStarted.current) {
           desktopDragStarted.current = false;
-          return;
+          const press = pressPoint.current;
+          const isPlainClick =
+            press !== null && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 4;
+          if (!isPlainClick) return;
         }
         if (keyboardAddHandled.current) {
           keyboardAddHandled.current = false;

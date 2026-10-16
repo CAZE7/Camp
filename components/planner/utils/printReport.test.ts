@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { buildPrintReportHtml, escapeHtml } from './printReport';
+import { describe, it, expect, vi } from 'vitest';
+import { buildPrintReportHtml, escapeHtml, openPrintReport } from './printReport';
 import { assessRelease } from './releaseStatus';
 import type { BomData } from './bom';
 import type { VerificationSummary } from './verificationWarnings';
@@ -108,5 +108,55 @@ describe('buildPrintReportHtml', () => {
     });
     expect(html).toContain('Keine Prüfung vorhanden.');
     expect(html).toContain('Entwurf');
+  });
+});
+
+/**
+ * QA B-08: Der Reiter trägt den Berichtstitel schon vor dem Schreiben, und der
+ * Druck startet nach dem Laden — genau einmal.
+ */
+describe('openPrintReport · Reiter und Druckstart (B-08)', () => {
+  it('setzt den Titel vor dem Schreiben und druckt nach load genau einmal', () => {
+    const order: string[] = [];
+    let onLoad: (() => void) | undefined;
+    let timer: (() => void) | undefined;
+    const print = vi.fn(() => order.push('print'));
+    const fakeWin = {
+      opener: 'x' as unknown,
+      document: {
+        title: '',
+        open: () => order.push('open'),
+        write: () => order.push('write'),
+        close: () => order.push('close'),
+      },
+      print,
+      setTimeout: (fn: () => void) => {
+        timer = fn;
+        return 1;
+      },
+      addEventListener: (event: string, fn: () => void) => {
+        if (event === 'load') onLoad = fn;
+      },
+    };
+    const titleSet = vi.fn(() => order.push('title'));
+    Object.defineProperty(fakeWin.document, 'title', {
+      set: titleSet,
+      get: () => '',
+    });
+    vi.stubGlobal('window', { ...globalThis.window, open: vi.fn(() => fakeWin) });
+
+    const ok = openPrintReport(
+      '<html><head><title>Projekt &amp; Co – Planungsbericht</title></head><body></body></html>'
+    );
+
+    expect(ok).toBe(true);
+    expect(titleSet).toHaveBeenCalledWith('Projekt & Co – Planungsbericht');
+    expect(order.indexOf('title')).toBeLessThan(order.indexOf('write'));
+    expect(print).not.toHaveBeenCalled();
+
+    onLoad?.();
+    timer?.();
+    expect(print).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });

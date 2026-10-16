@@ -778,7 +778,16 @@ const hasPairRuleAbove = (
   return false;
 };
 
-export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export type RouteAllOptions = {
+  /** Internal rip-up occupancy. Does not turn user edges into locked edges. */
+  preservedRoutes?: ReadonlyMap<string, PathResult>;
+};
+
+export function routeAllCables(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  options: RouteAllOptions = {}
+): Map<string, PathResult> {
   nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const out = new Map<string, PathResult>();
@@ -877,9 +886,11 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Festgelegte Wege werden vor freien Trassen registriert. So routet der
   // normale Pfad an der unveränderlichen Nutzergeometrie vorbei; die Sperre
   // ist nicht nur ein nachträglicher Hop-/Nudge-Hinweis.
+  const isFixed = (edge: RouteEdgeRef) =>
+    isLockedRouteEdge(edge) || options.preservedRoutes?.has(edge.id) === true;
   const routingOrder = [
-    ...workOrder.filter(isLockedRouteEdge).sort((left, right) => compareIds(left.id, right.id)),
-    ...workOrder.filter((edge) => !isLockedRouteEdge(edge)),
+    ...workOrder.filter(isFixed).sort((left, right) => compareIds(left.id, right.id)),
+    ...workOrder.filter((edge) => !isFixed(edge)),
   ];
   const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
   // Bundle-Größen aus den endgültigen Port-Koordinaten aller Routen vorab
@@ -1146,6 +1157,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // The snapshot is user-owned geometry: no A*, fallback, hop, or later
       // optimization may change a point. Final validation reports conflicts.
       result = rebuild([...storedLockedPath], 0, 'locked', [], false, false, true);
+    } else if (options.preservedRoutes?.has(edge.id)) {
+      const preserved = options.preservedRoutes.get(edge.id)!;
+      result = { ...preserved, waypoints: preserved.waypoints.map((point) => ({ ...point })) };
     } else {
       result = routeWithTubes(request_, tubesForRegion(tubes, region, currentPorts));
       // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der

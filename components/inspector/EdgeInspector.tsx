@@ -168,7 +168,6 @@ export function EdgeInspector({
             </label>
             <ValidatingInput
               id="length-input"
-              type="number"
               min="0.1"
               step="0.1"
               isFloat={true}
@@ -204,7 +203,6 @@ export function EdgeInspector({
               </label>
               <ValidatingInput
                 id="fuse-input"
-                type="number"
                 min="0"
                 value={edge.data?.fuseSize ?? 0}
                 rules={[COMMON_RULES.positive]}
@@ -231,7 +229,6 @@ export function EdgeInspector({
               </label>
               <ValidatingInput
                 id="fuse-offset-input"
-                type="number"
                 min="0"
                 max="1"
                 step="0.05"
@@ -304,7 +301,6 @@ export function EdgeInspector({
                   </label>
                   <ValidatingInput
                     id="ac-fuse-input"
-                    type="number"
                     min="1"
                     value={edge.data?.fuseSize ?? 0}
                     rules={[COMMON_RULES.positive]}

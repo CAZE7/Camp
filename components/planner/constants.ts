@@ -21,7 +21,7 @@ export const EDGE_TYPES = { cableEdge: CableEdge };
 export const PLANNER_MIN_ZOOM = 0.25;
 export const PLANNER_MAX_ZOOM = 2;
 export const PLANNER_FIT_PADDING = 0.2;
-export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
+export { PLANNER_SNAP_GRID } from './grid';
 
 /**
  * Frames, die ein Bauteil-Zusatz auf eine messbare Plan-Pane wartet (≈0,5 s bei

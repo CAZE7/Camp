@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
+import { requestConfirm } from '@/components/ui/ConfirmDialog';
 import { isStarterPlan, PLANNER_TEMPLATES } from './templates';
 
 const STROMQUELLEN = [
@@ -35,13 +36,21 @@ export function OnboardingWizard() {
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
 
-  const totalSelected =
-    Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
+  const sourceCount = Object.values(sources).filter(Boolean).length;
+  const consumerCount = Object.values(consumers).filter(Boolean).length;
+  const totalSelected = sourceCount + consumerCount;
   const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'kastenwagen' : 'minimalist';
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
   const applyTemplate = usePlannerStore((state) => state.applyTemplate);
   const clearPlan = usePlannerStore((state) => state.clearPlan);
+
+  /**
+   * Schließen (Esc, ✕, Klick daneben) ohne Änderung am Plan. Vorher löste
+   * Esc „Leeren Plan starten“ aus — der Plan wurde geleert oder die native
+   * Rückfrage blockierte den Schließ-Versuch (B-23, QA-Bericht).
+   */
+  const dismiss = useCallback(() => setHasOnboarded(true), [setHasOnboarded]);
 
   // Das beim ersten Besuch vorgeladene Beispiel-Setup ist kein eigener Plan:
   // Es zu ersetzen oder zu leeren braucht keine Rückfrage — sonst begrüßt der
@@ -49,13 +58,13 @@ export function OnboardingWizard() {
   const hasOwnPlan = (state: ReturnType<typeof usePlannerStore.getState>) =>
     (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
 
-  const startEmpty = () => {
+  const startEmpty = async () => {
     const state = usePlannerStore.getState();
     if (
       hasOwnPlan(state) &&
-      !window.confirm(
+      !(await requestConfirm(
         'Der aktuelle Plan wird geleert. Du kannst das anschließend rückgängig machen. Fortfahren?'
-      )
+      ))
     )
       return;
     clearPlan();
@@ -63,13 +72,13 @@ export function OnboardingWizard() {
     window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
   };
 
-  const handleApplyTemplate = (templateId: string) => {
+  const handleApplyTemplate = async (templateId: string) => {
     const state = usePlannerStore.getState();
     if (
       hasOwnPlan(state) &&
-      !window.confirm(
+      !(await requestConfirm(
         'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
-      )
+      ))
     )
       return;
     applyTemplate(templateId);
@@ -80,11 +89,9 @@ export function OnboardingWizard() {
   return (
     <AccessibleDialog
       open
-      onClose={startEmpty}
+      onClose={dismiss}
       title="Dein Camper-Energieplan"
       description="In drei kurzen Schritten findest du eine passende Basis. Oder starte direkt mit einem leeren Plan."
-      showClose={false}
-      closeOnBackdrop={false}
     >
       {/* Fortschrittsanzeige mit role=img, damit das aria-label auf einem
           <div> erlaubt ist (Lighthouse aria-prohibited-attr). */}
@@ -121,8 +128,8 @@ export function OnboardingWizard() {
               ))}
             </div>
             <div className="flex flex-wrap justify-between gap-3 pt-3">
-              <Button variant="ghost" onClick={startEmpty} className="min-h-11">
-                Leeren Plan starten
+              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+                Mit leerem Plan beginnen
               </Button>
               <Button onClick={() => setStep(2)} className="min-h-11 px-6">
                 Weiter
@@ -136,6 +143,9 @@ export function OnboardingWizard() {
             <h3 id="onboarding-consumer-title" className="text-lg font-semibold">
               2. Welche Geräte planst du?
             </h3>
+            <p className="text-sm text-muted-foreground">
+              Nichts ist vorausgewählt. Deine Auswahl bestimmt die Empfehlung in Schritt 3.
+            </p>
             <div className="space-y-2">
               {VERBRAUCHER.map((consumer) => (
                 <label
@@ -170,8 +180,9 @@ export function OnboardingWizard() {
                 3. Wähle deine Basis
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Die Empfehlung richtet sich nach dem Umfang deiner Auswahl. Alle Werte lassen sich später
-                anpassen.
+                Die Empfehlung richtet sich nach dem Umfang deiner Auswahl ({sourceCount} Stromquelle
+                {sourceCount === 1 ? '' : 'n'}, {consumerCount} Gerät{consumerCount === 1 ? '' : 'e'}). Alle
+                Werte lassen sich später anpassen.
               </p>
             </div>
             <div className="space-y-3">
@@ -181,7 +192,7 @@ export function OnboardingWizard() {
                   <button
                     type="button"
                     key={template.id}
-                    onClick={() => handleApplyTemplate(template.id)}
+                    onClick={() => void handleApplyTemplate(template.id)}
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       template.id === recommendedId
                         ? 'border-moss bg-moss/10 ring-1 ring-moss'
@@ -204,8 +215,8 @@ export function OnboardingWizard() {
               <Button variant="outline" onClick={() => setStep(2)} className="min-h-11 px-6">
                 Zurück
               </Button>
-              <Button variant="ghost" onClick={startEmpty} className="min-h-11">
-                Ohne Vorlage starten
+              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+                Mit leerem Plan beginnen
               </Button>
             </div>
           </section>

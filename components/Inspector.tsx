@@ -21,6 +21,7 @@ import {
   ComponentInfoInspector,
 } from './inspector/NodeInspectors';
 import { WaterPipeInspector } from './inspector/WaterPipeInspector';
+import { requestConfirm } from './ui/ConfirmDialog';
 import {
   type NodeDataPatch,
   type PlannerFlowNode,
@@ -287,12 +288,11 @@ const NodeInspector = ({
         variant="destructive"
         size="sm"
         onClick={() => {
-          if (
-            window.confirm(
-              `„${node.data?.label || node.type || 'Komponente'}“ wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.`
-            )
-          )
-            onDelete(node.id);
+          void requestConfirm(
+            `„${node.data?.label || node.type || 'Komponente'}“ wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.`
+          ).then((ok) => {
+            if (ok) onDelete(node.id);
+          });
         }}
         className="w-full gap-2"
       >
@@ -371,12 +371,11 @@ export default function Inspector({
               variant="destructive"
               size="sm"
               onClick={() => {
-                if (
-                  window.confirm(
-                    'Diese Leitung wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
-                  )
-                )
-                  onDelete();
+                void requestConfirm(
+                  'Diese Leitung wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
+                ).then((ok) => {
+                  if (ok) onDelete();
+                });
               }}
               className="w-full gap-2"
             >

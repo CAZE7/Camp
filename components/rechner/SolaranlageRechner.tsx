@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_YIELD_KWH_PER_KWP_DAY, type SolarSizingResult, sizeSolarArray } from '@/lib/solarSizing';
+import { DecimalInput } from '../ui/DecimalInput';
 
 /**
  * components/rechner/SolaranlageRechner.tsx — Modulleistung aus Tagesbedarf,
@@ -68,9 +68,9 @@ export function SolaranlageRechner() {
       <div className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="solar-energie">Tagesbedarf in Wattstunden</Label>
-          <Input
+          <DecimalInput
             id="solar-energie"
-            type="number"
+
             inputMode="decimal"
             min="1"
             max="20000"
@@ -88,9 +88,9 @@ export function SolaranlageRechner() {
 
         <div className="space-y-2">
           <Label htmlFor="solar-ertrag">Spezifischer Ertrag in kWh je kWp und Tag</Label>
-          <Input
+          <DecimalInput
             id="solar-ertrag"
-            type="number"
+
             inputMode="decimal"
             min="0.1"
             max="8"
@@ -109,9 +109,9 @@ export function SolaranlageRechner() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="solar-panel">Panel in Wp</Label>
-            <Input
+            <DecimalInput
               id="solar-panel"
-              type="number"
+
               inputMode="decimal"
               min="5"
               max="600"
@@ -124,9 +124,9 @@ export function SolaranlageRechner() {
 
           <div className="space-y-2">
             <Label htmlFor="solar-abschlag">Abschlag in Prozent</Label>
-            <Input
+            <DecimalInput
               id="solar-abschlag"
-              type="number"
+
               inputMode="decimal"
               min="0"
               max="70"

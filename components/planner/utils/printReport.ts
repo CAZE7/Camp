@@ -185,10 +185,23 @@ export function openPrintReport(html: string): boolean {
   const win = window.open('', '_blank');
   if (!win) return false;
   win.opener = null;
+  // QA B-08: Der Titel gehört schon vor dem Schreiben ins Fenster, sonst zeigt
+  // der Reiter bis zum Laden „about:blank“.
+  const title = /<title>([\s\S]*?)<\/title>/.exec(html)?.[1];
+  if (title) win.document.title = title.replace(/&amp;/g, '&');
   win.document.open();
   win.document.write(html);
   win.document.close();
-  // Druck erst nach dem Rendern starten.
-  win.setTimeout(() => win.print(), 300);
+  // QA B-08: Der Druck startet nach dem Laden des Berichts, nicht nach einem
+  // festen Timer. Ein Timer druckte bei langsamem Rendern eine leere Seite.
+  // Der Timer bleibt nur als Absicherung, falls `load` nicht mehr feuert.
+  let started = false;
+  const print = () => {
+    if (started) return;
+    started = true;
+    win.print();
+  };
+  win.setTimeout(print, 1500);
+  win.addEventListener?.('load', () => win.setTimeout(print, 50));
   return true;
 }

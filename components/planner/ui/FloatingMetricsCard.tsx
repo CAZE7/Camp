@@ -4,6 +4,7 @@ import { useAppStore } from '../../../lib/store';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { useShallow } from 'zustand/react/shallow';
 import { ChevronDown } from 'lucide-react';
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 
 export function FloatingMetricsCard() {
   const [expanded, setExpanded] = useState(false);
@@ -58,6 +59,11 @@ export function FloatingMetricsCard() {
               <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
               <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
                 {metrics.autarkyStr}
+                {metrics.autarkyStr === AUTARKY_NOT_CALCULATED && (
+                  <span className="text-muted-ink block text-xs font-normal">
+                    Bei Verbrauchern die Nutzung in h/Tag eintragen.
+                  </span>
+                )}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3">

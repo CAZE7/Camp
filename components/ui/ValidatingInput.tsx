@@ -157,6 +157,13 @@ export function ValidatingInput({
     <div className="flex w-full flex-col">
       <input
         {...props}
+        // B-01 (QA-Bericht): `type="number"` lässt das deutsche Dezimalkomma
+        // vom Browser verwerfen oder verschlucken („12,5“ → 125). Der Parser
+        // (`parseDecimalString`) liest Komma und Punkt — deshalb Textfeld mit
+        // numerischer Tastatur. Die Validierung bleibt im Parser.
+        type="text"
+        inputMode={props.inputMode ?? (isFloat ? 'decimal' : 'numeric')}
+        autoComplete="off"
         id={inputId}
         value={localValue}
         onChange={handleChange}

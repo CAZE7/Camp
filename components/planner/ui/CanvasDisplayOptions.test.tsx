@@ -60,7 +60,8 @@ describe('CanvasDisplayOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: '12V' }));
     expect(handlers.onToggleDomain).toHaveBeenCalledWith('DC_12V');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ansichtsoptionen schließen' }));
+    // B-22: Die Auswahl hat das Popover bereits geschlossen.
+    expect(screen.queryByRole('button', { name: 'Ansichtsoptionen schließen' })).not.toBeInTheDocument();
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     matchMediaSpy.mockRestore();
   });
@@ -99,5 +100,38 @@ describe('CanvasDisplayOptions', () => {
     expect(screen.getByRole('button', { name: '12V' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Trassen' }));
     expect(handlers.onToggleTrunkMode).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * QA B-22: Eine Auswahl im Ansicht-Popover schließt es. Vorher blieb es offen
+ * über dem Umschalter stehen und verdeckte die Planfläche.
+ */
+describe('CanvasDisplayOptions · Popover schließt nach Auswahl (B-22)', () => {
+  it('schließt das Popover, sobald eine Anzeige gewählt wurde', () => {
+    const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === '(max-width: 1279px)',
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          onchange: null,
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList
+    );
+    const handlers = props();
+    render(<CanvasDisplayOptions {...handlers} />);
+
+    const trigger = screen.getByTestId('canvas-display-options');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: '12V' }));
+    expect(handlers.onToggleDomain).toHaveBeenCalledWith('DC_12V');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    matchMediaSpy.mockRestore();
   });
 });

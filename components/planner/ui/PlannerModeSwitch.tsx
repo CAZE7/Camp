@@ -52,7 +52,7 @@ export function PlannerModeSwitch({ mode, onSelect }: PlannerModeSwitchProps) {
     <div
       role="group"
       aria-label="Arbeitsmodus"
-      className="flex items-stretch gap-0.5 border border-rule-strong bg-surface-panel p-0.5"
+      className="flex w-full items-stretch gap-0.5 border border-rule-strong bg-surface-panel p-0.5 sm:w-auto"
     >
       {PLANNER_MODES.map((option) => {
         const active = option.mode === mode;
@@ -64,7 +64,7 @@ export function PlannerModeSwitch({ mode, onSelect }: PlannerModeSwitchProps) {
             aria-pressed={active}
             title={option.question}
             onClick={() => onSelect(option.mode)}
-            className={`cad-btn min-h-11 px-2.5 ${active ? 'cad-btn--active' : ''}`}
+            className={`cad-btn min-h-11 min-w-0 flex-1 px-1.5 text-xs sm:flex-none sm:px-2.5 sm:text-sm ${active ? 'cad-btn--active' : ''}`}
           >
             <option.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
             {option.label}

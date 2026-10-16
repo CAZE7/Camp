@@ -77,14 +77,27 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         className={`inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
         title="Bericht der Verifikations-Engine: Verdikt, Abdeckung, Modellgrenzen und Zertifikat"
       >
+        {/* Siegel in drei Stufen (M12, gemessen in der Werkzeugleiste):
+            ganz schmal nur Symbol + Klapppfeil (~50 px), ab `xl` mit
+            Verdikt-Abzeichen (~120 px), ab `2xl` mit der vollen Zeile
+            (~500 px). Die langen Formen waren bei 1440 px der Grund, dass die
+            Aktionsgruppe auf 145 px zusammengedrückt wurde und „Automatisch
+            verbinden“ hinter dem Rand lag — die Angaben selbst sind weiter
+            vollständig im `aria-label`, im Tooltip und im Bericht. */}
         {tone.icon}
-        <span className="hidden sm:inline">{tone.label}:</span>
+        <span className="cad-tb-explain">{tone.label}:</span>
         <span
-          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold sm:inline ${tone.badge}`}
+          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold xl:inline ${tone.badge}`}
         >
           {summary.label}
         </span>
-        <span className="hidden font-normal text-muted-foreground sm:inline">
+        {/* „{n} Regeln angewandt · {x} % entschieden“ bleibt im DOM (Teil des
+            zugänglichen Textes und im `aria-label` des Knopfes), aber ohne
+            eigene Breite: Die Zeile war 314 px breit und ließ in der
+            Werkzeugleiste bei 1920 px keine Aktionsgruppe mehr übrig. Die
+            vollständige Aussage steht im Tooltip, im `aria-label` und im
+            Bericht darunter. */}
+        <span className="sr-only">
           {summary.exercised} Regeln angewandt · {percent} % entschieden
         </span>
         <ChevronDown
@@ -99,7 +112,13 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
           data-testid="verification-seal-panel"
           role="region"
           aria-label="Prüfbericht der Verifikations-Engine"
-          className="absolute right-0 z-[80] mt-2 w-[min(92vw,30rem)] rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)]"
+          /* `fixed` statt `absolute`: Der Bericht ist bis zu 30 rem breit und
+             läge im `absolute`-Fall innerhalb der 44 px hohen Werkzeugleiste,
+             die wegen der scrollbaren Aktionsgruppe `overflow: hidden` trägt —
+             er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
+             nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
+             ab `md` als Panel unter der Kopfzeile. */
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] overflow-y-auto overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 

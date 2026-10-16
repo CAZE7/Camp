@@ -11,6 +11,7 @@ import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions
 import { PlannerMenubar } from './ui/PlannerMenubar';
 import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
+import { OptimizeRoutingButton } from './ui/OptimizeRoutingButton';
 import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
@@ -38,6 +39,33 @@ interface ActionFeedback {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+}
+
+/** Übersetzt einen Prüfbefund in den Store-Typ (eine Quelle für Zählung und Liste). */
+function warningToPlannerError(w: ValidationWarning) {
+  return createPlannerError({
+    code: plannerErrorCodeFromRuleId(w.ruleId),
+    severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
+    category: plannerErrorCategoryFromValidation(w.category, w.ruleId),
+    nodeIds: w.focusType === 'node' && w.focusId ? [w.focusId] : [],
+    edgeIds: w.focusType === 'edge' && w.focusId ? [w.focusId] : [],
+    message: w.title ?? w.message,
+    explanation: w.message,
+    suggestedFix: w.remedy,
+    details: {
+      ruleId: w.ruleId ?? null,
+      measuredValue: w.measuredValue ?? null,
+      expectedValue: w.expectedValue ?? null,
+      unit: w.unit ?? null,
+      source: w.source ?? null,
+    },
+  });
+}
+
+/** Schlüssel wie `dedupePlannerErrors`: gleiche Meldung zählt einmal. */
+export function warningDedupeKey(w: ValidationWarning): string {
+  const error = warningToPlannerError(w);
+  return `${error.code}|${error.severity}|${[...error.nodeIds].sort().join(',')}|${[...error.edgeIds].sort().join(',')}`;
 }
 
 export function PlannerDashboard() {
@@ -162,7 +190,16 @@ export function PlannerDashboard() {
         title: 'Wasserfluss verbessern',
         message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
       });
-    return [...liveWarnings, ...lockedMutationWarnings, ...supplemental];
+    // QA B-04: Kopfzeile, Fußzeile und Warnzentrale müssen dieselbe Zahl
+    // zeigen. Dieselbe Meldung (gleicher Code, gleiche Stufe, gleicher Fokus)
+    // zählt genau einmal — der Store dedupliziert genauso.
+    const seen = new Set<string>();
+    return [...liveWarnings, ...lockedMutationWarnings, ...supplemental].filter((w) => {
+      const key = warningDedupeKey(w);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
   /**
@@ -171,25 +208,7 @@ export function PlannerDashboard() {
    * einer anderen wären zwei Wahrheiten).
    */
   useEffect(() => {
-    const errors = warnings.map((w) =>
-      createPlannerError({
-        code: plannerErrorCodeFromRuleId(w.ruleId),
-        severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
-        category: plannerErrorCategoryFromValidation(w.category, w.ruleId),
-        nodeIds: w.focusType === 'node' && w.focusId ? [w.focusId] : [],
-        edgeIds: w.focusType === 'edge' && w.focusId ? [w.focusId] : [],
-        message: w.title ?? w.message,
-        explanation: w.message,
-        suggestedFix: w.remedy,
-        details: {
-          ruleId: w.ruleId ?? null,
-          measuredValue: w.measuredValue ?? null,
-          expectedValue: w.expectedValue ?? null,
-          unit: w.unit ?? null,
-          source: w.source ?? null,
-        },
-      })
-    );
+    const errors = warnings.map((w) => warningToPlannerError(w));
     setPlannerErrors(errors);
   }, [warnings, setPlannerErrors]);
 
@@ -233,10 +252,16 @@ export function PlannerDashboard() {
         onOpenMenu={(menu) => setOpenMenu(menu)}
         status={
           <span className="hidden items-center gap-2 sm:flex">
+            {/* B-12 (QA-Bericht): Die Kopfzeile zählt die Ansicht, die offen ist —
+                im Wasser-Tab keine Elektrik-Zähler und keine Elektrik-Warnungen. */}
             <span className="text-muted-foreground">
-              {nodes.length} Bauteile · {edges.length} Leitungen
+              {viewMode === 'water'
+                ? `${waterNodes.length} Bauteile · ${waterEdges.length} Leitungen`
+                : `${nodes.length} Bauteile · ${edges.length} Leitungen`}
             </span>
-            {criticalCount > 0 && <span className="text-destructive">{criticalCount} kritisch</span>}
+            {viewMode !== 'water' && criticalCount > 0 && (
+              <span className="text-destructive">{criticalCount} kritisch</span>
+            )}
           </span>
         }
       />
@@ -263,10 +288,40 @@ export function PlannerDashboard() {
         openMenu={openMenu}
         onOpenMenu={setOpenMenu}
         statusArea={
+          /*
+            Statuschips rechts in der Werkzeugleiste — festgenagelt, nie
+            weggescrollt (siehe `PlannerToolbar`/`.cad-toolbar__status`).
+
+            Die Chips folgen dem gemessenen Breitenbudget der Leiste
+            (`app/globals.css` §7a), nicht Tailwind-Breakpoints: Die Leiste ist
+            in jeder Breite 100 % des Fensters breit.
+              · Speicherzustand  — Symbol immer; Text ab 1980 px
+                                   (`.cad-tb-explain`).
+              · Routing-Status   — Symbol immer; Text ab 1980 px.
+              · Kabel optimieren — „Optimieren“ bis 1979 px, ab 1980 px
+                                   „Kabel optimieren“; der zugängliche Name ist
+                                   in jeder Breite vollständig. Unter 360 px
+                                   weicht der Knopf aus der Leiste, die Aktion
+                                   steht dann im `⋯`-Menü
+                                   (`action-optimize-routing`).
+              · Prüfsiegel       — erst ab 768 px: Auf dem Handy ist der Weg zum
+                                   Bericht der Prüfknopf in der Schrittleiste
+                                   bzw. „Prüfbericht öffnen“ im `⋯`-Menü.
+              · Warnzentrale     — immer: Sie ist der einzige sichtbare Zugang
+                                   zum Prüfbericht mit Zahl; unter 1400 px zeigt
+                                   sie nur die Zahl der schwersten Stufe
+                                   (`.cad-warn-chip__count`), der vollständige
+                                   Satz steht im `aria-label`.
+          */
           <>
             <SaveIndicator revision={planRevision} />
             {viewMode === 'electric' && <RoutingStatusBadge />}
-            {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
+            {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
+            {viewMode === 'electric' && nodes.length > 0 && (
+              <span className="hidden md:inline-flex">
+                <VerificationSeal summary={verification} />
+              </span>
+            )}
             <WarningCenter warnings={warnings} onFix={handleFix} />
           </>
         }

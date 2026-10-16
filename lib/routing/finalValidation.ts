@@ -1,3 +1,5 @@
+import type { RouteContractViolation } from './routeContract';
+import { isOrthogonalPath } from './geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from './tokens';
 import {
   checkClearance,
@@ -86,6 +88,7 @@ export type FinalValidationCounts = {
   sanityViolations?: number;
   /** Fixierte Routen ohne unveränderten Snapshot oder mit gelösten Endpunkten. */
   lockedRouteViolations?: number;
+  contractViolations?: number;
 };
 
 export type LockedRouteViolationCode =
@@ -103,6 +106,7 @@ export type FinalValidationReport = {
   violations: InvariantViolation[];
   /** Zahl der geprüften Kanten — Kontext für die Zahlen oben. */
   edgeCount: number;
+  contractViolations?: RouteContractViolation[];
   /** Strukturierte, kantenbezogene Konflikte aus unveränderlichen Trassen. */
   lockedRouteViolations?: LockedRouteViolation[];
   /**
@@ -120,7 +124,8 @@ export const totalViolations = (counts: FinalValidationCounts): number =>
   counts.edgeEdgeOverlaps +
   counts.clearanceViolations +
   (counts.sanityViolations ?? 0) +
-  (counts.lockedRouteViolations ?? 0);
+  (counts.lockedRouteViolations ?? 0) +
+  (counts.contractViolations ?? 0);
 
 /**
  * Prüft ein fertiges Routing gegen die Final-Invariante.
@@ -148,6 +153,13 @@ export function validateFinalRouting(
   const MAX_COORD = 1_000_000;
   const sanity: InvariantViolation[] = [];
   for (const edge of edges) {
+    if (edge.waypoints.length < 2 || !isOrthogonalPath(edge.waypoints)) {
+      sanity.push({
+        invariant: 'I3',
+        edgeId: edge.id,
+        detail: 'Unvollständige oder nicht orthogonale Route.',
+      });
+    }
     for (let i = 0; i < edge.waypoints.length; i++) {
       const wp = edge.waypoints[i]!;
       if (!Number.isFinite(wp.x) || !Number.isFinite(wp.y)) {

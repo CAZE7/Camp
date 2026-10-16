@@ -1,7 +1,7 @@
 import type { Node, XYPosition } from '@xyflow/react';
 import { getNodeLayoutSize } from './layout';
 import { isPresentationOnlyNode } from '../../edges/utils/routableNodes';
-import { PLANNER_SNAP_GRID } from '../constants';
+import { PLANNER_SNAP_GRID } from '../grid';
 
 export type NodeRect = { left: number; top: number; right: number; bottom: number };
 

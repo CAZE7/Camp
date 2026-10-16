@@ -3,10 +3,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { type Node, type Edge } from '@xyflow/react';
+import { collidingNodeIds } from '../components/planner/utils/collision';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
 // bleiben (kein echtes Layout im Test).
-vi.mock('../components/planner/utils/layout', () => ({
+vi.mock('../components/planner/utils/layout', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../components/planner/utils/layout')>()),
   getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
 }));
 
@@ -507,7 +509,10 @@ describe('usePlannerStore', () => {
       if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('battery');
-      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      // QA B-03: Der Drop landet nicht auf einem bestehenden Bauteil.
+      expect(
+        collidingNodeIds(addedNode as never, result.current.nodes.slice(0, initialNodeCount) as never)
+      ).toEqual([]);
       expect(addedNode.data.label).toBe('My Battery');
       expect(addedNode.data.capacity).toBe(100); // Default for battery
       expect(addedNode.data.chemistry).toBe('LiFePO4');
@@ -561,7 +566,10 @@ describe('usePlannerStore', () => {
       if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('consumer');
-      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      // QA B-03: Der Drop landet nicht auf einem bestehenden Bauteil.
+      expect(
+        collidingNodeIds(addedNode as never, result.current.nodes.slice(0, initialNodeCount) as never)
+      ).toEqual([]);
       expect(addedNode.data.label).toBe('My Consumer');
       expect(addedNode.data.watts).toBe(50); // Default for consumer
       expect(addedNode.data.hours).toBe(2);

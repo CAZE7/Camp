@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import React from 'react';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PlannerDashboard } from './PlannerDashboard';
+import { PlannerDashboard, warningDedupeKey } from './PlannerDashboard';
 import { toPng } from 'html-to-image';
 
 // --- Mocks ---
@@ -41,6 +41,7 @@ const planState = () => ({
   guidedMode: true as boolean,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  edges: [] as Array<{ id: string; selected?: boolean }>,
   focusElement: mockFocusElement,
   deleteSelected: vi.fn(),
 });
@@ -333,7 +334,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   it('reports the Dagre fallback honestly instead of claiming ELK', async () => {
@@ -343,7 +344,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     openMoreMenu();
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
-    await waitFor(() => expect(screen.getByText(/Dagre-Fallback/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Raster-Anordnung angewendet/)).toBeInTheDocument());
   });
 
   it('dispatches planner-fit-view when clicking the Übersicht (fit view) action', () => {
@@ -368,13 +369,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
-    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan ordnen');
+    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan automatisch ordnen');
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('action-tidy'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   /**
@@ -635,5 +636,27 @@ describe('blockierte Änderungen an fixierten Leitungen', () => {
     expect(finding).not.toBeNull();
     fireEvent.click(within(finding as HTMLElement).getByRole('button', { name: 'Im Plan zeigen' }));
     expect(mockFocusElement).toHaveBeenCalledWith('edge-locked', 'edge');
+  });
+});
+
+/**
+ * QA B-04: Kopfzeile (27) und Fußzeile (20) zählten dieselben Befunde
+ * unterschiedlich. Gleiche Meldung (Regel, Stufe, Fokus) zählt jetzt genau einmal.
+ */
+describe('PlannerDashboard · Befund-Dedupe (B-04)', () => {
+  it('zählt eine doppelt gemeldete Warnung einmal', () => {
+    const warning = {
+      id: 'a',
+      category: 'safety',
+      type: 'warning',
+      title: 'Kabel knapp',
+      focusId: 'n1',
+      focusType: 'node',
+      ruleId: 'cable-x',
+      message: 'm',
+    } as const;
+    const key = warningDedupeKey(warning as never);
+    expect(key).toBe(warningDedupeKey({ ...warning, id: 'b' } as never));
+    expect(key).not.toBe(warningDedupeKey({ ...warning, focusId: 'n2' } as never));
   });
 });
