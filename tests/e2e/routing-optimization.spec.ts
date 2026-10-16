@@ -11,11 +11,11 @@ test('worker routing and explicit optimization leave device positions unchanged'
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript((plan) => {
     localStorage.setItem(
-      'werft-planner-v1',
+      'elektroplaner-planner-v1',
       JSON.stringify({ state: { nodes: plan.nodes, edges: plan.edges, viewMode: 'electric' }, version: 1 })
     );
     localStorage.setItem(
-      'werft-app-preferences-v1',
+      'elektroplaner-preferences-v1',
       JSON.stringify({ state: { calculatedSolarWatts: 0, hasOnboarded: true }, version: 2 })
     );
   }, simplePlan.autoWire);

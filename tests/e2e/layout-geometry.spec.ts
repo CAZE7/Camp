@@ -253,13 +253,16 @@ test.describe('M12 Geometrie', () => {
    * das ist eine gewollte Überlagerung und kein Griff.
    */
   test('die schwebenden Zeichenflächen-Griffe sind erreichbar und liegen im Bild', async ({ page }) => {
+    // Mehrere Viewport-Größen mit je einem vollständigen Planer-Aufbau: über dem
+    // Standard-Timeout von 60 s (Last in CI).
+    test.setTimeout(300_000);
     await page.addInitScript((plan) => {
       localStorage.setItem(
-        'werft-planner-v1',
+        'elektroplaner-planner-v1',
         JSON.stringify({ state: { nodes: plan.nodes, edges: plan.edges, viewMode: 'electric' }, version: 1 })
       );
       localStorage.setItem(
-        'werft-app-preferences-v1',
+        'elektroplaner-preferences-v1',
         JSON.stringify({ state: { calculatedSolarWatts: 0, hasOnboarded: true }, version: 2 })
       );
     }, complexPlan());
@@ -327,6 +330,9 @@ test.describe('M12 Geometrie', () => {
    * Werkzeugleiste, weil der schwebende Griff dort keinen Platz hat.
    */
   test('kein Element mit einfachem `hidden` ist sichtbar', async ({ page }) => {
+    // Mehrere Viewport-Größen mit je einem vollständigen Planer-Aufbau: über dem
+    // Standard-Timeout von 60 s (Last in CI).
+    test.setTimeout(300_000);
     const BREAKPOINTS: Record<string, number> = { sm: 640, md: 768, lg: 1024, xl: 1280, '2xl': 1536 };
 
     for (const size of SIZES) {
