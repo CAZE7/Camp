@@ -31,6 +31,15 @@ import { RichText } from './RichText';
  * Der Inhalt kommt aus `lib/seo/content/` — hier steht nur, WIE er erscheint.
  */
 
+/**
+ * Die Wissensseite des Themas: Rechner, Normgrundlagen, Absicherung.
+ *
+ * Nach dem Umzug von `/elektrik-planung/` ist das die Pillar-Seite
+ * `/camper-elektrik/`. Seiten, die auf sie verweisen sollen, nehmen die
+ * Adresse von hier — so gibt es sie nur an einer Stelle.
+ */
+const WISSENSSEITE_PATH = '/camper-elektrik/';
+
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
 export function jsonLdFor(page: SeoPageContent) {
   const breadcrumb = breadcrumbsFor(page);
@@ -170,12 +179,15 @@ export function SeoPage({
             {/*
               Drei Ziele, in dieser Reihenfolge: die Zeichenanwendung (eigene
               Route `/planer/`, volles Browserfenster), die Wissensseite mit
-              Rechner und Normgrundlagen (`/elektrik-planung/`) und der
+              Rechner und Normgrundlagen (`/camper-elektrik/`) und der
               Rechner-Überblick. Der mittlere Verweis ist nicht Zierde: Die
               Linkgraph-Prüfung `rechner-ohne-planner-link` verlangt von jeder
               Seite mit eingebettetem Rechner einen kontextuellen Verweis auf
               die Elektroplaner-Wissensseite (PLANNER_PATH in
               `scripts/seo/linkGraph.ts`).
+
+              Auf der Wissensseite selbst entfällt der mittlere Verweis — er
+              würde auf die Seite selbst zeigen.
             */}
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
@@ -184,12 +196,14 @@ export function SeoPage({
               >
                 Camper-Elektroplaner öffnen
               </Link>
-              <Link
-                href="/elektrik-planung/"
-                className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-              >
-                Rechner und Normgrundlagen
-              </Link>
+              {page.path !== WISSENSSEITE_PATH && (
+                <Link
+                  href={WISSENSSEITE_PATH}
+                  className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+                >
+                  Rechner und Normgrundlagen
+                </Link>
+              )}
               <Link
                 href="/rechner/"
                 className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"

@@ -52,9 +52,9 @@ Farbquelle, Kontraste sind per Test-Gate geprüft (ADR 0005)._
 _Auf dem Handy wird aus der Sidebar der Bottom-Tab „Bauteile“, die
 Zeichengesten und die Prüfung bleiben dieselben._
 
-![Wissens- und Rechnerseite /elektrik-planung/ mit Rechner für Kabelquerschnitt und Absicherung](docs/screenshots/elektrik-planung.png)
+![Wissens- und Rechnerseite /camper-elektrik/ mit Rechner für Kabelquerschnitt und Absicherung](docs/screenshots/elektrik-planung.png)
 
-_`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
+_`/camper-elektrik/` ist die Wissens- und Rechnerseite neben der Anwendung:
 Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
 
 ![Startseite der Werft mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
@@ -75,7 +75,7 @@ npm run build   # Static Export nach ./out
 ```
 
 Der Planer liegt auf einer eigenen Route unter `/planer/` und füllt dort das
-ganze Browserfenster; `/elektrik-planung/` ist die Wissens- und Rechnerseite
+ganze Browserfenster; `/camper-elektrik/` ist die Wissens- und Rechnerseite
 daneben. Alles wird lokal im Browser gespeichert (`localStorage`, versioniert
 mit Migration).
 

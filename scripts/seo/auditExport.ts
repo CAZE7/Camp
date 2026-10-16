@@ -181,7 +181,9 @@ function main(): void {
         ? entry.title
         : `${entry.title} | ${SITE_NAME}`
       : undefined;
-    const canonical = `${BASE}${path}`;
+    // Bei einem Umzug zeigt das Canonical auf das Ziel; die Erwartung folgt
+    // dem Inventar, nicht der Adresse, unter der die Datei liegt.
+    const canonical = `${BASE}${entry?.canonicalPath ?? path}`;
     const previewImage = entry?.ogImage ?? DEFAULT_PREVIEW_IMAGE;
     findings.push(
       ...checkPage(page, html, {

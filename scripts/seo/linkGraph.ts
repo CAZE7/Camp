@@ -4,7 +4,15 @@ import { pageByPath } from '../../lib/seo/inventory';
 import { childTopics, topicOf, TOPICS } from '../../lib/seo/topics';
 import type { PageEntry, PageKind } from '../../lib/seo/types';
 
-export const PLANNER_PATH = '/elektrik-planung/';
+/**
+ * Die Wissensseite des Elektroplaner-Themas.
+ *
+ * Seit dem Umzug von `/elektrik-planung/` ist das die Pillar-Seite
+ * `/camper-elektrik/`: Sie trägt den Kabelquerschnitt-Rechner, die
+ * Normgrundlagen und die Absicherung. Die alte Adresse ist ein Stub
+ * (`noindex`) und wird hier nicht mehr als Ziel geführt.
+ */
+export const PLANNER_PATH = '/camper-elektrik/';
 
 /** Wissensziele, auf die der zentrale Elektroplaner fachlich zurückverweisen soll. */
 export const PLANNER_KNOWLEDGE_PATHS = [

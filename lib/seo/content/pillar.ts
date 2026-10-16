@@ -8,7 +8,14 @@
  * Quelle; Beispielwerte für Verbraucher sind als Beispiel gekennzeichnet.
  */
 
-import { FUSE_MAP, VDE_AMPACITY, VOLTAGE_DROP_PCT_PLAN_LIMIT, designAmpacity } from '@/lib/electrical';
+import {
+  FUSE_MAP,
+  FUSE_MAX_UNPROTECTED_LENGTH_M,
+  VDE_AMPACITY,
+  VDE_SIZES,
+  VOLTAGE_DROP_PCT_PLAN_LIMIT,
+  designAmpacity,
+} from '@/lib/electrical';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '@/lib/materials';
 import { VDE_BATTERY_DOD } from '@/lib/vde-standards';
 
@@ -20,12 +27,42 @@ const DOD_ROWS = Object.entries(VDE_BATTERY_DOD).map(([chemistry, dod]) => [
   `aus 100 Ah nutzbar: ${Math.round(dod * 100)} Ah`,
 ]);
 
-const CABLE_ROWS = [1.5, 2.5, 4, 6, 10].map((size) => [
+const CABLE_ROWS = VDE_SIZES.map((size) => [
   `${size.toFixed(1).replace('.', ',')} mm²`,
   `${VDE_AMPACITY[size] ?? '—'} A`,
   `${designAmpacity(size).toFixed(1).replace('.', ',')} A`,
   `${FUSE_MAP[size] ?? '—'} A`,
 ]);
+
+/**
+ * Regelwerke, auf die sich das Modell bezieht.
+ *
+ * Übernommen von der umgezogenen Seite `/elektrik-planung/`: Die Liste
+ * stand dort als Abschnitt „Normen, auf die sich das Modell bezieht" und ist
+ * mit auf die Pillar-Seite gewandert.
+ */
+const NORMEN: readonly { norm: string; bereich: string }[] = [
+  {
+    norm: 'DIN VDE 0298-4',
+    bereich: 'Strombelastbarkeit von Leitungen (Verlegeart B2, 30 °C, 2 belastete Adern)',
+  },
+  {
+    norm: 'DIN VDE 0100-430',
+    bereich: 'Schutz bei Überstrom: Koordination von Betriebsstrom, Sicherung und Leitungsbelastbarkeit',
+  },
+  {
+    norm: 'DIN VDE 0100-520',
+    bereich: 'Auswahl und Errichtung elektrischer Betriebsmittel, Spannungsfall',
+  },
+  {
+    norm: 'DIN VDE 0100-721',
+    bereich: 'Kleinspannungsanlagen in Caravans und Motorcaravans — 12 V und 230 V im Fahrzeug',
+  },
+  {
+    norm: 'ISO 10133 / ABYC E-11',
+    bereich: 'Schutzorgan am Quellpunkt bei Kleinspannungs-Gleichstromanlagen',
+  },
+];
 
 /** Beispielverbraucher — ausdrücklich Beispielwerte, keine Messwerte. */
 const CONSUMER_ROWS: readonly (readonly string[])[] = [
@@ -109,11 +146,26 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
         'Bei 12 V sind die Ströme zehnmal so hoch wie bei 230 V — und genau darum ist der Spannungsfall hier das bestimmende Kriterium, nicht die Strombelastbarkeit. Eine Leitung, die thermisch 20 A trägt, kann über fünf Meter bei 10 A bereits sichtbar Spannung verlieren.',
         'Die Formel ist in beide Richtungen nutzbar: A = (2 · L · I) / (κ · ΔU) sucht den Querschnitt, ΔU = I · 2L / (κ · A) bewertet eine gewählte Leitung. Der Faktor 2 steht für Hin- und Rückleitung, κ ist die Leitfähigkeit von Kupfer mit ' +
           `${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) bei 20 °C. Geplant wird mit ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % zulässigem Spannungsfall — bei 12 V also 0,36 V.`,
+        'Für empfindliche Verbraucher — Kompressor-Kühlschrank, Funkgerät, Laderegler — ist die 2-%-Grenze die bessere Zielmarke; sie liegt bei 0,24 V und wird in Tabellenwerken häufig auf 0,25 V gerundet. Der Unterschied ist erheblich: 10 A über 5 m ergeben mit 3 % einen Querschnitt von 4,79 mm² (gewählt: 6 mm²), mit 2 % von 7,19 mm² (gewählt: 10 mm²).',
+        'Zur Leitfähigkeit gibt es zwei gebräuchliche Zahlen: κ = 58 m/(Ω·mm²), der Kehrwert des spezifischen Widerstands ρ = 0,0175 Ω·mm²/m, und κ = 56 m/(Ω·mm²) in älteren Tabellen. Beide beschreiben dasselbe Kupfer bei 20 °C; mit 56 statt 58 wächst der gerechnete Querschnitt um rund 3,6 %. Der Planer rechnet mit 58 m/(Ω·mm²) und damit auf der knapperen Seite — wer auf Nummer sicher gehen will, wählt die nächstgrößere Normstufe.',
       ],
       formula: {
         expression: 'A = (2 · L · I) / (κ · ΔU)',
         caption: 'Kleinster Querschnitt, damit über die Länge L bei Strom I höchstens ΔU abfällt.',
       },
+      definitions: [
+        { term: 'A', description: 'Leitungsquerschnitt in mm²' },
+        {
+          term: 'L',
+          description: 'einfache Leitungslänge in Metern (der Faktor 2 steht für Hin- und Rückleitung)',
+        },
+        { term: 'I', description: 'Betriebsstrom in Ampere' },
+        {
+          term: 'κ',
+          description: `Leitfähigkeit des Leiters, für Kupfer ${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) bei 20 °C`,
+        },
+        { term: 'ΔU', description: 'zulässiger Spannungsfall in Volt' },
+      ],
       table: {
         caption:
           'Normreihe mit Belastbarkeit und größter Sicherung (Modell: DIN VDE 0298-4, Verlegeart B2, Derating 0,7)',
@@ -135,15 +187,42 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       ],
     },
     {
+      /*
+       * Der Rechner ist der einzige Block, den die alte Adresse
+       * (`/elektrik-planung/`) einzigartig hatte. Er ist mit auf die
+       * Pillar-Seite gewandert: Er rechnet Querschnitt UND Sicherung in
+       * einem Schritt — genau die Kette, die sonst über zwei Seiten läuft.
+       */
+      id: 'rechner',
+      heading: 'Kabelquerschnitt und Absicherung berechnen',
+      body: [
+        'Der Rechner dimensioniert eine 12-V-Leitung nach Spannungsfall und Strombelastbarkeit und nennt die Sicherung, die am Batteriepol sitzt. Das Ergebnis ist immer eine Normgröße aus der Reihe 1,5 bis 70 mm².',
+        `Gerechnet wird mit ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % zulässigem Spannungsfall, κ = ${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) für Kupfer und einem Derating von 0,7 auf die Tabellenwerte der DIN VDE 0298-4.`,
+      ],
+      calculator: 'kabelquerschnitt',
+      links: [
+        {
+          href: '/camper-elektrik/sicherungen/',
+          label: 'Sicherungen passend zur Leitung auswählen',
+          description: 'Warum die Sicherung dem Kabel folgt und nicht dem Gerät.',
+        },
+      ],
+    },
+    {
       id: 'batterie',
       heading: 'Batterie: nutzbar ist nicht gleich nominell',
       body: [
         'Eine 100-Ah-Batterie liefert je nach Chemie zwischen 30 Ah und 90 Ah, bevor sie leer ist. Die Entladetiefe (Depth of Discharge, DoD) steht im Modell je Chemie — sie ist der wichtigste Hebel bei der Dimensionierung.',
+        'Bei hohen Entladeströmen kommt der Peukert-Effekt hinzu: Die entnehmbare Kapazität sinkt weiter, weil der Innenwiderstand mit dem Strom steigt. Der Planer rechnet ihn für die Batteriebilanz mit.',
       ],
       table: {
         caption: 'Entladetiefen des Modells (VDE_BATTERY_DOD)',
         head: ['Chemie', 'Entladetiefe', 'Nutzbar bei 100 Ah'],
         rows: DOD_ROWS,
+      },
+      formula: {
+        expression: 'C_nutz = C_nenn · DoD',
+        caption: 'Nutzbare Kapazität als Produkt aus Nennkapazität und Entladetiefe.',
       },
       links: [
         {
@@ -212,6 +291,41 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       ],
     },
     {
+      id: 'absicherung',
+      heading: 'Absicherung: die Sicherung sitzt am Batteriepol',
+      body: [
+        'Ein Kurzschluss in einer ungeschützten Leitung wird zur Heizung: Der Strom einer 100-Ah-LiFePO4 ist hoch genug, um eine 2,5-mm²-Leitung in Sekunden in Brand zu setzen. Deshalb sitzt das Schutzorgan unmittelbar am Pluspol der Batterie, bevor die erste Leitung ungeschützt geführt wird. Der Planer prüft dafür ' +
+          `${FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm ab der Quelle — der Wert aus ISO 10133:2000 § 8.1, der für kleine Boote und damit für einen großen Teil der Camper-Praxis gilt. DIN VDE 0100-721 verlangt den Überstromschutz ebenfalls nahe der Batterie, nennt aber keine Länge.`,
+        'Bemessen wird die Sicherung nicht nach dem Gerät, sondern nach dem Kabel. Maßgeblich ist die Kette I_B ≤ I_n ≤ I_z: Der Betriebsstrom I_B darf die Nennstromstärke der Sicherung I_n nicht überschreiten, und die Sicherung darf die Belastbarkeit des Leiters I_z nicht überschreiten. Ein zu dünnes Kabel ist daher kein „Puffer“, sondern bestimmt die Obergrenze der Sicherung — dickere Leitung ist der günstigere Weg zu einer größeren Sicherung als eine Sicherung, die im Kurzschlussfall nicht mehr schützt.',
+      ],
+      callout: {
+        tone: 'warning',
+        text: 'Die 230-V-Seite des Fahrzeugs ist ein eigener Fall: Für Landstromanschlüsse gilt die Prüfung nach DIN VDE 0100-721 durch eine Elektrofachkraft. Der Planer hilft beim Aufbau, er ersetzt keine Abnahme.',
+      },
+      links: [
+        {
+          href: '/camper-elektrik/230v/',
+          label: '230-V-Anlage im Camper',
+          description: 'Landstrom, FI-Schutz und Abnahme.',
+        },
+      ],
+    },
+    {
+      id: 'normen',
+      heading: 'Normen, auf die sich das Modell bezieht',
+      body: [
+        'Die Aussagen dieser Seite und die Rechnungen des Planers stützen sich auf die folgenden Regelwerke. Normaussagen sind Referenzen auf den Geltungsbereich der genannten Regelwerke, keine Rechtsprüfung.',
+      ],
+      definitions: NORMEN.map((entry) => ({ term: entry.norm, description: entry.bereich })),
+      links: [
+        {
+          href: '/camper-elektrik/kabelquerschnitt/',
+          label: '12V-Kabelquerschnitt für den Camper berechnen',
+          description: 'Formel, Normreihe, Rechenbeispiele und Rechner.',
+        },
+      ],
+    },
+    {
       id: 'pruefen',
       heading: 'Woran man eine fertige Planung prüft',
       body: [
@@ -242,6 +356,33 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       question: 'Reicht 12 V oder brauche ich 24 V?',
       answer:
         'Bis etwa 2 000 W Spitzenlast ist 12 V üblich; darüber werden die Ströme so groß, dass Querschnitte und Schutzorgane unhandlich werden. Der Rechenweg bleibt derselbe, nur die Zahlen ändern sich: Bei 24 V halbiert sich der Strom bei gleicher Leistung, der Querschnitt sinkt damit auf ein Viertel.',
+    },
+    {
+      /*
+       * Die folgenden vier Fragen stammen von der umgezogenen Seite
+       * `/elektrik-planung/`. Sie beantworten die Einzelfragen, die dort
+       * das Akkordeon füllten — mit denselben Zahlen, mit denen das Modell
+       * rechnet. Sichtbarer Text und `FAQPage` kommen aus dieser einen
+       * Quelle, damit sie nicht auseinanderlaufen können.
+       */
+      question: 'Wie hoch darf der Spannungsabfall in einem 12-V-Kreis sein?',
+      answer:
+        'Der Rechner dimensioniert mit 3 % der Nennspannung, bei 12 V also mit 0,36 V. Für empfindliche Verbraucher wie Kompressor-Kühlschränke, Funkgeräte oder Laderegler sind 2 % (0,24 V, in Tabellen häufig auf 0,25 V gerundet) die bessere Zielmarke: Bei 10 A über 5 m Leitung ergibt die 3-%-Grenze 6 mm², die 2-%-Grenze bereits 10 mm². Beide Prozentwerte sind Planungsannahmen — DIN VDE 0298-4 nennt Strombelastbarkeiten, keine Spannungsfall-Grenzwerte.',
+    },
+    {
+      question: 'Wie berechnet man den Kabelquerschnitt für Kupferleitungen?',
+      answer:
+        'Mit A = (2 · L · I) / (κ · ΔU): A ist der Querschnitt in mm², L die einfache Leitungslänge in Metern, der Faktor 2 steht für Hin- und Rückleitung, I der Betriebsstrom in Ampere, ΔU der zulässige Spannungsfall in Volt und κ die Leitfähigkeit des Leiters. Für Kupfer rechnet der Planer mit κ = 58 m/(Ω·mm²) bei 20 °C; ältere Tabellenwerke verwenden 56 m/(Ω·mm²), was den rechnerischen Querschnitt um knapp 4 % erhöht. Das Ergebnis wird immer auf die nächste Normgröße aufgerundet: 1,5 · 2,5 · 4 · 6 · 10 · 16 · 25 · 35 · 50 · 70 mm².',
+    },
+    {
+      question: 'Wie tief dürfen LiFePO4- und AGM-Batterien entladen werden?',
+      answer:
+        'LiFePO4 bis 90 % Entladetiefe, AGM und Gel bis 50 %, Nassblei bis 30 %. Aus einer 100-Ah-Batterie werden damit 90 Ah (LiFePO4) beziehungsweise 50 Ah (AGM) nutzbare Kapazität. Der Planer hinterlegt diese Entladetiefen je Chemie und rechnet zusätzlich den Peukert-Effekt: Bei hohen Strömen sinkt die entnehmbare Kapazität weiter, weshalb die nutzbare Kapazität nicht allein aus der Nennkapazität folgt.',
+    },
+    {
+      question: 'Wo muss die Sicherung in der 12-V-Anlage sitzen?',
+      answer:
+        'Unmittelbar am Pluspol der Batterie, vor der ersten ungeschützten Leitungsstrecke. Der Planer prüft 0,2 m ab der Quelle (ISO 10133:2000 § 8.1); DIN VDE 0100-721 verlangt den Überstromschutz nahe der Batterie, ohne eine Länge zu nennen. Die Sicherung schützt die Leitung, nicht das Gerät: Ihre Größe folgt der Belastbarkeit des Querschnitts — im Modell 70 % der Tabellenwerte nach DIN VDE 0298-4, Verlegeart B2 — und nicht dem Verbraucher.',
     },
     {
       question: 'Was prüft Camp automatisch, was muss ich selbst prüfen?',

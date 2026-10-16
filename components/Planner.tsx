@@ -33,10 +33,10 @@ function PlannerStartScreen() {
         bereit ist. Dein Plan bleibt lokal im Browser — ohne Konto, ohne Server.
       </p>
       <Link
-        href="/elektrik-planung/"
+        href="/camper-elektrik/"
         className="text-sm text-foreground underline underline-offset-4 hover:text-muted-foreground"
       >
-        Zur Seite „Camper-Elektrik berechnen“
+        Zur Seite „Camper-Elektrik planen“
       </Link>
     </div>
   );

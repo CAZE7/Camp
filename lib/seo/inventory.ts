@@ -50,27 +50,30 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     source: 'app/page.tsx',
   },
   {
+    /**
+     * Die alte Adresse der Wissensseite. Der Inhalt — Rechner,
+     * Normgrundlagen, Absicherung — ist nach `/camper-elektrik/` umgezogen.
+     *
+     * Die Adresse bleibt als kurzer Übergang stehen: `noindex, follow`,
+     * Canonical auf das Ziel, Meta-Refresh dorthin. Eine echte 301 kann der
+     * statische Export nicht liefern; die dauerhafte Umleitung richtet der
+     * Betreiber in der Auslieferung ein (Anleitung:
+     * `docs/seo/umzug-elektrik-planung.md`).
+     */
     path: '/elektrik-planung/',
-    label: 'Camper-Elektroplaner',
-    kind: 'werkzeug',
-    indexability: 'index',
-    h1: 'Camper-Elektrik berechnen',
-    title: 'Camper Elektrik berechnen: 12V Kabelquerschnitt & Batterie-Planer',
+    label: 'Elektrik-Planung (umgezogen)',
+    kind: 'ansicht',
+    indexability: 'noindex',
+    h1: 'Diese Seite ist umgezogen',
+    title: 'Diese Seite ist umgezogen — Camper-Elektrik | Werft',
     absoluteTitle: true,
     description:
-      'Wohnmobil-Elektrik präzise dimensionieren: Leitungsquerschnitt nach DIN berechnen, Batteriekapazität bestimmen und autarkes 12V-System sicher planen.',
-    searchIntent: 'eine 12-V-Leitung berechnen und die gesamte Anlage als Schaltplan zeichnen.',
+      'Der Inhalt dieser Seite steht jetzt auf „Camper-Elektrik planen“: Rechner, Normgrundlagen und der Weg durch die Planung.',
+    searchIntent: 'alte Adresse der Elektrik-Wissensseite — verweist auf ihren neuen Ort.',
     topicId: 'camper-elektrik',
-    priority: 'P0',
-    structuredData: ['WebPage', 'BreadcrumbList', 'WebApplication', 'FAQPage'],
-    calculators: ['kabelquerschnitt'],
-    ogImage: {
-      path: '/og/elektrik-planung.png',
-      width: 1200,
-      height: 630,
-      alt: 'Werft — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
-    },
-    sitemap: { changeFrequency: 'monthly', priority: 0.9 },
+    priority: 'P3',
+    structuredData: [],
+    canonicalPath: '/camper-elektrik/',
     source: 'app/elektrik-planung/page.tsx',
   },
   {
@@ -86,7 +89,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
      * Auf eigener Route ist der Editor das Dokument: kein Text drumherum, kein
      * Versatz, die Zeichenfläche beginnt bei y = 0.
      *
-     * `/elektrik-planung/` bleibt die Wissens- und Rechnerseite des Themas und
+     * `/camper-elektrik/` ist die Wissens- und Rechnerseite des Themas und
      * verweist kontextuell hierher (Linkgraph-Regel `kontextuelle-verwaiste-seite`).
      */
     path: '/planer/',
@@ -316,6 +319,7 @@ function entryOfContent(page: (typeof CONTENT_PAGES)[number]): PageEntry {
     targetQueries: queriesForPage(page.path),
     structuredData: structuredDataOf((page.faq?.length ?? 0) > 0, hasCalculator),
     sitemap: { changeFrequency: page.changeFrequency, priority: page.sitemapPriority },
+    contentRevision: page.contentRevision,
     source: `lib/seo/content/${page.slug}.ts`,
     title: page.title,
     description: page.description,

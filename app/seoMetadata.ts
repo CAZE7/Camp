@@ -23,6 +23,7 @@ export function metadataForPage(path: string): Metadata {
     absoluteTitle: page.absoluteTitle ?? false,
     index: page.indexability === 'index',
     ...(page.ogImage ? { image: page.ogImage } : {}),
+    ...(page.canonicalPath ? { canonicalPath: page.canonicalPath } : {}),
   });
 }
 

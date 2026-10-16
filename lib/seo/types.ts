@@ -15,6 +15,7 @@
  * (ARCHITECTURE-RULES Rule A).
  */
 
+/** Art der Seite — entscheidet über Mindestumfang und Rolle im Topic-Graph. */
 /**
  * Format des inhaltlichen Stands: ISO-Monat (`2026-10`).
  *
@@ -24,7 +25,6 @@
  */
 export const CONTENT_REVISION_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-/** Art der Seite — entscheidet über Mindestumfang und Rolle im Topic-Graph. */
 export type PageKind =
   | 'start'
   | 'pillar'
@@ -210,6 +210,16 @@ export type PageEntry = {
   contentRevision?: string;
   /** Herkunft der Seite im Quelltext (Nachschlagehilfe für Beitragende). */
   source: string;
+  /**
+   * Adresse, auf die das Canonical dieser Seite zeigen soll.
+   *
+   * Gesetzt wird sie nur bei Adressen, die auf eine andere Seite umziehen:
+   * Die alte Adresse bleibt als `noindex, follow`-Stub stehen (Canonical auf
+   * das Ziel, Meta-Refresh dorthin), damit Suchmaschinen die alte Adresse
+   * nicht weiter als eigene Seite führen. Ohne dieses Feld zeigt das
+   * Canonical auf die Seite selbst.
+   */
+  canonicalPath?: string;
   /** Titel ohne Markenzusatz; `absoluteTitle` steuert die Titelvorlage. */
   title: string;
   /** Einzigartige Beschreibung für Suchergebnisse und Vorschaukarten. */

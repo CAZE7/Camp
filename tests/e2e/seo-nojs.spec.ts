@@ -23,15 +23,10 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
   await expect(
     page.getByRole('link', { name: '12V-Kabelquerschnitt für den Camper berechnen' })
   ).toHaveAttribute('href', /\/camper-elektrik\/kabelquerschnitt\/?$/);
-
-  await page.goto('/elektrik-planung/');
-  await expect(page.locator('main h1')).toHaveCount(1);
-  await expect(page.locator('main h1')).toHaveText('Camper-Elektrik berechnen');
+  // Der Rechner der umgezogenen Seite (`/elektrik-planung/`) steht jetzt hier:
+  // Rechner, Normgrundlagen und Absicherung sind auf einer Seite.
   await expect(page.locator('main')).toContainText('Der Rechner dimensioniert eine 12-V-Leitung');
-  // Die Anwendung ist umgezogen: Auf dieser Seite steht ihr Einstieg, nicht
-  // ihre Zeichenfläche. Der Anker `#planer` bleibt das Ziel der Themenseiten.
-  await expect(page.locator('#planer')).toHaveCount(1);
-  await expect(page.getByRole('link', { name: 'Planer im Vollbild öffnen' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Camper-Elektroplaner öffnen' })).toHaveAttribute(
     'href',
     /\/planer\/?$/
   );
@@ -43,8 +38,8 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText('Camper-Schaltplan online erstellen (12V/24V)');
   await expect(page.locator('main')).toContainText('Der Elektroplaner lädt');
-  await expect(page.getByRole('link', { name: /Camper-Elektrik berechnen/ })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: /Camper-Elektrik planen/ })).toHaveAttribute(
     'href',
-    /\/elektrik-planung\/?$/
+    /\/camper-elektrik\/?$/
   );
 });

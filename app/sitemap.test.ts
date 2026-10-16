@@ -9,8 +9,8 @@ const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', '
 
 /**
  * Die Sitemap entsteht aus dem Seiteninventar. Geprüft wird deshalb beides:
- * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, Zeitstempel
- * nur bei geprüftem Inhalt, gültige Werte) und dass sie zum Inventar passt — eine
+ * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, keine
+ * Zeitstempel, gültige Werte) und dass sie zum Inventar passt — eine
  * indexierbare Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne
  * Indexierbarkeit ebenfalls.
  */
@@ -20,7 +20,7 @@ describe('sitemap', () => {
   it('listet jede ausgelieferte Seite genau einmal', () => {
     const urls = entries.map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
-    expect(urls).toContain(siteUrl('/elektrik-planung/'));
+    expect(urls).toContain(siteUrl('/camper-elektrik/'));
   });
 
   it('bildet alle Adressen unter dem Basis-Pfad der Auslieferung', () => {
