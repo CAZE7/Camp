@@ -61,6 +61,29 @@ const TOOLS = [
   },
 ];
 
+/**
+ * Ausbau-Vorlagen: vollständige Ausgangslagen für typische Fahrzeuge. Jede
+ * Vorlage nennt Verbrauch, Batterie, Solar, Leitungen und Stückliste — und
+ * verlinkt in den Planer, mit dem sich die Werte übernehmen lassen.
+ */
+const VORLAGEN = [
+  {
+    title: 'Wochenend-Camper',
+    body: 'Zwei Tage Autarkie, 200-Ah-Batterie, 500 Wp Solar — ohne 230-V-Netz.',
+    href: '/vorlagen/wochenend/',
+  },
+  {
+    title: 'Autark-Camper',
+    body: 'Drei Tage ohne Landstrom, 410 Ah, 600 Wp Solar und ein 1 200-W-Wechselrichter.',
+    href: '/vorlagen/autark/',
+  },
+  {
+    title: 'Großraum-Camper',
+    body: '24-V-Bordnetz, Waschmaschine, 175 Ah und 800 Wp Solar.',
+    href: '/vorlagen/grossraum/',
+  },
+];
+
 const GUIDES = [
   {
     title: 'Camper-Ausbauguide',
@@ -177,6 +200,39 @@ export default function Home() {
                 </li>
               );
             })}
+          </ul>
+        </section>
+
+        {/* Vorlagen — vollständige Ausbau-Vorlagen mit Stückliste */}
+        <section aria-labelledby="vorlagen-heading" className="mt-12">
+          <h2 id="vorlagen-heading" className="panel-title">
+            Vorlagen
+          </h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            Drei Ausgangslagen für typische Fahrzeuge: Verbrauch, Batterie, Solar, Leitungen und Stückliste.
+            Jede Zahl stammt aus dem Rechenmodell, jede Vorlage nennt ihre Annahmen und Grenzen.
+          </p>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-3">
+            {VORLAGEN.map((vorlage) => (
+              <li key={vorlage.href}>
+                <Link
+                  href={vorlage.href}
+                  className="node-card group flex h-full flex-col justify-between gap-4 p-4 hover:bg-surface-hover focus-visible:outline-none"
+                >
+                  <div>
+                    <div className="font-medium text-ink">{vorlage.title}</div>
+                    <p className="mt-2 text-sm text-ink-soft">{vorlage.body}</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-copper">
+                    Vorlage öffnen
+                    <ArrowRight
+                      className="transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
 

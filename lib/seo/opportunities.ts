@@ -378,6 +378,41 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     source: 'annahme',
   },
 
+  // ── Ausbau-Vorlagen ──────────────────────────────────────────────────────
+  {
+    id: 'vorlage-wochenend',
+    query: 'camper elektrik vorlage wochenend',
+    intent: 'planung',
+    page: '/vorlagen/wochenend/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
+    id: 'vorlage-autark',
+    query: 'autarker camper stückliste elektrik',
+    intent: 'planung',
+    page: '/vorlagen/autark/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
+    id: 'vorlage-gross',
+    query: 'camper 24 volt ausbau vorlage',
+    intent: 'planung',
+    page: '/vorlagen/grossraum/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+
   // ── Vertrauen ────────────────────────────────────────────────────────────
   {
     id: 'werft-methodik',
