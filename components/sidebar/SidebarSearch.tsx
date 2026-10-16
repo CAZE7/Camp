@@ -39,13 +39,13 @@ export function SidebarSearch({ value, onChange, onEnter }: SidebarSearchProps) 
             onChange('');
           }
         }}
-        className="focus:border-accent-line min-h-9 w-full border border-rule-strong bg-surface-raised pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        className="focus:border-accent-line min-h-11 w-full border border-rule-strong bg-surface-raised pl-8 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
       {value && (
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-0 flex h-full w-8 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-0 flex h-full min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Filter zurücksetzen"
         >
           <X className="h-4 w-4" aria-hidden="true" />

@@ -437,6 +437,8 @@ export function ChargerInspector({
               id={`${node.id}-amps`}
               type="number"
               min="0"
+              step="0.1"
+              isFloat
               value={node.data?.amps || 0}
               rules={[COMMON_RULES.strictlyPositive]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}

@@ -14,7 +14,18 @@ import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
 import { CanvasSkeleton } from './ui/Skeleton';
-import { Frame, Layers, Minimize2, Settings2, Droplets, X, Undo2, Redo2, Zap } from 'lucide-react';
+import {
+  Frame,
+  Layers,
+  Map as MapIcon,
+  Minimize2,
+  Settings2,
+  Droplets,
+  X,
+  Undo2,
+  Redo2,
+  Zap,
+} from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 
@@ -83,6 +94,9 @@ function PlannerShell() {
   const canRedo = usePlannerStore((state) => state.canRedo);
   const undo = usePlannerStore((state) => state.undo);
   const redo = usePlannerStore((state) => state.redo);
+  const showMobileOverview = usePlannerStore((state) =>
+    state.viewMode === 'water' ? state.waterNodes.length > 8 : state.nodes.length > 8
+  );
   const zoom = useFlowStore((state) => state.transform[2] ?? 1);
 
   // Auswahl öffnet den Inspector, leere Auswahl schließt ihn — dokumentierte
@@ -247,10 +261,23 @@ function PlannerShell() {
     <div
       data-testid="planner-shell"
       data-panel-open={activeTab === 'canvas' ? 'false' : 'true'}
+      data-active-tab={activeTab}
       className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans ${focusMode ? 'planner-shell--focus' : ''} ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
     >
       {!hasOnboarded && <OnboardingWizard />}
       <ShortcutOverlay />
+      {focusMode && (
+        <button
+          type="button"
+          data-testid="focus-mode-exit"
+          onClick={() => setFocusMode(false)}
+          className="planner-focus-exit cad-btn cad-btn--line min-h-11 min-w-11 justify-center"
+          aria-label="Fokusmodus verlassen"
+          title="Fokusmodus verlassen"
+        >
+          <Minimize2 size={18} aria-hidden="true" />
+        </button>
+      )}
 
       {/* Chrome: Menüleiste + Werkzeugleiste (+ geführte Schrittleiste). */}
       <PlannerDashboard />
@@ -261,7 +288,7 @@ function PlannerShell() {
         // Panel-Umschalter, die als absolut positionierte Griffe auf der
         // Panelkante sitzen. Bezug ist damit der Arbeitsbereich — nicht die
         // Anwendungsshell, sonst lägen sie unter der Menüleiste.
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col md:flex-row"
+        className="planner-workspace relative flex min-h-0 min-w-0 flex-1 flex-col md:flex-row"
       >
         {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 248 px
             Desktop) setzt das einklappbare Panel selbst, damit „eingeklappt“
@@ -398,6 +425,19 @@ function PlannerShell() {
           >
             <Redo2 size={18} aria-hidden="true" />
           </button>
+          {showMobileOverview && (
+            <button
+              type="button"
+              data-testid="mobile-overview"
+              onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))}
+              className="cad-btn cad-btn--line flex h-12 items-center gap-2 px-3"
+              aria-label="Planübersicht anzeigen"
+              title="Planübersicht anzeigen"
+            >
+              <MapIcon size={18} aria-hidden="true" />
+              Übersicht
+            </button>
+          )}
         </div>
       )}
 

@@ -95,7 +95,7 @@ describe('ValidatingInput', () => {
   // ── AUDIT S2: deutsches Dezimalkomma ──────────────────────────────────────
   // `parseFloat('2,5')` = 2. Das Feld meldete „gültig" und schrieb 2 — bei
   // Querschnitten/Sicherungen eine Unterdimensionierung ohne Fehleranzeige.
-  it('reads the German decimal comma instead of truncating it', () => {
+  it('keeps decimal-comma input intact and opens the decimal keyboard', () => {
     const onValidChange = vi.fn();
     render(
       <ValidatingInput
@@ -107,7 +107,11 @@ describe('ValidatingInput', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('test-input'), { target: { value: '2,5' } });
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.inputMode).toBe('decimal');
+
+    fireEvent.change(input, { target: { value: '2,5' } });
     expect(onValidChange).toHaveBeenCalledWith(2.5);
     expect(screen.queryByText(INPUT_ERROR_MESSAGES.invalidNumber)).not.toBeInTheDocument();
   });
@@ -122,6 +126,13 @@ describe('ValidatingInput', () => {
     fireEvent.change(screen.getByLabelText('test-input'), { target: { value: '2.5mm' } });
     expect(onValidChange).not.toHaveBeenCalled();
     expect(screen.getByText(INPUT_ERROR_MESSAGES.invalidNumber)).toBeInTheDocument();
+  });
+
+  it('keeps whole-number fields on the numeric keyboard', () => {
+    render(<ValidatingInput value={10} onValidChange={vi.fn()} aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    expect(input.type).toBe('number');
+    expect(input.inputMode).toBe('numeric');
   });
 
   it('reports non-integral input in integer mode instead of rounding it', () => {

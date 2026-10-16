@@ -402,26 +402,60 @@ function LiveRecommendationCard({
   return null;
 }
 
+function graphTopologyFingerprint(
+  nodes: ReadonlyArray<{ id: string; type?: string }>,
+  edges: ReadonlyArray<{
+    id: string;
+    source: string;
+    target: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+  }>
+) {
+  return JSON.stringify({
+    nodes: nodes.map((node) => `${node.id}:${node.type ?? ''}`).sort(),
+    edges: edges
+      .map(
+        (edge) =>
+          `${edge.id}:${edge.source}:${edge.sourceHandle ?? ''}>${edge.target}:${edge.targetHandle ?? ''}`
+      )
+      .sort(),
+  });
+}
+
 export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
-  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number } | null>(null);
+  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number; topology: string } | null>(
+    null
+  );
 
   // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
   const nodes = usePlannerStore((s) => s.nodes);
+  const currentTopology = useMemo(() => graphTopologyFingerprint(nodes, edges), [nodes, edges]);
 
   // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
   // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
   useEffect(() => {
     const onAutoWired = (event: Event) => {
       const detail = (event as CustomEvent<{ edgeCount?: number }>).detail;
+      const state = usePlannerStore.getState();
       setIsOpen(true);
-      setAutoWireSummary({ edgeCount: Number(detail?.edgeCount) || 0 });
+      setAutoWireSummary({
+        edgeCount: Number(detail?.edgeCount) || 0,
+        topology: graphTopologyFingerprint(state.nodes, state.edges),
+      });
     };
     window.addEventListener('planner-auto-wired', onAutoWired);
     return () => window.removeEventListener('planner-auto-wired', onAutoWired);
+  }, []);
+
+  useEffect(() => {
+    const openExpertPanel = () => setIsOpen(true);
+    window.addEventListener('planner-open-expert-panel', openExpertPanel);
+    return () => window.removeEventListener('planner-open-expert-panel', openExpertPanel);
   }, []);
 
   const currentKnowledge = useMemo(() => {
@@ -513,7 +547,7 @@ export function ExpertPanel() {
           </div>
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
-          {autoWireSummary && (
+          {autoWireSummary && autoWireSummary.topology === currentTopology && (
             <div className="mx-4 mt-4 rounded border border-moss bg-moss/10 p-3.5 duration-150 animate-in fade-in">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
@@ -526,7 +560,7 @@ export function ExpertPanel() {
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="rounded-md p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
+                  className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-md text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg

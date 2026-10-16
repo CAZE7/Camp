@@ -92,6 +92,25 @@ describe('usePlannerStore', () => {
       expect(result.current.viewMode).toBe('water');
     });
 
+    it('keeps a selected component through a view-tab change and React Flow’s empty selection update', () => {
+      const selected = { ...initialNodes[0]!, selected: true };
+      usePlannerStore.setState({
+        nodes: [selected, ...initialNodes.slice(1)],
+        selectedNodes: [selected],
+        firstTappedHandle: { nodeId: 'battery', handleId: 'plus', handleType: 'source' },
+      });
+      const { result } = renderHook(() => usePlannerStore());
+
+      act(() => result.current.setViewMode('water'));
+      expect(result.current.viewMode).toBe('water');
+      expect(result.current.selectedNodes.map((node) => node.id)).toEqual(['battery']);
+      expect(result.current.nodes.find((node) => node.id === 'battery')?.selected).toBe(true);
+      expect(result.current.firstTappedHandle).toBeNull();
+
+      act(() => result.current.onSelectionChange({ nodes: [], edges: [] }));
+      expect(result.current.selectedNodes.map((node) => node.id)).toEqual(['battery']);
+    });
+
     it('should set season', () => {
       const { result } = renderHook(() => usePlannerStore());
       act(() => {

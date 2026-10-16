@@ -83,7 +83,7 @@ describe('PlannerInspector', () => {
     // Check if toggle button is rendered and has the correct title for "open" state
     const toggleButton = screen.getByTitle('Inspector einklappen');
     expect(toggleButton).toBeInTheDocument();
-    expect(toggleButton).toHaveClass('h-11', 'w-11');
+    expect(toggleButton).toHaveClass('h-11', 'w-11', 'top-1/2', '-translate-y-1/2');
     expect(toggleButton).toHaveAttribute('aria-controls', 'inspector-panel');
 
     // Inspector mock should be in the document

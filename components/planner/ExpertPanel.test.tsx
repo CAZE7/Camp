@@ -45,6 +45,43 @@ describe('ExpertPanel', () => {
     expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
   });
 
+  it('lässt sich über die mobile Menüaktion öffnen, wenn das FAB ausgeblendet ist', () => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector(defaultPlannerStoreState) as typeof usePlannerStore
+    );
+    render(<ExpertPanel />);
+
+    fireEvent(window, new Event('planner-open-expert-panel'));
+
+    expect(screen.getByTestId('expert-panel-open')).toBeInTheDocument();
+    expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
+  });
+
+  it('blendet die Auto-Wire-Erfolgsmeldung nach Undo eines Graphenwechsels aus', () => {
+    const mutableState = {
+      selectedNodes: [] as Array<{ id: string; type: string; data: Record<string, unknown> }>,
+      nodes: [] as Array<{
+        id: string;
+        type: string;
+        position: { x: number; y: number };
+        data: Record<string, unknown>;
+      }>,
+      edges: [] as Array<{ id: string; source: string; target: string; data: Record<string, unknown> }>,
+    };
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(mutableState) as typeof usePlannerStore);
+    Object.assign(usePlannerStore, { getState: () => mutableState });
+    const { rerender } = render(<ExpertPanel />);
+
+    fireEvent(window, new CustomEvent('planner-auto-wired', { detail: { edgeCount: 3 } }));
+    expect(screen.getByText('Automatische Verbindung abgeschlossen')).toBeInTheDocument();
+
+    // Undo restores the graph topology; the still-open help panel must not
+    // claim that the discarded proposal is the current plan.
+    mutableState.edges = [{ id: 'e1', source: 'battery', target: 'consumer', data: {} }];
+    rerender(<ExpertPanel />);
+    expect(screen.queryByText('Automatische Verbindung abgeschlossen')).not.toBeInTheDocument();
+  });
+
   it('shows specific knowledge when a node is selected', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'battery', data: {} }],

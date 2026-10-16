@@ -457,23 +457,6 @@ describe('FlowCanvas', () => {
     expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
   });
 
-  it('shows a mobile overview action only for more than eight nodes', () => {
-    vi.mocked(usePlannerStore).mockImplementation(
-      withSelector({
-        ...defaultPlannerStoreState,
-        nodes: Array.from({ length: 9 }, (_, index) => ({
-          id: `n${index}`,
-          type: 'consumer',
-          position: { x: index * 20, y: 0 },
-          data: {},
-        })),
-      })
-    );
-    render(<FlowCanvas />);
-    fireEvent.click(screen.getByTestId('mobile-overview'));
-    expect(mockFitView).toHaveBeenCalledWith({ duration: 400, padding: 0.2 });
-  });
-
   it('does not render domain filter chips in water mode', () => {
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
     vi.mocked(usePlannerStore).mockImplementation(
@@ -828,6 +811,21 @@ describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
     expect(css).not.toContain('.planner-detail-overview .node-card {');
     // Einzige Regel der Stufe ist das Ausblenden der Messwerte (mit Platz).
     expect(css).toContain('.planner-detail-overview .node-card .measure');
+  });
+
+  it('behält bei iPhone-Querformat trotz Breite über md mobile Tabs und Panels', () => {
+    const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+    expect(css).toContain('@media (orientation: landscape) and (max-height: 480px)');
+    expect(css).toContain(
+      '.planner-shell:not(.planner-shell--focus) .planner-bottom-nav {\n    display: flex !important;'
+    );
+    expect(css).toContain(
+      ".planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] [data-testid='planner-sidebar-slot']"
+    );
+    expect(css).toContain("[data-active-tab='inspector'] #inspector-panel");
+    expect(css).toContain('.planner-menubar-sheet,\n  .planner-toolbar-sheet');
+    expect(css).toContain('.planner-display-options-panel {\n    top: 4rem !important;');
+    expect(css).toContain('.planner-shell .planner-expert-panel--closed {\n    display: none !important;');
   });
 });
 

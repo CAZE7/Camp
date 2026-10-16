@@ -235,26 +235,22 @@ export function PlannerToolbar({
                 data-testid="action-autowire"
                 onClick={onAutoWire}
                 disabled={busy !== null}
-                className="cad-btn cad-btn--primary"
-                data-tooltip="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
-                title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
+                aria-label="Auto-verbinden: Vorschlag prüfen"
+                className="cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap"
+                data-tooltip="Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen"
+                title="Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen"
               >
                 {busy === 'wire' ? (
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 ) : (
                   <Wand2 className="h-4 w-4" aria-hidden="true" />
                 )}
-                {/* Drei Beschriftungsstufen, gesteuert über das gemessene
-                  Breitenbudget der Leiste (globals.css §M12-9) statt über
-                  feste Tailwind-Breakpoints: Die Leiste ist in jeder
-                  Fensterbreite 100 % breit, „der Bildschirm ist breit genug“
-                  und „die Leiste ist breit genug“ sind hier dasselbe Maß.
-                  320–519 px: „Verbinden“ (Statuschips brauchen den Rest),
-                  520–1849 px: „Auto-verbinden“,
-                  ab 1850 px: „Automatisch verbinden“ (volle Beschriftung). */}
-                <span className="tb-label tb-label--kurz">Verbinden</span>
-                <span className="tb-label tb-label--mittel">Auto-verbinden</span>
-                <span className="tb-label tb-label--lang">Automatisch verbinden</span>
+                {/* Die Beschriftung macht die neue Sicherheitsstufe klar: Jeder
+                  Lauf öffnet erst die Vorschau; übernommen wird nur nach einem
+                  ausdrücklichen Tipp auf „Vorschlag anwenden“. */}
+                <span className="tb-label tb-label--kurz">Vorschau</span>
+                <span className="tb-label tb-label--mittel">Vorschlag prüfen</span>
+                <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
               </button>
 
               <button
@@ -370,7 +366,7 @@ export function PlannerToolbar({
             aria-haspopup="menu"
             aria-expanded={openMenu === 'more'}
             onClick={() => onOpenMenu(openMenu === 'more' ? null : 'more')}
-            className={`cad-btn tool-btn ${openMenu === 'more' ? 'cad-btn--active' : ''}`}
+            className={`cad-btn tool-btn min-h-11 min-w-11 shrink-0 justify-center ${openMenu === 'more' ? 'cad-btn--active' : ''}`}
             data-tooltip="Weitere Aktionen"
             title="Weitere Aktionen"
           >

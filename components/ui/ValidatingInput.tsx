@@ -158,6 +158,11 @@ export function ValidatingInput({
       <input
         {...props}
         id={inputId}
+        // Native `type="number"` sanitizes the locale-specific decimal comma
+        // before React receives it (on iOS it may also open the wrong keyboard).
+        // Float fields stay text inputs so `15,5` reaches the strict parser.
+        type={isFloat ? 'text' : (props.type ?? 'number')}
+        inputMode={isFloat ? 'decimal' : (props.inputMode ?? 'numeric')}
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}
