@@ -15,6 +15,15 @@
  * (ARCHITECTURE-RULES Rule A).
  */
 
+/**
+ * Format des inhaltlichen Stands: ISO-Monat (`2026-10`).
+ *
+ * Als W3C-Datetime mit reduzierter Genauigkeit ist das ein gültiges
+ * `<lastmod>` in der Sitemap; für die Anzeige ist es das, was auf der Seite
+ * steht („Inhaltlicher Stand: 2026-10").
+ */
+export const CONTENT_REVISION_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 /** Art der Seite — entscheidet über Mindestumfang und Rolle im Topic-Graph. */
 export type PageKind =
   | 'start'
@@ -189,6 +198,16 @@ export type PageEntry = {
   structuredData: readonly StructuredDataType[];
   /** Sitemap-Angaben — nur für indexierbare Seiten gesetzt. */
   sitemap?: { changeFrequency: 'monthly' | 'yearly'; priority: number };
+  /**
+   * Stand der fachlichen Durchsicht als ISO-Monat (`2026-10`).
+   *
+   * Gesetzt wird er nur, wo der Inhalt tatsächlich durchgesehen wurde — und
+   * er ist die Quelle für drei Angaben, die zusammenpassen müssen: das
+   * sichtbare „Inhaltlicher Stand", das `dateModified` in der strukturierten
+   * Beschreibung und das `<lastmod>` der Sitemap. Ohne dieses Feld behauptet
+   * die Seite gar nichts.
+   */
+  contentRevision?: string;
   /** Herkunft der Seite im Quelltext (Nachschlagehilfe für Beitragende). */
   source: string;
   /** Titel ohne Markenzusatz; `absoluteTitle` steuert die Titelvorlage. */

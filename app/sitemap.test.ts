@@ -9,8 +9,8 @@ const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', '
 
 /**
  * Die Sitemap entsteht aus dem Seiteninventar. Geprüft wird deshalb beides:
- * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, keine
- * Zeitstempel, gültige Werte) und dass sie zum Inventar passt — eine
+ * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, Zeitstempel
+ * nur bei geprüftem Inhalt, gültige Werte) und dass sie zum Inventar passt — eine
  * indexierbare Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne
  * Indexierbarkeit ebenfalls.
  */
@@ -30,10 +30,26 @@ describe('sitemap', () => {
     }
   });
 
-  it('führt keine Zeitstempel — die Seite behauptet keine Änderung, die nicht geprüft ist', () => {
+  it('führt Zeitstempel nur, wo der Inhalt durchgesehen wurde', () => {
+    // Der Zeitstempel kommt aus dem Inventar (`contentRevision`) — nicht aus
+    // der Bauzeit. Wo der Inhalt nicht geprüft wurde, steht keiner: eine
+    // ehrliche Lücke ist besser als ein behauptetes Datum.
     for (const entry of entries) {
-      expect(entry).not.toHaveProperty('lastModified');
+      const route = SITEMAP_ROUTES.find((candidate) => candidate.path === new URL(entry.url).pathname);
+      expect(route).toBeDefined();
+      if (route?.contentRevision) {
+        expect(entry.lastModified).toBe(route.contentRevision);
+      } else {
+        expect(entry).not.toHaveProperty('lastModified');
+      }
     }
+  });
+
+  it('nennt keinen Zeitstempel für Seiten ohne dokumentierten Stand', () => {
+    const ohneStand = entries.filter((entry) => !entry.lastModified);
+    // Die Rechtsseiten tragen keinen fachlichen Stand — dort behauptet die
+    // Sitemap nichts, was im Text steht.
+    expect(ohneStand.map((entry) => new URL(entry.url).pathname)).toContain('/impressum/');
   });
 
   it('gibt Priorität und Änderungsfrequenz im gültigen Bereich an', () => {

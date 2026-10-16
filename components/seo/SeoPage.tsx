@@ -45,6 +45,9 @@ export function jsonLdFor(page: SeoPageContent) {
       path: page.path,
       name: page.h1,
       description: page.description,
+      // Derselbe Stand, den die Seite unten sichtbar nennt („Inhaltlicher
+      // Stand: …"). Maschinenlesbar und sichtbar dürfen nicht auseinanderlaufen.
+      dateModified: page.contentRevision,
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
       hasPartIds: [
@@ -120,6 +123,15 @@ export function SeoPage({
               </div>
             </section>
           )}
+
+          {/* Der inhaltliche Stand steht auf JEDER Seite, die einen kennt —
+              auch dann, wenn sie keine Quellenliste führt. Er ist der sichtbare
+              Gegenpart zu `dateModified` und `<lastmod>`: Ein Datum, das nur
+              in der Sitemap steht, prüft niemand. */}
+          <p className="caption-xs text-ink-soft">
+            Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege,
+            Quellen und Grenzen stehen offen, siehe <Link href="/ueber-werft/">Über Werft</Link>.
+          </p>
 
           <TrustBlock page={page} />
 
@@ -351,7 +363,7 @@ function Section({ section }: { section: ContentSection }) {
   );
 }
 
-/** Quellen, Annahmen, Grenzen und Stand — die Transparenz des Fachteils (§18). */
+/** Quellen, Annahmen und Grenzen — die Transparenz des Fachteils (§18). */
 function TrustBlock({ page }: { page: SeoPageContent }) {
   const hasSources = (page.sources?.length ?? 0) > 0;
   const hasAssumptions = (page.assumptions?.length ?? 0) > 0;
@@ -404,10 +416,6 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
           </div>
         )}
       </div>
-      <p className="caption-xs mt-4 text-ink-soft">
-        Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege, Quellen
-        und Grenzen stehen offen, siehe <Link href="/ueber-werft/">Über Werft</Link>.
-      </p>
     </section>
   );
 }

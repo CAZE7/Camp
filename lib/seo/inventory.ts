@@ -46,6 +46,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P0',
     structuredData: ['WebPage'],
     sitemap: { changeFrequency: 'monthly', priority: 1 },
+    contentRevision: '2026-10',
     source: 'app/page.tsx',
   },
   {
@@ -130,6 +131,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Solarpanels auf dem Dach eines Campers',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    contentRevision: '2026-10',
     source: 'app/tools/dach/layout.tsx',
   },
   {
@@ -152,6 +154,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Heizlast-Rechner für Wohnmobil und Camper',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    contentRevision: '2026-10',
     source: 'app/tools/heizung/layout.tsx',
   },
   {
@@ -174,6 +177,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Ausbau-Fahrplan: Reihenfolge der Gewerke',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.6 },
+    contentRevision: '2026-10',
     source: 'app/guides/ausbau-fahrplan/page.tsx',
   },
   {
@@ -355,4 +359,11 @@ export const SITEMAP_ROUTES = indexablePages()
     path: page.path,
     changeFrequency: page.sitemap.changeFrequency,
     priority: page.sitemap.priority,
+    /**
+     * Der inhaltliche Stand — derselbe Wert, den die Seite sichtbar nennt und
+     * der als `dateModified` in der strukturierten Beschreibung steht. Fehlt
+     * er, steht in der Sitemap kein `<lastmod>`: Die Seite behauptet dann
+     * nirgends, dass ihr Inhalt geprüft wurde.
+     */
+    ...(page.contentRevision ? { contentRevision: page.contentRevision } : {}),
   }));
