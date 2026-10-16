@@ -18,6 +18,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { coverageSummary, openGaps } from '../../lib/seo/coverage';
+import { SITE_ORIGIN } from '../../lib/site';
 import { indexablePages, PAGES } from '../../lib/seo/inventory';
 import { OPPORTUNITIES } from '../../lib/seo/opportunities';
 import { measureExport, measurementTable, THIN_WORDS, type ExportMeasurement } from './measureExport';
@@ -33,7 +34,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 const measurement = measureExport({
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '',
-  origin: 'https://caze7.github.io',
+  origin: SITE_ORIGIN,
 });
 const coverage = coverageSummary();
 const gaps = openGaps();

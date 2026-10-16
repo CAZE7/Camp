@@ -14,6 +14,7 @@
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
     "ci:verify-deploy-trigger": "tsx scripts/ci/verifyDeployTrigger.ts",
     "ci:verify-legal-notice": "tsx scripts/ci/verifyLegalNotice.ts",
+    "ci:verify-publication-origin": "tsx scripts/ci/verifyPublicationOrigin.ts",
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
     "routing:audit": "tsx scripts/routing/audit.ts",

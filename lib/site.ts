@@ -1,13 +1,21 @@
 /**
  * lib/site.ts — Herkunft und Basis-Pfad der Auslieferung an genau einer Stelle.
  *
- * Die Anwendung wird als statischer Export über GitHub Pages unter einem
- * Repository-Pfad ausgeliefert (`/Camp`). Absolute Adressen entstehen an
- * mehreren Stellen: Canonical-Verweis, Open-Graph-URL, Sitemap-Eintrag und
- * der Sitemap-Verweis in `robots.txt`. Wären das vier eigene
- * Zeichenketten-Verkettungen, würde ein geänderter Basis-Pfad an genau einer
- * davon hängen bleiben — und eine Sitemap, die auf nicht ausgelieferte
- * Adressen zeigt, ist schlimmer als keine.
+ * Die Anwendung wird als statischer Export über GitHub Pages ausgeliefert.
+ * Absolute Adressen entstehen an mehreren Stellen: Canonical-Verweis,
+ * Open-Graph-URL, Sitemap-Eintrag und der Sitemap-Verweis in `robots.txt`.
+ * Wären das vier eigene Zeichenketten-Verkettungen, würde ein geänderter
+ * Basis-Pfad an genau einer davon hängen bleiben — und eine Sitemap, die auf
+ * nicht ausgelieferte Adressen zeigt, ist schlimmer als keine.
+ *
+ * Die Auslieferung läuft seit dem 2026-10-16 auf der eigenen Domain
+ * `elektroplaner-camper.de` und damit an der WURZEL — ohne Unterpfad. Der
+ * Basis-Pfad ist deshalb in der Produktion leer; `public/CNAME` weist
+ * GitHub Pages auf dieselbe Domain. Die Kopplung beider Angaben ist nicht
+ * freiwillig, sondern geprüft: `scripts/ci/verifyPublicationOrigin.ts` bricht
+ * den Deploy ab, wenn eine Custom Domain auf der WURzel mit einem
+ * Unterpfad gebaut wird (Canonical zeigt dann auf eine Adresse, die es nicht
+ * gibt) oder wenn die CNAME-Datei nicht zur Herkunft passt.
  *
  * Der Basis-Pfad kommt aus derselben Umgebungsvariablen, die
  * `next.config.mjs` als `basePath` setzt; ohne gesetzte Variable ist er leer
@@ -15,7 +23,7 @@
  */
 
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
-export const SITE_ORIGIN = 'https://caze7.github.io';
+export const SITE_ORIGIN = 'https://elektroplaner-camper.de';
 
 /** Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD). */
 export const SITE_NAME = 'Werft';

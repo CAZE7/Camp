@@ -19,6 +19,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { pageByPath, PAGES } from '../../lib/seo/inventory';
+import { SITE_ORIGIN } from '../../lib/site';
 import { THIN_CONTENT_KINDS, type PageKind } from '../../lib/seo/types';
 import { heavyLibrariesLoaded, metaContent, scriptSources, titleOf } from './checks';
 import { analyzeInternalLinkGraph } from './linkGraph';
@@ -307,7 +308,7 @@ function main(): void {
 
   const measurement = measureExport({
     basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '',
-    origin: 'https://caze7.github.io',
+    origin: SITE_ORIGIN,
   });
   process.stdout.write(`\nGemessene Seiten: ${measurement.summary.totalPages}\n`);
   process.stdout.write(`Indexierbar: ${measurement.summary.indexable}\n`);

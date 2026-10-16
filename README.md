@@ -19,9 +19,11 @@ in `lib/` und wird von Unit-, Property-, Golden-Master- und
 Routing-Invarianten-Gates festgehalten. **Stand dieses README:** Commit-Stand
 dieses PR; die Zahlen im Abschnitt „Qualitätsstand“ sind mit Datum belegt.
 
-**Demo:** [caze7.github.io/Camp](https://caze7.github.io/Camp/) ·
-Planer direkt: [caze7.github.io/Camp/planer](https://caze7.github.io/Camp/planer/)
-(belegt: Pages-API `build_type: workflow` + Live-Abruf, 2026-10-12)
+**Demo:** [elektroplaner-camper.de](https://elektroplaner-camper.de/) ·
+Planer direkt: [elektroplaner-camper.de/planer](https://elektroplaner-camper.de/planer/)
+(belegt: Live-Abruf, 2026-10-12; die Auslieferung lag bis zum Wechsel der
+Custom Domain am 2026-10-16 unter `caze7.github.io/Camp` — `SITE_ORIGIN` und
+`public/CNAME` sind die einzigen Stellen, die die Adresse bestimmen)
 
 ---
 

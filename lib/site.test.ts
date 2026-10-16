@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { SITE_ORIGIN, siteUrl } from './site';
 
+describe('Veröffentlichungsadresse', () => {
+  it('zeigt auf die Custom Domain an der Wurzel', () => {
+    expect(SITE_ORIGIN).toBe('https://elektroplaner-camper.de');
+    // Kein Pfad in der Herkunft: Die Domain wird an der Wurzel ausgeliefert.
+    expect(new URL(SITE_ORIGIN).pathname).toBe('/');
+  });
+});
+
 describe('siteUrl', () => {
   it('setzt Herkunft und Seitenpfad mit Basis-Pfad zusammen', () => {
     expect(siteUrl('/elektrik-planung/', '/Camp')).toBe(`${SITE_ORIGIN}/Camp/elektrik-planung/`);
