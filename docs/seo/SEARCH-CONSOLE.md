@@ -20,6 +20,32 @@ Diese Datei beschreibt, wie aus `annahme` belastbare Daten werden.
   Vollzugriff). Die Daten bleiben in der Organisation; sie werden nicht an
   Dritte übertragen.
 
+## Ersteinrichtung (einmalig, durch den Betreiber)
+
+Diese Schritte brauchen Konten, die dem Projekt nicht gehören — sie sind hier
+dokumentiert, damit nichts vergessen wird, und nicht im Repository ausgeführt.
+
+1. **Google Search Console.** Domain-Property für `elektroplaner-camper.de`
+   anlegen (die Domain-Variante deckt alle Pfade und beide HTTP/HTTPS-Varianten
+   ab). Danach unter _Sitemaps_ eintragen:
+   `https://elektroplaner-camper.de/sitemap.xml`. Die Sitemap entsteht aus dem
+   Seiteninventar und enthält nur indexierbare Seiten — wer eine Seite sucht,
+   findet sie dort nicht, weil sie keine eigene ist.
+2. **Bing Webmaster Tools.** Das Google-Property über _Importieren_ übernehmen
+   und dieselbe Sitemap eintragen. Für die Umstellung hilft zusätzlich _URL
+   Inspection_ mit der alten Adresse.
+3. **Umzug melden.** Nach dem Einrichten der 301 (siehe
+   [Umzug Elektrik-Planung](./umzug-elektrik-planung.md)) in beiden Konsolen
+   die _Verschiebung_ beziehungsweise _Move_ für
+   `/elektrik-planung/` → `/camper-elektrik/` anmelden. Das ist eine Meldung,
+   keine Technik — die Umleitung muss technisch schon stehen.
+4. **Bot-Allowlist (nur bei CDN/WAF).** Wird die Auslieferung später über
+   einen CDN- oder WAF-Anbieter geführt, müssen die Prüfbots von Google und
+   Bing dort durchgelassen werden, sonst sehen die Konsolen die Seite nicht.
+   Die Prüfung erfolgt über die IP-Adressen, die Google und Bing selbst
+   veröffentlichen; eine im Projekt gepflegte Liste würde veralten und wäre
+   eine falsche Zusage.
+
 ## Ablauf je Auswertung (monatlich, 30 Minuten)
 
 1. **Daten ziehen.** In der Search Console: _Leistung → Suchanfragen_, Zeitraum
@@ -55,14 +81,14 @@ Diese Datei beschreibt, wie aus `annahme` belastbare Daten werden.
 
 ## Was zu messen ist, wenn die Daten fließen
 
-| Kennzahl                               | Zeitraum | Herkunft                                    | Ziel                                     |
-| -------------------------------------- | -------- | ------------------------------------------- | ---------------------------------------- |
-| Impressionen je Anfrage                | 28 Tage  | Search Console                              | steigende Tendenz je Thema               |
-| Klicks je Anfrage                      | 28 Tage  | Search Console                              | Klicks folgen den Impressionen           |
-| Durchschnittliche Position             | 28 Tage  | Search Console                              | Top-20 für die zehn wichtigsten Anfragen |
-| Indexierte Seiten                      | laufend  | _Abdeckung_ → Seiten                        | alle 26 indexierbaren Seiten             |
-| Aufrufe des Planers aus Suche          | 28 Tage  | Search Console (Seite `/elektrik-planung/`) | steigend gegenüber dem Basiswert         |
-| „Eingeschlossen, aber nicht indexiert“ | laufend  | _Abdeckung_                                 | null für Seiten mit eigenem Inhalt       |
+| Kennzahl                               | Zeitraum | Herkunft                          | Ziel                                     |
+| -------------------------------------- | -------- | --------------------------------- | ---------------------------------------- |
+| Impressionen je Anfrage                | 28 Tage  | Search Console                    | steigende Tendenz je Thema               |
+| Klicks je Anfrage                      | 28 Tage  | Search Console                    | Klicks folgen den Impressionen           |
+| Durchschnittliche Position             | 28 Tage  | Search Console                    | Top-20 für die zehn wichtigsten Anfragen |
+| Indexierte Seiten                      | laufend  | _Abdeckung_ → Seiten              | alle 29 indexierbaren Seiten             |
+| Aufrufe des Planers aus Suche          | 28 Tage  | Search Console (Seite `/planer/`) | steigend gegenüber dem Basiswert         |
+| „Eingeschlossen, aber nicht indexiert“ | laufend  | _Abdeckung_                       | null für Seiten mit eigenem Inhalt       |
 
 Der Basiswert für den Planer wird beim ersten Abruf schriftlich festgehalten
 (Datum, Wert) — ohne Basiswert ist „mehr“ keine Aussage.

@@ -31,6 +31,17 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
     /\/planer\/?$/
   );
 
+  // Ausbau-Vorlagen: eigene Adresse, eigene Überschrift, Stückliste und ein
+  // Weg in den Planer — ohne JavaScript lesbar.
+  await page.goto('/vorlagen/wochenend/');
+  await expect(page.locator('main h1')).toHaveCount(1);
+  await expect(page.locator('main h1')).toHaveText('Elektrik-Vorlage: Wochenend-Camper');
+  await expect(page.locator('main')).toContainText('Stückliste');
+  await expect(page.getByRole('link', { name: 'Camper-Elektroplaner öffnen' })).toHaveAttribute(
+    'href',
+    /\/planer\/?$/
+  );
+
   // Anwendungsroute ohne JavaScript: Der Startbildschirm ist der ausgelieferte
   // Inhalt. Er benennt die Seite (genau eine `h1`, Text aus dem Inventar) und
   // bietet einen Weg zurück — ein leeres Fenster wäre eine Sackgasse.

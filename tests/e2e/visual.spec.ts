@@ -22,6 +22,8 @@ import { PIXEL_MARKER } from './pixelMarker';
  * Baselines sind nach dem Umzug neu zu ziehen — der Weg dafür ist der
  * Workflow `.github/workflows/baselines.yml`
  * (`npx playwright test tests/e2e/visual.spec.ts --update-snapshots`).
+ * Die Startseite braucht ebenfalls eine neue Baseline, seit sie das
+ * Vorlagen-Raster zeigt.
  *
  * Schwelle: 2 % abweichende Pixel (maxDiffPixelRatio) — tolerant gegen
  * Anti-Aliasing, hart gegen Layout-/Farb-Brüche. Baselines liegen in

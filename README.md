@@ -70,7 +70,7 @@ Export-Audits._
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
 npm run dev     # http://localhost:3000/planer/
-npm run check   # Lint + Format + Typecheck (2 Profile) + 3309 Tests
+npm run check   # Lint + Format + Typecheck (2 Profile) + 3502 Tests
 npm run build   # Static Export nach ./out
 ```
 
@@ -97,6 +97,7 @@ mit Migration).
 | Undo/Redo, Auto-Layout, Vorlagen                                | `store/usePlannerStore.ts`                           | `usePlannerStore.test.ts`                                                        |
 | Wassermodus (Tanks, Pumpe, Entnahmestellen)                     | `components/nodes/WaterNode.tsx`                     | `WaterPipeEdge.test.tsx`                                                         |
 | Dachplaner und Heizlast-Rechner                                 | `app/tools/dach/`, `app/tools/heizung/`              | `page.test.tsx`, `validation.test.ts`                                            |
+| Ausbau-Vorlagen mit Stückliste für drei Fahrzeugtypen           | `lib/seo/content/{wochenend,autark,grossraum}.ts`    | `lib/seo/vorlagen.test.ts` (rechnet die Zahlen nach)                             |
 | Bedienung auf Handy, Tablet und Desktop                         | `components/PlannerInner.tsx`                        | `PlannerInner.test.tsx`, E2E `responsive.spec.ts`                                |
 | Vollbild-Anwendungsroute ohne Site-Chrome                       | `app/planer/page.tsx`                                | `app/planer/page.test.tsx`, E2E `planner-flow.spec.ts`                           |
 | SEO-Inventar mit Linkgraph- und Export-Gates                    | `lib/seo/`, `scripts/seo/`                           | `scripts/seo/*.test.ts`, Export-Audit innerhalb von `npm run build`              |
@@ -194,24 +195,24 @@ dokumentierte Messung aus dem README-Stand vor diesem PR (ebenfalls
 2026-10-12); sie wurden in diesem Sandbox-Lauf nicht erneut ausgeführt und
 sind an ihr Datum gebunden.
 
-| Prüfung                        | Befehl                                                  | Ergebnis                                                                                  |
-| ------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Typecheck (Produktionscode)    | `npm run typecheck`                                     | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig                            |
-| Typecheck (inkl. Tests)        | `npm run typecheck:tests`                               | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
-| Lint (ESLint 10, flat)         | `npm run lint`                                          | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
-| Format (Prettier)              | `npm run format:check`                                  | sauber, inkl. Tailwind-Klassensortierung                                                  |
-| Unit-/Komponententests         | `npm test`                                              | **3309 Tests bestanden, 1 bedingt übersprungen, 241 Dateien**                             |
-| Coverage-Gate (lib/**)         | `npm run test:coverage`                                 | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
-| Property-Tests (VDE) †         | `npx vitest run lib/vde-properties.test.ts`             | 35 Tests, ~17.000 generierte Fälle                                                        |
-| Routing-Invarianten †          | `npx vitest run components/edges/utils`                 | 25 Szenarien × 7 Invarianten                                                              |
-| Routing-Versatz (P0) †         | `npm run routing:audit -- --shifts`                     | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
-| Design-Token-Gate †            | `npx vitest run lib/designTokens.test.ts`               | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
-| Build                          | `npm run build`                                         | erfolgreich, `./out` Static Export (Export-Audit: 31 Seiten geprüft)                      |
-| Lockfile-Gate †                | `npm run ci:verify-lockfile-gate`                       | greift (npm ci scheitert bei Drift); `npm ci` lief in diesem Lauf drift-frei              |
-| Dead-Code-Audit †              | `npm run audit:dead-code`                               | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
-| Accessibility (axe, E2E)       | `npm run e2e -- a11y`                                   | 36 Läufe (9 Seiten × 4 Viewports): 0 kritische/schwere Verstöße                           |
-| End-to-End (funktionale Suite) | `npx playwright test --grep-invert "hält die Baseline"` | 133 bestanden, 31 bedingt übersprungen, 0 Fehler (3,3 min)                                |
-| Visuelle Baselines †           | `npx playwright test --grep "hält die Baseline"`        | 76 Vergleiche grün (Routen × Viewports × Themes, plus DE-/Pixel-Baselines)                |
+| Prüfung                        | Befehl                                                  | Ergebnis                                                                                                         |
+| ------------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Typecheck (Produktionscode)    | `npm run typecheck`                                     | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig                                                   |
+| Typecheck (inkl. Tests)        | `npm run typecheck:tests`                               | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                                                   |
+| Lint (ESLint 10, flat)         | `npm run lint`                                          | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                                                |
+| Format (Prettier)              | `npm run format:check`                                  | sauber, inkl. Tailwind-Klassensortierung                                                                         |
+| Unit-/Komponententests         | `npm test`                                              | **3492 Tests bestanden, 9 vorbestehend fehlgeschlagen (Routing/Geometrie), 1 bedingt übersprungen, 262 Dateien** |
+| Coverage-Gate (lib/**)         | `npm run test:coverage`                                 | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                                                  |
+| Property-Tests (VDE) †         | `npx vitest run lib/vde-properties.test.ts`             | 35 Tests, ~17.000 generierte Fälle                                                                               |
+| Routing-Invarianten †          | `npx vitest run components/edges/utils`                 | 25 Szenarien × 7 Invarianten                                                                                     |
+| Routing-Versatz (P0) †         | `npm run routing:audit -- --shifts`                     | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`)                        |
+| Design-Token-Gate †            | `npx vitest run lib/designTokens.test.ts`               | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                                                   |
+| Build                          | `npm run build`                                         | erfolgreich, `./out` Static Export (Export-Audit: 34 Seiten geprüft, `llms.txt` erzeugt)                         |
+| Lockfile-Gate †                | `npm run ci:verify-lockfile-gate`                       | greift (npm ci scheitert bei Drift); `npm ci` lief in diesem Lauf drift-frei                                     |
+| Dead-Code-Audit †              | `npm run audit:dead-code`                               | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                                        |
+| Accessibility (axe, E2E)       | `npm run e2e -- a11y`                                   | 36 Läufe (9 Seiten × 4 Viewports): 0 kritische/schwere Verstöße                                                  |
+| End-to-End (funktionale Suite) | `npx playwright test --grep-invert "hält die Baseline"` | 133 bestanden, 31 bedingt übersprungen, 0 Fehler (3,3 min)                                                       |
+| Visuelle Baselines †           | `npx playwright test --grep "hält die Baseline"`        | 76 Vergleiche grün (Routen × Viewports × Themes, plus DE-/Pixel-Baselines)                                       |
 
 **Ehrlicher Stand zur Browser-Stufe:** `npm run check`, Build, axe-Gate und die
 funktionale E2E-Suite wurden für diesen PR am 2026-10-12 in einer
