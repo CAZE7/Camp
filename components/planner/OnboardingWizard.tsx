@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
+import { requestConfirm } from '@/components/ui/ConfirmDialog';
 
 const STROMQUELLEN = [
   { id: 'solar', label: 'Solar' },
@@ -38,26 +39,58 @@ const TEMPLATES = [
   },
 ];
 
+/**
+ * Welche Vorlage passt zur Auswahl? (Nachtest 2026-10-16: Der Assistent
+ * empfahl „Minimal“ auch dann, wenn der Nutzer Solar angekreuzt hatte —
+ * diese Vorlage hat aber gar kein Solarmodul.)
+ *
+ * Regel: Die Empfehlung muss jedes angekreuzte Merkmal enthalten.
+ * Landstrom gibt es nur in „Autark“, Solar und Ladebooster ab
+ * „Allround“. Erst danach entscheidet der Umfang der Auswahl.
+ */
+export function recommendedTemplateId(
+  sources: Record<string, boolean>,
+  consumers: Record<string, boolean>
+): string {
+  const totalSelected =
+    Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
+  if (sources.landstrom) return 'autark';
+  if (totalSelected >= 5) return 'autark';
+  if (sources.solar || sources.booster || totalSelected >= 3) return 'allrounder';
+  return 'minimalist';
+}
+
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
 
-  const totalSelected =
-    Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
-  const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'allrounder' : 'minimalist';
+  const recommendedId = recommendedTemplateId(sources, consumers);
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
   const applyTemplate = usePlannerStore((state) => state.applyTemplate);
   const clearPlan = usePlannerStore((state) => state.clearPlan);
 
-  const startEmpty = () => {
+  /**
+   * Schließen (✕, Esc, Klick daneben) ändert NICHTS am Plan
+   * (Nachtest 2026-10-16: Vorher löste genau das „Plan wird geleert“
+   * aus bzw. blockierte per `window.confirm`, und es gab kein ✕).
+   * Wer den Assistenten wegklickt, sieht seinen Plan — leer oder nicht —
+   * genau so, wie er war.
+   */
+  const dismiss = useCallback(() => setHasOnboarded(true), [setHasOnboarded]);
+
+  const planHasContent = () => {
     const state = usePlannerStore.getState();
+    return state.nodes.length > 0 || state.waterNodes.length > 0;
+  };
+
+  const startEmpty = async () => {
     if (
-      (state.nodes.length > 0 || state.waterNodes.length > 0) &&
-      !window.confirm(
+      planHasContent() &&
+      !(await requestConfirm(
         'Der aktuelle Plan wird geleert. Du kannst das anschließend rückgängig machen. Fortfahren?'
-      )
+      ))
     )
       return;
     clearPlan();
@@ -65,13 +98,12 @@ export function OnboardingWizard() {
     window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
   };
 
-  const handleApplyTemplate = (templateId: string) => {
-    const state = usePlannerStore.getState();
+  const handleApplyTemplate = async (templateId: string) => {
     if (
-      (state.nodes.length > 0 || state.waterNodes.length > 0) &&
-      !window.confirm(
+      planHasContent() &&
+      !(await requestConfirm(
         'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
-      )
+      ))
     )
       return;
     applyTemplate(templateId);
@@ -82,11 +114,11 @@ export function OnboardingWizard() {
   return (
     <AccessibleDialog
       open
-      onClose={startEmpty}
+      onClose={dismiss}
       title="Dein Camper-Energieplan"
-      description="In drei kurzen Schritten findest du eine passende Basis. Oder starte direkt mit einem leeren Plan."
-      showClose={false}
-      closeOnBackdrop={false}
+      description="In drei kurzen Schritten findest du eine passende Basis. Oder schließe diesen Assistenten und starte direkt mit deinem Plan."
+      showClose
+      closeOnBackdrop
     >
       {/* Fortschrittsanzeige mit role=img, damit das aria-label auf einem
           <div> erlaubt ist (Lighthouse aria-prohibited-attr). */}
@@ -106,6 +138,10 @@ export function OnboardingWizard() {
             <h3 id="onboarding-source-title" className="text-lg font-semibold">
               1. Woher kommt dein Strom?
             </h3>
+            <p className="text-sm text-muted-foreground">
+              Kein Pflichtprogramm: Mit dem ✕ oben rechts oder der Esc-Taste schließt du den Assistenten
+              jederzeit — dein Plan bleibt dabei unverändert.
+            </p>
             <div className="space-y-2">
               {STROMQUELLEN.map((source) => (
                 <label
@@ -123,8 +159,8 @@ export function OnboardingWizard() {
               ))}
             </div>
             <div className="flex flex-wrap justify-between gap-3 pt-3">
-              <Button variant="ghost" onClick={startEmpty} className="min-h-11">
-                Leeren Plan starten
+              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+                Mit leerem Plan beginnen
               </Button>
               <Button onClick={() => setStep(2)} className="min-h-11 px-6">
                 Weiter
@@ -183,7 +219,7 @@ export function OnboardingWizard() {
                   <button
                     type="button"
                     key={template.id}
-                    onClick={() => handleApplyTemplate(template.id)}
+                    onClick={() => void handleApplyTemplate(template.id)}
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       template.id === recommendedId
                         ? 'border-moss bg-moss/10 ring-1 ring-moss'
@@ -206,8 +242,8 @@ export function OnboardingWizard() {
               <Button variant="outline" onClick={() => setStep(2)} className="min-h-11 px-6">
                 Zurück
               </Button>
-              <Button variant="ghost" onClick={startEmpty} className="min-h-11">
-                Ohne Vorlage starten
+              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+                Mit leerem Plan beginnen
               </Button>
             </div>
           </section>

@@ -61,6 +61,7 @@ import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
 import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
+import { DesignatorContext, designatorMapFor } from '../nodes/designators';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
 import { withNodeInteractionState } from './utils/nodeInteractionState';
@@ -200,8 +201,17 @@ export function FlowCanvas() {
     // Viewport-Animation ist fire-and-forget: Es gibt nichts nachzuholen und
     // keinen Nutzerfehler zu melden — `void` markiert das ausdrücklich,
     // statt das Promise still wegzuschmeißen (AUDIT T1, no-floating-promises).
-    const handleFitView = () => {
-      void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    // Nachtest Bug 25: Automatische Fits (Vorlage, Auto-verbinden, Ordnen)
+    // landeten bei 27–29 % — unlesbar. Sie respektieren die Zoom-
+    // Untergrenze; nur die bewusst gewählte Gesamtübersicht
+    // (`detail.full`) darf den ganzen Plan einpassen.
+    const handleFitView = (event: Event) => {
+      const full = (event as CustomEvent<{ full?: boolean }>).detail?.full === true;
+      void fitView({
+        duration: 400,
+        padding: PLANNER_FIT_PADDING,
+        ...(full ? {} : { minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }),
+      });
     };
     const handleFocusElement = (event: Event) => {
       const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;
@@ -368,7 +378,11 @@ export function FlowCanvas() {
     previousViewMode.current = viewMode;
     window.requestAnimationFrame(() => {
       if (saved) void setViewport(saved, { duration: 200 });
-      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+      // Nachtest Bug 25: Automatische Fits respektieren die Zoom-
+      // Untergrenze — sonst startet ein großer Plan bei 29 % unlesbar.
+      // Nur die bewusste „Gesamtübersicht“ darf weiter herauszoomen.
+      else
+        void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
 
@@ -445,7 +459,7 @@ export function FlowCanvas() {
         position.x + NODE_FOOTPRINT.width > visibleBottomRight.x ||
         position.y + NODE_FOOTPRINT.height > visibleBottomRight.y;
       if (outsideVisibleArea) {
-        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING });
+        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
       }
     };
 
@@ -490,6 +504,10 @@ export function FlowCanvas() {
     return { ...interactive, [PRESENTATION_GROUP_TYPE]: BackboneGroupNode };
   }, [coarsePointer]);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
+  // Eindeutige Bauteil-Bezeichnungen (Nachtest: doppelte Kürzel) — der
+  // Canvas nummeriert pro Art durch und reicht die Karte per Kontext an
+  // die Knoten (G1, G1.2 …), siehe components/nodes/designators.ts.
+  const designators = React.useMemo(() => designatorMapFor(rawNodes), [rawNodes]);
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
 
   // Pan-Begrenzung wächst mit dem Planinhalt. Die frühere feste Grenze
@@ -611,6 +629,22 @@ export function FlowCanvas() {
    * gemessene Routing-Geometrie und die gemeldete Oszillation verändert hat,
    * ist ohne Browser-Runtime-Trace nicht belegt.
    */
+  // Nachtest Bug 16: Die Modi „Physisch“/„Prüfung“ sahen exakt gleich aus.
+  // Prüfung markiert jetzt Elemente mit Befunden und dunkelt unauffällige
+  // ab (nur Anzeige — ADR 0008: keine Geometrie-/Topologie-Änderung).
+  const plannerErrors = usePlannerStore((state) => state.plannerErrors);
+  const findingSets = useMemo(() => {
+    const nodeIds = new Set<string>();
+    const edgeIds = new Set<string>();
+    for (const error of plannerErrors ?? []) {
+      error.nodeIds.forEach((id) => nodeIds.add(id));
+      error.edgeIds.forEach((id) => edgeIds.add(id));
+    }
+    return { nodeIds, edgeIds };
+  }, [plannerErrors]);
+  const reviewActive =
+    plannerMode === 'pruefung' && viewMode === 'electric' && (plannerErrors?.length ?? 0) > 0;
+
   const interactiveNodes = useMemo(() => {
     return groupedNodes.map((node) => {
       if (isPresentationOnlyNode(node)) return node;
@@ -627,6 +661,24 @@ export function FlowCanvas() {
           });
     });
   }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+
+  const reviewNodes = useMemo(() => {
+    if (!reviewActive) return interactiveNodes;
+    return interactiveNodes.map((node) => ({
+      ...node,
+      className:
+        `${node.className ?? ''} ${findingSets.nodeIds.has(node.id) ? 'planner-node--finding' : 'planner-node--clean'}`.trim(),
+    }));
+  }, [interactiveNodes, reviewActive, findingSets]);
+
+  const reviewEdges = useMemo(() => {
+    if (!reviewActive) return displayedEdges;
+    return displayedEdges.map((edge) => ({
+      ...edge,
+      className:
+        `${edge.className ?? ''} ${findingSets.edgeIds.has(edge.id) ? 'planner-edge--finding' : 'planner-edge--clean'}`.trim(),
+    }));
+  }, [displayedEdges, reviewActive, findingSets]);
 
   const openContextMenu = React.useCallback(
     (
@@ -776,188 +828,202 @@ export function FlowCanvas() {
         />
       )}
 
-      <div className="de-canvas relative h-full w-full flex-1">
-        <FloatingMetricsCard />
-        <ReactFlow
-          nodes={interactiveNodes}
-          edges={displayedEdges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
-          onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
-          onConnect={handleConnect}
-          onConnectStart={() => {
-            connectionAttempt.current = true;
-            showConnectionFeedback(
-              'Verbindung gestartet: Ziehe zum passenden Anschluss oder tippe ihn an.',
-              0
-            );
-          }}
-          onConnectEnd={() => {
-            if (connectionAttempt.current)
+      <DesignatorContext.Provider value={designators}>
+        <div className="de-canvas relative h-full w-full flex-1" data-planner-mode={plannerMode}>
+          <FloatingMetricsCard />
+          <ReactFlow
+            nodes={reviewNodes}
+            edges={reviewEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
+            onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
+            onConnect={handleConnect}
+            onConnectStart={() => {
+              connectionAttempt.current = true;
               showConnectionFeedback(
-                'Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.'
+                'Verbindung gestartet: Ziehe zum passenden Anschluss oder tippe ihn an.',
+                0
               );
-            connectionAttempt.current = false;
-          }}
-          isValidConnection={isValidConnection}
-          onSelectionChange={onSelectionChange}
-          onNodeMouseEnter={(_, node) => setHighlightedNodeId(node.id)}
-          onNodeMouseLeave={() => setHighlightedNodeId(null)}
-          onEdgeMouseEnter={(_, edge) => setHighlightedEdgeId(edge.id)}
-          onEdgeMouseLeave={() => setHighlightedEdgeId(null)}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          fitView
-          fitViewOptions={{ padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }}
-          minZoom={PLANNER_MIN_ZOOM}
-          maxZoom={PLANNER_MAX_ZOOM}
-          snapToGrid
-          snapGrid={PLANNER_SNAP_GRID}
-          deleteKeyCode={interaction.deleteKeyCode}
-          elementsSelectable
-          nodesFocusable
-          edgesFocusable
-          translateExtent={translateExtent}
-          // Nur sichtbare Elemente rendern (PERF-N3): Bei großen Plänen (100+
-          // Knoten) hält React Flow sonst alle Nodes/Kanten im DOM, obwohl nur
-          // ein Ausschnitt sichtbar ist. Das beschleunigt Rendering UND Dragging
-          // (während eines Drags re-routen nur noch die sichtbaren Kanten).
-          onlyRenderVisibleElements={rawNodes.length > 50}
-          /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
+            }}
+            onConnectEnd={() => {
+              if (connectionAttempt.current)
+                showConnectionFeedback(
+                  'Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.'
+                );
+              connectionAttempt.current = false;
+            }}
+            isValidConnection={isValidConnection}
+            onSelectionChange={onSelectionChange}
+            onNodeMouseEnter={(_, node) => setHighlightedNodeId(node.id)}
+            onNodeMouseLeave={() => setHighlightedNodeId(null)}
+            onEdgeMouseEnter={(_, edge) => setHighlightedEdgeId(edge.id)}
+            onEdgeMouseLeave={() => setHighlightedEdgeId(null)}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            fitView
+            fitViewOptions={{ padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }}
+            minZoom={PLANNER_MIN_ZOOM}
+            maxZoom={PLANNER_MAX_ZOOM}
+            snapToGrid
+            snapGrid={PLANNER_SNAP_GRID}
+            deleteKeyCode={interaction.deleteKeyCode}
+            elementsSelectable
+            nodesFocusable
+            edgesFocusable
+            translateExtent={translateExtent}
+            // Nur sichtbare Elemente rendern (PERF-N3): Bei großen Plänen (100+
+            // Knoten) hält React Flow sonst alle Nodes/Kanten im DOM, obwohl nur
+            // ein Ausschnitt sichtbar ist. Das beschleunigt Rendering UND Dragging
+            // (während eines Drags re-routen nur noch die sichtbaren Kanten).
+            onlyRenderVisibleElements={rawNodes.length > 50}
+            /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
                  planner/utils/flowInteraction.ts --- */
-          panOnDrag={interaction.panOnDrag}
-          panOnScroll={interaction.panOnScroll}
-          zoomOnScroll={interaction.zoomOnScroll}
-          zoomOnPinch={interaction.zoomOnPinch}
-          zoomOnDoubleClick={interaction.zoomOnDoubleClick}
-          preventScrolling={interaction.preventScrolling}
-          connectionRadius={interaction.connectionRadius}
-          nodesDraggable={interaction.nodesDraggable}
-          nodeDragThreshold={interaction.nodeDragThreshold}
-          selectionOnDrag={interaction.selectionOnDrag}
-          selectionKeyCode={interaction.selectionKeyCode}
-          multiSelectionKeyCode={interaction.multiSelectionKeyCode}
-          panActivationKeyCode={interaction.panActivationKeyCode}
-          // Tap-to-connect is implemented once in useSequentialTapConnect.
-          // React Flow's built-in click connector would otherwise also fire
-          // on the same two taps and report a duplicate/invalid connection.
-          connectOnClick={false}
-          onNodeContextMenu={handleNodeContextMenu}
-          onEdgeContextMenu={handleEdgeContextMenu}
-          onPaneContextMenu={handlePaneContextMenu}
-          onNodeDrag={handleNodeDrag}
-          onNodeDragStop={handleNodeDragStop}
-          onPaneClick={() => {
-            setContextMenu(null);
-            setSelectedNodes([]);
-            setSelectedEdges([]);
-          }}
-          aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
-          style={{ backgroundColor: 'var(--canvas-bg)' }}
-          /* Detailgrad als Container-Klasse: Die Karten bleiben dieselben
+            panOnDrag={interaction.panOnDrag}
+            panOnScroll={interaction.panOnScroll}
+            zoomOnScroll={interaction.zoomOnScroll}
+            zoomOnPinch={interaction.zoomOnPinch}
+            zoomOnDoubleClick={interaction.zoomOnDoubleClick}
+            preventScrolling={interaction.preventScrolling}
+            connectionRadius={interaction.connectionRadius}
+            nodesDraggable={interaction.nodesDraggable}
+            nodeDragThreshold={interaction.nodeDragThreshold}
+            selectionOnDrag={interaction.selectionOnDrag}
+            selectionKeyCode={interaction.selectionKeyCode}
+            multiSelectionKeyCode={interaction.multiSelectionKeyCode}
+            panActivationKeyCode={interaction.panActivationKeyCode}
+            // Tap-to-connect is implemented once in useSequentialTapConnect.
+            // React Flow's built-in click connector would otherwise also fire
+            // on the same two taps and report a duplicate/invalid connection.
+            connectOnClick={false}
+            onNodeContextMenu={handleNodeContextMenu}
+            onEdgeContextMenu={handleEdgeContextMenu}
+            onPaneContextMenu={handlePaneContextMenu}
+            onNodeDrag={handleNodeDrag}
+            onNodeDragStop={handleNodeDragStop}
+            onPaneClick={() => {
+              setContextMenu(null);
+              setSelectedNodes([]);
+              setSelectedEdges([]);
+            }}
+            aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
+            style={{ backgroundColor: 'var(--canvas-bg)' }}
+            /* Detailgrad als Container-Klasse: Die Karten bleiben dieselben
              Komponenten (M8-1: eine Darstellung je Zoomstufe), nur die
              CSS-Ebene entscheidet, ob Messwerte sichtbar sind. */
-          className={`planner-canvas planner-detail-${detailLevel} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
-        >
-          <CableRouteSync />
+            className={`planner-canvas planner-detail-${detailLevel} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
+          >
+            <CableRouteSync />
 
-          {/* Zweistufiges Raster wie im technischen Zeichenbrett: ein feines
+            {/* Zweistufiges Raster wie im technischen Zeichenbrett: ein feines
               Punktraster auf dem Snap-Maß und kräftigere Linien alle fünf
               Einheiten als Orientierung. Das Raster bleibt zurückhaltend —
               der Plan ist das Produkt, nicht der Hintergrund. */}
-          <Background
-            id="grid-fine"
-            variant={BackgroundVariant.Dots}
-            color="var(--canvas-grid)"
-            gap={PLANNER_SNAP_GRID[0]}
-            size={1}
-            style={{ opacity: 0.12 }}
-          />
-          <Background
-            id="grid-coarse"
-            variant={BackgroundVariant.Lines}
-            color="var(--canvas-grid)"
-            gap={PLANNER_SNAP_GRID[0] * 5}
-            lineWidth={1}
-            style={{ opacity: 0.24 }}
-          />
-          {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
+            <Background
+              id="grid-fine"
+              variant={BackgroundVariant.Dots}
+              color="var(--canvas-grid)"
+              gap={PLANNER_SNAP_GRID[0]}
+              size={1}
+              style={{ opacity: 0.12 }}
+            />
+            <Background
+              id="grid-coarse"
+              variant={BackgroundVariant.Lines}
+              color="var(--canvas-grid)"
+              gap={PLANNER_SNAP_GRID[0] * 5}
+              lineWidth={1}
+              style={{ opacity: 0.24 }}
+            />
+            {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
               verliert gegen die Shorthand. !bottom/!left mit !important.
               Mobile: über Undo/Bottom-Nav. Ab md über der Statuszeile.
               MiniMap erst ab lg (sonst ~200 px auf dem 508-px-Tablet-
               Canvas) und mit !left-16 neben den 44-px-Zoom-Controls.
               Bei leerem Plan blendet sie sonst als leere Schwarze/Weiße
               Kachel — sie wird nur mit Inhalt gerendert. */}
-          <Controls
-            showInteractive={false}
-            className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
-          />
-          {rawNodes.length > 0 && (
-            <MiniMap
-              position="bottom-left"
-              className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block"
-              ariaLabel="Miniaturübersicht des Plans"
-              nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
-              maskColor={minimapColors.mask}
-              style={{ backgroundColor: minimapColors.background }}
+            <Controls
+              showInteractive={false}
+              className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
             />
-          )}
-
-          {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
-              beantwortet, welche Frage gerade bearbeitet wird. */}
-          {viewMode === 'electric' && (
-            <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
-              <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
-            </Panel>
-          )}
-
-          {viewMode === 'electric' && (
-            <Panel position="top-right" className="planner-display-options-panel m-2 sm:m-3">
-              <CanvasDisplayOptions
-                activeDomains={activeDomains}
-                onToggleDomain={toggleDomain}
-                trunkMode={trunkMode}
-                onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
-                backboneGrouping={backboneGrouping}
-                onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
-                detailLevel={detailLevel}
-                onSelectDetailLevel={setDetailLevel}
+            {rawNodes.length > 0 && (
+              <MiniMap
+                position="bottom-left"
+                className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block"
+                ariaLabel="Miniaturübersicht des Plans"
+                nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
+                maskColor={minimapColors.mask}
+                style={{ backgroundColor: minimapColors.background }}
               />
-            </Panel>
-          )}
+            )}
 
-          {traceLabel && (
-            <Panel
-              position="bottom-left"
-              /* Ab lg rückt die Strompfad-Kachel über MiniMap (bis 259 px)
+            {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
+              beantwortet, welche Frage gerade bearbeitet wird. */}
+            {viewMode === 'electric' && (
+              <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
+                <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
+                {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
+                    vorher wechselten die Knöpfe ohne erkennbaren Effekt. */}
+                <p
+                  data-testid="planner-mode-caption"
+                  className="mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
+                >
+                  {plannerMode === 'physisch'
+                    ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
+                    : plannerMode === 'pruefung'
+                      ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
+                      : 'Planung: Was gehört elektrisch zusammen?'}
+                </p>
+              </Panel>
+            )}
+
+            {viewMode === 'electric' && (
+              <Panel position="top-right" className="planner-display-options-panel m-2 sm:m-3">
+                <CanvasDisplayOptions
+                  activeDomains={activeDomains}
+                  onToggleDomain={toggleDomain}
+                  trunkMode={trunkMode}
+                  onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
+                  backboneGrouping={backboneGrouping}
+                  onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+                  detailLevel={detailLevel}
+                  onSelectDetailLevel={setDetailLevel}
+                />
+              </Panel>
+            )}
+
+            {traceLabel && (
+              <Panel
+                position="bottom-left"
+                /* Ab lg rückt die Strompfad-Kachel über MiniMap (bis 259 px)
                  und Statuszeile (bis ~55 px) — sonst liegen drei schwebende
                  Panels exakt aufeinander. ml-[17rem] = 272 px =
                  MiniMap-Kante + 16 px. */
-              className="mb-20 ml-2 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14 lg:mb-20 lg:ml-[17rem] lg:max-w-[min(20rem,calc(100vw-34rem))]"
-            >
-              <div
-                data-testid="circuit-trace-info"
-                role="status"
-                className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
+                className="mb-20 ml-2 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14 lg:mb-20 lg:ml-[17rem] lg:max-w-[min(20rem,calc(100vw-34rem))]"
               >
-                <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
-                {traceLabel}
-              </div>
-            </Panel>
-          )}
+                <div
+                  data-testid="circuit-trace-info"
+                  role="status"
+                  className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
+                >
+                  <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
+                  {traceLabel}
+                </div>
+              </Panel>
+            )}
 
-          {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-            <Panel
-              position="bottom-center"
-              className="mb-4 border border-rule-strong bg-surface-panel p-2 text-xs text-foreground"
-            >
-              <strong className="font-semibold">Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W
-              Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
-            </Panel>
-          )}
-        </ReactFlow>
-      </div>
+            {viewMode === 'electric' && calculatedSolarWatts > 0 && (
+              <Panel
+                position="bottom-center"
+                className="mb-4 border border-rule-strong bg-surface-panel p-2 text-xs text-foreground"
+              >
+                <strong className="font-semibold">Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W
+                Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
+              </Panel>
+            )}
+          </ReactFlow>
+        </div>
+      </DesignatorContext.Provider>
 
       <div
         className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"

@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useDashboardMetrics } from './useDashboardMetrics';
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 import { type Node, type Edge } from '@xyflow/react';
 
 beforeEach(() => {
@@ -20,7 +21,9 @@ describe('useDashboardMetrics', () => {
     const { result } = renderHook(() => useDashboardMetrics(emptyNodes, emptyEdges, 'summer', 0));
 
     expect(result.current.dailyConsumptionAh).toBe(0);
-    expect(result.current.autarkyStr).toBe('Unendlich');
+    // Nachtest 2026-10-16: Ohne Verbrauch ist die Autarkie nicht berechnet —
+    // „Unendlich" las sich wie ein Ergebnis und verdeckte fehlende Angaben.
+    expect(result.current.autarkyStr).toBe(AUTARKY_NOT_CALCULATED);
     expect(result.current.chargingTimeStr).toBe('Kein Ladegerät');
     expect(result.current.totalSolarVoltage).toBe(0);
     expect(result.current.totalSolarAmps).toBe(0);
@@ -36,9 +39,8 @@ describe('useDashboardMetrics', () => {
       useDashboardMetrics(nodesLiFePO4, emptyEdges, 'summer', 0)
     );
     // usableCapacityAh = 100 * 0.9 = 90
-    // dailyConsumptionAh = 0
-    // autarkyHours = Infinity
-    expect(resLiFePO4.current.autarkyStr).toBe('Unendlich');
+    // dailyConsumptionAh = 0 -> nicht berechnet statt „Unendlich“ (Nachtest)
+    expect(resLiFePO4.current.autarkyStr).toBe(AUTARKY_NOT_CALCULATED);
 
     const nodesAGM: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'AGM' }, position: { x: 0, y: 0 } },

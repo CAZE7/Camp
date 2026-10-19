@@ -13,6 +13,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
+import { ConfirmDialogHost, requestConfirm } from './ui/ConfirmDialog';
 import { CanvasSkeleton } from './ui/Skeleton';
 import {
   Frame,
@@ -158,12 +159,11 @@ function PlannerShell() {
         const state = usePlannerStore.getState();
         if (state.selectedNodes.length > 0 || state.selectedEdges.length > 0) {
           event.preventDefault();
-          if (
-            window.confirm(
-              'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
-            )
-          )
-            state.deleteSelected();
+          void requestConfirm(
+            'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
+          ).then((ok) => {
+            if (ok) usePlannerStore.getState().deleteSelected();
+          });
         }
       }
     };
@@ -266,6 +266,7 @@ function PlannerShell() {
     >
       {!hasOnboarded && <OnboardingWizard />}
       <ShortcutOverlay />
+      <ConfirmDialogHost />
       {focusMode && (
         <button
           type="button"
@@ -429,7 +430,9 @@ function PlannerShell() {
             <button
               type="button"
               data-testid="mobile-overview"
-              onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))}
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }))
+              }
               className="cad-btn cad-btn--line flex h-12 items-center gap-2 px-3"
               aria-label="Planübersicht anzeigen"
               title="Planübersicht anzeigen"

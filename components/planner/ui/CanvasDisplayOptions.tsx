@@ -227,7 +227,17 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
           id="canvas-display-options-panel"
           role="group"
           aria-label="Anzeige und Filter"
-          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] border border-rule-strong bg-surface-raised p-3"
+          // Nachtest Handy-Audit: Im Querformat (375 px hoch) lief das
+          // Popover bis y=552 aus dem Bild — als Dropdown unter dem Knopf
+          // ist nach unten schlicht kein Platz. Unterhalb von lg hängt es
+          // deshalb wie Warnzentrale/Prüfbericht als Blatt am Fenster
+          // (über der unteren Navigation, Höhe fenstergebunden); ab lg
+          // bleibt es das Dropdown am Knopf.
+          // Unterkante 9.5rem wie bei der Warnzentrale: Darunter schwebt
+          // mobil die Undo-Leiste (bottom-20, z-50 in eigenem Kontext) und
+          // fing sonst die Klicks auf die untersten Optionen ab — im
+          // E2E-Audit als „intercepts pointer events“ gemessen.
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[70] max-h-[min(62dvh,calc(100dvh-13rem))] overflow-y-auto overscroll-contain border border-rule-strong bg-surface-raised p-3 lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-0 lg:top-full lg:mt-2 lg:max-h-[calc(100dvh-7.5rem)] lg:w-[min(20rem,calc(100vw-1rem))]"
         >
           <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-border pb-2">
             <div>
@@ -243,7 +253,16 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <DisplayToggles {...props} compact />
+          {/* Nachtest N8: Nach der Detail-Wahl blieb das Popover offen und
+              verdeckte den Prüfung-Tab. Auswahl schließt das Popover. */}
+          <DisplayToggles
+            {...props}
+            compact
+            onSelectDetailLevel={(level) => {
+              props.onSelectDetailLevel(level);
+              setOpen(false);
+            }}
+          />
         </div>
       )}
     </div>

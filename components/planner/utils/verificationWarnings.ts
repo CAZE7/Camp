@@ -214,12 +214,15 @@ export function verificationSummary(report: VerificationReport): VerificationSum
     warning.type === 'critical' ? 0 : warning.type === 'warning' ? 1 : 2;
   findings.sort((a, b) => severityRank(a) - severityRank(b) || a.id.localeCompare(b.id));
 
+  // Nachtest Bug 4: „nicht entscheidbar“/„verletzt“ ist Fachjargon. Die
+  // Überschrift spricht Klartext; die exakten Status stehen weiterhin in
+  // den Kennzahlen (Technische Details) und im Druckbericht.
   const headline =
     verdict === 'COMPLIANT'
-      ? `Gegen die ${coverage.exercised} angewandten Regeln bestehen die geprüften Punkte. ${coverage.notApplicable} Regeln hatten im Plan keinen Gegenstand.`
+      ? `Alle ${coverage.exercised} anwendbaren Prüfungen sind erfüllt. ${coverage.notApplicable} Prüfungen kamen in diesem Plan nicht vor.`
       : verdict === 'INCOMPLETE'
-        ? `${coverage.unprovable} Regel(n) sind ohne weitere Angaben nicht entscheidbar — der Plan gilt damit nicht als geprüft.`
-        : `${coverage.failed} Regel(n) sind verletzt; ${coverage.unprovable} weitere sind nicht entscheidbar.`;
+        ? `Für ${coverage.unprovable} Prüfung(en) fehlen Angaben — ohne sie gilt der Plan als nicht geprüft.`
+        : `${coverage.failed} Prüfung(en) sind nicht erfüllt; bei ${coverage.unprovable} weiteren fehlen Angaben für eine Prüfung.`;
 
   return {
     verdict,
@@ -246,7 +249,15 @@ export function verificationSummary(report: VerificationReport): VerificationSum
     notAppliedRules: rulesForContext(report.certificate.profile, report.certificate.context).skipped.map(
       (rule) => rule.id
     ),
-    limitations: report.limitations,
+    // Anzeige-Ebene: Die Engine listet in einer Modellgrenze die Regel-
+    // Codes ohne Gegenstand auf (technischer Nachweis). Für die Anzeige
+    // zählt die Aussage, nicht die Code-Liste — sie steht unverändert im
+    // Druckbericht/Zertifikat.
+    limitations: report.limitations.map((limitation) =>
+      limitation.startsWith('Regeln ohne Eingabe im Plan')
+        ? `Einige Prüfungen hatten in diesem Plan kein passendes Bauteil und wurden nicht ausgeführt (sie zählen nicht als erfüllt).`
+        : limitation
+    ),
     findings,
   };
 }

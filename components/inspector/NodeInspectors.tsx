@@ -59,8 +59,8 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
               Maximaler Strom in Ampere
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-rating`}
-              type="number"
               min="1"
               value={busbar.data?.rating || 250}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -102,8 +102,8 @@ export function BatteryInspector({
               Kapazität (Ah)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-capacity`}
-              type="number"
               min="0"
               value={node.data?.capacity || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -167,13 +167,18 @@ export function BatteryInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-nominalVoltage`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
-              value={node.data?.nominalVoltage || 0}
+              // Nachtest: `|| 0` zeigte „0 V“, obwohl die Engine ohne Angabe
+              // den Chemie-Standard annimmt (Hinweistext darunter). Leer +
+              // Platzhalter sagt ehrlich: nicht angegeben, Annahme gilt.
+              allowEmpty
+              value={node.data?.nominalVoltage ?? ''}
+              placeholder={node.data?.chemistry === 'LiFePO4' ? '12,8 (angenommen)' : '12,0 (angenommen)'}
               rules={[COMMON_RULES.positive]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { nominalVoltage: val })}
+              onEmptyChange={() => onUpdateNodeData?.(node.id, { nominalVoltage: undefined })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -193,8 +198,8 @@ export function BatteryInspector({
               BMS Dauerentladung (A)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-bmsContinuousDischarge`}
-              type="number"
               min="0"
               value={node.data?.bmsContinuousDischarge || 0}
               rules={[COMMON_RULES.positive]}
@@ -210,8 +215,8 @@ export function BatteryInspector({
               BMS Peak-Entladung (A)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-bmsPeakDischarge`}
-              type="number"
               min="0"
               value={node.data?.bmsPeakDischarge || 0}
               rules={[COMMON_RULES.positive]}
@@ -253,7 +258,6 @@ export function BatteryInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-internalResistance`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
@@ -278,7 +282,6 @@ export function BatteryInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-peukertExponent`}
-              type="number"
               min="1"
               step="0.01"
               isFloat={true}
@@ -301,8 +304,8 @@ export function BatteryInspector({
               BMS Dauer-Ladestrom (A)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-bmsContinuousCharge`}
-              type="number"
               min="0"
               value={node.data?.bmsContinuousCharge || 0}
               rules={[COMMON_RULES.positive]}
@@ -355,8 +358,8 @@ export function ConsumerInspector({
               Leistung (W)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-watts`}
-              type="number"
               min="0"
               value={node.data?.watts || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -373,7 +376,6 @@ export function ConsumerInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-hours`}
-              type="number"
               min="0"
               max="24"
               isFloat={true}
@@ -411,7 +413,6 @@ export function ChargerInspector({
               {/* ELE-007: Basis der Kalt-Voc-Fensterprüfung — 0/leer = Prüfung aus. */}
               <ValidatingInput
                 id={`${node.id}-maxPvVoltage`}
-                type="number"
                 min="0"
                 step="0.1"
                 isFloat={true}
@@ -435,7 +436,6 @@ export function ChargerInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-amps`}
-              type="number"
               min="0"
               step="0.1"
               isFloat
@@ -457,8 +457,8 @@ export function ChargerInspector({
               Effizienz in %
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-efficiency`}
-              type="number"
               min="0"
               max="100"
               value={node.data?.efficiency ?? 100}
@@ -491,8 +491,8 @@ export function FuseInspector({
             Sicherung (A)
           </label>
           <ValidatingInput
+            isFloat
             id={`${node.id}-rating`}
-            type="number"
             min="0"
             value={node.data?.rating || 0}
             rules={[COMMON_RULES.strictlyPositive]}
@@ -543,8 +543,8 @@ export function ShorePowerInspector({
               Prospektiver Kurzschlussstrom I<sub>k</sub> der Einspeisung in Ampere
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-prospectiveIkA`}
-              type="number"
               min="1"
               step="1"
               allowEmpty
@@ -593,8 +593,8 @@ export function InverterInspector({
               Dauerleistung (W)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-continuousPower`}
-              type="number"
               min="0"
               value={node.data?.continuousPower || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -683,8 +683,8 @@ export function Consumer230VInspector({
               Leistung 230V (W)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-watts230`}
-              type="number"
               min="0"
               value={node.data?.watts || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -701,7 +701,6 @@ export function Consumer230VInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-hours230`}
-              type="number"
               min="0"
               max="24"
               isFloat={true}
@@ -761,8 +760,8 @@ export function SolarInspector({
               Leistung (W)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-wattsSolar`}
-              type="number"
               min="0"
               value={node.data?.watts || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -779,7 +778,6 @@ export function SolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-voltage`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
@@ -798,7 +796,6 @@ export function SolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-ampsSolar`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
@@ -823,7 +820,6 @@ export function SolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-isc`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
@@ -846,7 +842,6 @@ export function SolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-voc`}
-              type="number"
               min="0"
               step="0.1"
               isFloat={true}
@@ -865,7 +860,6 @@ export function SolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-tempCoefficient`}
-              type="number"
               step="0.01"
               isFloat={true}
               // AUDIT S1: Beschriftung und gespeicherter Wert müssen dieselbe
@@ -909,7 +903,6 @@ export function RoofWindowInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-width`}
-              type="number"
               min="1"
               value={node.data?.width || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -926,7 +919,6 @@ export function RoofWindowInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-height`}
-              type="number"
               min="1"
               value={node.data?.height || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -960,7 +952,6 @@ export function RoofSolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-width2`}
-              type="number"
               min="1"
               value={node.data?.width || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -977,7 +968,6 @@ export function RoofSolarInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-height2`}
-              type="number"
               min="1"
               value={node.data?.height || 0}
               rules={[COMMON_RULES.strictlyPositive]}
@@ -997,8 +987,8 @@ export function RoofSolarInspector({
               Leistung (Wp)
             </label>
             <ValidatingInput
+              isFloat
               id={`${node.id}-wattsRoof`}
-              type="number"
               min="0"
               value={node.data?.watts || 0}
               rules={[COMMON_RULES.strictlyPositive]}

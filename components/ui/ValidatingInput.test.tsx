@@ -128,11 +128,48 @@ describe('ValidatingInput', () => {
     expect(screen.getByText(INPUT_ERROR_MESSAGES.invalidNumber)).toBeInTheDocument();
   });
 
+  // Nachtest 2026-10-16 (Komma-Bug): Auch Ganzzahlfelder sind Textfelder —
+  // `type="number"` verschluckte das Komma, bevor der Parser es sah
+  // („12,5“ → 125). Die Tastatur bleibt numerisch, die Ganzzahl-Prüfung
+  // meldet „12,5“ im Ganzzahlfeld als Fehler statt still zu runden.
   it('keeps whole-number fields on the numeric keyboard', () => {
     render(<ValidatingInput value={10} onValidChange={vi.fn()} aria-label="test-input" />);
     const input = screen.getByLabelText('test-input') as HTMLInputElement;
-    expect(input.type).toBe('number');
+    expect(input.type).toBe('text');
     expect(input.inputMode).toBe('numeric');
+  });
+
+  // Nachtest 2026-10-16, Abb. 15: Mobil wurde aus „12,5“ der Text „12520“ —
+  // der Zwischenstand „12,“ galt als Wert/Fehler und der Prop-Abgleich
+  // schrieb den Feldtext mitten im Tippen um. Jetzt bleibt der Text stehen,
+  // bis die Zahl vollständig ist.
+  it('does not rewrite the field text while a decimal comma is being typed', () => {
+    const onValidChange = vi.fn();
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12,' } });
+    // Zwischenstand: weder Wert noch Fehler.
+    expect(onValidChange).not.toHaveBeenCalled();
+    expect(screen.queryByText(INPUT_ERROR_MESSAGES.invalidNumber)).not.toBeInTheDocument();
+    expect(input.value).toBe('12,');
+
+    fireEvent.change(input, { target: { value: '12,5' } });
+    expect(onValidChange).toHaveBeenCalledWith(12.5);
+    // Der getippte Text bleibt, wie er ist — kein „125“, kein „12.5“-Sprung.
+    expect(input.value).toBe('12,5');
+  });
+
+  it('reverts an unfinished decimal text on blur', () => {
+    const onValidChange = vi.fn();
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12,' } });
+    fireEvent.blur(input);
+    expect(input.value).toBe('20');
+    expect(onValidChange).not.toHaveBeenCalled();
   });
 
   it('reports non-integral input in integer mode instead of rounding it', () => {

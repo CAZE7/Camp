@@ -5,7 +5,6 @@ import {
   Camera,
   Check,
   Copy,
-  FileDown,
   Frame,
   Grid3x3,
   Info,
@@ -39,6 +38,7 @@ import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
 import { requestBomModalOpen } from '../utils/bomModalEvents';
+import { requestConfirm } from '../../ui/ConfirmDialog';
 import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
@@ -126,8 +126,8 @@ export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> =
  * bzw. nur das Shell-Layout (Vollbild). Als Custom Events, weil die Auslöser in
  * der Chrome-Leiste und die Wirkung im Canvas bzw. in `PlannerInner` liegt.
  */
-export function dispatchPlannerEvent(name: string) {
-  window.dispatchEvent(new CustomEvent(name));
+export function dispatchPlannerEvent(name: string, detail?: unknown) {
+  window.dispatchEvent(new CustomEvent(name, detail === undefined ? undefined : { detail }));
 }
 
 export function usePlannerActions({
@@ -223,9 +223,20 @@ export function usePlannerActions({
   }, []);
 
   const runAutoWire = useCallback(() => {
+    // N1 (Nachtest): Im Wasserplan erklärt die Aktion sich, statt einen
+    // Elektro-Vorschlag zu öffnen. Der Store-Guard in `previewAutoWire`
+    // bleibt die harte Grenze; hier kommt nur die sichtbare Rückmeldung.
+    if (usePlannerStore.getState().viewMode === 'water') {
+      onFeedback({
+        type: 'info',
+        message:
+          'Automatisch verbinden gibt es nur für den Elektrikplan. Im Wasserplan verbindest du von Hand (Anschluss antippen). Der Elektroplan wurde nicht verändert.',
+      });
+      return;
+    }
     flashBusy('wire');
     autoWireSystem();
-  }, [autoWireSystem, flashBusy]);
+  }, [autoWireSystem, flashBusy, onFeedback]);
 
   const runLayoutV2 = useCallback(async () => {
     setBusy('layoutV2');
@@ -328,9 +339,9 @@ export function usePlannerActions({
     const hasContent = state.nodes.length + state.waterNodes.length > 0;
     if (
       hasContent &&
-      !window.confirm(
+      !(await requestConfirm(
         `Der aktuelle Plan wird durch „${picked.name}“ ersetzt. Mit Rückgängig (Strg+Z) lässt sich der Wechsel zurücknehmen. Fortfahren?`
-      )
+      ))
     ) {
       return;
     }
@@ -365,8 +376,9 @@ export function usePlannerActions({
         {
           items: [
             {
+              // Nachtest Bug 9: Kein „BOM“ mehr im Nutzertext — der Hint
+              // machte den Eintrag zu „Stückliste BOM“.
               label: 'Stückliste',
-              hint: 'BOM',
               icon: Package,
               testId: 'action-bom',
               run: openBom,
@@ -419,7 +431,7 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              label: 'Zur Prüfung',
+              label: 'Plan speichern',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
@@ -435,7 +447,7 @@ export function usePlannerActions({
               label: 'Gesamtübersicht',
               hint: 'Fit',
               icon: Maximize2,
-              run: () => dispatchPlannerEvent('planner-fit-view'),
+              run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
             },
             {
               label: 'Vollbild (Fokusmodus)',
@@ -493,6 +505,20 @@ export function usePlannerActions({
               icon: PanelRight,
               checked: isInspectorOpen,
               run: () => setInspectorOpen(!isInspectorOpen),
+            },
+          ],
+        },
+        {
+          // Nachtest Bug 17: Der Expertenmodus versteckte sich im Hilfe-
+          // Menü. Er ist eine Darstellungs-Einstellung und gehört nach
+          // „Ansicht“ — mit Wortlaut, der sagt, was er tut.
+          label: 'Planungshilfe',
+          items: [
+            {
+              label: 'Expertenmodus (ohne Schrittleiste)',
+              icon: SlidersHorizontal,
+              checked: !guidedMode,
+              run: () => setGuidedMode(!guidedMode),
             },
           ],
         },
@@ -580,13 +606,9 @@ export function usePlannerActions({
               icon: Info,
               run: () => setHasOnboarded(false),
             },
-            {
-              label: guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden',
-              icon: SlidersHorizontal,
-              checked: !guidedMode,
-              run: () => setGuidedMode(!guidedMode),
-            },
-            { label: 'Plan leeren …', icon: FileDown, danger: true, run: onRequestReset },
+            // Nachtest N6: „Plan leeren …“ stand im Hilfe-Menü und wurde
+            // leicht versehentlich angeklickt. Löschen gibt es nur noch
+            // unter Datei („Neuen leeren Plan starten“).
           ],
         },
       ],
@@ -669,7 +691,7 @@ export function usePlannerActions({
             label: 'Gesamtübersicht',
             icon: Maximize2,
             testId: 'action-fit-view',
-            run: () => dispatchPlannerEvent('planner-fit-view'),
+            run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
           },
         ],
       },

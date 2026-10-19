@@ -1,13 +1,15 @@
 'use client';
-import React from 'react';
+import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { type FuseNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
+import { DesignatorContext } from './designators';
 
 const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<FuseNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
+  const designators = useContext(DesignatorContext);
 
   return (
     <div
@@ -16,7 +18,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
       aria-label={`${data.label || 'Sicherungskasten'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="fuse" />
+      <NodeSymbol kind="fuse" dinCode={designators.get(id)} />
       {editingField === 'label' ? (
         <input
           autoFocus

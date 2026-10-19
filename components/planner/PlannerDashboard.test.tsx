@@ -13,6 +13,15 @@ vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
 }));
 
+// Nachtest N2: Die Schrittleiste ist ausgeblendet, solange die Einführung
+// offen ist. Diese Suite testet den Zustand NACH der Einführung.
+const mockHasOnboarded = true;
+vi.mock('../../lib/store', () => ({
+  useAppStore: vi.fn((selector: (state: { hasOnboarded: boolean }) => unknown) =>
+    selector({ hasOnboarded: mockHasOnboarded })
+  ),
+}));
+
 // Mock Planner Store
 const mockSetViewMode = vi.fn();
 const mockSetSeason = vi.fn();

@@ -76,9 +76,18 @@ export type RouteLookup = (edgeId: string) => { length: number } | undefined;
 /**
  * Kabellänge einer Kante für die Stückliste.
  *
- * Liegen eingetragene UND geroutete Länge vor, zählt die größere (Material
- * wird zu kurz bestellt, nicht zu lang) und die Abweichung wird gemeldet.
- * Fehlt beides, bleibt die Platzhalterlänge — ausdrücklich als Annahme.
+ * Nachtest Bug 7: Zwischen direkt benachbarten Bauteilen wies die
+ * Stückliste 6,4 m aus, weil der geroutete Zeichenweg (100 px = 1 m, mit
+ * Umwegen um Hindernisse) über `max()` die vom Nutzer eingetragene Länge
+ * schlug. Maßstab des Plans ist aber der Eintrag des Nutzers — die
+ * Zeichnung ist schematisch. Deshalb gilt jetzt:
+ *
+ *  - Eine vom Nutzer eingetragene Länge gewinnt immer. Die Abweichung zur
+ *    Route wird weiterhin gemeldet (`lengthsDiverge`), still überschrieben
+ *    wird nichts.
+ *  - Nur bei einer Planungsannahme (AutoWire, `isAssumption`) bleibt die
+ *    konservative größere Länge — eine Annahme darf nicht zu knapp sein.
+ *  - Fehlt beides, bleibt die Platzhalterlänge — ausdrücklich als Annahme.
  */
 export function edgeLengthOf(
   routedPx: number | undefined,
@@ -90,9 +99,10 @@ export function edgeLengthOf(
   const routedM = routedPx !== undefined ? routedPx / PX_PER_METER : undefined;
 
   if (storedM !== undefined && routedM !== undefined) {
+    if (!isAssumption) return { meters: storedM, source: 'stored', storedM, routedM };
     return {
       meters: Math.max(storedM, routedM),
-      source: storedM >= routedM ? (isAssumption ? 'assumed' : 'stored') : 'routed',
+      source: storedM >= routedM ? 'assumed' : 'routed',
       storedM,
       routedM,
     };

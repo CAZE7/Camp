@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 import {
   type BatteryNodeData,
   type ConsumerNodeData,
@@ -207,21 +208,15 @@ function calculateDailyConsumption(
 }
 
 function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number): string {
-  let autarkyHours: number;
-  if (usableCapacityAh === 0 && dailyConsumptionAh === 0) {
-    autarkyHours = Infinity;
-  } else if (usableCapacityAh === 0) {
-    autarkyHours = 0;
-  } else if (dailyConsumptionAh > 0) {
-    autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
-  } else {
-    autarkyHours = Infinity;
-  }
-
-  const autarkyDays = autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
-  const autarkyRemainderHours = autarkyHours === Infinity ? 0 : Math.floor(autarkyHours % 24);
-
-  return autarkyHours === Infinity ? 'Unendlich' : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
+  // Nachtest 2026-10-16 / PR #536 B-02: Ohne eingetragenen Verbrauch ist
+  // die Autarkie nicht „unendlich“, sondern schlicht nicht berechnet —
+  // „Unendlich“ las sich wie ein Prüfergebnis und verdeckte, dass die
+  // Nutzungsdauer (h/Tag) an den Verbrauchern fehlt.
+  if (dailyConsumptionAh <= 0) return AUTARKY_NOT_CALCULATED;
+  const autarkyHours = usableCapacityAh === 0 ? 0 : usableCapacityAh / (dailyConsumptionAh / 24);
+  const autarkyDays = Math.floor(autarkyHours / 24);
+  const autarkyRemainderHours = Math.floor(autarkyHours % 24);
+  return `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
 }
 
 function calculateSolarMetrics(

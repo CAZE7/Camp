@@ -33,6 +33,11 @@ export async function exportPlanImage(): Promise<ExportResult> {
     const imageWidth = Math.max(640, Math.ceil(bounds.width + 160));
     const imageHeight = Math.max(480, Math.ceil(bounds.height + 160));
     const transform = getViewportForBounds(bounds, imageWidth, imageHeight, 0.5, 2, 0.12);
+    // Nachtest Bug 13 (Rest): Der Auswahlrahmen wurde mit ins PNG
+    // gerendert. Während der Aufnahme neutralisiert eine CSS-Klasse
+    // Auswahl-Rahmen/-Rechteck; danach wird sie entfernt.
+    reactFlowWrapper.classList.add('planner-exporting');
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     const dataUrl = await toPng(viewport || reactFlowWrapper, {
       backgroundColor: paper,
       pixelRatio: 2,
@@ -53,12 +58,14 @@ export async function exportPlanImage(): Promise<ExportResult> {
           node?.classList?.contains('react-flow__minimap')
         ),
     });
+    reactFlowWrapper.classList.remove('planner-exporting');
     const link = document.createElement('a');
     link.download = 'werft-schaltplan.png';
     link.href = dataUrl;
     link.click();
     return { type: 'success', message: 'Bild in hoher Auflösung exportiert.' };
   } catch (error) {
+    document.querySelector('.react-flow.planner-exporting')?.classList.remove('planner-exporting');
     const message =
       nodes.length === 0
         ? 'Nichts zu exportieren — platziere zuerst Komponenten.'

@@ -235,10 +235,24 @@ export function PlannerToolbar({
                 data-testid="action-autowire"
                 onClick={onAutoWire}
                 disabled={busy !== null}
-                aria-label="Auto-verbinden: Vorschlag prüfen"
+                // N1 (Nachtest): Im Wasserplan heißt der Knopf, was er tut —
+                // er erklärt (Toast), statt den Elektroplan vorzuschlagen.
+                aria-label={
+                  viewMode === 'water'
+                    ? 'Auto-verbinden: nur im Elektrikplan verfügbar'
+                    : 'Auto-verbinden: Vorschlag prüfen'
+                }
                 className="cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap"
-                data-tooltip="Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen"
-                title="Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen"
+                data-tooltip={
+                  viewMode === 'water'
+                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+                }
+                title={
+                  viewMode === 'water'
+                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+                }
               >
                 {busy === 'wire' ? (
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -259,7 +273,7 @@ export function PlannerToolbar({
                 onClick={onTidy}
                 disabled={busy !== null}
                 className="cad-btn cad-toolbar__desktop-tidy"
-                title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
+                title="Plan ordnen: Bauteile automatisch übersichtlich anordnen. Rückgängig ist möglich."
               >
                 {busy === 'layoutV2' ? (
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

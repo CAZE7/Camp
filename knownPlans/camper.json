@@ -250,6 +250,7 @@
       },
       {
         "data": {
+          "hours": 8,
           "label": "Kühlbox",
           "watts": 45
         },
@@ -262,6 +263,7 @@
       },
       {
         "data": {
+          "hours": 4,
           "label": "LED-Beleuchtung",
           "watts": 20
         },
@@ -274,6 +276,7 @@
       },
       {
         "data": {
+          "hours": 2,
           "label": "USB Steckdosen",
           "watts": 36
         },
@@ -413,6 +416,7 @@
       },
       {
         "data": {
+          "hours": 8,
           "label": "Kühlbox",
           "watts": 45
         },
@@ -425,6 +429,7 @@
       },
       {
         "data": {
+          "hours": 4,
           "label": "LED-Beleuchtung",
           "watts": 20
         },
@@ -437,6 +442,7 @@
       },
       {
         "data": {
+          "hours": 2,
           "label": "USB Steckdosen",
           "watts": 36
         },

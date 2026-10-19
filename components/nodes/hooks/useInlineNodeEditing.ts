@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useState } from 'react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
+import { parseDecimalString } from '../../../lib/units';
 
 /**
  * Gemeinsames Inline-Editing für Planer-Nodes (AGENTS.md M6-2).
@@ -78,9 +79,12 @@ export function useInlineNodeEditing<K extends string = string>(
 
     let finalValue: string | number = tempValue;
     if (!isText) {
-      const parsed = Number(tempValue);
+      // Nachtest (Komma-Bug): `Number("12,5")` ist NaN — der Inline-Editor
+      // verwarf deutsche Dezimalzahlen als „ungültig“. Derselbe strenge
+      // Parser wie in den Inspektor-Feldern liest Komma und Punkt.
+      const parsed = parseDecimalString(tempValue);
       const allowsZero = zeroAllowedFields.includes(field);
-      if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
+      if (parsed === null || !Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
         dispatchInputError(allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.');
         setEditingField(null);
         return;
