@@ -15,7 +15,7 @@ vi.mock('html-to-image', () => ({
 
 // Nachtest N2: Die Schrittleiste ist ausgeblendet, solange die Einführung
 // offen ist. Diese Suite testet den Zustand NACH der Einführung.
-let mockHasOnboarded = true;
+const mockHasOnboarded = true;
 vi.mock('../../lib/store', () => ({
   useAppStore: vi.fn((selector: (state: { hasOnboarded: boolean }) => unknown) =>
     selector({ hasOnboarded: mockHasOnboarded })
