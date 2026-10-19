@@ -17,6 +17,7 @@ import type { BomData } from './bom';
 import { componentTypeInfo, lengthsDiverge } from './bom';
 import type { ReleaseAssessment } from './releaseStatus';
 import type { VerificationSummary } from './verificationWarnings';
+import { toPlainGerman } from './plainGerman';
 
 export interface PrintReportInput {
   bom: BomData;
@@ -101,7 +102,7 @@ function verificationBlock(summary: VerificationSummary | null): string {
   const findings = summary.findings
     .map(
       (finding) =>
-        `<li>${escapeHtml(finding.message)}${finding.source ? ` <em>(${escapeHtml(finding.source)})</em>` : ''}</li>`
+        `<li>${escapeHtml(toPlainGerman(finding.message))}${finding.source ? ` <em>(${escapeHtml(finding.source)})</em>` : ''}</li>`
     )
     .join('');
   return `<section>

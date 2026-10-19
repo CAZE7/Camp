@@ -15,6 +15,7 @@ import {
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import type { Edge } from '@xyflow/react';
 import type { ValidationWarning } from '../hooks/useLiveValidation';
+import { toPlainGerman } from './plainGerman';
 
 /**
  * components/planner/utils/verificationWarnings.ts — ÜBERSETZUNG DER
@@ -253,11 +254,15 @@ export function verificationSummary(report: VerificationReport): VerificationSum
     // Codes ohne Gegenstand auf (technischer Nachweis). Für die Anzeige
     // zählt die Aussage, nicht die Code-Liste — sie steht unverändert im
     // Druckbericht/Zertifikat.
-    limitations: report.limitations.map((limitation) =>
-      limitation.startsWith('Regeln ohne Eingabe im Plan')
-        ? `Einige Prüfungen hatten in diesem Plan kein passendes Bauteil und wurden nicht ausgeführt (sie zählen nicht als erfüllt).`
-        : limitation
-    ),
+    limitations: report.limitations
+      .filter((limitation) => !limitation.startsWith('Nicht angewandt'))
+      .map((limitation) =>
+        toPlainGerman(
+          limitation.startsWith('Regeln ohne Eingabe im Plan')
+            ? `Einige Prüfungen hatten in diesem Plan kein passendes Bauteil und wurden nicht ausgeführt (sie zählen nicht als erfüllt).`
+            : limitation
+        )
+      ),
     findings,
   };
 }

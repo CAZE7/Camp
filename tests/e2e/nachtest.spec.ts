@@ -176,12 +176,12 @@ test.describe('Nachtest Desktop', () => {
     await expect(page.locator('.de-canvas')).toHaveAttribute('data-planner-mode', 'planung');
   });
 
-  test('Bug 9/N6: Menüs sprechen Klartext (Plan speichern, kein „Plan leeren“ in Hilfe)', async ({
+  test('Bug 9/N6: Menüs sprechen Klartext (Speichern bestätigen, kein „Plan leeren“ in Hilfe)', async ({
     page,
   }) => {
     await openPlanner(page);
     await page.getByTestId('menubar-bearbeiten').click();
-    await expect(page.getByRole('menuitem', { name: 'Plan speichern' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Speichern bestätigen' })).toBeVisible();
     await page.keyboard.press('Escape');
     await page.getByTestId('menubar-hilfe').click();
     await expect(page.getByRole('menuitem', { name: /Plan leeren/ })).toHaveCount(0);

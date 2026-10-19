@@ -37,6 +37,12 @@ export interface CommonNodeData {
   concurrentDevices?: string[];
   /** Dauerleistung des Wechselrichters in W. */
   continuousPower?: number;
+  /**
+   * Eindeutige Anlagenkennung im Plan (G1, G1.2, …). Anzeige, keine Normvorgabe.
+   * Vorlagen und die Migration setzen sie, damit ein Plan auch ohne Canvas-Kontext
+   * keine doppelten Kürzel trägt.
+   */
+  designator?: string;
   [key: string]: unknown;
 }
 

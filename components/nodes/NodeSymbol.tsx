@@ -165,7 +165,7 @@ export function NodeSymbol({ kind, dinCode: dinCodeOverride }: { kind: NodeSymbo
   const dinCode = dinCodeOverride ?? baseDinCode;
 
   return (
-    <div className={cn('node-symbol', tone)} aria-hidden="true" data-din={dinCode}>
+    <div className={cn('node-symbol', tone)} aria-hidden="true" data-din={dinCode} data-designator={dinCode}>
       <span className="node-symbol__icon">
         {DinIcon ? (
           <DinIcon />
@@ -181,7 +181,9 @@ export function NodeSymbol({ kind, dinCode: dinCodeOverride }: { kind: NodeSymbo
         <span className="node-symbol__code" data-testid="din-code">
           {code}
         </span>
-        <span className="node-symbol__din-code">· {dinCode}</span>
+        <span className="node-symbol__din-code" title={dinCode}>
+          · {dinCode}
+        </span>
       </span>
     </div>
   );

@@ -1,5 +1,22 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-19 — Anlagenkennungen auf Vorlagen (Anzeige, keine Elektrik)
+
+**Anlass:** Nachtest am ausgelieferten Beispielplan. Doppelte Kürzel (G1, G2, W1, E1)
+kamen daher, dass Vorlagen und gespeicherte Pläne nur das statische Art-Kürzel
+der Karte zeigten. `nodesWithUniqueDesignators` schreibt die laufende Bezeichnung
+nach `node.data.designator`. Die Golden-Pläne `camper` und `complex` binden
+`TEMPLATE_MINIMALIST` bzw. `TEMPLATE_AUTARK` direkt; ihre Fixtures tragen deshalb
+dieselbe Anzeigekennung.
+
+**Abweichung der Fixtures:** nur das Feld `data.designator` an den Knoten (Eingabe
+und AutoWire-Knoten). `electrical` und `routing` sind unverändert — der
+Golden-Harness vergleicht diese Stufen vor dem Byte-Vergleich, beide blieben
+gleich. Keine Querschnitte, Sicherungen, Ströme oder Kabelgeometrie.
+
+**Recapture:** `npm run goldenmaster:capture` für `knownPlans/camper.json` und
+`knownPlans/complex.json`.
+
 ## LEDGER 2026-10-07 (2) — Elektrische Berechnungs- und Validierungsschicht: eine I_z-Wahrheit, leitwertgewichtete Parallelpfade, AC-Schutzkette, Prüfzustände
 
 **Anlass:** Auftrag „Elektrische Berechnungs- und Validierungsschicht" (Phasen 1–12).

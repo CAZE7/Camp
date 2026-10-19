@@ -4,6 +4,7 @@ import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { collidingNodeIds, findNearestFreePosition } from '../../components/planner/utils/collision';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
+import { designatorMapFor, nodesWithUniqueDesignators } from '../../components/nodes/designatorModel';
 import { getEdgeDomain } from '../../lib/electrical';
 import { isFuseType } from '../../lib/shortCircuit';
 import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
@@ -1063,7 +1064,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     const template = TEMPLATES_DICT[templateId];
     if (template) {
       const current = get();
-      const templateNodes = [...template.nodes];
+      const templateNodes = nodesWithUniqueDesignators(template.nodes);
       const templateEdges = [...template.edges] as Edge<CableEdgeData>[];
       const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, templateNodes, templateEdges);
       if (lockedMutations.length > 0) {
@@ -1185,6 +1186,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     } else if (type === 'inverter') {
       newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
+
+    const peers = get().viewMode === 'water' ? get().waterNodes : get().nodes;
+    const designator = designatorMapFor([...peers, { id: newNode.id, type: newNode.type }]).get(newNode.id);
+    if (designator) newNode.data = { ...newNode.data, designator };
 
     const { viewMode } = get();
     if (viewMode === 'water') {
@@ -1351,9 +1356,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     }
     set((state) =>
       withHistory(state, {
-        nodes: plan.nodes,
+        nodes: nodesWithUniqueDesignators(plan.nodes),
         edges: plan.edges,
-        waterNodes: plan.waterNodes,
+        waterNodes: nodesWithUniqueDesignators(plan.waterNodes),
         waterEdges: plan.waterEdges,
         selectedNodes: [],
         selectedEdges: [],

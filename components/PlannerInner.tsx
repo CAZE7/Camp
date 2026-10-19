@@ -227,6 +227,8 @@ function PlannerShell() {
    *  < 768 px  : Blatt über dem Arbeitsbereich (`max-md:absolute inset-0`),
    *              Sichtbarkeit über den Fußleisten-Schalter (`activeTab`).
    *  768–1279  : Slide-over von rechts, 320 px, mit Backdrop (`md:fixed`).
+   *              Es beginnt unter Menü- und Werkzeugleiste, damit Prüfbericht
+   *              und andere Kopfleisten-Knöpfe nicht unter dem Blatt liegen.
    *  ≥ 1280 px : dritte Spalte; eingeklappt bleibt sie als 0-px-Spalte im
    *              Layout (kein Overlay, kein Schatten), `invisible` nimmt sie
    *              aus der Tastatur-Reihenfolge.
@@ -238,7 +240,7 @@ function PlannerShell() {
     'min-h-0 flex-col bg-surface-panel',
     activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex' : 'max-md:hidden',
     isInspectorOpen
-      ? 'md:fixed md:inset-y-0 md:right-0 md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
+      ? 'md:fixed md:bottom-0 md:right-0 md:top-[calc(var(--cad-menubar-h)+var(--cad-toolbar-h))] md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
       : 'md:hidden',
     isInspectorOpen
       ? 'xl:static xl:z-auto xl:flex xl:w-[288px] xl:flex-none 2xl:w-[320px]'
@@ -391,7 +393,7 @@ function PlannerShell() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
+            className="absolute inset-0 z-20 hidden bg-ink/25 md:block xl:hidden"
           />
         )}
 

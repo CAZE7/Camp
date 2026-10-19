@@ -290,23 +290,24 @@ function selectivityRemedy(target: SelectivityTarget): string {
   switch (target.kind) {
     case 'raise':
       return (
-        `Vorgelagertes Schutzorgan auf I_n ≥ ${formatA(target.ratingA)} A vergrößern ` +
-        `(Verhältnis ≥ ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) ${prove}.`
+        `Vorgelagerte Sicherung auf mindestens ${formatA(target.ratingA)} A vergrößern ` +
+        `(Verhältnis mindestens ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) ${prove}.`
       );
     case 'capped':
       return (
-        `Über den Nennstrom ist diese Kaskade nicht selektiv zu bekommen: ≥ ${formatA(target.ratingA)} A ` +
+        `Über den Nennstrom ist diese Kaskade nicht selektiv zu bekommen: mindestens ${formatA(target.ratingA)} A ` +
         `wären für das Verhältnis ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1 nötig, die Leitung des ` +
-        `vorgelagerten Organs lässt aber höchstens ${target.ceilingA} A zu (I_n ≤ I_z, AMP-001). ` +
-        `Das nachgelagerte Organ auf ≤ ${formatA(target.ceilingA / SELECTIVITY_RATIO_HEURISTIC)} A ` +
-        `verkleinern (I_b beachten), den Querschnitt der vorgelagerten Leitung erhöhen ${prove}.`
+        `vorgelagerten Schutzorgans lässt aber höchstens ${target.ceilingA} A zu ` +
+        `(der Nennstrom darf die zulässige Strombelastbarkeit nicht übersteigen). ` +
+        `Das nachgelagerte Schutzorgan auf höchstens ${formatA(target.ceilingA / SELECTIVITY_RATIO_HEURISTIC)} A ` +
+        `verkleinern (den Betriebsstrom dabei nicht unterschreiten), den Querschnitt der vorgelagerten Leitung erhöhen ${prove}.`
       );
     case 'unknown-ceiling':
       return (
-        `Vorgelagertes Schutzorgan auf I_n ≥ ${formatA(target.ratingA)} A vergrößern ` +
-        `(Verhältnis ≥ ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) — die Leitung, auf der dieses Organ ` +
+        `Vorgelagerte Sicherung auf mindestens ${formatA(target.ratingA)} A vergrößern ` +
+        `(Verhältnis mindestens ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) — die Leitung, auf der dieses Organ ` +
         `sitzt, ist hier nicht zugeordnet, ihre Belastbarkeitsgrenze wurde deshalb nicht mitgeprüft; ` +
-        `I_n ≤ I_z dieser Zuleitung ist gesondert nachzuweisen — ${prove}.`
+        `dass der Nennstrom die zulässige Strombelastbarkeit dieser Zuleitung nicht übersteigt, ist gesondert nachzuweisen — ${prove}.`
       );
     default: {
       const exhaustive: never = target;
@@ -534,7 +535,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
             kind: 'UNVERIFIABLE',
             message: `Kabel ${label}: kein Überstrom-Schutzorgan gefunden — I_n ist nicht bestimmbar (I_b ≤ I_z wurde dennoch geprüft). Die fehlende Absicherung an der Quelle meldet AMP-003.`,
             autoFixRemedy:
-              'Sicherung bzw. Schutzschalter in die Leitung setzen (In ≥ I_b, In ≤ I_z) oder die Leitung an ein vorhandenes, passend bemessenes Schutzorgan anschließen.',
+              'Sicherung bzw. Schutzschalter in die Leitung setzen (Nennstrom mindestens so hoch wie der Betriebsstrom und höchstens so hoch wie die zulässige Strombelastbarkeit) oder die Leitung an ein vorhandenes, passend bemessenes Schutzorgan anschließen.',
           })
         );
       }
@@ -573,7 +574,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
           equation: 'I_b ≤ I_n ≤ I_z (hier: I_b > I_n)',
           details: ibInIzDetails(context, cable, ampacity, device.ratedCurrentA),
           message: `Kabel ${label}: Betriebsstrom I_b = ${ib.toFixed(1)} A liegt über dem Nennstrom I_n = ${device.ratedCurrentA} A des wirksamen Schutzorgans (${describeDevice(device)})${effective.host === 'node' ? ` im Bauteil „${labelOfNode(context.graph, effective.hostId)}“` : ` auf Leitung „${effective.hostId}“`}.`,
-          autoFixRemedy: `Schutzorgan mit I_n ≥ ${ib.toFixed(1)} A einsetzen (Vorschlag ${selectFuseSize(ib, cable.crossSectionMm2)} A), sofern I_n ≤ I_z = ${ampacity.izA.toFixed(1)} A bleibt — sonst Querschnitt erhöhen.`,
+          autoFixRemedy: `Schutzorgan mit einem Nennstrom von mindestens ${ib.toFixed(1)} A einsetzen (Vorschlag ${selectFuseSize(ib, cable.crossSectionMm2)} A), sofern dieser Nennstrom die zulässige Strombelastbarkeit von ${ampacity.izA.toFixed(1)} A nicht übersteigt — sonst Querschnitt erhöhen.`,
         })
       );
     }

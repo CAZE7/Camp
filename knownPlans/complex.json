@@ -390,6 +390,7 @@
         "data": {
           "capacity": 200,
           "chemistry": "LiFePO4",
+          "designator": "G1.2",
           "label": "200Ah Lithium"
         },
         "id": "battery-1",
@@ -401,6 +402,7 @@
       },
       {
         "data": {
+          "designator": "W1.2",
           "label": "Minus Busbar",
           "role": "negative"
         },
@@ -413,6 +415,7 @@
       },
       {
         "data": {
+          "designator": "W1",
           "label": "Plus Busbar",
           "role": "positive"
         },
@@ -426,6 +429,7 @@
       {
         "data": {
           "amps": 32,
+          "designator": "G2",
           "label": "MPPT Solarregler",
           "maxPvVoltage": 75
         },
@@ -439,6 +443,7 @@
       {
         "data": {
           "amps": 20,
+          "designator": "G2.2",
           "label": "DC-DC Ladebooster"
         },
         "id": "charger-2",
@@ -450,6 +455,7 @@
       },
       {
         "data": {
+          "designator": "E1.3",
           "hours": 4,
           "label": "MaxxFan",
           "watts": 40
@@ -463,6 +469,7 @@
       },
       {
         "data": {
+          "designator": "E1",
           "hours": 8,
           "label": "Kompressorkühlschrank",
           "watts": 60
@@ -476,6 +483,7 @@
       },
       {
         "data": {
+          "designator": "E1.2",
           "hours": 3,
           "label": "Standheizung",
           "watts": 40
@@ -489,6 +497,7 @@
       },
       {
         "data": {
+          "designator": "E2",
           "hours": 0.5,
           "label": "Induktionskochfeld (1 Platte)",
           "watts": 500
@@ -502,6 +511,7 @@
       },
       {
         "data": {
+          "designator": "F1",
           "label": "Sicherungskasten",
           "rating": 15
         },
@@ -515,6 +525,7 @@
       {
         "data": {
           "continuousPower": 600,
+          "designator": "U1",
           "hasRcd": true,
           "label": "600W Inverter",
           "watts": 600
@@ -528,6 +539,7 @@
       },
       {
         "data": {
+          "designator": "X1",
           "hasRcd": true,
           "label": "Landstrom"
         },
@@ -541,6 +553,7 @@
       {
         "data": {
           "amps": 12.9,
+          "designator": "G3",
           "isc": 13.7,
           "label": "400W Solar",
           "voc": 37,
@@ -558,6 +571,7 @@
         "data": {
           "capacity": 90,
           "chemistry": "AGM",
+          "designator": "G1",
           "label": "Starterbatterie"
         },
         "id": "starter-1",
@@ -788,6 +802,7 @@
         "data": {
           "capacity": 200,
           "chemistry": "LiFePO4",
+          "designator": "G1.2",
           "label": "200Ah Lithium"
         },
         "id": "battery-1",
@@ -799,6 +814,7 @@
       },
       {
         "data": {
+          "designator": "W1.2",
           "label": "Minus Busbar"
         },
         "id": "busbar-minus",
@@ -810,6 +826,7 @@
       },
       {
         "data": {
+          "designator": "W1",
           "label": "Plus Busbar"
         },
         "id": "busbar-plus",
@@ -822,6 +839,7 @@
       {
         "data": {
           "amps": 30,
+          "designator": "G2",
           "label": "MPPT Solarregler",
           "maxPvVoltage": 75
         },
@@ -835,6 +853,7 @@
       {
         "data": {
           "amps": 20,
+          "designator": "G2.2",
           "label": "DC-DC Ladebooster"
         },
         "id": "charger-2",
@@ -846,6 +865,7 @@
       },
       {
         "data": {
+          "designator": "E1.3",
           "hours": 4,
           "label": "MaxxFan",
           "watts": 40
@@ -859,6 +879,7 @@
       },
       {
         "data": {
+          "designator": "E1",
           "hours": 8,
           "label": "Kompressorkühlschrank",
           "watts": 60
@@ -872,6 +893,7 @@
       },
       {
         "data": {
+          "designator": "E1.2",
           "hours": 3,
           "label": "Standheizung",
           "watts": 40
@@ -885,6 +907,7 @@
       },
       {
         "data": {
+          "designator": "E2",
           "hours": 0.5,
           "label": "Induktionskochfeld (1 Platte)",
           "watts": 500
@@ -898,6 +921,7 @@
       },
       {
         "data": {
+          "designator": "F1",
           "label": "Sicherungskasten"
         },
         "id": "fusebox-1",
@@ -910,6 +934,7 @@
       {
         "data": {
           "continuousPower": 600,
+          "designator": "U1",
           "hasRcd": true,
           "label": "600W Inverter",
           "watts": 600
@@ -923,6 +948,7 @@
       },
       {
         "data": {
+          "designator": "X1",
           "hasRcd": true,
           "label": "Landstrom"
         },
@@ -936,6 +962,7 @@
       {
         "data": {
           "amps": 12.9,
+          "designator": "G3",
           "isc": 13.7,
           "label": "400W Solar",
           "voc": 37,
@@ -953,6 +980,7 @@
         "data": {
           "capacity": 90,
           "chemistry": "AGM",
+          "designator": "G1",
           "label": "Starterbatterie"
         },
         "id": "starter-1",

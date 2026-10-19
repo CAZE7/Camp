@@ -4,7 +4,14 @@ import { Handle, Position } from '@xyflow/react';
 import { type FuseNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
+
+/** 0 und negative Angaben sind fehlende Nennströme, keine Sicherung „0 A“. */
+function shownFuseRating(rating: unknown): number | null {
+  const numeric =
+    typeof rating === 'number' ? rating : typeof rating === 'string' ? Number(rating) : Number.NaN;
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
 
 const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<FuseNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -18,7 +25,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
       aria-label={`${data.label || 'Sicherungskasten'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="fuse" dinCode={designators.get(id)} />
+      <NodeSymbol kind="fuse" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus
@@ -54,7 +61,9 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('rating', data.rating ?? '')}>
             {/* Kein Nennstrom eingetragen = fehlende Angabe, KEIN Wert „0 A“ (kein stiller Fallback). */}
-            {data.rating ? `Sicherung: ${data.rating} A` : 'Sicherung: nicht angegeben'}
+            {shownFuseRating(data.rating) !== null
+              ? `Sicherung: ${shownFuseRating(data.rating)} A`
+              : 'Sicherung: nicht angegeben'}
           </div>
         )}
       </div>

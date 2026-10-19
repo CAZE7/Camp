@@ -69,9 +69,9 @@ export interface VerificationInput {
  */
 export const ENGINE_LIMITATIONS: readonly string[] = Object.freeze([
   'Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussagen über einzelne Leiter (z. B. PEN-Führung) stützen sich auf deklarierte Felder.',
-  'I_z stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PVC) mit den Korrekturfaktoren des Laufs. Verlegeart, Kabeltyp (FLRY/FLR2X), Kanal- oder Rohrverlegung sind nur über diese Faktoren abgebildet.',
+  'Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PVC) mit den Korrekturfaktoren des Laufs. Verlegeart, Kabeltyp (FLRY/FLR2X), Kanal- oder Rohrverlegung sind nur über diese Faktoren abgebildet.',
   'Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 20 °C; Datenblattwerte des konkreten Aufbaus schlagen das Modell.',
-  'Selektivität ohne I²t-Daten beider Geräte ist eine Verhältnis-Heuristik (≥ 1,6:1 für Sicherungen ab 16 A) — kein Normnachweis; die Norm fordert Herstellerangaben.',
+  'Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen ab 16 A) — kein Normnachweis; die Norm fordert Herstellerangaben.',
   'Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Temperatureinflüsse auf die Kapazität sind nicht modelliert.',
   'Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur und die Häufung des Laufs abgebildet — nicht als Feldfunktion.',
 ]);

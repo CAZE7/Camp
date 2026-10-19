@@ -34,6 +34,8 @@ export interface NodeDataFieldSpec {
 /** Felder, die JEDE Bauteilart haben darf (CommonNodeData). */
 const COMMON_FIELDS: Record<string, NodeDataFieldSpec> = {
   label: { type: 'string' },
+  /** Laufende Anlagenkennung (G1, G1.2, …). Anzeige, keine elektrische Größe. */
+  designator: { type: 'string' },
   watts: { type: 'number', allowZero: true },
   concurrentDevices: { type: 'stringArray' },
   continuousPower: { type: 'number', allowZero: true },

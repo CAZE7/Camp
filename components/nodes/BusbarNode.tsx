@@ -4,7 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 import { type BusbarNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<BusbarNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -18,7 +18,7 @@ const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeP
       aria-label={`${data.label || 'Sammelschiene'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="busbar" dinCode={designators.get(id)} />
+      <NodeSymbol kind="busbar" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

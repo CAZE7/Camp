@@ -244,6 +244,12 @@ describe('lib/verify/graph — Schutzorgane an Kanten', () => {
       residualType: 'A',
       poles: 2,
     });
+    expect(
+      edgeAcDevices({
+        fuseSize: 10,
+        acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+      })[1]
+    ).toMatchObject({ type: 'rcd', residualType: 'B' });
     // Ohne Bemessungsstrom (fuseSize) entsteht KEIN MCB mit geratenem In.
     expect(
       edgeAcDevices({ acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 } })

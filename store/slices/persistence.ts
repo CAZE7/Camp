@@ -1,3 +1,4 @@
+import { nodesWithUniqueDesignators } from '../../components/nodes/designatorModel';
 import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
 import { sanitizeEdgeDataBySchema } from '../../lib/edgeSchema'; // DOM-004
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
@@ -173,10 +174,14 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   // `stripNodeMeasurement` in BEIDEN Richtungen (Laden hier, Speichern in
   // `partialize`): gemessene Boxen sind Darstellung, nicht Planinhalt.
   if (Array.isArray(p.nodes))
-    safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement);
+    safe.nodes = nodesWithUniqueDesignators(
+      p.nodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement)
+    );
   if (Array.isArray(p.edges)) safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData);
   if (Array.isArray(p.waterNodes))
-    safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement);
+    safe.waterNodes = nodesWithUniqueDesignators(
+      p.waterNodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement)
+    );
   if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.

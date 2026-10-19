@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { MapIcon } from 'lucide-react';
 import { measuredHeight, measuredWidth, nodeHeight, nodeWidth } from '../edges/utils/nodeGeometry';
 import {
   ReactFlow,
@@ -1000,23 +999,6 @@ export function FlowCanvas() {
                   <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
                   {traceLabel}
                 </div>
-              </Panel>
-            )}
-
-            {rawNodes.length > 8 && (
-              <Panel position="bottom-left" className="mb-36 ml-2 md:hidden">
-                <button
-                  type="button"
-                  data-testid="mobile-overview"
-                  onClick={() => {
-                    void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
-                  }}
-                  className="cad-btn cad-btn--line min-h-12 gap-2 px-3"
-                  aria-label="Planübersicht anzeigen"
-                >
-                  <MapIcon className="h-5 w-5" aria-hidden="true" />
-                  Übersicht
-                </button>
               </Panel>
             )}
 

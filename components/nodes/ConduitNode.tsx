@@ -5,7 +5,7 @@ import type { ConduitNodeData } from './types';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { conduitFillOutcome, type ConduitFillOutcome } from '@/lib/verify';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 /**
  * Füllgrad-Anzeige — gerechnet von der Verifikations-Engine.
@@ -68,7 +68,7 @@ const ConduitNode = function ({
         selected ? 'node-card--selected' : ''
       } ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="conduit" dinCode={designators.get(id)} />
+      <NodeSymbol kind="conduit" dinCode={resolvedDesignator(designators, id, data)} />
 
       <div className="mb-2 text-center text-sm font-bold text-foreground">
         {data.label || 'Leerrohr'} ({declaredType ?? 'Typ nicht angegeben'})

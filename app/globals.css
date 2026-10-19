@@ -1336,6 +1336,8 @@
    Klassische Anwendungsmenüs. Zurückhaltend: Textlinks, keine Kacheln,
    Auswahl beim Öffnen markiert. */
 .cad-menubar {
+  position: relative;
+  z-index: 60;
   display: flex;
   flex-shrink: 0;
   align-items: stretch;
@@ -1517,6 +1519,8 @@
    dann eine zweite (unsichtbare) Scroll-Ebene in der Werkzeugleiste erzeugen.
    Vorher scrollte die Leiste auch senkrecht (Inhalt 60 px in 44 px Höhe). */
 .cad-toolbar {
+  position: relative;
+  z-index: 60;
   display: flex;
   flex-shrink: 0;
   min-height: var(--cad-toolbar-h);
@@ -2217,6 +2221,8 @@
 
 .planner-shell .node-symbol {
   align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
   gap: 0.5rem;
   margin: -0.15rem -0.15rem 0.7rem;
   padding: 0.45rem 0.55rem;
@@ -2232,9 +2238,11 @@
 
 .node-symbol__identity {
   display: flex;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
   align-items: baseline;
   gap: 0.375rem;
+  overflow: visible;
 }
 
 .planner-shell .node-symbol__code {
@@ -2247,6 +2255,8 @@
 }
 
 .node-symbol__din-code {
+  flex: 0 0 auto;
+  overflow: visible;
   color: var(--text-med);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
@@ -2768,6 +2778,12 @@ html.planner-root-active body {
   display: none;
 }
 
+/* Speicherzustand ist eine Aussage, kein optionaler Zusatz ab 1980 px.
+   „Gespeichert“ bleibt auf jeder Breite lesbar. */
+.cad-toolbar [data-testid='save-indicator'] .cad-tb-explain {
+  display: inline;
+}
+
 /* Grundstufe: die kürzeste Beschriftung. WICHTIG: Diese Regeln stehen VOR den
    beiden Medienabfragen — Medienabfragen erhöhen die Spezifität nicht, es
    gewinnt nur die spätere Regel derselben Stufe. */
@@ -3170,7 +3186,6 @@ html.planner-root-active body {
 /* Auf kleinen Screens bleiben die drei Prüf-Zugänge im sichtbaren Statusfeld:
    Warnungszahl, Prüfbericht und das Menü mit „Plan prüfen“/Stückliste. */
 @media (max-width: 767px) {
-  .cad-toolbar__status > [data-testid='save-indicator'],
   .cad-toolbar__status > [data-testid^='routing-status-'],
   .cad-toolbar__status > .cad-status-optimize {
     display: none !important;
@@ -3189,7 +3204,6 @@ html.planner-root-active body {
     max-height: min(60dvh, 26rem) !important;
   }
 
-  .cad-toolbar__status > [data-testid='save-indicator'],
   .cad-toolbar__status > [data-testid^='routing-status-'],
   .cad-toolbar__status > .cad-status-optimize {
     display: none !important;

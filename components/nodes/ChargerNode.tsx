@@ -4,7 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 import { type ChargerNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<ChargerNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -18,7 +18,7 @@ const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNode
       aria-label={`${data.label || 'Ladequelle'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="charger" dinCode={designators.get(id)} />
+      <NodeSymbol kind="charger" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

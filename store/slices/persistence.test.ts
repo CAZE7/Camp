@@ -17,6 +17,8 @@ import {
  */
 
 const validNode = { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} };
+/** Migration vergibt die laufende Bezeichnung, wenn sie fehlt oder doppelt ist. */
+const stampedNode = { ...validNode, data: { designator: 'G1' } };
 const validEdge = { id: 'e1', source: 'bat', target: 'fuse', type: 'cableEdge', data: {} };
 
 describe('persistOptions — Speicher-Vertrag', () => {
@@ -79,7 +81,11 @@ describe('migratePlannerPersisted', () => {
       waterNodes: [validNode],
       waterEdges: [validEdge],
     };
-    expect(migratePlannerPersisted(persisted, 1)).toEqual(persisted);
+    expect(migratePlannerPersisted(persisted, 1)).toEqual({
+      ...persisted,
+      nodes: [stampedNode],
+      waterNodes: [stampedNode],
+    });
   });
 
   it('liefert für leeren/korrupten Gesamtstand ein leeres Partial (Store-Defaults greifen)', () => {
@@ -101,7 +107,7 @@ describe('migratePlannerPersisted', () => {
       },
       1
     );
-    expect(result.nodes).toEqual([validNode]);
+    expect(result.nodes).toEqual([stampedNode]);
   });
 
   it('filtert Kanten ohne id/source/target heraus', () => {
@@ -183,10 +189,10 @@ describe('migratePlannerPersisted', () => {
     const result = migratePlannerPersisted(persisted, 1);
     const ok = result.nodes?.find((n) => n.id === 'ok');
     const muell = result.nodes?.find((n) => n.id === 'muell');
-    expect(ok?.data).toEqual({ label: 'Aufbau', capacity: 100, chemistry: 'AGM' });
+    expect(ok?.data).toEqual({ label: 'Aufbau', capacity: 100, chemistry: 'AGM', designator: 'G1' });
     // Falsch getippte BEKANNTE Felder fliegen raus (Leseschicht fällt auf
     // dokumentierte Defaults), unbekannte bleiben:
-    expect(muell?.data).toEqual({ label: 'Alt' });
+    expect(muell?.data).toEqual({ label: 'Alt', designator: 'G1.2' });
   });
 
   it('DOM-004: Schema-Validierung entfernt falsch getippte bekannte Kantenfelder', () => {

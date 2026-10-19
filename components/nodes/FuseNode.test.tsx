@@ -42,6 +42,13 @@ describe('FuseNode Component', () => {
     expect(screen.getByText('Sicherung: 50 A')).toBeInTheDocument();
   });
 
+  it('zeigt 0 und die Zeichenkette „0“ nicht als Nennstrom', () => {
+    const { rerender } = render(<FuseNode id="1" data={{ rating: 0 }} />);
+    expect(screen.getByText('Sicherung: nicht angegeben')).toBeInTheDocument();
+    rerender(<FuseNode id="1" data={{ rating: '0' as unknown as number }} />);
+    expect(screen.getByText('Sicherung: nicht angegeben')).toBeInTheDocument();
+  });
+
   it('applies selected styling when selected is true', () => {
     const { container } = render(<FuseNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
