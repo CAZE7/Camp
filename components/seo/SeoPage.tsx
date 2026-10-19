@@ -31,6 +31,15 @@ import { RichText } from './RichText';
  * Der Inhalt kommt aus `lib/seo/content/` — hier steht nur, WIE er erscheint.
  */
 
+/**
+ * Die Wissensseite des Themas: Rechner, Normgrundlagen, Absicherung.
+ *
+ * Nach dem Umzug von `/elektrik-planung/` ist das die Pillar-Seite
+ * `/camper-elektrik/`. Seiten, die auf sie verweisen sollen, nehmen die
+ * Adresse von hier — so gibt es sie nur an einer Stelle.
+ */
+const WISSENSSEITE_PATH = '/camper-elektrik/';
+
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
 export function jsonLdFor(page: SeoPageContent) {
   const breadcrumb = breadcrumbsFor(page);
@@ -45,6 +54,9 @@ export function jsonLdFor(page: SeoPageContent) {
       path: page.path,
       name: page.h1,
       description: page.description,
+      // Derselbe Stand, den die Seite unten sichtbar nennt („Inhaltlicher
+      // Stand: …"). Maschinenlesbar und sichtbar dürfen nicht auseinanderlaufen.
+      dateModified: page.contentRevision,
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
       hasPartIds: [
@@ -121,6 +133,15 @@ export function SeoPage({
             </section>
           )}
 
+          {/* Der inhaltliche Stand steht auf JEDER Seite, die einen kennt —
+              auch dann, wenn sie keine Quellenliste führt. Er ist der sichtbare
+              Gegenpart zu `dateModified` und `<lastmod>`: Ein Datum, das nur
+              in der Sitemap steht, prüft niemand. */}
+          <p className="caption-xs text-ink-soft">
+            Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege,
+            Quellen und Grenzen stehen offen, siehe <Link href="/ueber-werft/">Über Werft</Link>.
+          </p>
+
           <TrustBlock page={page} />
 
           <section aria-labelledby="weiter-titel">
@@ -158,12 +179,15 @@ export function SeoPage({
             {/*
               Drei Ziele, in dieser Reihenfolge: die Zeichenanwendung (eigene
               Route `/planer/`, volles Browserfenster), die Wissensseite mit
-              Rechner und Normgrundlagen (`/elektrik-planung/`) und der
+              Rechner und Normgrundlagen (`/camper-elektrik/`) und der
               Rechner-Überblick. Der mittlere Verweis ist nicht Zierde: Die
               Linkgraph-Prüfung `rechner-ohne-planner-link` verlangt von jeder
               Seite mit eingebettetem Rechner einen kontextuellen Verweis auf
               die Elektroplaner-Wissensseite (PLANNER_PATH in
               `scripts/seo/linkGraph.ts`).
+
+              Auf der Wissensseite selbst entfällt der mittlere Verweis — er
+              würde auf die Seite selbst zeigen.
             */}
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
@@ -172,12 +196,14 @@ export function SeoPage({
               >
                 Camper-Elektroplaner öffnen
               </Link>
-              <Link
-                href="/elektrik-planung/"
-                className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-              >
-                Rechner und Normgrundlagen
-              </Link>
+              {page.path !== WISSENSSEITE_PATH && (
+                <Link
+                  href={WISSENSSEITE_PATH}
+                  className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+                >
+                  Rechner und Normgrundlagen
+                </Link>
+              )}
               <Link
                 href="/rechner/"
                 className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
@@ -351,7 +377,7 @@ function Section({ section }: { section: ContentSection }) {
   );
 }
 
-/** Quellen, Annahmen, Grenzen und Stand — die Transparenz des Fachteils (§18). */
+/** Quellen, Annahmen und Grenzen — die Transparenz des Fachteils (§18). */
 function TrustBlock({ page }: { page: SeoPageContent }) {
   const hasSources = (page.sources?.length ?? 0) > 0;
   const hasAssumptions = (page.assumptions?.length ?? 0) > 0;
@@ -404,10 +430,6 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
           </div>
         )}
       </div>
-      <p className="caption-xs mt-4 text-ink-soft">
-        Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege, Quellen
-        und Grenzen stehen offen, siehe <Link href="/ueber-werft/">Über Werft</Link>.
-      </p>
     </section>
   );
 }

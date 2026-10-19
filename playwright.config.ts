@@ -70,7 +70,7 @@ export default defineConfig({
 
   webServer: {
     command: `node scripts/e2e/static-server.mjs ${PORT} out`,
-    url: `${BASE_URL}/elektrik-planung/`,
+    url: `${BASE_URL}/camper-elektrik/`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     stdout: 'ignore',

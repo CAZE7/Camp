@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react';
 
-import type { FaqEntry } from './electricContent';
+import type { FaqEntry } from '@/lib/seo/types';
 
 /**
  * Fragen und Antworten als Aufklappliste.
@@ -9,8 +9,8 @@ import type { FaqEntry } from './electricContent';
  * damit schon im ausgelieferten HTML (keine Hydration nötig, kein Sprung im
  * Layout, funktioniert auch ohne JavaScript) und Tastatur- sowie
  * Screenreader-Bedienung sind Browser-Standard. Die Antworttexte kommen aus
- * `electricContent.ts` und sind dieselben, die in der strukturierten
- * Beschreibung stehen.
+ * dem Inhaltsmodell (`lib/seo/content/`) und sind dieselben, die in der
+ * strukturierten Beschreibung stehen.
  */
 export function FaqAkkordeon({ entries }: { entries: readonly FaqEntry[] }) {
   return (

@@ -16,8 +16,11 @@ describe('SEO-Metadaten und Inventar', () => {
       expect(page.title.trim(), page.path).not.toBe('');
       expect(page.description.trim(), page.path).not.toBe('');
       expect(metadata.description, page.path).toBe(page.description);
-      expect(metadata.alternates?.canonical, page.path).toBe(siteUrl(page.path));
-      expect(metadata.openGraph?.url, page.path).toBe(siteUrl(page.path));
+      // Bei einem Umzug zeigt das Canonical auf das Ziel — die Ausnahme ist
+      // im Inventar als `canonicalPath` ausgewiesen.
+      const expectedCanonical = siteUrl(page.canonicalPath ?? page.path);
+      expect(metadata.alternates?.canonical, page.path).toBe(expectedCanonical);
+      expect(metadata.openGraph?.url, page.path).toBe(expectedCanonical);
       expect(metadata.openGraph?.title, page.path).toBe(page.title);
       expect(metadata.openGraph?.description, page.path).toBe(page.description);
       expect(metadata.twitter?.title, page.path).toBe(page.title);
@@ -32,7 +35,14 @@ describe('SEO-Metadaten und Inventar', () => {
     for (const page of nonIndexablePages()) {
       expect(metadataForPage(page.path).robots, page.path).toEqual({ index: false, follow: true });
     }
-    expect(nonIndexablePages().map((page) => page.path)).toEqual(['/design-system/', '/ki-assistent/']);
+    // Der Stub der umgezogenen Elektrik-Wissensseite gehört dazu: Er ist
+    // eine Ansicht ohne eigenen Inhalt und verweist im Canonical auf seine
+    // neue Adresse.
+    expect(nonIndexablePages().map((page) => page.path)).toEqual([
+      '/elektrik-planung/',
+      '/design-system/',
+      '/ki-assistent/',
+    ]);
   });
 
   it('stoppt unbekannte Routen und abweichende Inhaltsmetadaten', () => {

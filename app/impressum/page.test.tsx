@@ -13,6 +13,10 @@ import ImpressumPage from './page';
  * eingefrorene Pixel-Baseline ist (`tests/e2e/visual.spec.ts-snapshots/
  * route-impressum-{light,dark}.png`): Wer den Text ändert, verschiebt das
  * visuelle Gate und braucht UI-Freigabe.
+ *
+ * Seit dem 2026-10-16 nennt die Seite den geltenden Normstand (§ 5 DDG,
+ * § 18 Abs. 2 MStV) statt der überholten Vorgänger (§ 5 TMG,
+ * § 55 Abs. 2 RStV).
  */
 
 vi.mock('next/navigation', () => ({
@@ -24,7 +28,21 @@ const filled: SiteLegal = {
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
   email: 'kontakt@werft.example',
+  phone: '+49 421 1234567',
+  entityType: 'unternehmen',
+  representative: 'Mareike Jensen',
+  registerCourt: 'Amtsgericht Bremen',
+  registerNumber: 'HRB 12345',
+  vatId: 'DE123456789',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
+};
+
+const naturalPerson: SiteLegal = {
+  ...filled,
+  providerName: 'Mareike Jensen',
+  entityType: 'natuerliche-person',
+  phone: '',
+  vatId: '',
 };
 
 const original: SiteLegal = { ...SITE_LEGAL };
@@ -38,8 +56,15 @@ describe('Impressum — solange die Angaben fehlen', () => {
     render(<ImpressumPage />);
     expect(screen.getByText('Werft — Projekt-Placeholder')).toBeTruthy();
     expect(screen.getByText('Bitte hier den Namen und die Anschrift des Betreibers eintragen.')).toBeTruthy();
-    expect(screen.getByText('E-Mail: kontakt@example.org')).toBeTruthy();
-    expect(screen.getByText('Nach § 55 Abs. 2 RStV: Bitte hier eintragen.')).toBeTruthy();
+    expect(screen.getByText('E-Mail-Adresse noch nicht eingetragen.')).toBeTruthy();
+    expect(screen.getByText('Nach § 18 Abs. 2 MStV: Bitte hier eintragen.')).toBeTruthy();
+  });
+
+  it('nennt den geltenden Normstand statt der überholten Vorgänger', () => {
+    render(<ImpressumPage />);
+    expect(screen.getByText('Angaben gemäß § 5 DDG.')).toBeTruthy();
+    expect(document.body.textContent).not.toContain('TMG');
+    expect(document.body.textContent).not.toContain('RStV');
   });
 
   it('zeigt keine Platzhalter-Marke und keine halbe Anschrift', () => {
@@ -63,11 +88,37 @@ describe('Impressum — mit eingetragenen Angaben', () => {
     expect(screen.getByText('28217 Bremen')).toBeTruthy();
     expect(screen.getByText('E-Mail: kontakt@werft.example')).toBeTruthy();
     expect(
-      screen.getByText('Nach § 55 Abs. 2 RStV: Mareike Jensen, Hafenstraße 12, 28217 Bremen')
+      screen.getByText('Nach § 18 Abs. 2 MStV: Mareike Jensen, Hafenstraße 12, 28217 Bremen')
     ).toBeTruthy();
     // Die Aufforderungstexte verschwinden, sobald die Angaben da sind.
     expect(screen.queryByText('Werft — Projekt-Placeholder')).toBeNull();
-    expect(screen.queryByText('E-Mail: kontakt@example.org')).toBeNull();
+    expect(screen.queryByText('E-Mail-Adresse noch nicht eingetragen.')).toBeNull();
+  });
+
+  it('zeigt bei einem Unternehmen Vertretung und Register', () => {
+    Object.assign(SITE_LEGAL, filled);
+    render(<ImpressumPage />);
+    expect(screen.getByText('Vertreten durch: Mareike Jensen')).toBeTruthy();
+    expect(screen.getByText('Registergericht: Amtsgericht Bremen')).toBeTruthy();
+    expect(screen.getByText('Registernummer: HRB 12345')).toBeTruthy();
+    expect(
+      screen.getByText('Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz: DE123456789')
+    ).toBeTruthy();
+  });
+
+  it('lässt Register- und USt-Angaben bei einer natürlichen Person weg', () => {
+    Object.assign(SITE_LEGAL, naturalPerson);
+    render(<ImpressumPage />);
+    expect(screen.queryByText('Vertreten durch: Mareike Jensen')).toBeNull();
+    expect(screen.queryByText('Registergericht: Amtsgericht Bremen')).toBeNull();
+    expect(document.body.textContent).not.toContain('§ 27a');
+    expect(screen.queryByText('Telefon: +49 421 1234567')).toBeNull();
+  });
+
+  it('zeigt das Telefon, wenn angegeben', () => {
+    Object.assign(SITE_LEGAL, { ...naturalPerson, phone: '+49 421 1234567' });
+    render(<ImpressumPage />);
+    expect(screen.getByText('Telefon: +49 421 1234567')).toBeTruthy();
   });
 
   it('behält den Haftungshinweis in beiden Zweigen', () => {

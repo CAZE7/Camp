@@ -24,19 +24,44 @@ import {
 
 const REPO_ROOT = process.cwd();
 
+/** Vollständiges Impressum eines Unternehmens. */
 const filled: SiteLegal = {
   providerName: 'Werft Ausbau GmbH',
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
   email: 'kontakt@werft.example',
+  phone: '',
+  entityType: 'unternehmen',
+  representative: 'Mareike Jensen',
+  registerCourt: 'Amtsgericht Bremen',
+  registerNumber: 'HRB 12345',
+  vatId: 'DE123456789',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 
+/** Vollständiges Impressum einer natürlichen Person. */
+const filledNatural: SiteLegal = {
+  ...filled,
+  providerName: 'Mareike Jensen',
+  entityType: 'natuerliche-person',
+  representative: '',
+  registerCourt: '',
+  registerNumber: '',
+  vatId: '',
+};
+
+/** Noch nichts eingetragen — jede Pflichtangabe steht auf dem Platzhalter. */
 const empty: SiteLegal = {
   providerName: LEGAL_PLACEHOLDER,
   street: LEGAL_PLACEHOLDER,
   postalCodeAndCity: LEGAL_PLACEHOLDER,
   email: LEGAL_PLACEHOLDER,
+  phone: LEGAL_PLACEHOLDER,
+  entityType: LEGAL_PLACEHOLDER,
+  representative: LEGAL_PLACEHOLDER,
+  registerCourt: LEGAL_PLACEHOLDER,
+  registerNumber: LEGAL_PLACEHOLDER,
+  vatId: LEGAL_PLACEHOLDER,
   contentResponsible: LEGAL_PLACEHOLDER,
 };
 
@@ -51,7 +76,10 @@ describe('checkLegalNotice', () => {
   it('Platzhalter in jedem Feld scheitern und nennen alle Felder', () => {
     const result = checkLegalNotice(empty);
     expect(result.ok).toBe(false);
-    expect(result.missing).toHaveLength(5);
+    // Bei unbekannter Rechtsform fordert der Wächter beide Sätze: lieber eine
+    // Angabe zu viel melden als eine fehlende übersehen.
+    expect(result.missing).toHaveLength(9);
+    expect(result.missing).toContain('entityType');
     // Die Meldung muss handhabbar sein: Ort, Felder, Grund.
     expect(result.message).toContain(LEGAL_SOURCE_PATH);
     expect(result.message).toContain('providerName');
@@ -63,6 +91,25 @@ describe('checkLegalNotice', () => {
     const result = checkLegalNotice({ ...filled, email: LEGAL_PLACEHOLDER });
     expect(result.ok).toBe(false);
     expect(result.missing).toEqual(['email']);
+  });
+
+  it('verlangt bei einem Unternehmen die Registerangaben', () => {
+    const result = checkLegalNotice({ ...filled, registerNumber: LEGAL_PLACEHOLDER });
+    expect(result.ok).toBe(false);
+    expect(result.missing).toEqual(['registerNumber']);
+  });
+
+  it('verlangt bei einer natürlichen Person keine Registerangaben', () => {
+    const result = checkLegalNotice(filledNatural);
+    expect(result.ok).toBe(true);
+    expect(result.missing).toEqual([]);
+  });
+
+  it('meldet unentschiedene optionale Angaben, ohne den Deploy zu stoppen', () => {
+    const result = checkLegalNotice({ ...filled, phone: LEGAL_PLACEHOLDER, vatId: LEGAL_PLACEHOLDER });
+    expect(result.ok).toBe(true);
+    expect(result.undecided).toEqual(['phone', 'vatId']);
+    expect(result.message).toContain('Telefonnummer');
   });
 
   it('prüft den echten Stand im Baum (Default-Argument)', () => {

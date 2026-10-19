@@ -22,6 +22,9 @@ import { SOLAR_CONTENT } from './solar';
 import { SPANNUNGSABFALL_CONTENT } from './spannungsabfall';
 import { SPANNUNGSABFALL_12V_CONTENT } from './spannungsabfall-12v';
 import { UEBER_WERFT_CONTENT } from './ueber-werft';
+import { VORLAGE_AUTARK } from './autark';
+import { VORLAGE_GROSSRAUM } from './grossraum';
+import { VORLAGE_WOCHENEND } from './wochenend';
 import { WECHSELRICHTER_CONTENT } from './wechselrichter';
 import type { SeoPageContent } from '../types';
 
@@ -43,4 +46,7 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   BATTERIEKAPAZITAET_CONTENT,
   SOLARANLAGE_CONTENT,
   UEBER_WERFT_CONTENT,
+  VORLAGE_WOCHENEND,
+  VORLAGE_AUTARK,
+  VORLAGE_GROSSRAUM,
 ];

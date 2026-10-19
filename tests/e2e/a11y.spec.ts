@@ -23,7 +23,6 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/tools/dach/', name: 'Dachplaner' },
   { path: '/tools/heizung/', name: 'Heizlast-Rechner' },
   { path: '/planer/', name: 'Elektroplaner (Anwendung)' },
-  { path: '/elektrik-planung/', name: 'Elektrik-Wissensseite' },
   // Die inhaltsgetriebenen Seiten teilen sich ein Gerüst (`components/seo/`).
   // Sie stehen hier stellvertretend für die drei Seitentypen — Pillar,
   // Cluster mit Rechner, Vertrauensseite —, damit ein Fehler im Gerüst nicht

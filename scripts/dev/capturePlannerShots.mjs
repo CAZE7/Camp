@@ -102,7 +102,7 @@ for (const viewport of VIEWPORTS) {
   const page = await context.newPage();
   const open = async (withPlan) => {
     await seed(page, { withPlan });
-    await page.goto(`${base}/elektrik-planung/`, { waitUntil: 'load' });
+    await page.goto(`${base}/camper-elektrik/`, { waitUntil: 'load' });
     await page.waitForSelector('[data-testid="planner-shell"]', { timeout: 30_000 });
     await page.waitForTimeout(1200);
   };

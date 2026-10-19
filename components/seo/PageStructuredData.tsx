@@ -21,6 +21,8 @@ export function PageStructuredData({ path }: { path: string }) {
       path: page.path,
       name: page.h1,
       description: page.description,
+      // Nur, wenn die Seite den Stand auch sichtbar nennt.
+      ...(page.contentRevision ? { dateModified: page.contentRevision } : {}),
       ...(applicationId ? { mainEntityId: applicationId, hasPartIds: [applicationId] } : {}),
     }),
     ...(hasApplication

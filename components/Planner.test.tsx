@@ -7,7 +7,7 @@ import Planner from './Planner';
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/elektrik-planung',
+  usePathname: () => '/camper-elektrik',
 }));
 
 // Mock next/dynamic to return PlannerInner directly in test environment

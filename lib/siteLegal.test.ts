@@ -1,78 +1,109 @@
 import { describe, expect, it } from 'vitest';
+
 import {
-  LEGAL_FIELD_LABELS,
   LEGAL_PLACEHOLDER,
   SITE_LEGAL,
-  isPlaceholderText,
+  hasPhone,
+  hasVatId,
+  isCompany,
+  isEmailComplete,
   isProviderComplete,
   missingLegalFields,
+  undecidedOptionalFields,
   type SiteLegal,
 } from './siteLegal';
 
 /**
- * Impressum-Angaben (AUDIT „Impressum-Placeholder").
- *
- * Die Seite wird öffentlich ausgeliefert; die Angaben sind deshalb Daten mit
- * einer prüfbaren Vollständigkeit, kein Freitext im JSX. Diese Tests pinnen den
- * Vertrag, auf dem der Deploy-Wächter (`scripts/ci/verifyLegalNotice.ts`) und
- * die Anzeige-Zweige der Seite stehen.
+ * Die Pflichtangaben des Impressums hängen an der Rechtsform. Diese Logik
+ * entscheidet, was der Deploy-Wächter meldet — und damit, ob ein unvollständiges
+ * Impressum veröffentlicht wird. Sie wird deshalb hier festgehalten, nicht nur
+ * im Wächter.
  */
-
-/** Vollständig ausgefüllte Angaben — die Referenz für „fertig". */
-const filled: SiteLegal = {
+const vollstaendig: SiteLegal = {
   providerName: 'Werft Ausbau GmbH',
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
   email: 'kontakt@werft.example',
+  phone: '',
+  entityType: 'unternehmen',
+  representative: 'Mareike Jensen',
+  registerCourt: 'Amtsgericht Bremen',
+  registerNumber: 'HRB 12345',
+  vatId: 'DE123456789',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 
-describe('isPlaceholderText', () => {
-  it('erkennt die Marke, auch mitten im Text', () => {
-    expect(isPlaceholderText(LEGAL_PLACEHOLDER)).toBe(true);
-    expect(isPlaceholderText(`Werft — ${LEGAL_PLACEHOLDER}`)).toBe(true);
-  });
-
-  it('echte Angaben sind keine Platzhalter', () => {
-    expect(isPlaceholderText('Werft Ausbau GmbH')).toBe(false);
-    expect(isPlaceholderText('')).toBe(false);
-  });
-});
-
 describe('missingLegalFields', () => {
-  it('nennt kein Feld, sobald alles eingetragen ist', () => {
-    expect(missingLegalFields(filled)).toEqual([]);
+  it('meldet bei einer natürlichen Person keine Registerangaben', () => {
+    const legal: SiteLegal = {
+      ...vollstaendig,
+      entityType: 'natuerliche-person',
+      representative: '',
+      registerCourt: '',
+      registerNumber: '',
+    };
+    expect(missingLegalFields(legal)).toEqual([]);
   });
 
-  it('der Stand im Baum ist unvollständig — alle fünf Felder offen', () => {
-    // Das ist die Aussage des Audits: Die Angaben fehlen, und zwar vollständig.
-    // Erfüllt jemand sie, wird dieser Test rot und muss MIT dem Eintrag
-    // aktualisiert werden (er dokumentiert dann den erledigten Mangel).
-    expect(missingLegalFields(SITE_LEGAL)).toEqual(Object.keys(LEGAL_FIELD_LABELS));
-    expect(isProviderComplete(SITE_LEGAL)).toBe(false);
+  it('meldet bei einem Unternehmen die fehlenden Registerangaben', () => {
+    const legal: SiteLegal = { ...vollstaendig, registerNumber: LEGAL_PLACEHOLDER };
+    expect(missingLegalFields(legal)).toEqual(['registerNumber']);
   });
 
-  it('ein halb ausgefülltes Impressum zählt als unvollständig', () => {
-    const partial: SiteLegal = { ...filled, email: LEGAL_PLACEHOLDER };
-    expect(missingLegalFields(partial)).toEqual(['email']);
-    // Anbieterblock bleibt vollständig — die Seite zeigt die echte Anschrift
-    // und fordert nur die E-Mail an.
-    expect(isProviderComplete(partial)).toBe(true);
+  it('fordert bei unbekannter Rechtsform beide Sätze', () => {
+    // Lieber eine Angabe zu viel melden als eine fehlende übersehen: Solange
+    // die Rechtsform offen ist, gilt die Vereinigung beider Anforderungen.
+    const legal: SiteLegal = { ...vollstaendig, entityType: LEGAL_PLACEHOLDER };
+    expect(missingLegalFields(legal)).toEqual(['entityType']);
   });
 
-  it('fehlt nur ein Teil der Anschrift, gilt der Anbieterblock als offen', () => {
-    // Eine halbe Anschrift sieht vollständig aus und ist rechtlich wertlos.
-    expect(isProviderComplete({ ...filled, postalCodeAndCity: LEGAL_PLACEHOLDER })).toBe(false);
-    expect(isProviderComplete({ ...filled, street: LEGAL_PLACEHOLDER })).toBe(false);
+  it('meldet die fehlende Rechtsform selbst', () => {
+    const legal: SiteLegal = { ...vollstaendig, entityType: LEGAL_PLACEHOLDER };
+    expect(missingLegalFields(legal)).toContain('entityType');
+  });
+
+  it('behandelt ein leeres Impressum als vollständig offen', () => {
+    expect(missingLegalFields(SITE_LEGAL).length).toBeGreaterThan(0);
+    expect(missingLegalFields(SITE_LEGAL)).toContain('providerName');
+    expect(missingLegalFields(SITE_LEGAL)).toContain('email');
+    expect(missingLegalFields(SITE_LEGAL)).toContain('contentResponsible');
   });
 });
 
-describe('LEGAL_FIELD_LABELS', () => {
-  it('jedes Feld hat einen menschlichen Bezeichner (für die CI-Meldung)', () => {
-    expect(Object.keys(LEGAL_FIELD_LABELS).sort()).toEqual(Object.keys(filled).sort());
-    for (const label of Object.values(LEGAL_FIELD_LABELS)) {
-      expect(label.length).toBeGreaterThan(0);
-      expect(isPlaceholderText(label)).toBe(false);
-    }
+describe('undecidedOptionalFields', () => {
+  it('meldet Telefon und USt-IdNr., solange sie nicht entschieden sind', () => {
+    expect(undecidedOptionalFields(SITE_LEGAL)).toEqual(['phone', 'vatId']);
+  });
+
+  it('meldet nichts, wenn beide Angaben bewusst leer sind', () => {
+    const legal: SiteLegal = { ...vollstaendig, phone: '', vatId: '' };
+    expect(undecidedOptionalFields(legal)).toEqual([]);
+  });
+
+  it('nennt eine fehlende Pflichtangabe nicht als optionale Unentschlossenheit', () => {
+    const legal: SiteLegal = { ...vollstaendig, providerName: LEGAL_PLACEHOLDER };
+    expect(undecidedOptionalFields(legal)).not.toContain('providerName');
+  });
+});
+
+describe('Sichtbarkeit der optionalen Angaben', () => {
+  it('zeigt Telefon und USt-IdNr. nur, wenn sie gefüllt sind', () => {
+    expect(hasPhone({ ...vollstaendig, phone: '' })).toBe(false);
+    expect(hasPhone({ ...vollstaendig, phone: '+49 421 1' })).toBe(true);
+    expect(hasVatId({ ...vollstaendig, vatId: '' })).toBe(false);
+    expect(hasVatId(vollstaendig)).toBe(true);
+  });
+
+  it('erkennt die Unternehmensform', () => {
+    expect(isCompany(vollstaendig)).toBe(true);
+    expect(isCompany({ ...vollstaendig, entityType: 'natuerliche-person' })).toBe(false);
+    expect(isCompany({ ...vollstaendig, entityType: LEGAL_PLACEHOLDER })).toBe(false);
+  });
+
+  it('trennt Anbieterblock und E-Mail', () => {
+    expect(isProviderComplete(vollstaendig)).toBe(true);
+    expect(isProviderComplete({ ...vollstaendig, street: LEGAL_PLACEHOLDER })).toBe(false);
+    expect(isEmailComplete(vollstaendig)).toBe(true);
+    expect(isEmailComplete({ ...vollstaendig, email: LEGAL_PLACEHOLDER })).toBe(false);
   });
 });

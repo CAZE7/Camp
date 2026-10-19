@@ -365,6 +365,63 @@ export default function AusbauFahrplanPage() {
               <StepModule key={step.id} step={step} />
             ))}
           </div>
+
+          {/*
+            Der Fahrplan beschreibt die Reihenfolge. Für die beiden Stellen,
+            an denen man während des Ausbaus rechnen muss, führt der Text auf
+            die Werkzeuge: die Dachbelegung (Gewicht, Fläche, Leistung) und
+            die Heizlast (welche Leistung die Hülle verliert). Beide Werkzeuge
+            liefern ihren Rechenweg mit — deshalb stehen sie hier und nicht nur
+            in der Navigation.
+          */}
+          <section aria-labelledby="weiterfuehrend" className="mt-12 border-t border-rule pt-8">
+            <h2 id="weiterfuehrend" className="font-display text-xl font-semibold text-ink">
+              Weiterführende Anleitungen
+            </h2>
+            <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
+              <li className="border-t border-rule pt-2">
+                <Link href="/tools/dach/" className="font-medium text-ink underline-offset-2 hover:underline">
+                  Dach-Planer: Panels und Dachluke platzieren
+                </Link>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Belegung auf der maßstäblichen Dachfläche, Sicherheitsränder und Gesamtleistung in Watt.
+                </p>
+              </li>
+              <li className="border-t border-rule pt-2">
+                <Link
+                  href="/tools/heizung/"
+                  className="font-medium text-ink underline-offset-2 hover:underline"
+                >
+                  Heizlast-Rechner: passende Heizleistung finden
+                </Link>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Verlust über die Hülle und die Lüftung, daraus die empfohlene Heizleistung.
+                </p>
+              </li>
+              <li className="border-t border-rule pt-2">
+                <Link
+                  href="/guides/camper-ausbauguide/"
+                  className="font-medium text-ink underline-offset-2 hover:underline"
+                >
+                  Camper-Ausbauguide
+                </Link>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Karosserie, Dämmung, Gas und TÜV — das Wissen hinter den einzelnen Gewerken.
+                </p>
+              </li>
+              <li className="border-t border-rule pt-2">
+                <Link
+                  href="/guides/holzausbau/"
+                  className="font-medium text-ink underline-offset-2 hover:underline"
+                >
+                  Holzausbau
+                </Link>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Möbelbau in sechs Schritten — von der Unterkonstruktion bis zur Oberfläche.
+                </p>
+              </li>
+            </ul>
+          </section>
         </main>
       </div>
       <SiteFooter />

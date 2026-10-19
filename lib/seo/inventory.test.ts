@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { coverageMatrix, coverageSummary, openGaps, undeclaredTargets } from './coverage';
-import { indexablePages, nonIndexablePages, PAGES, pageByPath } from './inventory';
+import { indexablePages, nonIndexablePages, PAGES, pageByPath, SITEMAP_ROUTES } from './inventory';
 import { OPPORTUNITIES } from './opportunities';
 import { childTopics, topicOf, TOPICS, topicTrail } from './topics';
 import { DESCRIPTION_MAX, TITLE_MAX } from '../../scripts/seo/checks';
-import { THIN_CONTENT_KINDS } from './types';
+import { CONTENT_REVISION_PATTERN, THIN_CONTENT_KINDS } from './types';
 
 /**
  * Der Vertrag der SEO-Datenebene.
@@ -74,6 +74,30 @@ describe('Seiteninventar', () => {
   it('löst jeden Pfad wieder auf', () => {
     for (const page of PAGES) {
       expect(pageByPath(page.path)?.path).toBe(page.path);
+    }
+  });
+
+  it('führt den inhaltlichen Stand nur im gültigen ISO-Monatsformat', () => {
+    for (const page of PAGES) {
+      if (page.contentRevision === undefined) continue;
+      expect(
+        CONTENT_REVISION_PATTERN.test(page.contentRevision),
+        `Ungültiger Stand "${page.contentRevision}" auf ${page.path}`
+      ).toBe(true);
+    }
+  });
+
+  it('nennt für jede Seite mit Stand genau einen Zeitstempel in der Sitemap', () => {
+    const mitStand = PAGES.filter((page) => page.contentRevision !== undefined);
+    expect(mitStand.length).toBeGreaterThan(0);
+    for (const page of mitStand) {
+      const route = SITEMAP_ROUTES.find((candidate) => candidate.path === page.path);
+      // Noindex-Seiten stehen nicht in der Sitemap — dort entfällt der Eintrag.
+      if (page.indexability !== 'index') {
+        expect(route).toBeUndefined();
+        continue;
+      }
+      expect(route?.contentRevision, `Stand fehlt in der Sitemap: ${page.path}`).toBe(page.contentRevision);
     }
   });
 });

@@ -71,4 +71,21 @@ describe('SeoPage', () => {
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent('Prüfseite');
   });
+
+  it('nennt den inhaltlichen Stand sichtbar und in den strukturierten Daten gleich', () => {
+    const { container } = render(<SeoPage page={SEITE} />);
+
+    // Sichtbar …
+    expect(screen.getByText(/Inhaltlicher Stand: 2026-10/)).toBeInTheDocument();
+
+    // … und maschinenlesbar mit demselben Wert: Ein `dateModified`, das es
+    // nirgends zu sehen gibt, wäre eine Behauptung ohne Gegenpart.
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const graph = JSON.parse(script!.textContent ?? '{}') as {
+      '@graph': Array<Record<string, unknown>>;
+    };
+    const webpage = graph['@graph'].find((node) => node['@type'] === 'WebPage');
+    expect(webpage?.['dateModified']).toBe('2026-10');
+  });
 });

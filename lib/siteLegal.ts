@@ -16,19 +16,35 @@
  *
  * Normstand (2026): § 5 DDG (Anbieterkennzeichnung, seit 05/2024 Nachfolger von
  * § 5 TMG) und § 18 Abs. 2 MStV (Inhaltsverantwortung, Nachfolger von § 55
- * Abs. 2 RStV). Die SICHTBAREN Zitate auf der Seite lauten noch TMG/RStV —
- * sie sind Teil der eingefrorenen Pixel-Baseline
- * (`tests/e2e/visual.spec.ts-snapshots/route-impressum-*.png`) und werden mit
- * UI-Freigabe zusammen mit den Angaben aktualisiert (FOLLOW-UP, s. Ledger
- * „Achte Fassung").
+ * Abs. 2 RStV). Die sichtbaren Zitate der Seite wurden am 2026-10-16 auf
+ * diese Fassung umgestellt — die alte Nennung (TMG/RStV) war durch den
+ * Normwechsel überholt.
+ *
+ * Pflichtangaben je Rechtsform (§ 5 DDG, § 18 Abs. 2 MStV):
+ *   - immer: Name, ladungsfähige Anschrift, E-Mail für die schnelle
+ *     elektronische Kontaktaufnahme, verantwortliche Person für den Inhalt;
+ *   - bei einem Unternehmen zusätzlich: Vertretungsberechtigte, Register­
+ *     gericht und Registernummer (nur wenn ein Register besteht);
+ *   - optional: Telefon, Umsatzsteuer-Identifikationsnummer.
  */
 
 /**
  * Marke für „noch nicht eingetragen". Steht sie in einem Feld, gilt das Feld
- * als offen — die Seite zeigt dann ihre Aufforderung an den Betreiber, und der
- * Deploy-Wächter schlägt fehl.
+ * als offen — die Seite zeigt dann ihre Aufforderung an den Betreiber, und
+ * der Deploy-Wächter schlägt fehl.
  */
 export const LEGAL_PLACEHOLDER = 'BITTE-EINTRAGEN';
+
+/** Rechtsform des Anbieters — sie entscheidet, welche Angaben Pflicht sind. */
+export const LEGAL_ENTITY_TYPES = ['natuerliche-person', 'unternehmen'] as const;
+
+export type LegalEntityType = (typeof LEGAL_ENTITY_TYPES)[number];
+
+/** Wie die Rechtsform in der sichtbaren Seite benannt wird. */
+export const LEGAL_ENTITY_LABELS: Readonly<Record<LegalEntityType, string>> = {
+  'natuerliche-person': 'Natürliche Person',
+  unternehmen: 'Unternehmen',
+};
 
 export type SiteLegal = {
   /** Anbietername inkl. Rechtsformzusatz (§ 5 DDG Nr. 1), z. B. „Werft GmbH". */
@@ -39,6 +55,29 @@ export type SiteLegal = {
   postalCodeAndCity: string;
   /** Adresse für schnelle elektronische Kontaktaufnahme (§ 5 DDG Nr. 2). */
   email: string;
+  /**
+   * Telefonnummer für die schnelle Kontaktaufnahme — optional.
+   * Leer bedeutet ausdrücklich „kein Telefon"; die Platzhalter-Marke
+   * bedeutet „noch nicht entschieden".
+   */
+  phone: string;
+  /**
+   * Rechtsform des Anbieters. Solange hier die Platzhalter-Marke steht, weiß
+   * die Seite nicht, welche Angaben nötig sind — der Wächter fordert dann
+   * beide Sätze, damit keine fehlt.
+   */
+  entityType: LegalEntityType | typeof LEGAL_PLACEHOLDER;
+  /** Vertretungsberechtigte Person(en) — Pflicht bei einem Unternehmen. */
+  representative: string;
+  /** Registergericht — Pflicht bei einem Unternehmen mit Register. */
+  registerCourt: string;
+  /** Registernummer — Pflicht bei einem Unternehmen mit Register. */
+  registerNumber: string;
+  /**
+   * Umsatzsteuer-Identifikationsnummer nach § 27a UStG — optional.
+   * Leer bedeutet „keine vorhanden oder nicht anwendbar".
+   */
+  vatId: string;
   /** Inhaltlich verantwortliche Person mit Anschrift (§ 18 Abs. 2 MStV). */
   contentResponsible: string;
 };
@@ -49,8 +88,33 @@ export const LEGAL_FIELD_LABELS: Readonly<Record<keyof SiteLegal, string>> = {
   street: 'Straße und Hausnummer (ladungsfähige Anschrift)',
   postalCodeAndCity: 'PLZ und Ort (ladungsfähige Anschrift)',
   email: 'E-Mail-Adresse für die schnelle Kontaktaufnahme',
+  phone: 'Telefonnummer (optional — leer lassen, wenn keiner angegeben wird)',
+  entityType: 'Rechtsform des Anbieters (natuerliche-person | unternehmen)',
+  representative: 'Vertretungsberechtigte Person(en) (bei Unternehmen Pflicht)',
+  registerCourt: 'Registergericht (bei Unternehmen mit Register Pflicht)',
+  registerNumber: 'Registernummer (bei Unternehmen mit Register Pflicht)',
+  vatId: 'USt-IdNr. nach § 27a UStG (optional — leer lassen, wenn keine vorhanden ist)',
   contentResponsible: 'Inhaltlich verantwortliche Person (§ 18 Abs. 2 MStV)',
 };
+
+/** Angaben, die bei jeder Rechtsform Pflicht sind. */
+const ALWAYS_REQUIRED: readonly (keyof SiteLegal)[] = [
+  'providerName',
+  'street',
+  'postalCodeAndCity',
+  'email',
+  'contentResponsible',
+];
+
+/** Zusatzangaben, die bei einem Unternehmen Pflicht sind. */
+const REQUIRED_FOR_COMPANY: readonly (keyof SiteLegal)[] = [
+  'representative',
+  'registerCourt',
+  'registerNumber',
+];
+
+/** Angaben, die optional sind — leer bedeutet „nicht vorhanden". */
+const OPTIONAL: readonly (keyof SiteLegal)[] = ['phone', 'vatId'];
 
 /**
  * Die Angaben, wie sie im Baum stehen. Solange hier Platzhalter stehen, ist
@@ -62,6 +126,12 @@ export const SITE_LEGAL: SiteLegal = {
   street: LEGAL_PLACEHOLDER,
   postalCodeAndCity: LEGAL_PLACEHOLDER,
   email: LEGAL_PLACEHOLDER,
+  phone: LEGAL_PLACEHOLDER,
+  entityType: LEGAL_PLACEHOLDER,
+  representative: LEGAL_PLACEHOLDER,
+  registerCourt: LEGAL_PLACEHOLDER,
+  registerNumber: LEGAL_PLACEHOLDER,
+  vatId: LEGAL_PLACEHOLDER,
   contentResponsible: LEGAL_PLACEHOLDER,
 };
 
@@ -70,17 +140,45 @@ export function isPlaceholderText(value: string): boolean {
   return value.includes(LEGAL_PLACEHOLDER);
 }
 
+/** Ist die Rechtsform schon festgelegt? */
+export function isEntityTypeKnown(legal: SiteLegal = SITE_LEGAL): legal is SiteLegal & {
+  entityType: LegalEntityType;
+} {
+  return (LEGAL_ENTITY_TYPES as readonly string[]).includes(legal.entityType);
+}
+
 /**
  * Offene Felder — leer, sobald das Impressum vollständig ist.
  *
  * Prüft die Werte, nicht „irgendeinen" Gesamteindruck: Ein halb ausgefülltes
  * Impressum ist rechtlich genauso unbrauchbar wie ein leeres, deshalb zählt
- * jedes Feld einzeln.
+ * jedes Feld einzeln. Die Pflicht hängt an der Rechtsform: Ein Unternehmen
+ * braucht zusätzlich Vertretungsberechtigte und Registerangaben, eine
+ * natürliche Person nicht. Steht die Rechtsform selbst noch auf dem
+ * Platzhalter, zählen beide Sätze — lieber eine zu viel gemeldete Angabe
+ * als eine fehlende.
  */
 export function missingLegalFields(legal: SiteLegal = SITE_LEGAL): Array<keyof SiteLegal> {
-  return (Object.keys(LEGAL_FIELD_LABELS) as Array<keyof SiteLegal>).filter((field) =>
-    isPlaceholderText(legal[field])
-  );
+  const required = isEntityTypeKnown(legal)
+    ? [...ALWAYS_REQUIRED, ...(legal.entityType === 'unternehmen' ? REQUIRED_FOR_COMPANY : [])]
+    : [...ALWAYS_REQUIRED, ...REQUIRED_FOR_COMPANY];
+
+  const missing = required.filter((field) => isPlaceholderText(legal[field]));
+
+  // Die Rechtsform selbst ist offen, solange sie auf dem Platzhalter steht.
+  if (!isEntityTypeKnown(legal)) missing.push('entityType');
+
+  return missing;
+}
+
+/**
+ * Optionale Angaben, die noch nicht entschieden sind — kein Mangel, aber
+ * auch keine bewusste Entscheidung. Sie werden gemeldet, ohne den Deploy zu
+ * stoppen: Eine Telefonnummer ist freiwillig, eine unentschiedene Angabe
+ * aber auch nicht sauber dokumentiert.
+ */
+export function undecidedOptionalFields(legal: SiteLegal = SITE_LEGAL): Array<keyof SiteLegal> {
+  return OPTIONAL.filter((field) => isPlaceholderText(legal[field]));
 }
 
 /**
@@ -95,4 +193,36 @@ export function isProviderComplete(legal: SiteLegal = SITE_LEGAL): boolean {
     !isPlaceholderText(legal.street) &&
     !isPlaceholderText(legal.postalCodeAndCity)
   );
+}
+
+/** Ist die E-Mail eingetragen? (Für Kontaktblock und JSON-LD.) */
+export function isEmailComplete(legal: SiteLegal = SITE_LEGAL): boolean {
+  return !isPlaceholderText(legal.email);
+}
+
+/** Ist die verantwortliche Person eingetragen? */
+export function isContentResponsibleComplete(legal: SiteLegal = SITE_LEGAL): boolean {
+  return !isPlaceholderText(legal.contentResponsible);
+}
+
+/**
+ * Zeigt das Unternehmen? Nur dann stehen Vertretungsberechtigte und
+ * Registerangaben in der sichtbaren Seite — bei einer natürlichen Person wären
+ * sie falsch.
+ */
+export function isCompany(legal: SiteLegal = SITE_LEGAL): boolean {
+  return isEntityTypeKnown(legal) && legal.entityType === 'unternehmen';
+}
+
+/** Hat das Unternehmen eine USt-IdNr. angegeben? */
+export function hasVatId(legal: SiteLegal = SITE_LEGAL): boolean {
+  const value = legal.vatId.trim();
+  // Die Platzhalter-Marke ist keine Angabe: Sie darf nie sichtbar werden.
+  return value !== '' && !isPlaceholderText(value);
+}
+
+/** Hat der Anbieter ein Telefon angegeben? */
+export function hasPhone(legal: SiteLegal = SITE_LEGAL): boolean {
+  const value = legal.phone.trim();
+  return value !== '' && !isPlaceholderText(value);
 }
