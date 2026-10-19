@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Dialog-Stapel für die Escape-/Tab-Behandlung: Liegen zwei Dialoge
+ * übereinander (z. B. Rückfrage über dem Assistenten), darf nur der
+ * oberste auf Escape reagieren — sonst schlösse ein Esc beide Ebenen.
+ */
+const openDialogStack: string[] = [];
 
 interface AccessibleDialogProps {
   open: boolean;
@@ -40,17 +48,21 @@ export function AccessibleDialog({
 }: AccessibleDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const dialogKey = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    openDialogStack.push(dialogKey);
+    const isTopmost = () => openDialogStack.at(-1) === dialogKey;
     returnFocusRef.current = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
     const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
     window.requestAnimationFrame(() => (first || panel)?.focus());
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopmost()) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -81,13 +93,21 @@ export function AccessibleDialog({
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
+      const index = openDialogStack.indexOf(dialogKey);
+      if (index >= 0) openDialogStack.splice(index, 1);
       returnFocusRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, dialogKey]);
 
   if (!open) return null;
 
-  return (
+  // Portal an `document.body` (Nachtest 2026-10-16: „Datei → Stückliste“
+  // aus dem Details-Tab öffnete unsichtbar): Die Stückliste hängt im
+  // Canvas-Baum (`isolate` = eigener Stapelkontext) und lag damit unter
+  // den Handy-Blättern (Seitenleiste/Details, z-40), obwohl der Dialog
+  // selbst z-200 trägt. Am Body hängt kein fremder Stapelkontext dazwischen —
+  // der Dialog liegt immer über der Anwendung, aus jedem Tab heraus.
+  return createPortal(
     // Backdrop-Klick ist nur ein Zeiger-Shortcut; der tastaturzugängliche Weg
     // ist Escape (onKeyDown) plus Focus-Trap — das Dialog-Pattern (WAI-APG).
     // Das a11y-Gate darüber liegt bei axe (tests/e2e/a11y.spec.ts).
@@ -133,6 +153,7 @@ export function AccessibleDialog({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
