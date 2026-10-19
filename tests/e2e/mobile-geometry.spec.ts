@@ -142,7 +142,7 @@ for (const viewport of [
 ]) {
   test.describe(`Handy-Geometrie ${viewport.name}`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
-    test.beforeEach((_fixtures, testInfo) => {
+    test.beforeEach(({ browserName: _browserName }, testInfo) => {
       test.skip(testInfo.project.name !== 'mobile-375', 'einmal je Fenster, im Projekt mobile-375');
     });
 
@@ -337,7 +337,7 @@ for (const viewport of [
 
 test.describe('Assistent im kurzen Fenster', () => {
   test.use({ viewport: { width: 852, height: 393 } });
-  test.beforeEach((_fixtures, testInfo) => {
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-375', 'einmal, im Projekt mobile-375');
   });
 
@@ -359,7 +359,7 @@ test.describe('Assistent im kurzen Fenster', () => {
 
 test.describe('Bauteil aus der Bibliothek im Querformat', () => {
   test.use({ viewport: { width: 852, height: 393 } });
-  test.beforeEach((_fixtures, testInfo) => {
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-375', 'einmal, im Projekt mobile-375');
   });
 
