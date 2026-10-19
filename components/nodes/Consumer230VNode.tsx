@@ -1,9 +1,10 @@
 'use client';
-import React from 'react';
+import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { type Consumer230VNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
+import { DesignatorContext } from './designators';
 
 const Consumer230VNode = function ({
   id,
@@ -13,6 +14,7 @@ const Consumer230VNode = function ({
 }: PlannerNodeProps<Consumer230VNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
+  const designators = useContext(DesignatorContext);
 
   return (
     <div
@@ -21,7 +23,7 @@ const Consumer230VNode = function ({
       aria-label={`${data.label || '230-V-Gerät'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="consumer-ac" />
+      <NodeSymbol kind="consumer-ac" dinCode={designators.get(id)} />
       {editingField === 'label' ? (
         <input
           autoFocus

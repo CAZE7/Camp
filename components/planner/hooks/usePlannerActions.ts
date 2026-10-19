@@ -224,9 +224,20 @@ export function usePlannerActions({
   }, []);
 
   const runAutoWire = useCallback(() => {
+    // N1 (Nachtest): Im Wasserplan erklärt die Aktion sich, statt einen
+    // Elektro-Vorschlag zu öffnen. Der Store-Guard in `previewAutoWire`
+    // bleibt die harte Grenze; hier kommt nur die sichtbare Rückmeldung.
+    if (usePlannerStore.getState().viewMode === 'water') {
+      onFeedback({
+        type: 'info',
+        message:
+          'Automatisch verbinden gibt es nur für den Elektrikplan. Im Wasserplan verbindest du von Hand (Anschluss antippen). Der Elektroplan wurde nicht verändert.',
+      });
+      return;
+    }
     flashBusy('wire');
     autoWireSystem();
-  }, [autoWireSystem, flashBusy]);
+  }, [autoWireSystem, flashBusy, onFeedback]);
 
   const runLayoutV2 = useCallback(async () => {
     setBusy('layoutV2');

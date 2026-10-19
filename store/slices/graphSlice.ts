@@ -1,6 +1,7 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
+import { collidingNodeIds, findNearestFreePosition } from '../../components/planner/utils/collision';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
@@ -570,29 +571,37 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     ),
   handleChangeLength: (id, length) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        edges: state.edges.map((e) => {
-          if (e.id === id) {
-            // Mit der Nutzereingabe endet der Annahme-Status: Der Wert ist ab
-            // jetzt ein Messwert des Nutzers (dreißigste Fassung) — sonst
-            // stünde am Ende seine eigene Zahl als „Planungsannahme" da.
-            return { ...e, data: { ...e.data!, length, lengthIsAssumption: false } };
-          }
-          return e;
-        }),
-        waterEdges: state.waterEdges.map((e) => {
-          if (e.id === id) {
-            return { ...e, data: { ...e.data!, length } };
-          }
-          return e;
-        }),
-      }, `edge-length:${id}`)
+      withHistoryIfChanged(
+        state,
+        {
+          edges: state.edges.map((e) => {
+            if (e.id === id) {
+              // Mit der Nutzereingabe endet der Annahme-Status: Der Wert ist ab
+              // jetzt ein Messwert des Nutzers (dreißigste Fassung) — sonst
+              // stünde am Ende seine eigene Zahl als „Planungsannahme" da.
+              return { ...e, data: { ...e.data!, length, lengthIsAssumption: false } };
+            }
+            return e;
+          }),
+          waterEdges: state.waterEdges.map((e) => {
+            if (e.id === id) {
+              return { ...e, data: { ...e.data!, length } };
+            }
+            return e;
+          }),
+        },
+        `edge-length:${id}`
+      )
     ),
   handleChangeFuseSize: (id, fuseSize) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
-      }, `edge-fuse-size:${id}`)
+      withHistoryIfChanged(
+        state,
+        {
+          edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
+        },
+        `edge-fuse-size:${id}`
+      )
     ),
   handleChangeFuseOffset: (id, fuseOffset) =>
     set((state) =>
@@ -824,6 +833,26 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   /** Berechnet Auto-Wire als Preview, ohne den echten Graphen zu verändern. */
   previewAutoWire: () => {
+    // N1 (Nachtest 2026-10-16, KRITISCH): „Auto-verbinden“ im Wasser-Tab
+    // verkabelte ohne Rückfrage den ELEKTROPLAN um (13 → 22 Kabel plus
+    // Shunt), weil AutoWire immer auf dem Elektro-Graphen lief. Der Guard
+    // gehört in den Schreibpfad selbst (nicht nur in den Knopf): Im
+    // Wasserplan entsteht kein Elektro-Vorschlag — nur eine Erklärung.
+    if (get().viewMode === 'water') {
+      get().addPlannerError(
+        createPlannerError({
+          code: 'PLAN_INCOMPLETE',
+          severity: 'info',
+          category: 'general',
+          message: 'Automatisch verbinden gibt es nur für den Elektrikplan.',
+          explanation:
+            'Du bist im Wasserplan. Dort verbindest du Leitungen von Hand: ersten Anschluss antippen, dann den zweiten. Der Elektroplan wurde nicht verändert.',
+          suggestedFix: 'Zum automatischen Verbinden in den Elektrikplan wechseln (Tab „Elektrik“).',
+        })
+      );
+      set({ autoWirePreview: null });
+      return;
+    }
     const { nodes, edges } = get();
     const result = performAutoWiring(nodes, edges);
     if (!result) {
@@ -859,6 +888,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     const current = get();
     const preview = current.autoWirePreview;
     if (!preview) return;
+    // N1-Restweg: Wurde seit der Vorschau in den Wasserplan gewechselt,
+    // darf „Anwenden“ nicht aus dem Wasserplan heraus den Elektroplan
+    // umschreiben — Vorschlag verwerfen statt still anzuwenden.
+    if (current.viewMode === 'water') {
+      set({ autoWirePreview: null });
+      return;
+    }
     const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, preview.nodes, preview.edges);
     if (lockedMutations.length > 0) {
       for (const mutation of lockedMutations) {
@@ -1061,10 +1097,22 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     get().addNode(type, label, position, watts);
   },
   addNode: (type, label, position, watts?: number) => {
+    // Nachtest 2026-10-16: „Überlappung neuer Teile“ — der freie Drop legte
+    // das Bauteil exakt auf ein vorhandenes; nur der Tipp-Zusatz über die
+    // Canvas-Mitte wich Kollisionen aus. Jetzt gilt dieselbe Regel für
+    // jeden Zugang (Drop, Tipp, Tastatur): freie Stelle bleibt, Treffer
+    // sucht die nächste freie Rasterposition.
+    const domainNodes = get().viewMode === 'water' ? get().waterNodes : get().nodes;
+    const candidate = { id: 'new-component', type, data: {}, position } as Node;
+    const freePosition =
+      collidingNodeIds(candidate, domainNodes as Node[]).length === 0
+        ? position
+        : findNearestFreePosition(candidate, domainNodes as Node[]);
+
     const newNode: Node = {
       id: `${type}-${newEntityId()}`,
       type,
-      position,
+      position: freePosition,
       data: { label, ...(watts !== undefined ? { watts } : {}) },
     };
 
@@ -1086,7 +1134,17 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     } else if (type === 'consumer230v') {
       newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+      // Geräte-Vorlagen bringen nur die Leistung mit („Solarmodul 200 W“).
+      // Der Arbeitsstrom folgt aus der üblichen Modulspannung, statt mit
+      // den 5 A des 90-W-Defaults eine falsche Kombination (200 W bei
+      // 18 V/5 A) in den Plan zu schreiben (Nachtest: Solar 0 V / 0 A).
+      const panelWatts = watts ?? 90;
+      newNode.data = {
+        voltage: 18,
+        amps: Math.round((panelWatts / 18) * 10) / 10,
+        watts: panelWatts,
+        ...newNode.data,
+      };
     } else if (type === 'inverter') {
       newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }

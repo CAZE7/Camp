@@ -1,14 +1,16 @@
 'use client';
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { Handle, Position, useNodes, type Node } from '@xyflow/react';
 import { type InverterNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { type CommonNodeData } from './types';
 import { NodeSymbol } from './NodeSymbol';
+import { DesignatorContext } from './designators';
 
 const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<InverterNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
+  const designators = useContext(DesignatorContext);
 
   // v12: `useNodes` ist über den NODE-Typ generisch, nicht über die Datenform.
   const nodes = useNodes<Node<CommonNodeData>>();
@@ -39,7 +41,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       aria-label={`${data.label || 'Wechselrichter'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${overloadStats.isOverloaded ? 'node-card--error' : ''} ${overloadStats.isOverloaded ? 'de-node-card--error bg-warn-critical-bg' : ''} ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="inverter" />
+      <NodeSymbol kind="inverter" dinCode={designators.get(id)} />
       {editingField === 'label' ? (
         <input
           autoFocus

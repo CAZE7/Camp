@@ -158,8 +158,11 @@ const SYMBOLS: Record<
   conduit: { icon: Cable, code: 'WIRE', dinCode: 'W0', tone: 'node-symbol--measure' },
 };
 
-export function NodeSymbol({ kind }: { kind: NodeSymbolKind }) {
-  const { icon: Icon, dinIcon: DinIcon, code, tone, dinCode } = SYMBOLS[kind];
+export function NodeSymbol({ kind, dinCode: dinCodeOverride }: { kind: NodeSymbolKind; dinCode?: string }) {
+  const { icon: Icon, dinIcon: DinIcon, code, tone, dinCode: baseDinCode } = SYMBOLS[kind];
+  // Nachtest: laufende Bezeichnung dieses Bauteils (G1, G1.2 …) statt des
+  // statischen Art-Kürzels, sobald der Canvas sie per Kontext liefert.
+  const dinCode = dinCodeOverride ?? baseDinCode;
 
   return (
     <div className={cn('node-symbol', tone)} aria-hidden="true" data-din={dinCode}>

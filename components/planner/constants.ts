@@ -35,7 +35,7 @@ export const PLANNER_FIT_PADDING = 0.2;
  * darunter selbstständig heraus (`edgeFocusTarget`).
  */
 export const PLANNER_FOCUS_MAX_ZOOM = 1.15;
-export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
+export { PLANNER_SNAP_GRID } from './grid';
 
 /**
  * Frames, die ein Bauteil-Zusatz auf eine messbare Plan-Pane wartet (≈0,5 s bei
