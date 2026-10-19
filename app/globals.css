@@ -3108,6 +3108,21 @@ html.planner-root-active body {
   }
 }
 
+/* Nachtest Bug 19/28: Die 44-px-Mindesthöhe der Menüleiste hing nur an
+   `pointer: coarse`. In schmalen Fenstern mit feinem Zeiger (und in der
+   Mess-Spec) blieben die Menü-Knöpfe 19,5 px hoch — praktisch untippbar,
+   sobald das Fenster Handy-Breite hat. Breite entscheidet mit. */
+@media (max-width: 900px) {
+  .planner-shell {
+    --cad-menubar-h: 44px;
+  }
+
+  .cad-menubar__item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @media (pointer: coarse) {
   .planner-shell {
     --cad-menubar-h: 44px;

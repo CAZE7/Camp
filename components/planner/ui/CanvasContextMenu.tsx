@@ -244,7 +244,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
         role="menuitem"
         className={ITEM_CLASS}
         onClick={() => {
-          window.dispatchEvent(new CustomEvent('planner-fit-view'));
+          window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
           onClose();
         }}
       >

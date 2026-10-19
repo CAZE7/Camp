@@ -127,8 +127,8 @@ export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> =
  * bzw. nur das Shell-Layout (Vollbild). Als Custom Events, weil die Auslöser in
  * der Chrome-Leiste und die Wirkung im Canvas bzw. in `PlannerInner` liegt.
  */
-export function dispatchPlannerEvent(name: string) {
-  window.dispatchEvent(new CustomEvent(name));
+export function dispatchPlannerEvent(name: string, detail?: unknown) {
+  window.dispatchEvent(new CustomEvent(name, detail === undefined ? undefined : { detail }));
 }
 
 export function usePlannerActions({
@@ -377,8 +377,9 @@ export function usePlannerActions({
         {
           items: [
             {
+              // Nachtest Bug 9: Kein „BOM“ mehr im Nutzertext — der Hint
+              // machte den Eintrag zu „Stückliste BOM“.
               label: 'Stückliste',
-              hint: 'BOM',
               icon: Package,
               testId: 'action-bom',
               run: openBom,
@@ -447,7 +448,7 @@ export function usePlannerActions({
               label: 'Gesamtübersicht',
               hint: 'Fit',
               icon: Maximize2,
-              run: () => dispatchPlannerEvent('planner-fit-view'),
+              run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
             },
             {
               label: 'Vollbild (Fokusmodus)',
@@ -677,7 +678,7 @@ export function usePlannerActions({
             label: 'Gesamtübersicht',
             icon: Maximize2,
             testId: 'action-fit-view',
-            run: () => dispatchPlannerEvent('planner-fit-view'),
+            run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
           },
         ],
       },

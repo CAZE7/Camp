@@ -201,8 +201,17 @@ export function FlowCanvas() {
     // Viewport-Animation ist fire-and-forget: Es gibt nichts nachzuholen und
     // keinen Nutzerfehler zu melden — `void` markiert das ausdrücklich,
     // statt das Promise still wegzuschmeißen (AUDIT T1, no-floating-promises).
-    const handleFitView = () => {
-      void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    // Nachtest Bug 25: Automatische Fits (Vorlage, Auto-verbinden, Ordnen)
+    // landeten bei 27–29 % — unlesbar. Sie respektieren die Zoom-
+    // Untergrenze; nur die bewusst gewählte Gesamtübersicht
+    // (`detail.full`) darf den ganzen Plan einpassen.
+    const handleFitView = (event: Event) => {
+      const full = (event as CustomEvent<{ full?: boolean }>).detail?.full === true;
+      void fitView({
+        duration: 400,
+        padding: PLANNER_FIT_PADDING,
+        ...(full ? {} : { minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }),
+      });
     };
     const handleFocusElement = (event: Event) => {
       const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;

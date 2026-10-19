@@ -501,8 +501,14 @@ export function ExpertPanel() {
         // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
         // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf
         // iPhones zusätzlich die Safe-Area des Home-Indicators.
+        // Nachtest Bug 18 (E2E-belegt, iPhone SE): Das offene Panel wuchs
+        // von bottom-28 so weit nach oben, dass Kopfzeile samt Schließen-
+        // Knopf UNTER der Werkzeugleiste verschwand (eigener Stapelkontext
+        // der Canvas-Spalte) — nicht mehr schließbar. Der Rahmen ist jetzt
+        // oben an der Canvas-Kante gedeckelt (top-2) und das Blatt wächst
+        // darin von unten, ohne die Decke zu durchbrechen.
         isOpen
-          ? 'planner-expert-panel--open bottom-28 right-4 w-11/12 max-w-sm md:bottom-20'
+          ? 'planner-expert-panel--open pointer-events-none bottom-28 right-4 top-2 flex w-11/12 max-w-sm flex-col justify-end md:bottom-20'
           : 'planner-expert-panel--closed bottom-20 right-4 w-auto max-w-xs md:bottom-16'
       )}
     >
@@ -514,7 +520,7 @@ export function ExpertPanel() {
           // schmalen Schlitz mit Dauer-Scrollen. Auf Desktop darf das
           // Panel deutlich höher wachsen (36 rem), begrenzt bleibt die
           // Fensterhöhe minus Leisten.
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,calc(100dvh-8rem))]"
+          className="pointer-events-auto flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
