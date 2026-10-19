@@ -20,6 +20,7 @@ import {
   sameElements,
   withHistory,
   withHistoryIfChanged,
+  resetHistoryCoalescing,
   pathDropCache,
   plannerGraphSignature,
   HISTORY_LIMIT,
@@ -546,20 +547,26 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   updateNodeData: (id, data) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        nodes: state.nodes.map((n) => {
-          if (n.id === id) {
-            return { ...n, data: { ...n.data, ...data } };
-          }
-          return n;
-        }),
-        waterNodes: state.waterNodes.map((n) => {
-          if (n.id === id) {
-            return { ...n, data: { ...n.data, ...data } };
-          }
-          return n;
-        }),
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          nodes: state.nodes.map((n) => {
+            if (n.id === id) {
+              return { ...n, data: { ...n.data, ...data } };
+            }
+            return n;
+          }),
+          waterNodes: state.waterNodes.map((n) => {
+            if (n.id === id) {
+              return { ...n, data: { ...n.data, ...data } };
+            }
+            return n;
+          }),
+        },
+        // N4 (Nachtest): Tippen in einem Feld = EIN Verlaufsschritt,
+        // nicht einer pro Tastendruck (Schlüssel: Bauteil + Feldmenge).
+        `node-data:${id}:${Object.keys(data).sort().join('+')}`
+      )
     ),
   handleChangeLength: (id, length) =>
     set((state) =>
@@ -579,24 +586,28 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
           }
           return e;
         }),
-      })
+      }, `edge-length:${id}`)
     ),
   handleChangeFuseSize: (id, fuseSize) =>
     set((state) =>
       withHistoryIfChanged(state, {
         edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
-      })
+      }, `edge-fuse-size:${id}`)
     ),
   handleChangeFuseOffset: (id, fuseOffset) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
-        // ungültige Eingaben ändern den Zustand nicht.
-        edges:
-          Number.isFinite(fuseOffset) && fuseOffset >= 0
-            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
-            : state.edges,
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
+          // ungültige Eingaben ändern den Zustand nicht.
+          edges:
+            Number.isFinite(fuseOffset) && fuseOffset >= 0
+              ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
+              : state.edges,
+        },
+        `edge-fuse-offset:${id}`
+      )
     ),
   handleChangeFuseType: (id, fuseType) =>
     set((state) =>
@@ -1158,6 +1169,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     return { applied: true, engine: result.engine };
   },
   undo: () => {
+    resetHistoryCoalescing();
     const current = get();
     const previous = current.historyPast[current.historyPast.length - 1];
     if (!previous) return;
@@ -1187,6 +1199,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     });
   },
   redo: () => {
+    resetHistoryCoalescing();
     const current = get();
     const next = current.historyFuture[0];
     if (!next) return;

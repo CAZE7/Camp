@@ -110,18 +110,37 @@ export function affectsStructure(changes: readonly { type: string }[]): boolean 
  */
 export function withHistoryIfChanged<T extends Partial<PlannerState>>(
   state: PlannerState,
-  update: T
+  update: T,
+  coalesceKey?: string
 ): PlannerState | (T & Pick<PlannerState, 'historyPast' | 'historyFuture' | 'canUndo' | 'canRedo'>) {
   for (const key of Object.keys(update)) {
     const before: unknown = state[key as keyof PlannerState];
     const after: unknown = update[key as keyof T];
     if (Array.isArray(before) && Array.isArray(after)) {
-      if (!sameElements<unknown>(before, after)) return withHistory(state, update);
+      if (!sameElements<unknown>(before, after)) return withHistory(state, update, coalesceKey);
     } else if (before !== after) {
-      return withHistory(state, update);
+      return withHistory(state, update, coalesceKey);
     }
   }
   return state;
+}
+
+/**
+ * Verlauf-Koaleszenz (Nachtest 2026-10-16, N4): Jeder Tastendruck in einem
+ * Zahlenfeld war ein eigener Undo-Schritt — „20“ → „125“ brauchte drei Mal
+ * Rückgängig. Aufeinanderfolgende Änderungen mit demselben Schlüssel
+ * (dasselbe Feld desselben Bauteils) innerhalb des Zeitfensters teilen
+ * sich jetzt EINEN Schritt: Der Snapshot vor dem ersten Tastendruck bleibt
+ * der Rücksprungpunkt, die Zwischenwerte verstopfen den Verlauf nicht.
+ * Jeder andere Verlaufsschritt (anderes Feld, andere Aktion, Undo/Redo)
+ * beendet die Kette.
+ */
+export const HISTORY_COALESCE_MS = 1500;
+let historyCoalesce: { key: string; at: number } | null = null;
+
+/** Undo/Redo (und Tests) beenden eine laufende Koaleszenz-Kette. */
+export function resetHistoryCoalescing(): void {
+  historyCoalesce = null;
 }
 
 const HISTORY_LIMIT = 50;
@@ -213,8 +232,29 @@ export function graphSnapshot(
 
 export function withHistory<T extends Partial<PlannerState>>(
   state: PlannerState,
-  update: T
+  update: T,
+  coalesceKey?: string
 ): T & Pick<PlannerState, 'historyPast' | 'historyFuture' | 'canUndo' | 'canRedo'> {
+  const now = Date.now();
+  if (
+    coalesceKey !== undefined &&
+    historyCoalesce !== null &&
+    historyCoalesce.key === coalesceKey &&
+    now - historyCoalesce.at <= HISTORY_COALESCE_MS &&
+    state.historyPast.length > 0
+  ) {
+    // Kette läuft weiter: kein neuer Snapshot — der Stand vor dem ersten
+    // Tastendruck bleibt der einzige Rücksprungpunkt (N4).
+    historyCoalesce = { key: coalesceKey, at: now };
+    return {
+      ...update,
+      historyPast: state.historyPast,
+      historyFuture: [],
+      canUndo: true,
+      canRedo: false,
+    };
+  }
+  historyCoalesce = coalesceKey !== undefined ? { key: coalesceKey, at: now } : null;
   return {
     ...update,
     historyPast: [...state.historyPast.slice(-(HISTORY_LIMIT - 1)), graphSnapshot(state)],
