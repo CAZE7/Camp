@@ -395,7 +395,6 @@ function TemperatureInputs({
             <div className="relative">
               <DecimalInput
                 id="temp-inside"
-
                 min={5}
                 max={30}
                 value={tempInside}
@@ -441,7 +440,6 @@ function TemperatureInputs({
             <div className="relative">
               <DecimalInput
                 id="temp-outside"
-
                 min={-30}
                 max={15}
                 value={tempOutside}
@@ -568,7 +566,6 @@ function AdvancedParameters({
             <div className="relative">
               <DecimalInput
                 id="window-area"
-
                 min={0}
                 max={5}
                 step={0.1}
@@ -614,7 +611,6 @@ function AdvancedParameters({
             <div className="relative">
               <DecimalInput
                 id="insulation-coverage"
-
                 min={0}
                 max={100}
                 value={insulationCoverage}

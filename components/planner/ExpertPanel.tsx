@@ -402,26 +402,60 @@ function LiveRecommendationCard({
   return null;
 }
 
+function graphTopologyFingerprint(
+  nodes: ReadonlyArray<{ id: string; type?: string }>,
+  edges: ReadonlyArray<{
+    id: string;
+    source: string;
+    target: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+  }>
+) {
+  return JSON.stringify({
+    nodes: nodes.map((node) => `${node.id}:${node.type ?? ''}`).sort(),
+    edges: edges
+      .map(
+        (edge) =>
+          `${edge.id}:${edge.source}:${edge.sourceHandle ?? ''}>${edge.target}:${edge.targetHandle ?? ''}`
+      )
+      .sort(),
+  });
+}
+
 export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
-  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number } | null>(null);
+  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number; topology: string } | null>(
+    null
+  );
 
   // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
   const nodes = usePlannerStore((s) => s.nodes);
+  const currentTopology = useMemo(() => graphTopologyFingerprint(nodes, edges), [nodes, edges]);
 
   // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
   // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
   useEffect(() => {
     const onAutoWired = (event: Event) => {
       const detail = (event as CustomEvent<{ edgeCount?: number }>).detail;
+      const state = usePlannerStore.getState();
       setIsOpen(true);
-      setAutoWireSummary({ edgeCount: Number(detail?.edgeCount) || 0 });
+      setAutoWireSummary({
+        edgeCount: Number(detail?.edgeCount) || 0,
+        topology: graphTopologyFingerprint(state.nodes, state.edges),
+      });
     };
     window.addEventListener('planner-auto-wired', onAutoWired);
     return () => window.removeEventListener('planner-auto-wired', onAutoWired);
+  }, []);
+
+  useEffect(() => {
+    const openExpertPanel = () => setIsOpen(true);
+    window.addEventListener('planner-open-expert-panel', openExpertPanel);
+    return () => window.removeEventListener('planner-open-expert-panel', openExpertPanel);
   }, []);
 
   const currentKnowledge = useMemo(() => {
@@ -467,8 +501,14 @@ export function ExpertPanel() {
         // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
         // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf
         // iPhones zusätzlich die Safe-Area des Home-Indicators.
+        // Nachtest Bug 18 (E2E-belegt, iPhone SE): Das offene Panel wuchs
+        // von bottom-28 so weit nach oben, dass Kopfzeile samt Schließen-
+        // Knopf UNTER der Werkzeugleiste verschwand (eigener Stapelkontext
+        // der Canvas-Spalte) — nicht mehr schließbar. Der Rahmen ist jetzt
+        // oben an der Canvas-Kante gedeckelt (top-2) und das Blatt wächst
+        // darin von unten, ohne die Decke zu durchbrechen.
         isOpen
-          ? 'planner-expert-panel--open bottom-28 right-4 w-11/12 max-w-sm md:bottom-20'
+          ? 'planner-expert-panel--open pointer-events-none bottom-28 right-4 top-2 flex w-11/12 max-w-sm flex-col justify-end md:bottom-20'
           : 'planner-expert-panel--closed bottom-20 right-4 w-auto max-w-xs md:bottom-16'
       )}
     >
@@ -476,7 +516,11 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="flex max-h-[min(40rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in"
+          // Nachtest Bug 18: 28 rem zwangen den Fachwissen-Text in einen
+          // schmalen Schlitz mit Dauer-Scrollen. Auf Desktop darf das
+          // Panel deutlich höher wachsen (36 rem), begrenzt bleibt die
+          // Fensterhöhe minus Leisten.
+          className="pointer-events-auto flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
@@ -513,7 +557,7 @@ export function ExpertPanel() {
           </div>
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
-          {autoWireSummary && (
+          {autoWireSummary && autoWireSummary.topology === currentTopology && (
             <div className="mx-4 mt-4 rounded border border-moss bg-moss/10 p-3.5 duration-150 animate-in fade-in">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
@@ -526,7 +570,7 @@ export function ExpertPanel() {
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="rounded-md p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
+                  className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-md text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg

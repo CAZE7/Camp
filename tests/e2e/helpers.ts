@@ -156,6 +156,14 @@ export async function autoWire(page: Page): Promise<void> {
   } else {
     await openMoreMenuItem(page, 'action-autowire-menu');
   }
+  // Nachtest Bug 20: Auto-verbinden zeigt zuerst eine Vorschau und wendet
+  // erst nach Bestätigung an. Der Helper bestätigt sie — ohne diesen
+  // Schritt wartete er vergeblich auf Kanten (Altlast seit Einführung der
+  // Vorschau, alle autoWire-Specs waren rot).
+  const preview = page.getByRole('dialog', { name: /Automatisch verbinden/ });
+  await expect(preview).toBeVisible();
+  await page.getByRole('button', { name: 'Vorschlag auf den Plan anwenden' }).click();
+  await expect(preview).toBeHidden();
   await expect
     .poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' })
     .toBeGreaterThan(0);

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
 import {
   BATTERY_CHEMISTRIES,
@@ -9,7 +10,6 @@ import {
   type BatterySizingResult,
   sizeBattery,
 } from '@/lib/batterySizing';
-import { DecimalInput } from '../ui/DecimalInput';
 
 /**
  * components/rechner/BatteriekapazitaetRechner.tsx — Kapazität aus Tagesbedarf,
@@ -80,7 +80,6 @@ export function BatteriekapazitaetRechner() {
           <Label htmlFor="batterie-energie">Tagesbedarf in Wattstunden</Label>
           <DecimalInput
             id="batterie-energie"
-
             inputMode="decimal"
             min="1"
             max="20000"
@@ -100,7 +99,6 @@ export function BatteriekapazitaetRechner() {
           <Label htmlFor="batterie-tage">Autarke Tage ohne Ladung</Label>
           <DecimalInput
             id="batterie-tage"
-
             inputMode="decimal"
             min="0.5"
             max="14"
@@ -151,7 +149,6 @@ export function BatteriekapazitaetRechner() {
           <Label htmlFor="batterie-reserve">Reserve für Alterung und Kälte in Prozent</Label>
           <DecimalInput
             id="batterie-reserve"
-
             inputMode="decimal"
             min="0"
             max="50"

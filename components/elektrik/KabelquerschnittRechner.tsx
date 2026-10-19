@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 
+import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
 import { type CableSizing, sizeCable } from '@/lib/cableSizing';
-import { DecimalInput } from '../ui/DecimalInput';
 
 /**
  * Kabelquerschnitt-Rechner für 12-V-Leitungen.
@@ -75,7 +75,6 @@ export function KabelquerschnittRechner() {
           <DecimalInput
             id="rechner-strom"
             name="betriebsstrom"
-
             inputMode="decimal"
             min="0.1"
             max="500"
@@ -96,7 +95,6 @@ export function KabelquerschnittRechner() {
           <DecimalInput
             id="rechner-laenge"
             name="leitungslänge"
-
             inputMode="decimal"
             min="0.1"
             max="100"

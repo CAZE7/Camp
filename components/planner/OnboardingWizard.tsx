@@ -31,37 +31,59 @@ const TEMPLATES = PLANNER_TEMPLATES.map((template) => ({
   desc: template.description,
 }));
 
+/**
+ * Welche Vorlage passt zur Auswahl? (Nachtest 2026-10-16: Der Assistent
+ * empfahl „Minimal“ auch dann, wenn der Nutzer Solar angekreuzt hatte —
+ * diese Vorlage hat aber gar kein Solarmodul.)
+ *
+ * Regel: Die Empfehlung muss jedes angekreuzte Merkmal enthalten.
+ * Landstrom gibt es nur in „Autark“, Solar und Ladebooster ab
+ * „Allround“. Erst danach entscheidet der Umfang der Auswahl.
+ */
+export function recommendedTemplateId(
+  sources: Record<string, boolean>,
+  consumers: Record<string, boolean>
+): string {
+  const totalSelected =
+    Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
+  if (sources.landstrom) return 'autark';
+  if (totalSelected >= 5) return 'autark';
+  // „allrounder“ ist auf main der Alias von „kastenwagen“ (die mittlere Vorlage).
+  if (sources.solar || sources.booster || totalSelected >= 3) return 'kastenwagen';
+  return 'minimalist';
+}
+
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
 
+  const recommendedId = recommendedTemplateId(sources, consumers);
   const sourceCount = Object.values(sources).filter(Boolean).length;
   const consumerCount = Object.values(consumers).filter(Boolean).length;
-  const totalSelected = sourceCount + consumerCount;
-  const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'kastenwagen' : 'minimalist';
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
   const applyTemplate = usePlannerStore((state) => state.applyTemplate);
   const clearPlan = usePlannerStore((state) => state.clearPlan);
 
   /**
-   * Schließen (Esc, ✕, Klick daneben) ohne Änderung am Plan. Vorher löste
-   * Esc „Leeren Plan starten“ aus — der Plan wurde geleert oder die native
-   * Rückfrage blockierte den Schließ-Versuch (B-23, QA-Bericht).
+   * Schließen (✕, Esc, Klick daneben) ändert nichts am Plan
+   * (Nachtest 2026-10-16: Vorher löste genau das „Plan wird geleert“ aus).
    */
   const dismiss = useCallback(() => setHasOnboarded(true), [setHasOnboarded]);
 
   // Das beim ersten Besuch vorgeladene Beispiel-Setup ist kein eigener Plan:
-  // Es zu ersetzen oder zu leeren braucht keine Rückfrage — sonst begrüßt der
-  // erste Dialog jeden Erstbesucher mit einem Bestätigungs-Popup.
-  const hasOwnPlan = (state: ReturnType<typeof usePlannerStore.getState>) =>
-    (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
+  // Es zu ersetzen braucht keine Rückfrage.
+  const hasOwnPlan = () => {
+    const state = usePlannerStore.getState();
+    return (
+      (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges)
+    );
+  };
 
   const startEmpty = async () => {
-    const state = usePlannerStore.getState();
     if (
-      hasOwnPlan(state) &&
+      hasOwnPlan() &&
       !(await requestConfirm(
         'Der aktuelle Plan wird geleert. Du kannst das anschließend rückgängig machen. Fortfahren?'
       ))
@@ -73,9 +95,8 @@ export function OnboardingWizard() {
   };
 
   const handleApplyTemplate = async (templateId: string) => {
-    const state = usePlannerStore.getState();
     if (
-      hasOwnPlan(state) &&
+      hasOwnPlan() &&
       !(await requestConfirm(
         'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
       ))
@@ -91,7 +112,9 @@ export function OnboardingWizard() {
       open
       onClose={dismiss}
       title="Dein Camper-Energieplan"
-      description="In drei kurzen Schritten findest du eine passende Basis. Oder starte direkt mit einem leeren Plan."
+      description="In drei kurzen Schritten findest du eine passende Basis. Oder schließe diesen Assistenten und starte direkt mit deinem Plan."
+      showClose
+      closeOnBackdrop
     >
       {/* Fortschrittsanzeige mit role=img, damit das aria-label auf einem
           <div> erlaubt ist (Lighthouse aria-prohibited-attr). */}
@@ -111,6 +134,10 @@ export function OnboardingWizard() {
             <h3 id="onboarding-source-title" className="text-lg font-semibold">
               1. Woher kommt dein Strom?
             </h3>
+            <p className="text-sm text-muted-foreground">
+              Kein Pflichtprogramm: Mit dem ✕ oben rechts oder der Esc-Taste schließt du den Assistenten
+              jederzeit — dein Plan bleibt dabei unverändert.
+            </p>
             <div className="space-y-2">
               {STROMQUELLEN.map((source) => (
                 <label

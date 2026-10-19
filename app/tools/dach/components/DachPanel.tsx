@@ -4,9 +4,9 @@ import React from 'react';
 import { Panel, type Node } from '@xyflow/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { DecimalInput } from '@/components/ui/DecimalInput';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { Sun, Home } from 'lucide-react';
-import { DecimalInput } from '../../../../components/ui/DecimalInput';
 
 export function DachPanel({
   selectedNode,
@@ -53,7 +53,6 @@ export function DachPanel({
                 <div className="relative">
                   <DecimalInput
                     id="watts-input"
-
                     value={selectedNode.data.watts ?? 0}
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -82,7 +81,6 @@ export function DachPanel({
                 <div className="relative">
                   <DecimalInput
                     id="width-input"
-
                     value={Math.round(selectedNode.data.width || (isSolar ? 100 : 40))}
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -109,7 +107,6 @@ export function DachPanel({
                 <div className="relative">
                   <DecimalInput
                     id="height-input"
-
                     value={Math.round(selectedNode.data.height || (isSolar ? 60 : 40))}
                     onChange={(e) => {
                       const raw = e.target.value;

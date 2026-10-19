@@ -1,5 +1,6 @@
 'use client';
 
+import { requestConfirm } from './ui/ConfirmDialog';
 import React, { useState } from 'react';
 import { type Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,6 @@ import {
   ComponentInfoInspector,
 } from './inspector/NodeInspectors';
 import { WaterPipeInspector } from './inspector/WaterPipeInspector';
-import { requestConfirm } from './ui/ConfirmDialog';
 import {
   type NodeDataPatch,
   type PlannerFlowNode,

@@ -11,7 +11,13 @@ const comp = {
   icon: () => null,
 } as unknown as Comp;
 
-describe('ComponentTile — Klick fügt hinzu (B-05)', () => {
+/**
+ * Nachtest 2026-10-16 / B-05: „Klick zum Hinzufügen (Desktop) — nur per
+ * Enter möglich.“ Jeder Mausdruck startete den Ghost-Drag und schluckte
+ * den Klick. Ein Klick ohne nennenswerte Bewegung muss hinzufügen, ein
+ * echtes Ziehen darf es nicht zusätzlich tun.
+ */
+describe('ComponentTile — Klick fügt hinzu (Nachtest, Desktop)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });

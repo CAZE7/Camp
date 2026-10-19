@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { MapIcon } from 'lucide-react';
 import { measuredHeight, measuredWidth, nodeHeight, nodeWidth } from '../edges/utils/nodeGeometry';
 import {
   ReactFlow,
@@ -12,7 +13,6 @@ import {
   type Viewport,
   type Node,
 } from '@xyflow/react';
-import { Map as MapIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -27,6 +27,8 @@ import {
   PLANNER_MAX_ZOOM,
   PANE_WAIT_FRAMES,
   PLANNER_FIT_PADDING,
+  PLANNER_INITIAL_FIT_MIN_ZOOM,
+  PLANNER_FOCUS_MAX_ZOOM,
   PLANNER_SNAP_GRID,
   NODE_FOOTPRINT,
   NODE_TOUCH_MARGIN,
@@ -55,13 +57,12 @@ import {
   resolveMinimapPalette,
 } from './utils/domainFilter';
 import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
-import { PlannerModeSwitch, PLANNER_MODES } from './ui/PlannerModeSwitch';
-import { BatteryDesignatorContext, batteryDesignatorMap } from '../nodes/batteryDesignator';
-import { findingNodeIdSet } from './utils/findingMarkers';
+import { PlannerModeSwitch } from './ui/PlannerModeSwitch';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
 import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
+import { DesignatorContext, designatorMapFor } from '../nodes/designators';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
 import { withNodeInteractionState } from './utils/nodeInteractionState';
@@ -201,8 +202,17 @@ export function FlowCanvas() {
     // Viewport-Animation ist fire-and-forget: Es gibt nichts nachzuholen und
     // keinen Nutzerfehler zu melden — `void` markiert das ausdrücklich,
     // statt das Promise still wegzuschmeißen (AUDIT T1, no-floating-promises).
-    const handleFitView = () => {
-      void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    // Nachtest Bug 25: Automatische Fits (Vorlage, Auto-verbinden, Ordnen)
+    // landeten bei 27–29 % — unlesbar. Sie respektieren die Zoom-
+    // Untergrenze; nur die bewusst gewählte Gesamtübersicht
+    // (`detail.full`) darf den ganzen Plan einpassen.
+    const handleFitView = (event: Event) => {
+      const full = (event as CustomEvent<{ full?: boolean }>).detail?.full === true;
+      void fitView({
+        duration: 400,
+        padding: PLANNER_FIT_PADDING,
+        ...(full ? {} : { minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }),
+      });
     };
     const handleFocusElement = (event: Event) => {
       const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;
@@ -213,7 +223,7 @@ export function FlowCanvas() {
           const width = nodeWidth(node, 200);
           const height = nodeHeight(node, 120);
           void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-            zoom: 1.15,
+            zoom: PLANNER_FOCUS_MAX_ZOOM,
             duration: 450,
           });
         }
@@ -351,7 +361,11 @@ export function FlowCanvas() {
     previousViewMode.current = viewMode;
     window.requestAnimationFrame(() => {
       if (saved) void setViewport(saved, { duration: 200 });
-      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+      // Nachtest Bug 25: Automatische Fits respektieren die Zoom-
+      // Untergrenze — sonst startet ein großer Plan bei 29 % unlesbar.
+      // Nur die bewusste „Gesamtübersicht“ darf weiter herauszoomen.
+      else
+        void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
 
@@ -428,7 +442,7 @@ export function FlowCanvas() {
         position.x + NODE_FOOTPRINT.width > visibleBottomRight.x ||
         position.y + NODE_FOOTPRINT.height > visibleBottomRight.y;
       if (outsideVisibleArea) {
-        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING });
+        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
       }
     };
 
@@ -473,8 +487,10 @@ export function FlowCanvas() {
     return { ...interactive, [PRESENTATION_GROUP_TYPE]: BackboneGroupNode };
   }, [coarsePointer]);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
-  // QA B-03: eigene Bezeichnung je Batterie (G1, G1.2, …), siehe batteryDesignator.
-  const batteryDesignators = useMemo(() => batteryDesignatorMap(rawNodes), [rawNodes]);
+  // Eindeutige Bauteil-Bezeichnungen (Nachtest: doppelte Kürzel) — der
+  // Canvas nummeriert pro Art durch und reicht die Karte per Kontext an
+  // die Knoten (G1, G1.2 …), siehe components/nodes/designators.ts.
+  const designators = React.useMemo(() => designatorMapFor(rawNodes), [rawNodes]);
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
 
   // Pan-Begrenzung wächst mit dem Planinhalt. Die frühere feste Grenze
@@ -596,32 +612,58 @@ export function FlowCanvas() {
    * gemessene Routing-Geometrie und die gemeldete Oszillation verändert hat,
    * ist ohne Browser-Runtime-Trace nicht belegt.
    */
-  // QA B-21: Im Modus „Prüfung“ sind Bauteile mit Befund markiert. Die Markierung
-  // kommt aus demselben Befund-Store wie Kopf- und Fußzeile.
-  const findingNodeIds = useMemo(
-    () => findingNodeIdSet(plannerMode, plannerErrors),
-    [plannerMode, plannerErrors]
-  );
+  // Nachtest Bug 16: Die Modi „Physisch“/„Prüfung“ sahen exakt gleich aus.
+  // Prüfung markiert jetzt Elemente mit Befunden und dunkelt unauffällige
+  // ab (nur Anzeige — ADR 0008: keine Geometrie-/Topologie-Änderung).
+  // Info-Hinweise markieren nichts (dieselbe Schwelle wie die Kopfzeile).
+  const findingSets = useMemo(() => {
+    const nodeIds = new Set<string>();
+    const edgeIds = new Set<string>();
+    if (plannerMode !== 'pruefung') return { nodeIds, edgeIds };
+    for (const error of plannerErrors ?? []) {
+      if (error.severity === 'info') continue;
+      error.nodeIds.forEach((id) => nodeIds.add(id));
+      error.edgeIds.forEach((id) => edgeIds.add(id));
+    }
+    return { nodeIds, edgeIds };
+  }, [plannerErrors, plannerMode]);
+  const reviewActive =
+    plannerMode === 'pruefung' && viewMode === 'electric' && (plannerErrors?.length ?? 0) > 0;
+
   const interactiveNodes = useMemo(() => {
     return groupedNodes.map((rawNode) => {
-      const node =
-        findingNodeIds.has(rawNode.id) && !isPresentationOnlyNode(rawNode)
-          ? { ...rawNode, className: [rawNode.className, 'planner-node-finding'].filter(Boolean).join(' ') }
-          : rawNode;
-      if (isPresentationOnlyNode(node)) return node;
-      const collision = node.id === collidingNodeId;
+      if (isPresentationOnlyNode(rawNode)) return rawNode;
+      const collision = rawNode.id === collidingNodeId;
       if (!interaction.requiresDragHandle) {
-        return withNodeInteractionState(node, { collision, dragHandle: 'inherit' });
+        return withNodeInteractionState(rawNode, { collision, dragHandle: 'inherit' });
       }
-      return node.id === armedNodeId
-        ? withNodeInteractionState(node, { collision, dragHandle: 'armed' })
-        : withNodeInteractionState(node, {
+      return rawNode.id === armedNodeId
+        ? withNodeInteractionState(rawNode, { collision, dragHandle: 'armed' })
+        : withNodeInteractionState(rawNode, {
             collision,
             dragHandle: 'handle',
             handleSelector: NODE_DRAG_HANDLE_SELECTOR,
           });
     });
-  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId, findingNodeIds]);
+  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+
+  const reviewNodes = useMemo(() => {
+    if (!reviewActive) return interactiveNodes;
+    return interactiveNodes.map((node) => ({
+      ...node,
+      className:
+        `${node.className ?? ''} ${findingSets.nodeIds.has(node.id) ? 'planner-node--finding' : 'planner-node--clean'}`.trim(),
+    }));
+  }, [interactiveNodes, reviewActive, findingSets]);
+
+  const reviewEdges = useMemo(() => {
+    if (!reviewActive) return displayedEdges;
+    return displayedEdges.map((edge) => ({
+      ...edge,
+      className:
+        `${edge.className ?? ''} ${findingSets.edgeIds.has(edge.id) ? 'planner-edge--finding' : 'planner-edge--clean'}`.trim(),
+    }));
+  }, [displayedEdges, reviewActive, findingSets]);
 
   const openContextMenu = React.useCallback(
     (
@@ -777,12 +819,12 @@ export function FlowCanvas() {
         />
       )}
 
-      <BatteryDesignatorContext.Provider value={batteryDesignators}>
-        <div className="de-canvas relative h-full w-full flex-1">
+      <DesignatorContext.Provider value={designators}>
+        <div className="de-canvas relative h-full w-full flex-1" data-planner-mode={plannerMode}>
           <FloatingMetricsCard />
           <ReactFlow
-            nodes={interactiveNodes}
-            edges={displayedEdges}
+            nodes={reviewNodes}
+            edges={reviewEdges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
@@ -811,7 +853,7 @@ export function FlowCanvas() {
             onDragOver={onDragOver}
             onDrop={onDrop}
             fitView
-            fitViewOptions={{ padding: PLANNER_FIT_PADDING }}
+            fitViewOptions={{ padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }}
             minZoom={PLANNER_MIN_ZOOM}
             maxZoom={PLANNER_MAX_ZOOM}
             snapToGrid
@@ -909,31 +951,25 @@ export function FlowCanvas() {
             {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
               beantwortet, welche Frage gerade bearbeitet wird. */}
             {viewMode === 'electric' && (
-              <Panel position="top-center" className="m-2 w-[calc(100%-1rem)] sm:m-3 sm:w-auto">
+              <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
                 <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
-              </Panel>
-            )}
-
-            {/* B-20/B-21 (QA): Physisch und Prüfung erklären sich in einer Zeile —
-              sonst sieht „Physisch“ aus wie „Planung“, und die Prüfansicht hat
-              keine Legende. Die Erklärung kommt aus dem Modus-Katalog. */}
-            {viewMode === 'electric' && plannerMode !== 'planung' && (
-              <Panel position="top-center" className="m-2 !mt-14 max-w-[calc(100%-1rem)] sm:m-3 sm:!mt-16">
+                {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
+                    vorher wechselten die Knöpfe ohne erkennbaren Effekt. */}
                 <p
                   data-testid="planner-mode-caption"
-                  className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
+                  className="mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
                 >
-                  <span className="font-semibold">
-                    {PLANNER_MODES.find((option) => option.mode === plannerMode)?.label}:{' '}
-                  </span>
-                  {PLANNER_MODES.find((option) => option.mode === plannerMode)?.question}
+                  {plannerMode === 'physisch'
+                    ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
+                    : plannerMode === 'pruefung'
+                      ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
+                      : 'Planung: Was gehört elektrisch zusammen?'}
                 </p>
               </Panel>
             )}
 
-            {/* B-10a (QA): Auf dem Handy liegt die Ansicht unter dem Modus-Umschalter, nicht darüber. */}
             {viewMode === 'electric' && (
-              <Panel position="top-right" className="!mr-2 !mt-14 sm:!m-3">
+              <Panel position="top-right" className="planner-display-options-panel m-2 sm:m-3">
                 <CanvasDisplayOptions
                   activeDomains={activeDomains}
                   onToggleDomain={toggleDomain}
@@ -995,7 +1031,7 @@ export function FlowCanvas() {
             )}
           </ReactFlow>
         </div>
-      </BatteryDesignatorContext.Provider>
+      </DesignatorContext.Provider>
 
       <div
         className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"

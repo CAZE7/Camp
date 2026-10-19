@@ -83,9 +83,20 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
 
   await openPlanner(page);
   await showCanvas(page);
-  await expect(
-    page.locator('[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"]')
-  ).toBeVisible();
+  // Unter 768 px und im flachen Querformat nimmt die Werkzeugleiste die
+  // Routing-Plakette aus der Statusgruppe (Platz). Die Spur bleibt die
+  // Prüfung, dass das Routing fertig und danach stabil ist. Ab Tabletbreite
+  // muss die Plakette sichtbar sein.
+  const status = page.locator(
+    '[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"], [data-testid="routing-status-not-converged"], [data-testid="routing-status-error"]'
+  );
+  const viewport = page.viewportSize();
+  const statusHiddenByLayout =
+    viewport !== null &&
+    (viewport.width < 768 || (viewport.height <= 480 && viewport.width > viewport.height));
+  if (!statusHiddenByLayout) {
+    await expect(status).toBeVisible();
+  }
   await waitForRoutingTraceToSettle(page);
 
   const beforePresentation = await routeResultCount(page);

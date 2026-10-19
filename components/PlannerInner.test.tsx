@@ -78,6 +78,9 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.isInspectorOpen = true;
     plannerState.selectedNodes = [];
     plannerState.selectedEdges = [];
+    plannerState.nodes = [];
+    plannerState.waterNodes = [];
+    plannerState.viewMode = 'electric';
     plannerState.canUndo = false;
     plannerState.canRedo = false;
   });
@@ -116,6 +119,23 @@ describe('PlannerInner — responsives Layout', () => {
     fireEvent.click(screen.getByTestId('mobile-redo'));
     expect(plannerState.undo).toHaveBeenCalledTimes(1);
     expect(plannerState.redo).toHaveBeenCalledTimes(1);
+  });
+
+  it('platziert die mobile Planübersicht neben Undo/Redo und passt sie an die aktive Ansicht an', () => {
+    plannerState.nodes = Array.from({ length: 9 }, (_, index) => ({ id: `node-${index}` }));
+    const { rerender } = render(<PlannerInner />);
+    const overview = screen.getByTestId('mobile-overview');
+    const history = screen.getByTestId('mobile-undo').parentElement;
+    expect(history).toContainElement(overview);
+    expect(overview).toHaveClass('h-12');
+
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    fireEvent.click(overview);
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'planner-fit-view' }));
+
+    plannerState.nodes = Array.from({ length: 8 }, (_, index) => ({ id: `node-${index}` }));
+    rerender(<PlannerInner />);
+    expect(screen.queryByTestId('mobile-overview')).not.toBeInTheDocument();
   });
 
   it('A1: der Canvas ist der Standard-Tab und lässt sich umschalten', () => {

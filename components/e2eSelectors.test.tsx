@@ -57,11 +57,24 @@ const REQUIRED_TESTIDS = [
  * E2E-Suite ist beides gleichwertig, weil im DOM dasselbe Attribut entsteht.
  */
 function hasTestId(sources: string, id: string): boolean {
-  return (
+  if (
     sources.includes(`data-testid="${id}"`) ||
     sources.includes(`data-testid={'${id}'}`) ||
     sources.includes(`testId: '${id}'`)
-  );
+  ) {
+    return true;
+  }
+  // Dynamisch gerenderte Kennungen (Nachtest-Spec): `menubar-${menu}`,
+  // `planner-mode-${mode}`, `detail-level-${level}` entstehen erst zur
+  // Laufzeit. Der Vertrag erkennt sie an ihrem statischen Präfix im
+  // Template — die E2E-Suite darf die konkrete Ausprägung verwenden,
+  // solange der Generator im Anwendungscode existiert.
+  const parts = id.split('-');
+  for (let i = 1; i < parts.length; i += 1) {
+    const prefix = `${parts.slice(0, i).join('-')}-`;
+    if (sources.includes('data-testid={`' + prefix + '${')) return true;
+  }
+  return false;
 }
 
 /** Quellcode der Anwendung (ohne Tests) als ein String. */

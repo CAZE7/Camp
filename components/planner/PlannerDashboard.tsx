@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useAppStore } from '../../lib/store';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
 import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions';
 import { PlannerMenubar } from './ui/PlannerMenubar';
@@ -155,6 +156,25 @@ export function PlannerDashboard() {
     [lockedMutationErrors, edges]
   );
   const warnings = useMemo(() => {
+    // Der Prüfbericht ist domänenspezifisch: elektrische Regeln gehören nicht
+    // in den Wasser-Tab. Für Wasser gibt es derzeit den expliziten Hinweis aus
+    // dem Flussrichtungs-Check; sobald weitere Wasserregeln existieren, werden
+    // sie hier gemeinsam mit ihm angezeigt.
+    if (viewMode === 'water') {
+      return waterWarning
+        ? [
+            {
+              id: 'water-flow-hint',
+              category: 'topology',
+              type: 'info',
+              title: 'Wasserfluss verbessern',
+              ruleId: 'WATER-FLOW-DIRECT',
+              message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
+            } satisfies ValidationWarning,
+          ]
+        : [];
+    }
+
     const supplemental: ValidationWarning[] = [];
     // Landstrom/RCD wird nicht dupliziert: die kanonische Regel `missing-rcd-*`
     // liefert useLiveValidation (Rule A2) — inklusive Node-Fokus. Eine
@@ -200,7 +220,7 @@ export function PlannerDashboard() {
       seen.add(key);
       return true;
     });
-  }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
+  }, [viewMode, liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
   /**
    * Die Warnzentrale zeigt genau die Befunde, die das Dashboard bewertet hat:
@@ -239,6 +259,7 @@ export function PlannerDashboard() {
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
+  const hasOnboarded = useAppStore((state) => state.hasOnboarded);
   const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
   const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
   const planRevision = [nodes, edges, waterNodes, waterEdges];
@@ -318,7 +339,7 @@ export function PlannerDashboard() {
             {viewMode === 'electric' && <RoutingStatusBadge />}
             {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
             {viewMode === 'electric' && nodes.length > 0 && (
-              <span className="hidden md:inline-flex">
+              <span className="inline-flex" data-testid="verification-seal-mobile-access">
                 <VerificationSeal summary={verification} />
               </span>
             )}
@@ -330,7 +351,10 @@ export function PlannerDashboard() {
       {/* Geführter Modus (Standard): EIN nächster Schritt statt Werkzeugkasten.
           Der Wasserplan hat eigene Regeln — die Schrittleiste gilt nur für die
           Elektrik, dort bleibt der freie Editor ohne Leiste. */}
-      {guidedMode && viewMode === 'electric' && (
+      {/* Nachtest N2: Während der Einführung (Schritt 1) zeigte die Leiste
+          dahinter schon „Schritt 5“ — zwei Führungen gleichzeitig. Die
+          Leiste erscheint erst, wenn der Wizard geschlossen ist. */}
+      {guidedMode && viewMode === 'electric' && hasOnboarded && (
         <GuidedPlanRail
           nodes={nodes}
           edges={edges}
@@ -381,7 +405,7 @@ export function PlannerDashboard() {
             type="button"
             aria-label="Meldung schließen"
             onClick={() => setFeedback(null)}
-            className="cad-btn shrink-0 px-1"
+            className="cad-btn min-h-11 min-w-11 shrink-0 justify-center px-1"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

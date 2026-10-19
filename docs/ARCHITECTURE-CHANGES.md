@@ -2823,3 +2823,19 @@ routing:audit` Exit 0 ohne Hinweis, `FINAL_VALIDATION_RATCHET` auf 0/0/0/0/0/0.
   wiederhergestelltem Pflicht-Stummel. Kreuzungsratchet 25→24 verschärft.
 - Explizites begrenztes Rip-up ohne Geräteverschiebung; keine Elektro-Semantik geändert.
 - Recherche/Experimente und verbleibende Freigabekriterien: `docs/routing/`.
+
+## 2026-10-19 — Vorlagenwerte im Golden Master (Nachtest Bug 2)
+
+Bewusste Neuerfassung nur von `knownPlans/camper.json` (Eingabe `TEMPLATE_MINIMALIST`)
+und `knownPlans/complex.json` (Eingabe `TEMPLATE_AUTARK`). Anlass: die Vorlagen
+starteten mit 0 h / 0 V, der Prüfstand meldete deshalb „Nicht bestanden“.
+
+- camper: Verbraucher bekommen Nutzungsdauer (Kühlbox 8 h, LED 4 h, USB 2 h).
+  Keine Kabel-, Sicherungs- oder Routing-Änderung.
+- complex: dieselben Nutzungsdauern; Solarmodul trägt Arbeitspunkt 31 V / 12,9 A
+  sowie Voc 37 V / Isc 13,7 A; MPPT trägt `maxPvVoltage` 75 V. AutoWire dimensioniert
+  danach den angenommenen Solar-Strang `e-auto-6` mit 16 mm² statt 25 mm² und die
+  Sicherung der Solar-Kante `e-solar-charger` mit 25 A statt 50 A (Strangstrom
+  statt eines aus fehlender Spannung abgeleiteten höheren Stroms). Querschnitt
+  dieser Kante bleibt 25 mm². Routing-Stufe und Electrical-Stufe des Golden
+  Masters bleiben byte-gleich; die übrigen vier Pläne sind unverändert.

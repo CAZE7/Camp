@@ -47,6 +47,21 @@ export const INPUT_ERROR_MESSAGES = {
   integerRequired: 'Bitte eine ganze Zahl eingeben.',
 } as const;
 
+/**
+ * Ist der Text ein unfertiger Zwischenstand beim Tippen („12,“, „-“, „.“)?
+ *
+ * Nachtest 2026-10-16 (Komma-Bug): „12,“ wurde bisher als gültige 12 bzw.
+ * als Fehler behandelt; in beiden Fällen schrieb der Prop-Abgleich den
+ * Feldtext zurück auf „12“ und die nächste Ziffer machte daraus „125“
+ * (mobil: „12520“). Ein Zwischenstand ist weder Wert noch Fehler — er
+ * gehört dem Tippenden, bis die Zahl vollständig ist oder das Feld
+ * verlassen wird.
+ */
+export function isPendingDecimalText(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed === '-' || trimmed === '+' || /^[-+]?\d*[.,]$/.test(trimmed);
+}
+
 export function ValidatingInput({
   value,
   onValidChange,
@@ -59,6 +74,13 @@ export function ValidatingInput({
 }: ValidatingInputProps) {
   const [localValue, setLocalValue] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Fokus-Marke gegen den „12520“-Effekt (Nachtest 2026-10-16): Solange der
+   * Nutzer tippt, ist der lokale Text die Wahrheit. Der Prop-Abgleich darf
+   * „12,50“ nicht mitten im Tippen durch „12.5“ ersetzen — sonst hängt die
+   * nächste Ziffer an einer anderen Stelle, als der Nutzer sieht.
+   */
+  const [focused, setFocused] = useState(false);
   /**
    * Optionales Feld vom Nutzer bewusst geleert (AUDIT N1). Ohne diese Marke
    * holt der Sync-Effekt unten den alten Prop-Wert sofort zurück, solange die
@@ -88,7 +110,13 @@ export function ValidatingInput({
     const valueChanged = syncState.value !== value;
     setSyncState({ value, localValue, error, allowEmpty, clearedOptional });
     const valStr = String(value);
-    if (localValue !== valStr && !error && !(allowEmpty && clearedOptional)) {
+    // Beim Tippen (Fokus im Feld) gehört der Text dem Nutzer — der Abgleich
+    // wartet bis zum Blur. Sonst ersetzt der Prop „12,5“/„12,50“ mitten im
+    // Tippen durch seine eigene Schreibweise, und die nächste Ziffer landet
+    // an falscher Stelle (Nachtest: „125“/„12520“). Externe Änderungen
+    // (Vorlage, Rückgängig) kommen ohnehin über Knöpfe/Tastatur außerhalb
+    // des Felds — sie greifen beim nächsten Blur bzw. Render ohne Fokus.
+    if (localValue !== valStr && !error && !focused && !(allowEmpty && clearedOptional)) {
       setLocalValue(valStr);
     }
     // Sobald die Eltern einen neuen Wert durchreichen (auch `''` nach dem
@@ -115,6 +143,14 @@ export function ValidatingInput({
       return;
     }
     setClearedOptional(false);
+
+    // Unfertiges Tippen („12,“ auf dem Weg zu „12,5“) ist kein Fehler und
+    // noch kein Wert: kein `onValidChange`, keine Fehlermeldung, kein
+    // Zurückschreiben des Feldtexts (Nachtest 2026-10-16, Komma-Bug).
+    if (isPendingDecimalText(strVal)) {
+      setError(null);
+      return;
+    }
 
     // AUDIT S2/S4: ein strenger Parser statt parseFloat/parseInt. Beide lasen
     // nur einen Präfix — "2,5" wurde zu 2 (Dezimalkomma verschluckt),
@@ -145,8 +181,9 @@ export function ValidatingInput({
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (error) {
-      // Revert to the last valid value on blur if invalid
+    setFocused(false);
+    if (error || isPendingDecimalText(localValue)) {
+      // Revert to the last valid value on blur if invalid or unfinished.
       setLocalValue(String(value));
       setError(null);
     }
@@ -161,12 +198,21 @@ export function ValidatingInput({
         // vom Browser verwerfen oder verschlucken („12,5“ → 125). Der Parser
         // (`parseDecimalString`) liest Komma und Punkt — deshalb Textfeld mit
         // numerischer Tastatur. Die Validierung bleibt im Parser.
+        id={inputId}
+        // Nachtest 2026-10-16 (Komma-Bug): `type="number"` lässt den Browser
+        // das deutsche Dezimalkomma vor React verwerfen — „12,5“ kam als
+        // „125“ oder gar nicht an. Alle Zahlenfelder sind Textfelder; die
+        // Tastatur kommt über `inputMode`, die Gültigkeit prüft
+        // `parseDecimalString`.
         type="text"
         inputMode={props.inputMode ?? (isFloat ? 'decimal' : 'numeric')}
         autoComplete="off"
-        id={inputId}
         value={localValue}
         onChange={handleChange}
+        onFocus={(e) => {
+          setFocused(true);
+          props.onFocus?.(e);
+        }}
         onBlur={handleBlur}
         aria-invalid={error ? 'true' : undefined}
         aria-errormessage={error ? errorId : undefined}

@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ShorePowerInspector, SolarInspector } from './NodeInspectors';
+import { ChargerInspector, ShorePowerInspector, SolarInspector } from './NodeInspectors';
 import { type NodeDataPatch } from '../nodes/types'; // AUDIT T1: Mock-Signatur
 import { closeTo } from '../../test-helpers/matchers'; // AUDIT T1
 import type { InspectorNode } from './NodeInspectors';
@@ -115,13 +115,22 @@ describe('SolarInspector — Temperaturkoeffizient Voc (AUDIT S1)', () => {
     expect(screen.getByText(/zwischen −1 und 0 %\/K/)).toBeInTheDocument();
   });
 
-  // Das deutsche Dezimalkomma wird hier bewusst NICHT geprüft: Dieses Feld ist
-  // `type="number"`, und sowohl der Browser als auch jsdom wenden die
-  // Value-Sanitization an — ein Komma-Wert erreicht React gar nicht erst
-  // (jsdom macht daraus den Leerstring). Die Komma-Toleranz des Parsers ist
-  // an den Stellen getestet, an denen sie tatsächlich vorkommt:
-  // `components/ui/ValidatingInput.test.tsx` (Textfeld) und
-  // `lib/units.test.ts` (gespeicherte/importierte Strings via parseQuantity).
+  it('akzeptiert Dezimalkomma und Dezimaltastatur für die Ladeleistung', () => {
+    const node: InspectorNode<'acBatteryCharger'> = {
+      id: 'charger-1',
+      type: 'acBatteryCharger',
+      position: { x: 0, y: 0 },
+      data: { amps: 15 },
+    };
+    render(<ChargerInspector node={node} onUpdateNodeData={onUpdateNodeData} />);
+
+    const input = screen.getByLabelText(/Ladeleistung \(A\)/i) as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.inputMode).toBe('decimal');
+    fireEvent.change(input, { target: { value: '15,5' } });
+
+    expect(onUpdateNodeData).toHaveBeenCalledWith('charger-1', { amps: 15.5 });
+  });
 });
 
 /**

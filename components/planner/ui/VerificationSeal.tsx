@@ -45,7 +45,7 @@ const TONE: Record<
   },
 };
 
-const PASS_STATUS_LABEL = { PASS: 'bestanden', FAIL: 'verletzt', UNPROVABLE: 'nicht entscheidbar' } as const;
+const PASS_STATUS_LABEL = { PASS: 'erfüllt', FAIL: 'nicht erfüllt', UNPROVABLE: 'Angaben fehlen' } as const;
 
 function Stat({ value, label, hint }: { value: number; label: string; hint: string }) {
   return (
@@ -118,30 +118,30 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] overflow-y-auto overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 
           <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <Stat
               value={summary.passed}
-              label="bestanden"
-              hint="Regeln, deren Bedingung im Plan erfüllt ist (PASS)."
+              label="erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan eingehalten ist."
             />
             <Stat
               value={summary.failed}
-              label="verletzt"
-              hint="Regeln, deren Bedingung im Plan verletzt ist (FAIL)."
+              label="nicht erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan nicht eingehalten ist. Diese Punkte müssen korrigiert werden."
             />
             <Stat
               value={summary.unprovable}
-              label="nicht entscheidbar"
-              hint="Regeln, deren Eingaben fehlen: keine Aussage möglich — weder bestanden noch verletzt."
+              label="Angaben fehlen"
+              hint="Für diese Prüfungen fehlen Werte im Plan — sie konnten noch nicht beurteilt werden."
             />
             <Stat
               value={summary.notApplicable}
-              label="ohne Gegenstand"
-              hint="Regeln, die im Plan nichts zu prüfen hatten (z. B. Solar-Regeln ohne Solar). Sie sind NICHT bestanden."
+              label="kommt nicht vor"
+              hint="Prüfungen ohne passendes Bauteil im Plan (z. B. Solar-Regeln ohne Solarmodul). Sie zählen NICHT als erfüllt."
             />
           </div>
 
@@ -163,9 +163,9 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
           {summary.notAppliedRules.length > 0 && (
             <p className="mb-3 text-muted-foreground">
-              Nicht angewandt: <span className="font-mono">{summary.notAppliedRules.join(', ')}</span> —
-              Profil oder Kontext schließen diese Regeln aus. Regeln, die im Plan keinen Gegenstand hatten,
-              stehen unter Modellgrenzen.
+              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und wurden
+              nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil stehen
+              unter „Modellgrenzen“.
             </p>
           )}
 
@@ -180,11 +180,24 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </ul>
           </div>
 
-          <p className="border-t border-border pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
-            <br />
-            Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
-          </p>
+          {/* Nachtest Bug 4: Hashes, Engine-Version und Regel-Codes sind
+              für Laien unverständliches Rauschen — sie bleiben für
+              Nachweise verfügbar, aber hinter einem Aufklapp-Bereich. */}
+          <details className="border-t border-border pt-2">
+            <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
+              Technische Details
+            </summary>
+            <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+              Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
+              <br />
+              Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
+            </p>
+            {summary.notAppliedRules.length > 0 && (
+              <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
+              </p>
+            )}
+          </details>
           <p className="mt-1 leading-relaxed text-muted-foreground">
             Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
             Prüfhinweisen.

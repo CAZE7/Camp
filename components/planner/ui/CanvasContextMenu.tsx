@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
 import { requestConfirm } from '../../ui/ConfirmDialog';
+import React, { useEffect, useRef } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -65,6 +65,9 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
 
   const deleteTarget = async () => {
     const targetLabel = state.targetType === 'node' ? state.label || 'Dieses Bauteil' : 'Diese Leitung';
+    // Menü zuerst schließen: Die Rückfrage ist ein eigener Dialog —
+    // beide Ebenen gleichzeitig offen ließen Fokus und Escape streiten.
+    onClose();
     if (
       !(await requestConfirm(
         `${targetLabel} wirklich löschen? Du kannst die Aktion anschließend mit Rückgängig wiederherstellen.`
@@ -241,7 +244,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
         role="menuitem"
         className={ITEM_CLASS}
         onClick={() => {
-          window.dispatchEvent(new CustomEvent('planner-fit-view'));
+          window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
           onClose();
         }}
       >

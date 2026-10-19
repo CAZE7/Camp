@@ -4,12 +4,12 @@ import { Handle, Position } from '@xyflow/react';
 import { type BatteryNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { BatteryDesignatorContext } from './batteryDesignator';
+import { DesignatorContext } from './designators';
 
 const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<BatteryNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
-  const designators = useContext(BatteryDesignatorContext);
+  const designators = useContext(DesignatorContext);
 
   return (
     <div
@@ -18,7 +18,7 @@ const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNode
       aria-label={`${data.label || 'Batterie'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="battery" dinCode={designators.get(id) ?? 'G1'} />
+      <NodeSymbol kind="battery" dinCode={designators.get(id)} />
       {editingField === 'label' ? (
         <input
           autoFocus

@@ -4,6 +4,7 @@ import {
   EDGE_TYPES,
   PLANNER_MIN_ZOOM,
   PLANNER_MAX_ZOOM,
+  PLANNER_INITIAL_FIT_MIN_ZOOM,
   PLANNER_SNAP_GRID,
   PANE_WAIT_FRAMES,
 } from './constants';
@@ -33,6 +34,9 @@ describe('components/planner/constants', () => {
   it('M8-1: Zoom 0,25–2 ohne Stufen-Schwellen', () => {
     expect(PLANNER_MIN_ZOOM).toBe(0.25);
     expect(PLANNER_MAX_ZOOM).toBe(2);
+    expect(PLANNER_INITIAL_FIT_MIN_ZOOM).toBe(0.4);
+    expect(PLANNER_INITIAL_FIT_MIN_ZOOM).toBeGreaterThan(PLANNER_MIN_ZOOM);
+    expect(PLANNER_INITIAL_FIT_MIN_ZOOM).toBeLessThanOrEqual(PLANNER_MAX_ZOOM);
     expect(PLANNER_SNAP_GRID).toEqual([16, 16]);
     // Kein Zwei-Frame-Retry mehr: Auf dem Handy ist die Plan-Pane beim Tippen
     // auf eine Katalog-Kachel noch hidden (E2E: Tap-to-Connect).

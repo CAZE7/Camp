@@ -202,6 +202,7 @@ export function EdgeInspector({
                 Sicherung (A)
               </label>
               <ValidatingInput
+                isFloat
                 id="fuse-input"
                 min="0"
                 value={edge.data?.fuseSize ?? 0}
@@ -300,6 +301,7 @@ export function EdgeInspector({
                     Bemessungsstrom In (A)
                   </label>
                   <ValidatingInput
+                    isFloat
                     id="ac-fuse-input"
                     min="1"
                     value={edge.data?.fuseSize ?? 0}

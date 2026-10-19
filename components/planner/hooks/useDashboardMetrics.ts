@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 import {
   type BatteryNodeData,
   type ConsumerNodeData,
@@ -17,7 +18,7 @@ import {
   VDE_CHARGE_DERATING_FACTOR,
 } from '@/lib/vde-standards';
 import { peukertExponentOf, usableCapacityWithPeukertAh } from '../../../lib/peukert'; // DOM-002-Nachpflege
-import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
+
 /** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
 
 export function useDashboardMetrics(

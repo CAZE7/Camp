@@ -1,12 +1,29 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import simplePlan from '../../knownPlans/simple.json';
 import { openPlanner, showCanvas } from './helpers';
 
-test('worker routing and explicit optimization leave device positions unchanged', async ({ page }) => {
-  let workers = 0;
-  page.on('worker', () => {
-    workers++;
-  });
+/**
+ * Unter 768 px nimmt die Werkzeugleiste den Knopf aus der Statusgruppe
+ * (`globals.css`, `.cad-status-optimize`). Dieselbe Aktion bleibt im
+ * Überlaufmenü (`action-optimize-routing`). Die Zusicherung — Geräte
+ * bleiben stehen, ein zweiter Lauf bleibt gesperrt — gilt auf beiden Wegen.
+ */
+async function runOptimize(page: Page): Promise<void> {
+  const button = page.getByRole('button', { name: 'Kabel optimieren', exact: true });
+  if (await button.isVisible()) {
+    await expect(button).toBeEnabled();
+    await button.click();
+    await expect(button).toBeDisabled();
+    return;
+  }
+  await page.getByTestId('action-more').click();
+  const item = page.getByTestId('action-optimize-routing');
+  await expect(item).toBeVisible();
+  await expect(item).toBeEnabled();
+  await item.click();
+}
+
+test('explicit optimization leaves device positions unchanged', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript((plan) => {
@@ -21,8 +38,6 @@ test('worker routing and explicit optimization leave device positions unchanged'
   }, simplePlan.autoWire);
   await openPlanner(page);
   await showCanvas(page);
-  const button = page.getByRole('button', { name: 'Kabel optimieren', exact: true });
-  await expect(button).toBeEnabled();
   const positions = () =>
     page
       .locator('.react-flow__node')
@@ -30,16 +45,31 @@ test('worker routing and explicit optimization leave device positions unchanged'
         nodes.map((node) => [node.getAttribute('data-id'), (node as HTMLElement).style.transform])
       );
   const before = await positions();
-  await button.click();
-  await expect(
-    page.locator(
-      '[data-testid="routing-status-partial"], [data-testid="routing-status-optimized"], [data-testid="routing-status-retained"], [data-testid="routing-status-stale"]'
-    )
-  ).toBeVisible();
-  await expect(button).toBeDisabled();
+  await runOptimize(page);
+  const viewport = page.viewportSize();
+  const statusHiddenByLayout =
+    viewport !== null &&
+    (viewport.width < 768 || (viewport.height <= 480 && viewport.width > viewport.height));
+  if (!statusHiddenByLayout) {
+    await expect(
+      page.locator(
+        '[data-testid="routing-status-partial"], [data-testid="routing-status-optimized"], [data-testid="routing-status-retained"], [data-testid="routing-status-stale"]'
+      )
+    ).toBeVisible();
+  }
   expect(await positions()).toEqual(before);
-  expect(workers).toBeGreaterThan(0);
+  // Der Live-Pfad rechnet in `cableRouteStore` auf dem Hauptthread.
+  // Ein Turbopack-Modul-Worker lässt die Bootstrap-Datei offen und
+  // blockiert `networkidle` (axe auf `/planer/`). Der Client
+  // `routingWorkerClient` bleibt unit-getestet, hängt aber nicht im Lauf.
   expect(errors).toEqual([]);
-  // Verify no second optimization is permitted for this unchanged input.
-  await expect(button).toBeDisabled();
+  // Ein zweiter Lauf auf derselben Eingabe bleibt gesperrt — in der Leiste
+  // oder, auf schmalen Fenstern, im Überlaufmenü.
+  const button = page.getByRole('button', { name: 'Kabel optimieren', exact: true });
+  if (await button.isVisible()) {
+    await expect(button).toBeDisabled();
+  } else {
+    await page.getByTestId('action-more').click();
+    await expect(page.getByTestId('action-optimize-routing')).toBeDisabled();
+  }
 });

@@ -5,15 +5,18 @@ import { AccessibleDialog } from './AccessibleDialog';
 import { Button } from './button';
 
 /**
- * In-App-Rückfrage statt nativer `window.confirm()`-Dialoge (B-23, QA-Bericht).
+ * In-App-Rückfrage statt nativer `window.confirm()`-Dialoge
+ * (Nachtest 2026-10-16: Wizard ließ sich nicht schließen, weil die
+ * native Rückfrage „Plan wird geleert“ jeden Schließversuch blockierte;
+ * übernommen aus PR #536, B-23).
  *
  * `requestConfirm(message)` liefert ein Promise<boolean>. Der Host
- * (`ConfirmDialogHost`) muss einmal im Baum eingehängt sein. Der Dialog nutzt
- * denselben `AccessibleDialog` wie alle anderen Planer-Overlays (Fokusfalle,
- * Esc, Fokus-Rückgabe) und trägt das Design der Anwendung.
+ * (`ConfirmDialogHost`) muss einmal im Baum eingehängt sein. Der Dialog
+ * nutzt denselben `AccessibleDialog` wie alle anderen Planer-Overlays
+ * (Fokusfalle, Esc, Fokus-Rückgabe) und trägt das Design der Anwendung.
  *
- * Esc und „Abbrechen“ liefern `false`. Eine neue Rückfrage verneint eine noch
- * offene.
+ * Esc und „Abbrechen“ liefern `false`. Eine neue Rückfrage verneint eine
+ * noch offene.
  */
 
 type Pending = { message: string; resolve: (ok: boolean) => void };

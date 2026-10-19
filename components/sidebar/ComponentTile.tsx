@@ -20,11 +20,16 @@ interface ComponentTileProps {
  * Bedienung: Klick/Antippen oder Enter fügt am sichtbaren Mittelpunkt ein,
  * Ziehen mit der Maus setzt frei, Pfeiltasten laufen durch die Liste.
  */
+/** Ab dieser Mausbewegung (px) war es ein Ziehen, kein Klick mehr. */
+export const CLICK_DRAG_THRESHOLD_PX = 6;
+
 export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: ComponentTileProps) {
   const Icon = comp.icon;
   const desktopDragStarted = useRef(false);
-  // B-05 (QA-Bericht): Desktop-Klick ohne Ziehen. Die Druckposition merken, um
-  // einen Antippen-Klick von einem echten Ziehen zu unterscheiden.
+  // Nachtest/B-05: Druckpunkt merken, um einen Desktop-Klick (praktisch
+  // keine Bewegung) von einem echten Ziehen zu unterscheiden. Vorher
+  // startete jeder Mausdruck den Ghost-Drag und schluckte den Klick —
+  // auf dem Desktop ließ sich nur per Enter oder Ziehen hinzufügen.
   const pressPoint = useRef<{ x: number; y: number } | null>(null);
   const keyboardAddHandled = useRef(false);
   const rowRef = useRef<HTMLButtonElement>(null);
@@ -63,15 +68,16 @@ export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: Compone
       }}
       onClick={(event) => {
         // A started mouse ghost drag owns this click, even if it was released
-        // outside the canvas — ausser die Maus hat sich praktisch nicht bewegt
-        // (B-05): dann ist es ein Klick und fügt wie das Antippen hinzu.
+        // outside the canvas — UNLESS the pointer practically did not move
+        // (B-05): then it was a click, and a click adds like a tap.
         // Every other activation (touch, pen, assistive technology) adds
         // directly at the current canvas centre.
         if (desktopDragStarted.current) {
           desktopDragStarted.current = false;
           const press = pressPoint.current;
           const isPlainClick =
-            press !== null && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 4;
+            press !== null &&
+            Math.hypot(event.clientX - press.x, event.clientY - press.y) < CLICK_DRAG_THRESHOLD_PX;
           if (!isPlainClick) return;
         }
         if (keyboardAddHandled.current) {

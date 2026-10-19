@@ -28,17 +28,12 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { AlertTriangle, CheckCircle2, HelpCircle, Wrench, X, Zap } from 'lucide-react';
 import type { AutoWireConflict, AutoWireReport } from '../../lib/autoWire/conflicts';
-
-type Props = {
-  /** Test-Hook: Überschreibt den Preview (nur für Tests). */
-  forceOpen?: boolean;
-};
 
 type Summary = {
   safeNew: number;
@@ -125,43 +120,23 @@ const SEVERITY_STYLES: Readonly<
   },
 };
 
-export function AutoWireReviewModal({ forceOpen = false }: Props) {
+export function AutoWireReviewModal() {
   const preview = usePlannerStore((state) => state.autoWirePreview);
   const apply = usePlannerStore((state) => state.applyAutoWirePreview);
   const dismiss = usePlannerStore((state) => state.dismissAutoWirePreview);
-  // `explicitlyOpened` wird nur durch das Event oder durch Apply/Cancel
-  // geschrieben. Der eigentliche Offen-Zustand ist dann: Preview VORHANDEN
-  // UND (Inhalt ODER forceOpen) UND Nutzer hat nicht abgebrochen. Diese
-  // Ableitung braucht keinen Effect (react-hooks/set-state-in-effect).
-  const [eventFired, setEventFired] = useState(false);
 
-  useEffect(() => {
-    const onEvent = () => setEventFired(true);
-    window.addEventListener('planner-auto-wire-review', onEvent);
-    return () => window.removeEventListener('planner-auto-wire-review', onEvent);
-  }, []);
-
-  // Wenn sich der Preview ändert (neuer Vorschlag), ist der Event-Indikator
-  // irrelevant — der Dialog öffnet sich allein, weil ein Preview mit Inhalt
-  // vorliegt. (Der Event bleibt als Auslöser für den Fall, dass das
-  // Dispatch-Event vor dem ersten Rendern des Dialogs eintrifft.)
-  const hasContent =
-    !!preview && (preview.report.conflicts.length > 0 || preview.report.questions.length > 0);
-  const open = !!preview && (hasContent || forceOpen || eventFired);
+  // The preview itself is the source of truth. This also opens the dialog when
+  // the lazy-loaded modal mounts after the store action; no timing-sensitive
+  // CustomEvent is required. Clean proposals still require explicit approval.
+  const open = !!preview;
 
   const summary = useMemo(() => {
     if (!preview) return null;
     return summarizeReport(preview.report, preview.previousEdgeCount, preview.edges.length);
   }, [preview]);
 
-  const handleApply = () => {
-    setEventFired(false);
-    apply();
-  };
-  const handleCancel = () => {
-    setEventFired(false);
-    dismiss();
-  };
+  const handleApply = () => apply();
+  const handleCancel = () => dismiss();
 
   if (!preview || !summary) return null;
 
@@ -173,9 +148,9 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
       onClose={handleCancel}
       title="Automatisch verbinden — Vorschlag prüfen"
       description="Auto-Wire hat einen Vorschlag berechnet. Prüfe die Änderungen vor der Übernahme."
-      className="max-w-2xl"
+      className="min-h-0 min-w-0 max-w-2xl"
     >
-      <div className="space-y-4 px-1 pt-2 text-sm">
+      <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4 pt-2 text-sm">
         {/* Kennzahlen */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat icon={Zap} tone={{ color: 'var(--ok)' }} label="Neue Leitungen" value={summary.safeNew} />

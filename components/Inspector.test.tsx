@@ -51,8 +51,8 @@ describe('Inspector Component', () => {
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       expect(lengthInput).toBeInTheDocument();
-      // Textfeld seit B-01 (Dezimalkomma): Wert ist der Text, nicht die Zahl.
       expect(lengthInput).toHaveValue('5');
+      expect(lengthInput).toHaveAttribute('inputmode', 'decimal');
     });
 
     it('calls onChangeLength when length input changes', () => {

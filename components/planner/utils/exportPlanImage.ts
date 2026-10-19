@@ -132,6 +132,9 @@ async function renderAndDownload(
     // Wasserzeichen nur für die Aufnahme einhängen und in jedem Fall wieder
     // entfernen — auf der Zeichenfläche selbst hat es nichts zu suchen.
     const removeWatermark = mountWatermark(viewport || reactFlowWrapper, bounds);
+    // Nachtest Bug 13: Auswahlrahmen nicht mit ins PNG rendern.
+    reactFlowWrapper.classList.add('planner-exporting');
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     let dataUrl: string;
     try {
       dataUrl = await toPng(viewport || reactFlowWrapper, {
@@ -155,6 +158,7 @@ async function renderAndDownload(
           ),
       });
     } finally {
+      reactFlowWrapper.classList.remove('planner-exporting');
       removeWatermark();
     }
     const link = document.createElement('a');
@@ -166,6 +170,7 @@ async function renderAndDownload(
       message: 'Bild mit Wasserzeichen exportiert — bereit zum Posten im Forum oder in der Gruppe.',
     };
   } catch (error) {
+    document.querySelector('.react-flow.planner-exporting')?.classList.remove('planner-exporting');
     const message =
       nodes.length === 0
         ? 'Nichts zu exportieren — platziere zuerst Komponenten.'

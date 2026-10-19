@@ -6,11 +6,17 @@ import { type Node, type Edge } from '@xyflow/react';
 import { collidingNodeIds } from '../components/planner/utils/collision';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
-// bleiben (kein echtes Layout im Test).
-vi.mock('../components/planner/utils/layout', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../components/planner/utils/layout')>()),
-  getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
-}));
+// bleiben (kein echtes Layout im Test). Partieller Mock: `addNode` prüft
+// seit dem Nachtest-Fix Überlappungen über `collision.ts`, das
+// `getNodeLayoutSize` aus demselben Modul liest — die echte Funktion
+// bleibt dafür erhalten.
+vi.mock('../components/planner/utils/layout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../components/planner/utils/layout')>();
+  return {
+    ...actual,
+    getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
+  };
+});
 
 // Lokale Fixtures (die früheren initialNodes/initialEdges aus
 // planner/constants waren toter Code und wurden entfernt).
@@ -92,6 +98,25 @@ describe('usePlannerStore', () => {
         result.current.setViewMode('water');
       });
       expect(result.current.viewMode).toBe('water');
+    });
+
+    it('keeps a selected component through a view-tab change and React Flow’s empty selection update', () => {
+      const selected = { ...initialNodes[0]!, selected: true };
+      usePlannerStore.setState({
+        nodes: [selected, ...initialNodes.slice(1)],
+        selectedNodes: [selected],
+        firstTappedHandle: { nodeId: 'battery', handleId: 'plus', handleType: 'source' },
+      });
+      const { result } = renderHook(() => usePlannerStore());
+
+      act(() => result.current.setViewMode('water'));
+      expect(result.current.viewMode).toBe('water');
+      expect(result.current.selectedNodes.map((node) => node.id)).toEqual(['battery']);
+      expect(result.current.nodes.find((node) => node.id === 'battery')?.selected).toBe(true);
+      expect(result.current.firstTappedHandle).toBeNull();
+
+      act(() => result.current.onSelectionChange({ nodes: [], edges: [] }));
+      expect(result.current.selectedNodes.map((node) => node.id)).toEqual(['battery']);
     });
 
     it('should set season', () => {
@@ -494,8 +519,11 @@ describe('usePlannerStore', () => {
             return '';
           },
         },
-        clientX: 100,
-        clientY: 200,
+        // Freie Stelle (kein Fixture-Knoten): Seit dem Nachtest-Fix weicht
+        // ein Drop auf ein vorhandenes Bauteil auf die nächste freie
+        // Rasterposition aus — die exakte Zielposition gilt nur frei.
+        clientX: 1010,
+        clientY: 820,
       } as unknown as React.DragEvent<HTMLDivElement>;
 
       const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
@@ -548,8 +576,8 @@ describe('usePlannerStore', () => {
 
       const mockEvent = {
         detail: {
-          clientX: 100,
-          clientY: 200,
+          clientX: 1010,
+          clientY: 820,
           type: 'consumer',
           label: 'My Consumer',
         },

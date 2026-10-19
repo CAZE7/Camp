@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 
+import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
 import { type VoltageDropResult, voltageDropFor } from '@/lib/cableSizing';
 import { VDE_SIZES, VOLTAGE_DROP_PCT_CRITICAL, VOLTAGE_DROP_PCT_PLAN_LIMIT } from '@/lib/electrical';
-import { DecimalInput } from '../ui/DecimalInput';
 
 /**
  * components/rechner/SpannungsabfallRechner.tsx — bewertet eine vorhandene
@@ -64,7 +64,6 @@ export function SpannungsabfallRechner() {
           <Label htmlFor="spannung-strom">Betriebsstrom I in Ampere</Label>
           <DecimalInput
             id="spannung-strom"
-
             inputMode="decimal"
             min="0.1"
             max="500"
@@ -84,7 +83,6 @@ export function SpannungsabfallRechner() {
           <Label htmlFor="spannung-laenge">Einfache Leitungslänge L in Metern</Label>
           <DecimalInput
             id="spannung-laenge"
-
             inputMode="decimal"
             min="0.1"
             max="100"

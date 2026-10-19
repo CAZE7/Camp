@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ConfirmDialogHost, requestConfirm } from './ConfirmDialog';
 
-describe('ConfirmDialog (B-23: keine nativen Browser-Dialoge)', () => {
+/**
+ * Nachtest 2026-10-16 / PR #536 B-23: Rückfragen laufen als In-App-Dialog
+ * (`AccessibleDialog`), nicht als natives `window.confirm` — sonst
+ * blockiert die Browser-Rückfrage u. a. das Schließen des Assistenten.
+ */
+describe('ConfirmDialog (keine nativen Browser-Dialoge)', () => {
   it('resolves true on „Fortfahren“ and renders in-app', async () => {
     render(<ConfirmDialogHost />);
     let answer: Promise<boolean> | undefined;
@@ -31,7 +36,7 @@ describe('ConfirmDialog (B-23: keine nativen Browser-Dialoge)', () => {
     act(() => {
       second = requestConfirm('Zweite Frage');
     });
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     await expect(second).resolves.toBe(false);
   });
 

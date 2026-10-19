@@ -88,8 +88,10 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
       <div className="cad-panel__head">
         <h2 className="panel-title">Komponenten</h2>
         <span className="flex items-center gap-2">
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {/* B-18 (QA): Die Zahl ist der Katalog, nicht der Plan — sonst zeigt ein leerer Plan „14 Bauteile“. */}
+          <span
+            className="text-xs tabular-nums text-muted-foreground"
+            title="So viele Bauteile stehen im Katalog zur Auswahl — nicht die Anzahl im Plan"
+          >
             {isSearching ? `${resultCount} Treffer` : `${activeComponents.length} im Katalog`}
           </span>
           {onCloseMobile && (

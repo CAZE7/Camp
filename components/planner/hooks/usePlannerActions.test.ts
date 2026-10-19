@@ -20,7 +20,7 @@ describe('usePlannerActions — Automatisch verbinden (B-11)', () => {
     expect(onFeedback).toHaveBeenCalledTimes(1);
     const feedback = onFeedback.mock.calls[0]?.[0] as { type: string; message: string } | null | undefined;
     expect(feedback?.type).toBe('info');
-    expect(feedback?.message).toContain('Wasser-Tab');
+    expect(feedback?.message).toContain('Wasserplan');
     // Im Wasser-Tab darf kein elektrischer Vorschlag entstehen (weder Vorschau noch Lauf).
     expect(usePlannerStore.getState().autoWirePreview).toBeFalsy();
   });
