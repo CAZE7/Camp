@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { PLANNER_SHORTCUTS } from '../hooks/usePlannerActions';
 
 /**
  * D-6 (baut M11-3 optisch weiter): Shortcut-Overlay per `?`.
@@ -30,7 +31,14 @@ export function ShortcutOverlay() {
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    // Nachtest Bug 15: Der Hilfe-Menüeintrag „Tastaturkürzel“ meldete das
+    // Ereignis, aber niemand hörte zu — der Eintrag wirkte tot.
+    const openFromMenu = () => setOpen(true);
+    window.addEventListener('open-shortcut-overlay', openFromMenu);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('open-shortcut-overlay', openFromMenu);
+    };
   }, []);
 
   if (!open) return null;
@@ -52,17 +60,17 @@ export function ShortcutOverlay() {
             type="button"
             aria-label="Tastaturkürzel schließen"
             onClick={close}
-            className="inline-flex h-8 w-8 items-center justify-center border border-transparent text-muted-foreground hover:border-rule hover:text-ink"
+            className="inline-flex h-11 w-11 items-center justify-center border border-transparent text-muted-foreground hover:border-rule hover:text-ink"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
         <div className="py-2">
-          {ROWS.map((row) => (
+          {PLANNER_SHORTCUTS.map((row) => (
             <div key={row.keys} className="shortcut-overlay__row">
               <span>{row.label}</span>
               <span className="flex gap-1">
-                {row.keys.split('+').map((key) => (
+                {row.keys.split('+').map((part) => part.trim()).filter(Boolean).map((key) => (
                   <kbd key={key} className="shortcut-key">
                     {key}
                   </kbd>
@@ -76,10 +84,5 @@ export function ShortcutOverlay() {
   );
 }
 
-const ROWS: { keys: string; label: string }[] = [
-  { keys: 'Strg+Z', label: 'Rückgängig' },
-  { keys: 'Strg+Y', label: 'Wiederholen' },
-  { keys: 'Strg+S', label: 'Plan speichern' },
-  { keys: 'Entf', label: 'Auswahl löschen' },
-  { keys: '?', label: 'Diese Übersicht' },
-];
+// Eine kanonische Kürzel-Liste (PLANNER_SHORTCUTS) — Menü und Overlay
+// dürfen nicht auseinanderlaufen.

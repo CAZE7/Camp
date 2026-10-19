@@ -369,7 +369,10 @@ export function FlowCanvas() {
     previousViewMode.current = viewMode;
     window.requestAnimationFrame(() => {
       if (saved) void setViewport(saved, { duration: 200 });
-      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+      // Nachtest Bug 25: Automatische Fits respektieren die Zoom-
+      // Untergrenze — sonst startet ein großer Plan bei 29 % unlesbar.
+      // Nur die bewusste „Gesamtübersicht“ darf weiter herauszoomen.
+      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
 
@@ -446,7 +449,7 @@ export function FlowCanvas() {
         position.x + NODE_FOOTPRINT.width > visibleBottomRight.x ||
         position.y + NODE_FOOTPRINT.height > visibleBottomRight.y;
       if (outsideVisibleArea) {
-        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING });
+        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
       }
     };
 
@@ -616,6 +619,21 @@ export function FlowCanvas() {
    * gemessene Routing-Geometrie und die gemeldete Oszillation verändert hat,
    * ist ohne Browser-Runtime-Trace nicht belegt.
    */
+  // Nachtest Bug 16: Die Modi „Physisch“/„Prüfung“ sahen exakt gleich aus.
+  // Prüfung markiert jetzt Elemente mit Befunden und dunkelt unauffällige
+  // ab (nur Anzeige — ADR 0008: keine Geometrie-/Topologie-Änderung).
+  const plannerErrors = usePlannerStore((state) => state.plannerErrors);
+  const findingSets = useMemo(() => {
+    const nodeIds = new Set<string>();
+    const edgeIds = new Set<string>();
+    for (const error of plannerErrors ?? []) {
+      error.nodeIds.forEach((id) => nodeIds.add(id));
+      error.edgeIds.forEach((id) => edgeIds.add(id));
+    }
+    return { nodeIds, edgeIds };
+  }, [plannerErrors]);
+  const reviewActive = plannerMode === 'pruefung' && viewMode === 'electric' && (plannerErrors?.length ?? 0) > 0;
+
   const interactiveNodes = useMemo(() => {
     return groupedNodes.map((node) => {
       if (isPresentationOnlyNode(node)) return node;
@@ -632,6 +650,22 @@ export function FlowCanvas() {
           });
     });
   }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+
+  const reviewNodes = useMemo(() => {
+    if (!reviewActive) return interactiveNodes;
+    return interactiveNodes.map((node) => ({
+      ...node,
+      className: `${node.className ?? ''} ${findingSets.nodeIds.has(node.id) ? 'planner-node--finding' : 'planner-node--clean'}`.trim(),
+    }));
+  }, [interactiveNodes, reviewActive, findingSets]);
+
+  const reviewEdges = useMemo(() => {
+    if (!reviewActive) return displayedEdges;
+    return displayedEdges.map((edge) => ({
+      ...edge,
+      className: `${edge.className ?? ''} ${findingSets.edgeIds.has(edge.id) ? 'planner-edge--finding' : 'planner-edge--clean'}`.trim(),
+    }));
+  }, [displayedEdges, reviewActive, findingSets]);
 
   const openContextMenu = React.useCallback(
     (
@@ -782,11 +816,11 @@ export function FlowCanvas() {
       )}
 
       <DesignatorContext.Provider value={designators}>
-        <div className="de-canvas relative h-full w-full flex-1">
+        <div className="de-canvas relative h-full w-full flex-1" data-planner-mode={plannerMode}>
           <FloatingMetricsCard />
           <ReactFlow
-            nodes={interactiveNodes}
-            edges={displayedEdges}
+            nodes={reviewNodes}
+            edges={reviewEdges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
@@ -915,6 +949,18 @@ export function FlowCanvas() {
             {viewMode === 'electric' && (
               <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
                 <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
+                {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
+                    vorher wechselten die Knöpfe ohne erkennbaren Effekt. */}
+                <p
+                  data-testid="planner-mode-caption"
+                  className="mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
+                >
+                  {plannerMode === 'physisch'
+                    ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
+                    : plannerMode === 'pruefung'
+                      ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
+                      : 'Planung: Was gehört elektrisch zusammen?'}
+                </p>
               </Panel>
             )}
 

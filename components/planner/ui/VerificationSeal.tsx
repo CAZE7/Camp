@@ -45,7 +45,7 @@ const TONE: Record<
   },
 };
 
-const PASS_STATUS_LABEL = { PASS: 'bestanden', FAIL: 'verletzt', UNPROVABLE: 'nicht entscheidbar' } as const;
+const PASS_STATUS_LABEL = { PASS: 'erfüllt', FAIL: 'nicht erfüllt', UNPROVABLE: 'Angaben fehlen' } as const;
 
 function Stat({ value, label, hint }: { value: number; label: string; hint: string }) {
   return (

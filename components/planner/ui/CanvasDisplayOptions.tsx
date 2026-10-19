@@ -243,7 +243,16 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <DisplayToggles {...props} compact />
+          {/* Nachtest N8: Nach der Detail-Wahl blieb das Popover offen und
+              verdeckte den Prüfung-Tab. Auswahl schließt das Popover. */}
+          <DisplayToggles
+            {...props}
+            compact
+            onSelectDetailLevel={(level) => {
+              props.onSelectDetailLevel(level);
+              setOpen(false);
+            }}
+          />
         </div>
       )}
     </div>

@@ -1402,10 +1402,16 @@
   font-size: 0.8125rem;
   cursor: default;
 }
-.cad-menubar__item:hover,
-.cad-menubar__item[data-open='true'] {
+.cad-menubar__item:hover {
   background: var(--surface-hover);
   color: var(--text-high);
+}
+/* Nachtest Bug 14: „Offen“ sah exakt wie „Hover“ aus — man erkannte nicht,
+   welches Menü geöffnet ist. Offen bekommt Fläche + Akzentlinie unten. */
+.cad-menubar__item[data-open='true'] {
+  background: var(--surface-raised);
+  color: var(--text-high);
+  box-shadow: inset 0 -2px 0 var(--accent-line);
 }
 .cad-menubar__item:focus-visible {
   outline: 2px solid var(--accent-line);
@@ -2177,6 +2183,31 @@
 .planner-shell .node-card--error.node-card--selected {
   border-color: var(--error);
   box-shadow: 0 0 0 1px var(--error);
+}
+
+/* Nachtest Bug 16: Modus „Prüfung“ — Befunde markieren, Unauffälliges
+   abdunkeln. Reine Anzeige (Klassen setzt FlowCanvas nur in diesem Modus). */
+.de-canvas[data-planner-mode='pruefung'] .react-flow__node.planner-node--clean {
+  opacity: 0.45;
+}
+.de-canvas[data-planner-mode='pruefung'] .react-flow__node.planner-node--finding {
+  outline: 2px solid var(--warn-critical, var(--error));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.de-canvas[data-planner-mode='pruefung'] .react-flow__edge.planner-edge--clean {
+  opacity: 0.35;
+}
+
+/* Nachtest Bug 13 (Rest): Während des PNG-Exports keine Auswahlrahmen
+   ins Bild rendern (Klasse setzt exportPlanImage temporär). */
+.planner-exporting .react-flow__nodesselection-rect,
+.planner-exporting .react-flow__selection {
+  display: none !important;
+}
+.planner-exporting .node-card--selected,
+.planner-exporting .de-node-card--selected {
+  box-shadow: none !important;
 }
 
 .planner-shell .node-symbol {
