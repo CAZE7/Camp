@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import Link from 'next/link';
@@ -391,9 +391,8 @@ function TemperatureInputs({
               Temperatur
             </Label>
             <div className="relative">
-              <Input
+              <DecimalInput
                 id="temp-inside"
-                type="number"
                 min={5}
                 max={30}
                 value={tempInside}
@@ -437,9 +436,8 @@ function TemperatureInputs({
               Temperatur
             </Label>
             <div className="relative">
-              <Input
+              <DecimalInput
                 id="temp-outside"
-                type="number"
                 min={-30}
                 max={15}
                 value={tempOutside}
@@ -564,9 +562,8 @@ function AdvancedParameters({
               </InfoHint>
             </div>
             <div className="relative">
-              <Input
+              <DecimalInput
                 id="window-area"
-                type="number"
                 min={0}
                 max={5}
                 step={0.1}
@@ -610,9 +607,8 @@ function AdvancedParameters({
               <p className="caption-xs mt-1 text-ink-soft">Realistisch: 80–90 %.</p>
             </div>
             <div className="relative">
-              <Input
+              <DecimalInput
                 id="insulation-coverage"
-                type="number"
                 min={0}
                 max={100}
                 value={insulationCoverage}

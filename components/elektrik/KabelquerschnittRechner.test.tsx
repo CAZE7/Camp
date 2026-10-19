@@ -17,7 +17,10 @@ describe('KabelquerschnittRechner', () => {
     const length = screen.getByLabelText('Einfache Leitungslänge L in Metern');
 
     for (const field of [current, length]) {
-      expect(field).toHaveAttribute('type', 'number');
+      // Nachtest 2026-10-16 (Komma-Bug): Textfeld statt `type=number` —
+      // der Browser verschluckte sonst das Dezimalkomma („12,5“ → 125).
+      // Die Dezimaltastatur kommt über `inputmode`.
+      expect(field).toHaveAttribute('type', 'text');
       expect(field).toHaveAttribute('inputmode', 'decimal');
 
       const describedBy = field.getAttribute('aria-describedby');
