@@ -246,7 +246,10 @@ export function PlannerDashboard() {
         status={
           <span className="hidden items-center gap-2 sm:flex">
             <span className="text-muted-foreground">
-              {nodes.length} Bauteile · {edges.length} Leitungen
+              {/* Nachtest Bug 10: Im Wasser-Tab zählte die Kopfzeile weiter
+                  den Elektroplan. Die Zähler folgen der aktiven Ansicht. */}
+              {viewMode === 'water' ? waterNodes.length : nodes.length} Bauteile ·{' '}
+              {viewMode === 'water' ? waterEdges.length : edges.length} Leitungen
             </span>
             {criticalCount > 0 && <span className="text-destructive">{criticalCount} kritisch</span>}
           </span>

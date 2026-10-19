@@ -125,23 +125,23 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
           <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <Stat
               value={summary.passed}
-              label="bestanden"
-              hint="Regeln, deren Bedingung im Plan erfüllt ist (PASS)."
+              label="erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan eingehalten ist."
             />
             <Stat
               value={summary.failed}
-              label="verletzt"
-              hint="Regeln, deren Bedingung im Plan verletzt ist (FAIL)."
+              label="nicht erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan nicht eingehalten ist. Diese Punkte müssen korrigiert werden."
             />
             <Stat
               value={summary.unprovable}
-              label="nicht entscheidbar"
-              hint="Regeln, deren Eingaben fehlen: keine Aussage möglich — weder bestanden noch verletzt."
+              label="Angaben fehlen"
+              hint="Für diese Prüfungen fehlen Werte im Plan — sie konnten noch nicht beurteilt werden."
             />
             <Stat
               value={summary.notApplicable}
-              label="ohne Gegenstand"
-              hint="Regeln, die im Plan nichts zu prüfen hatten (z. B. Solar-Regeln ohne Solar). Sie sind NICHT bestanden."
+              label="kommt nicht vor"
+              hint="Prüfungen ohne passendes Bauteil im Plan (z. B. Solar-Regeln ohne Solarmodul). Sie zählen NICHT als erfüllt."
             />
           </div>
 
@@ -163,9 +163,9 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
           {summary.notAppliedRules.length > 0 && (
             <p className="mb-3 text-muted-foreground">
-              Nicht angewandt: <span className="font-mono">{summary.notAppliedRules.join(', ')}</span> —
-              Profil oder Kontext schließen diese Regeln aus. Regeln, die im Plan keinen Gegenstand hatten,
-              stehen unter Modellgrenzen.
+              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und
+              wurden nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil
+              stehen unter „Modellgrenzen“.
             </p>
           )}
 
@@ -180,11 +180,24 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </ul>
           </div>
 
-          <p className="break-all border-t border-border pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
-            <br />
-            Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
-          </p>
+          {/* Nachtest Bug 4: Hashes, Engine-Version und Regel-Codes sind
+              für Laien unverständliches Rauschen — sie bleiben für
+              Nachweise verfügbar, aber hinter einem Aufklapp-Bereich. */}
+          <details className="border-t border-border pt-2">
+            <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
+              Technische Details
+            </summary>
+            <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+              Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
+              <br />
+              Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
+            </p>
+            {summary.notAppliedRules.length > 0 && (
+              <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
+              </p>
+            )}
+          </details>
           <p className="mt-1 leading-relaxed text-muted-foreground">
             Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
             Prüfhinweisen.

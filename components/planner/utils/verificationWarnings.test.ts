@@ -193,7 +193,7 @@ describe('verificationReportFor — der Plan wird geprüft, nicht geglättet', (
     expect(summary.verdict).toBe('INCOMPLETE');
     expect(summary.tone).toBe('warn');
     expect(summary.label).toBe('Unvollständig belegt');
-    expect(summary.headline).toContain('nicht entscheidbar');
+    expect(summary.headline).toContain('fehlen Angaben');
   });
 
   it('stuft ein unbekanntes Verdikt nie als bestanden ein', () => {

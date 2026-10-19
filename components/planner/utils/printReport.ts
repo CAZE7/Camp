@@ -111,8 +111,8 @@ function verificationBlock(summary: VerificationSummary | null): string {
       <tbody>
         <tr><th>Regeln angewandt</th><td class="num">${summary.exercised}</td></tr>
         <tr><th>bestanden</th><td class="num">${summary.passed}</td></tr>
-        <tr><th>verletzt</th><td class="num">${summary.failed}</td></tr>
-        <tr><th>nicht entscheidbar</th><td class="num">${summary.unprovable}</td></tr>
+        <tr><th>nicht erfüllt</th><td class="num">${summary.failed}</td></tr>
+        <tr><th>Angaben fehlen (nicht prüfbar)</th><td class="num">${summary.unprovable}</td></tr>
         <tr><th>nicht zutreffend (kein Gegenstand im Plan)</th><td class="num">${summary.notApplicable}</td></tr>
       </tbody>
     </table>

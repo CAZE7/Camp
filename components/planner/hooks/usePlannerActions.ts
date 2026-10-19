@@ -431,7 +431,7 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              label: 'Zur Prüfung',
+              label: 'Plan speichern',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
@@ -592,13 +592,9 @@ export function usePlannerActions({
               icon: Info,
               run: () => setHasOnboarded(false),
             },
-            {
-              label: guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden',
-              icon: SlidersHorizontal,
-              checked: !guidedMode,
-              run: () => setGuidedMode(!guidedMode),
-            },
-            { label: 'Plan leeren …', icon: FileDown, danger: true, run: onRequestReset },
+            // Nachtest N6: „Plan leeren …“ stand im Hilfe-Menü und wurde
+            // leicht versehentlich angeklickt. Löschen gibt es nur noch
+            // unter Datei („Neuen leeren Plan starten“).
           ],
         },
       ],

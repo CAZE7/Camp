@@ -168,6 +168,7 @@ function FindingCard({
   const values = ampacityValues(warning);
   const details = warning.details;
   const hasWhy =
+    Boolean(warning.source) ||
     (details?.contributors?.length ?? 0) > 0 ||
     details?.izBreakdown !== undefined ||
     (details?.assumptions?.length ?? 0) > 0 ||
@@ -216,7 +217,7 @@ function FindingCard({
               Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
               {' · Soll: '}
               {valueWithUnit(warning.expectedValue, warning.unit)}
-              {warning.source ? ` · Regel: ${warning.source}` : ''}
+
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
@@ -224,7 +225,7 @@ function FindingCard({
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
           {rootCause && rootCause.findingCount > 1 && (
             <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-soft">
-              Gleiche Ursache ({rootCause.rootCauseId}) · {rootCause.findingCount} Leitungen betroffen
+              Gleiche Ursache · {rootCause.findingCount} Leitungen betroffen
               {warning.status === 'incomplete' ? ' · Datenlage unvollständig, kein Verstoß' : ''}
             </p>
           )}
@@ -238,13 +239,14 @@ function FindingCard({
                 type="button"
                 onClick={() => setWhyOpen((value) => !value)}
                 aria-expanded={whyOpen}
-                className="flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
-                Warum?
+                Warum? Technische Details
               </button>
               {whyOpen && (
                 <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                  {warning.source && <p>Grundlage: {warning.source}</p>}
                   {details?.calculationMethod && (
                     <p>
                       Methode: <strong>{details.calculationMethod}</strong>
@@ -256,7 +258,7 @@ function FindingCard({
                       <ul className="mt-0.5 flex flex-col">
                         {details.contributors.map((entry) => (
                           <li key={`${entry.componentId}-${entry.role}`}>
-                            {entry.label} ({entry.componentId}) — {fmtA(entry.contribution)} A{' '}
+                            {entry.label} — {fmtA(entry.contribution)} A{' '}
                             {entry.role === 'load' ? '(Last)' : '(Quelle)'}
                           </li>
                         ))}
@@ -455,16 +457,6 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     }
     return map;
   }, [warnings]);
-  const stateCounts = useMemo(() => {
-    const value = { violated: 0, incomplete: 0, satisfied: 0, not_applicable: 0 };
-    for (const warning of warnings) {
-      if (warning.status === 'violated') value.violated += 1;
-      else if (warning.status === 'incomplete') value.incomplete += 1;
-      else if (warning.status === 'satisfied') value.satisfied += 1;
-      else if (warning.status === 'not_applicable') value.not_applicable += 1;
-    }
-    return value;
-  }, [warnings]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -627,13 +619,12 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                 {counts.critical > 0 ? 'Anlage nicht sicher' : 'Keine kritischen Fehler'}
               </p>
               {/* Gruppierung: Sicherheit / Planung / fehlende Angaben. */}
+              {/* Nachtest Bug 4: Zwei Zählerzeilen mit Fachworten
+                  („verletzt“, „ohne ausreichende Angaben“) verwirrten mehr,
+                  als sie erklärten. Eine Zeile, Klartext, dieselben Zahlen
+                  wie die Karten darunter. */}
               <p className="text-xs text-muted-foreground">
-                {stateCounts.violated} verletzt · {stateCounts.incomplete} ohne ausreichende Angaben ·{' '}
-                {rootCauses.size} Ursachen
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {groups.safety} Sicherheitsfehler · {groups.planning} Planungsfehler · {groups.gaps} Angaben
-                fehlen
+                {groups.safety + groups.planning} Probleme · {groups.gaps}× Angaben fehlen
               </p>
             </div>
             <button

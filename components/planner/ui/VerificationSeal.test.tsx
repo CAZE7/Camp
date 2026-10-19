@@ -53,13 +53,13 @@ describe('VerificationSeal', () => {
     expect(screen.queryByTestId('verification-seal-panel')).not.toBeInTheDocument();
   });
 
-  it('weist »ohne Gegenstand« getrennt von »bestanden« aus', () => {
+  it('weist »kommt nicht vor« getrennt von »erfüllt« aus', () => {
     open(healthyDcPlan());
     const panel = screen.getByTestId('verification-seal-panel');
-    expect(panel).toHaveTextContent('ohne Gegenstand');
+    expect(panel).toHaveTextContent('kommt nicht vor');
     // Die Kennzahl sagt im Klartext, dass »nicht angewandt« kein »bestanden«
     // ist — sonst läse sich ein Plan mit neun ungeprüften Regeln als grün.
-    expect(screen.getByTitle(/Sie sind NICHT bestanden/)).toBeInTheDocument();
+    expect(screen.getByTitle(/NICHT als erfüllt/)).toBeInTheDocument();
   });
 
   it('nennt die fünf Durchgänge mit ihrem Zustand', () => {
@@ -67,7 +67,7 @@ describe('VerificationSeal', () => {
     const panel = screen.getByTestId('verification-seal-panel');
     expect(panel).toHaveTextContent('1. Syntax & Konnektivität');
     expect(panel).toHaveTextContent('5. Erdung & Personenschutz');
-    expect(panel).toHaveTextContent('verletzt');
+    expect(panel).toHaveTextContent('nicht erfüllt');
     expect(panel).toHaveTextContent(/9 Regeln/);
   });
 
