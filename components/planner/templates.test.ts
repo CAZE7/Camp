@@ -29,7 +29,7 @@ describe('Vorlagen tragen vollständige Startwerte (Nachtest)', () => {
       }
     });
 
-    it(`${name}: Solarmodule haben Arbeitsspannung/-strom, Batterien eine Nennspannung`, () => {
+    it(`${name}: Solarmodule haben Arbeitsspannung/-strom, Batterien eine Kapazität`, () => {
       for (const node of template.nodes) {
         const data = node.data as Record<string, number | string | undefined>;
         if (node.type === 'solar') {
@@ -38,7 +38,11 @@ describe('Vorlagen tragen vollständige Startwerte (Nachtest)', () => {
           expect(Number(data.watts ?? 0), 'solar watts').toBeGreaterThan(0);
         }
         if (node.type === 'battery') {
-          expect(Number(data.nominalVoltage ?? 0), 'battery nominalVoltage').toBeGreaterThan(0);
+          // Keine erfundene Nennspannung in der Vorlage: Ohne Angabe nimmt
+          // die Engine den Chemie-Standard an (12,8 V LiFePO4 / 12,0 V
+          // Blei) — explizite 12 vs. 12,8 würden Starter- + Aufbaubatterie
+          // fälschlich als „Mischspannung“ melden.
+          expect(data.nominalVoltage, 'battery nominalVoltage bleibt Annahme').toBeUndefined();
           expect(Number(data.capacity ?? 0), 'battery capacity').toBeGreaterThan(0);
         }
         if (node.type === 'mpptController') {

@@ -19,7 +19,7 @@ export const TEMPLATE_MINIMALIST = {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 160 },
-      data: { label: '12V Batterie', capacity: 100, chemistry: 'AGM', nominalVoltage: 12 },
+      data: { label: '12V Batterie', capacity: 100, chemistry: 'AGM' },
     },
     { id: 'ground-1', type: 'ground', position: { x: 80, y: 360 }, data: { label: 'Massepunkt' } },
     { id: 'fusebox-1', type: 'fuse', position: { x: 380, y: 160 }, data: { label: 'Sicherungskasten' } },
@@ -103,13 +103,13 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM', nominalVoltage: 12 },
+      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' },
     },
     {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 440 },
-      data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12.8 },
+      data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4' },
     },
     {
       id: 'charger-1',
@@ -285,7 +285,7 @@ export const TEMPLATE_AUTARK = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM', nominalVoltage: 12 },
+      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' },
     },
     {
       id: 'shore-1',
@@ -297,7 +297,7 @@ export const TEMPLATE_AUTARK = {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 600 },
-      data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4', nominalVoltage: 12.8 },
+      data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' },
     },
     {
       id: 'charger-1',

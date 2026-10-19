@@ -170,9 +170,15 @@ export function BatteryInspector({
               min="0"
               step="0.1"
               isFloat={true}
-              value={node.data?.nominalVoltage || 0}
+              // Nachtest: `|| 0` zeigte „0 V“, obwohl die Engine ohne Angabe
+              // den Chemie-Standard annimmt (Hinweistext darunter). Leer +
+              // Platzhalter sagt ehrlich: nicht angegeben, Annahme gilt.
+              allowEmpty
+              value={node.data?.nominalVoltage ?? ''}
+              placeholder={node.data?.chemistry === 'LiFePO4' ? '12,8 (angenommen)' : '12,0 (angenommen)'}
               rules={[COMMON_RULES.positive]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { nominalVoltage: val })}
+              onEmptyChange={() => onUpdateNodeData?.(node.id, { nominalVoltage: undefined })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">

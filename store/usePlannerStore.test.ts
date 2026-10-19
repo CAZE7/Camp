@@ -5,10 +5,17 @@ import { usePlannerStore } from './usePlannerStore';
 import { type Node, type Edge } from '@xyflow/react';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
-// bleiben (kein echtes Layout im Test).
-vi.mock('../components/planner/utils/layout', () => ({
-  getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
-}));
+// bleiben (kein echtes Layout im Test). Partieller Mock: `addNode` prüft
+// seit dem Nachtest-Fix Überlappungen über `collision.ts`, das
+// `getNodeLayoutSize` aus demselben Modul liest — die echte Funktion
+// bleibt dafür erhalten.
+vi.mock('../components/planner/utils/layout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../components/planner/utils/layout')>();
+  return {
+    ...actual,
+    getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
+  };
+});
 
 // Lokale Fixtures (die früheren initialNodes/initialEdges aus
 // planner/constants waren toter Code und wurden entfernt).
@@ -511,8 +518,11 @@ describe('usePlannerStore', () => {
             return '';
           },
         },
-        clientX: 100,
-        clientY: 200,
+        // Freie Stelle (kein Fixture-Knoten): Seit dem Nachtest-Fix weicht
+        // ein Drop auf ein vorhandenes Bauteil auf die nächste freie
+        // Rasterposition aus — die exakte Zielposition gilt nur frei.
+        clientX: 1010,
+        clientY: 820,
       } as unknown as React.DragEvent<HTMLDivElement>;
 
       const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
@@ -526,7 +536,7 @@ describe('usePlannerStore', () => {
       if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('battery');
-      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.position).toEqual({ x: 1000, y: 800 });
       expect(addedNode.data.label).toBe('My Battery');
       expect(addedNode.data.capacity).toBe(100); // Default for battery
       expect(addedNode.data.chemistry).toBe('LiFePO4');
@@ -562,8 +572,8 @@ describe('usePlannerStore', () => {
 
       const mockEvent = {
         detail: {
-          clientX: 100,
-          clientY: 200,
+          clientX: 1010,
+          clientY: 820,
           type: 'consumer',
           label: 'My Consumer',
         },
@@ -580,7 +590,7 @@ describe('usePlannerStore', () => {
       if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('consumer');
-      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.position).toEqual({ x: 1000, y: 800 });
       expect(addedNode.data.label).toBe('My Consumer');
       expect(addedNode.data.watts).toBe(50); // Default for consumer
       expect(addedNode.data.hours).toBe(2);
