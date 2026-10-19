@@ -56,7 +56,7 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     });
   });
 
-  it('verwendet die größere Länge und meldet den Widerspruch', async () => {
+  it('verwendet die eingetragene Länge und meldet den Widerspruch (Nachtest Bug 7)', async () => {
     // Geroutet: 38,10 m — derselbe Befund wie im Referenzplan `camper`
     // (dort 38,05 m gegen 22,10 m eingetragen). Auf eine Nachkommastelle
     // gerundet, damit die Assertion nicht an der Binärdarstellung von 38.05
@@ -66,9 +66,11 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     openBom();
 
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
-    // Verwendet wird die geroutete Länge, nicht die eingetragene.
-    expect(screen.getByText('38.1 m Kabel mit 4 mm²')).toBeInTheDocument();
-    expect(screen.queryByText('22.1 m Kabel mit 4 mm²')).not.toBeInTheDocument();
+    // Nachtest Bug 7: Der Zeichenweg (100 px = 1 m, mit Umwegen) zeigte
+    // zwischen Nachbarn 6,4 m und schlug per max() den Nutzereintrag.
+    // Jetzt gewinnt der Eintrag; der Widerspruch bleibt gemeldet.
+    expect(screen.getByText('22.1 m Kabel mit 4 mm²')).toBeInTheDocument();
+    expect(screen.queryByText('38.1 m Kabel mit 4 mm²')).not.toBeInTheDocument();
     // Und der Widerspruch wird gesagt, mit beiden Zahlen.
     expect(
       screen.getByText(/widersprechen sich eingetragene Länge und gerouteter Verlegeweg/i)
@@ -85,7 +87,9 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     openBom();
 
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
-    expect(screen.getByText('22.5 m Kabel mit 4 mm²')).toBeInTheDocument();
+    // Verwendet wird der Eintrag (22,1 m); innerhalb der Toleranz entsteht
+    // kein Widerspruchshinweis.
+    expect(screen.getByText('22.1 m Kabel mit 4 mm²')).toBeInTheDocument();
     expect(
       screen.queryByText(/widersprechen sich eingetragene Länge und gerouteter Verlegeweg/i)
     ).not.toBeInTheDocument();

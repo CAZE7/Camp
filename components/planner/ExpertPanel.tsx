@@ -510,7 +510,11 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in"
+          // Nachtest Bug 18: 28 rem zwangen den Fachwissen-Text in einen
+          // schmalen Schlitz mit Dauer-Scrollen. Auf Desktop darf das
+          // Panel deutlich höher wachsen (36 rem), begrenzt bleibt die
+          // Fensterhöhe minus Leisten.
+          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,calc(100dvh-8rem))]"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">

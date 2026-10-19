@@ -127,7 +127,7 @@ export function BOMModal() {
       open={open}
       onClose={() => setOpen(false)}
       title="Stückliste"
-      description="Das brauchst du für den aktuellen Plan. Verwendet wird je Strecke die größere aus eingetragener (oder angenommener) und gerouteter Länge (der Router kennt Umwege, eine Luftlinie unterschätzt). Abweichungen und fehlende Längen stehen unten ausdrücklich – rechne für die Montage trotzdem eine Reserve hinzu."
+      description="Das brauchst du für den aktuellen Plan. Verwendet wird deine eingetragene Länge; nur wo keine eingetragen ist, zählt der geroutete Weg (100 px im Plan = 1 m) oder eine ausdrücklich benannte Annahme. Abweichungen und fehlende Längen stehen unten – rechne für die Montage trotzdem eine Reserve hinzu."
       className="min-h-0 min-w-0 max-w-2xl"
     >
       <div
@@ -246,10 +246,11 @@ export function BOMModal() {
                 )}
                 {divergingLengths.length > 0 && (
                   <p className="mt-1 text-sm">
-                    Bei {divergingLengths.length} {divergingLengths.length === 1 ? 'Strecke' : 'Strecken'}
-                    widersprechen sich eingetragene Länge und gerouteter Verlegeweg um mehr als{' '}
-                    {Math.round(LENGTH_DIVERGENCE_TOLERANCE * 100)} %. Verwendet wurde jeweils die größere
-                    Länge, damit das Material nicht zu knapp bestellt wird.
+                    Bei {divergingLengths.length}{' '}
+                    {divergingLengths.length === 1 ? 'Strecke' : 'Strecken'} widersprechen sich eingetragene
+                    Länge und gerouteter Verlegeweg um mehr als{' '}
+                    {Math.round(LENGTH_DIVERGENCE_TOLERANCE * 100)} %. Verwendet wurde deine eingetragene
+                    Länge (bei reinen Planungsannahmen die größere, damit nichts zu knapp wird).
                   </p>
                 )}
                 <ul className="mt-2 space-y-1 text-sm">
