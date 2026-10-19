@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
+import { forgetAuxiliaryBrowserStorage, hasPlannerStorage, restoreFirstVisit } from '../store/freshVisit';
+import { subscribePlannerStorageCleared } from '../store/storage';
 
 /**
  * Layout-Container des Planers — drei Geräteklassen, ein DOM-Baum.
@@ -103,6 +105,30 @@ function PlannerShell() {
   // Einstieg: geteilter Plan (#plan=) → Vorlage (?template=) → Beispiel-Setup
   // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
+
+  // „Clear site data“ leert localStorage, während der Plan noch im Speicher
+  // der offenen Seite liegt. Ohne diese Wache schreibt der Flush ihn zurück
+  // und der Assistent bleibt aus. IndexedDB, Cache und Service Worker halten
+  // hier keinen Plan — sie werden beim Leeren mit vergessen.
+  useEffect(() => {
+    let seen = hasPlannerStorage();
+    if (!seen) void forgetAuxiliaryBrowserStorage();
+    const restore = () => {
+      seen = false;
+      restoreFirstVisit();
+      void forgetAuxiliaryBrowserStorage();
+    };
+    const unsubscribe = subscribePlannerStorageCleared(() => restore());
+    const timer = window.setInterval(() => {
+      const present = hasPlannerStorage();
+      if (seen && !present) restore();
+      else seen = present;
+    }, 400);
+    return () => {
+      unsubscribe();
+      window.clearInterval(timer);
+    };
+  }, []);
 
   // Auswahl öffnet den Inspector, leere Auswahl schließt ihn — dokumentierte
   // Slide-over-Semantik unterhalb des Andock-Breakpoints. Das Effect hängt an
@@ -340,7 +366,7 @@ function PlannerShell() {
             Handys zeichnen, die eine Ebene höher liegen. */}
         <div
           data-testid="planner-canvas-column"
-          className="isolate flex min-w-0 flex-1 flex-col xl:min-w-[600px]"
+          className="isolate flex min-h-0 min-w-0 flex-1 flex-col xl:min-w-[600px]"
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <React.Suspense fallback={<CanvasSkeleton />}>

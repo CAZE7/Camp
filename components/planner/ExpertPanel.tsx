@@ -528,7 +528,7 @@ export function ExpertPanel() {
               <currentKnowledge.icon size={17} aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-black text-bone">{currentKnowledge.title}</h3>
+              <h3 className="break-words text-sm font-black text-bone">{currentKnowledge.title}</h3>
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-bone/80">
                 Fachwissen &amp; Normen
               </p>
@@ -672,7 +672,11 @@ export function ExpertPanel() {
 
           {/* Footer */}
           <div className="shrink-0 border-t border-rule bg-paper px-5 py-3">
-            <p className="text-xs font-medium text-ink-soft">Wähle eine Komponente für passende Tipps.</p>
+            {currentKnowledge === DEFAULT_TIP ? (
+              <p className="text-xs font-medium text-ink-soft">Wähle eine Komponente für passende Tipps.</p>
+            ) : (
+              <p className="text-xs font-medium text-ink-soft">Tipps zur ausgewählten Komponente.</p>
+            )}
             <p className="mt-1 text-xs font-semibold text-signal">
               230-V-Anlagen müssen von einer Elektrofachkraft geprüft und angeschlossen werden.
             </p>

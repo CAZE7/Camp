@@ -112,7 +112,7 @@ export function AccessibleDialog({
     // ist Escape (onKeyDown) plus Focus-Trap — das Dialog-Pattern (WAI-APG).
     // Das a11y-Gate darüber liegt bei axe (tests/e2e/a11y.spec.ts).
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-scrim p-4"
+      className="planner-dialog-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-scrim p-4"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
@@ -125,7 +125,7 @@ export function AccessibleDialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          'relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl focus:outline-none',
+          'planner-dialog relative flex max-h-[min(100dvh-1rem,90dvh)] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-border bg-card text-foreground shadow-2xl focus:outline-none',
           className
         )}
       >

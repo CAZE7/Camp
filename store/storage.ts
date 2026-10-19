@@ -101,8 +101,14 @@ export function subscribeSaveFailure(listener: SaveFailureListener): () => void 
  * nie. Es wird pro Storage-Key nur der jeweils letzte ausstehende Wert
  * gehalten, sodass kein Zwischenzustand durchsickert.
  */
-export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 200): StateStorage {
+export function createDebouncedStorage(
+  getStorage: () => StorageLike,
+  delayMs = 200,
+  onExternalClear?: (key: string) => void
+): StateStorage {
   const pending = new Map<string, string>();
+  /** Schlüssel, die in dieser Sitzung gelesen oder geschrieben wurden. */
+  const acknowledged = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const flush = () => {
@@ -132,6 +138,20 @@ export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 
 
     let failed = 0;
     pending.forEach((value, key) => {
+      // „Clear site data“ leert den Speicher, ohne removeItem zu rufen. Der
+      // ausstehende Stand darf ihn nicht beim Verlassen der Seite zurückschreiben.
+      let current: string | null;
+      try {
+        current = storage.getItem(key);
+      } catch {
+        current = null;
+      }
+      if (current === null && acknowledged.has(key)) {
+        pending.delete(key);
+        acknowledged.delete(key);
+        onExternalClear?.(key);
+        return;
+      }
       try {
         storage.setItem(key, value);
         pending.delete(key);
@@ -163,7 +183,11 @@ export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 
   }
 
   return {
-    getItem: (name) => getStorage().getItem(name),
+    getItem: (name) => {
+      const value = getStorage().getItem(name);
+      if (typeof value === 'string') acknowledged.add(name);
+      return value;
+    },
     setItem: (name, value) => {
       pending.set(name, value);
       if (timer) clearTimeout(timer);
@@ -171,8 +195,19 @@ export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 
     },
     removeItem: (name) => {
       pending.delete(name);
+      acknowledged.delete(name);
       getStorage().removeItem(name);
     },
+  };
+}
+
+const plannerClearListeners = new Set<(key: string) => void>();
+
+/** Meldet, wenn ein bereits gelesener Plan-Schlüssel von außen geleert wurde. */
+export function subscribePlannerStorageCleared(listener: (key: string) => void): () => void {
+  plannerClearListeners.add(listener);
+  return () => {
+    plannerClearListeners.delete(listener);
   };
 }
 
@@ -182,4 +217,8 @@ function describeError(error: unknown): string {
 }
 
 /** Debounced Storage-Adapter des Planer-Stores. */
-export const plannerDebouncedStorage = createDebouncedStorage(() => window.localStorage);
+export const plannerDebouncedStorage = createDebouncedStorage(
+  () => window.localStorage,
+  200,
+  (key) => plannerClearListeners.forEach((listener) => listener(key))
+);

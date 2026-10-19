@@ -29,9 +29,9 @@ describe('getFlowInteractionProps (coarse pointer / Touch)', () => {
     expect(touch.connectionRadius).toBe(40);
   });
 
-  it('requires a drag handle so node drag cannot collide with panning (A4)', () => {
+  it('zieht ein Bauteil am Kartenkörper, nicht nur am Griff', () => {
     expect(touch.nodesDraggable).toBe(true);
-    expect(touch.requiresDragHandle).toBe(true);
+    expect(touch.requiresDragHandle).toBe(false);
     expect(touch.nodeDragThreshold).toBeGreaterThan(0);
   });
 

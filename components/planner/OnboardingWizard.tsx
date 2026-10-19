@@ -128,7 +128,7 @@ export function OnboardingWizard() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {step === 1 && (
           <section aria-labelledby="onboarding-source-title" className="space-y-4">
             <h3 id="onboarding-source-title" className="text-lg font-semibold">
@@ -153,14 +153,6 @@ export function OnboardingWizard() {
                   <span>{source.label}</span>
                 </label>
               ))}
-            </div>
-            <div className="flex flex-wrap justify-between gap-3 pt-3">
-              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
-                Mit leerem Plan beginnen
-              </Button>
-              <Button onClick={() => setStep(2)} className="min-h-11 px-6">
-                Weiter
-              </Button>
             </div>
           </section>
         )}
@@ -188,14 +180,6 @@ export function OnboardingWizard() {
                   <span>{consumer.label}</span>
                 </label>
               ))}
-            </div>
-            <div className="flex justify-between gap-3 pt-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="min-h-11 px-6">
-                Zurück
-              </Button>
-              <Button onClick={() => setStep(3)} className="min-h-11 px-6">
-                Weiter
-              </Button>
             </div>
           </section>
         )}
@@ -238,15 +222,42 @@ export function OnboardingWizard() {
                   </button>
                 ))}
             </div>
-            <div className="flex flex-wrap justify-between gap-3 pt-3">
-              <Button variant="outline" onClick={() => setStep(2)} className="min-h-11 px-6">
-                Zurück
-              </Button>
-              <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
-                Mit leerem Plan beginnen
-              </Button>
-            </div>
           </section>
+        )}
+      </div>
+      <div
+        data-testid="onboarding-actions"
+        className="sticky bottom-0 flex shrink-0 flex-wrap justify-between gap-3 border-t border-border bg-card px-5 py-3"
+      >
+        {step === 1 && (
+          <>
+            <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+              Mit leerem Plan beginnen
+            </Button>
+            <Button onClick={() => setStep(2)} className="min-h-11 px-6">
+              Weiter
+            </Button>
+          </>
+        )}
+        {step === 2 && (
+          <>
+            <Button variant="outline" onClick={() => setStep(1)} className="min-h-11 px-6">
+              Zurück
+            </Button>
+            <Button onClick={() => setStep(3)} className="min-h-11 px-6">
+              Weiter
+            </Button>
+          </>
+        )}
+        {step === 3 && (
+          <>
+            <Button variant="outline" onClick={() => setStep(2)} className="min-h-11 px-6">
+              Zurück
+            </Button>
+            <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
+              Mit leerem Plan beginnen
+            </Button>
+          </>
         )}
       </div>
     </AccessibleDialog>

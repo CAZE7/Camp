@@ -122,7 +122,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 
-          <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 gap-1.5">
             <Stat
               value={summary.passed}
               label="erfüllt"

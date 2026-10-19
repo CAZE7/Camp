@@ -2602,9 +2602,8 @@ html.planner-root-active body {
    640×320: Menüleiste 28 + Werkzeugleiste 40 + Schrittleiste 40 +
    Statuszeile 26 + Fußleiste 44 = 178 px Chrome — es blieben 121 px
    Zeichenfläche (38 % der Höhe). Deshalb:
-     · die Statuszeile entfällt (Zoom und Raster sitzen als Bedienelemente auf
-       der Zeichenfläche, Umfang und Prüfstand stehen in Menüleiste und
-       Werkzeugleiste),
+     · die Statuszeile bleibt eine flache Zeile (22 px): Zoom und Prüfstand
+       müssen im Querformat sichtbar sein, nicht nur in der Werkzeugleiste,
      · die Werkzeugleiste wird 36 px flach (Knöpfe 34 px — über der
        WCAG-2.5.8-Mindestkante von 24 px, unter dem 44-px-Zielwert: eine
        bewusste, dokumentierte Abweichung für Fenster unter 480 px Höhe),
@@ -2632,7 +2631,10 @@ html.planner-root-active body {
     min-width: 34px;
   }
   .cad-statusbar {
-    display: none;
+    display: flex;
+    min-height: 22px;
+    height: 22px;
+    overflow: hidden;
   }
   .cad-rail {
     min-height: 32px;
@@ -3290,5 +3292,208 @@ html.planner-root-active body {
 @media (min-width: 768px) and (max-width: 1023px) {
   #canvas-display-options-panel {
     left: calc(var(--planner-sidebar-w) + 0.75rem) !important;
+  }
+}
+
+/* Nachtest Handy: Menüs in einer zweiten Zeile, statt Hilfe nur per
+   unsichtbarem Querscroll. Im flachen Querformat bleibt es eine Zeile,
+   der Projektname weicht, die Leiste zeigt ihre Scrollbar. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .cad-menubar {
+    height: auto;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .cad-menubar__menus {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .cad-menubar__project-name {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  .cad-menubar__project-name {
+    display: none;
+  }
+
+  .cad-menubar__menus {
+    scrollbar-width: thin;
+  }
+
+  /* 852 px Breite ist immer noch ein Telefon im Querformat: Undo und
+     Übersicht bleiben, der Zoom sitzt rechts daneben und nicht darauf. */
+  .planner-mobile-history {
+    display: flex !important;
+  }
+
+  .planner-shell .react-flow__controls.planner-controls {
+    top: auto !important;
+    right: 0.25rem !important;
+    bottom: 0.25rem !important;
+    left: auto !important;
+  }
+
+  .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 0.25rem !important;
+    right: 0.5rem !important;
+    bottom: auto !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 2.25rem !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    z-index: 4 !important;
+  }
+
+  .planner-mobile-feedback {
+    top: 2.75rem !important;
+    bottom: auto !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
+    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem) !important;
+    right: 0.5rem !important;
+    bottom: auto !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-height: 5.5rem !important;
+    z-index: 70 !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
+    max-height: 8rem !important;
+  }
+
+  .planner-shell .planner-expert-panel--open {
+    position: fixed !important;
+    top: 4.5rem !important;
+    right: 0.5rem !important;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + 0.25rem) !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 80;
+  }
+
+  .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
+    height: 100%;
+    max-height: none;
+  }
+}
+
+/* Strompfad liegt über der Zeichenfläche, nicht auf Übersicht und Zoom. */
+@media (max-width: 767px) {
+  .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 0.25rem !important;
+    right: 0.5rem !important;
+    bottom: auto !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 2.5rem !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    z-index: 4 !important;
+  }
+
+  .planner-shell .de-warning-center [role='dialog'] {
+    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.35rem) !important;
+    right: 0.5rem !important;
+    bottom: auto !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-height: min(28dvh, 11rem) !important;
+    z-index: 70 !important;
+  }
+
+  .planner-action-feedback {
+    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem);
+  }
+
+  .planner-shell .planner-verification-panel {
+    max-height: min(40dvh, 18rem) !important;
+  }
+
+  .planner-shell .planner-expert-panel--open {
+    position: fixed !important;
+    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem) !important;
+    right: 0.5rem !important;
+    bottom: calc(4.25rem + env(safe-area-inset-bottom)) !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 80;
+  }
+
+  .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
+    height: 100%;
+    max-height: none;
+  }
+}
+
+.planner-shell .react-flow__controls,
+.planner-shell .react-flow__controls-button {
+  touch-action: manipulation;
+}
+
+.planner-shell .react-flow__controls {
+  z-index: 6;
+}
+
+[data-testid='bom-scroll-body'] {
+  min-height: min(40dvh, 16rem);
+}
+
+@media (max-width: 767px), (max-height: 700px) {
+  .planner-dialog-backdrop {
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .planner-dialog {
+    display: flex;
+    width: min(42rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem) !important;
+    overflow: hidden !important;
+    margin-bottom: 0.5rem;
+  }
+
+  [data-testid='bom-scroll-body'] {
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 6rem;
+  }
+
+  [data-testid='bom-actions'] {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface-panel, var(--card));
+  }
+}
+
+/* Zwei Menüzeilen: die Leiste ist höher als die Token-Höhe. Blätter beginnen
+   darunter, sonst liegt „Schließen“ auf „Weitere Aktionen“. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .planner-shell .planner-expert-panel--open,
+  .planner-shell .de-warning-center [role='dialog'],
+  .planner-action-feedback {
+    top: 8.75rem !important;
+  }
+
+  .planner-shell .de-warning-center [role='dialog'] {
+    max-height: 7.5rem !important;
+  }
+
+  .planner-shell .planner-verification-panel {
+    max-height: min(32dvh, 14rem) !important;
   }
 }

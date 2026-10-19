@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { REGRESSION_SCENARIOS } from '../../../scripts/regression/scenarios';
-import { GLOBAL_REROUTE_ATTEMPTS, optimizeCableRoutes } from './optimizeCableRoutes';
+import {
+  decideOptimizationPublish,
+  GLOBAL_REROUTE_ATTEMPTS,
+  optimizeCableRoutes,
+} from './optimizeCableRoutes';
 import { computeCableRouteFinalValidation } from './routeValidation';
 import { routeAllCables } from './routeAll';
 import { clearPathfindingCache } from './pathfinding';
@@ -67,5 +71,42 @@ describe('bounded global optimization', () => {
         original.routes.get(id)!.waypoints
       );
     }
+  });
+});
+
+const quality = {
+  valid: true,
+  hardViolations: 0,
+  lengthPx: 100,
+  bends: 2,
+  crossings: 1,
+  defects: 0,
+};
+
+describe('decideOptimizationPublish', () => {
+  it('behält den sichtbaren Stand, wenn der Kandidat nicht besser ist', () => {
+    expect(
+      decideOptimizationPublish({ published: quality, candidate: { ...quality }, lengthGrows: false })
+    ).toBe('unchanged');
+  });
+
+  it('lehnt eine längere Einzelleitung ab, auch wenn die Routing-Kennzahl sinkt', () => {
+    expect(
+      decideOptimizationPublish({
+        published: quality,
+        candidate: { ...quality, crossings: 0 },
+        lengthGrows: true,
+      })
+    ).toBe('rejected');
+  });
+
+  it('übernimmt eine echte Verbesserung', () => {
+    expect(
+      decideOptimizationPublish({
+        published: quality,
+        candidate: { ...quality, crossings: 0 },
+        lengthGrows: false,
+      })
+    ).toBe('improved');
   });
 });

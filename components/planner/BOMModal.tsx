@@ -139,7 +139,7 @@ export function BOMModal() {
             aria-labelledby="bom-status"
             data-testid="bom-release-status"
             data-status={assessment.status}
-            className={`rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical' : 'border-border'}`}
+            className={`min-w-0 break-words rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical' : 'border-border'}`}
           >
             <h3 id="bom-status" className="font-semibold">
               Dokumentstatus: {assessment.label}
@@ -172,9 +172,9 @@ export function BOMModal() {
                   {componentEntries.map(([type, count]) => {
                     const info = componentTypeInfo(type);
                     return (
-                      <li key={type} className="flex gap-3 p-3">
-                        <span className="min-w-10 font-mono font-bold">{count} ×</span>
-                        <span>
+                      <li key={type} className="flex min-w-0 gap-3 p-3">
+                        <span className="min-w-10 shrink-0 font-mono font-bold">{count} ×</span>
+                        <span className="min-w-0 break-words">
                           <strong>{info.label}</strong>
                           <span className="block text-sm text-muted-foreground">{info.purpose}</span>
                         </span>
@@ -298,7 +298,7 @@ export function BOMModal() {
             />
           </div>
         )}
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div data-testid="bom-actions" className="grid grid-cols-2 gap-2 sm:flex">
           <Button
             variant="outline"
             onClick={exportCsv}

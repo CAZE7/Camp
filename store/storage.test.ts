@@ -88,6 +88,30 @@ describe('createDebouncedStorage', () => {
     storage.removeItem('plan');
     expect(removed).toEqual(['plan']);
   });
+
+  it('schreibt einen von außen geleerten Schlüssel nicht zurück', () => {
+    const values = new Map<string, string>([['plan', '{alt}']]);
+    const cleared: string[] = [];
+    const storage = createDebouncedStorage(
+      () => ({
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => {
+          values.set(key, value);
+        },
+        removeItem: (key) => {
+          values.delete(key);
+        },
+      }),
+      200,
+      (key) => cleared.push(key)
+    );
+    expect(storage.getItem('plan')).toBe('{alt}');
+    values.delete('plan');
+    storage.setItem('plan', '{noch-im-speicher}');
+    vi.advanceTimersByTime(200);
+    expect(values.has('plan')).toBe(false);
+    expect(cleared).toEqual(['plan']);
+  });
 });
 
 /**

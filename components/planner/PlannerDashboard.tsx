@@ -249,8 +249,17 @@ export function PlannerDashboard() {
   useEffect(() => {
     const onSave = () =>
       setFeedback({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
+    const onActionFeedback = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: 'success' | 'error' | 'info'; message?: string }>).detail;
+      if (!detail?.message) return;
+      setFeedback({ type: detail.type ?? 'info', message: detail.message });
+    };
     window.addEventListener('planner-save', onSave);
-    return () => window.removeEventListener('planner-save', onSave);
+    window.addEventListener('planner-action-feedback', onActionFeedback);
+    return () => {
+      window.removeEventListener('planner-save', onSave);
+      window.removeEventListener('planner-action-feedback', onActionFeedback);
+    };
   }, []);
 
   useEffect(() => {
@@ -372,7 +381,8 @@ export function PlannerDashboard() {
         <div
           role={feedback.type === 'error' ? 'alert' : 'status'}
           aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
-          className={`fixed left-1/2 top-20 z-[95] flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
+          data-testid="action-feedback"
+          className={`planner-action-feedback fixed left-1/2 top-20 z-[80] flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
             feedback.type === 'error'
               ? 'border-l-destructive'
               : feedback.type === 'success'

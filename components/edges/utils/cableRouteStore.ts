@@ -39,7 +39,9 @@ import { resolveRoutingEndpoints, routeAllCables, type RouteEdgeRef } from './ro
 import { isRouteLocked } from '../../../lib/electricalGraph/intent';
 import type { PathResult } from './pathfinding';
 import { selectRoutingPublication } from '../../../lib/routing/publication';
-import { optimizeCableRoutes } from './optimizeCableRoutes';
+import { pathLength } from '../../../lib/routing/geometry';
+import { measureRoutingQuality } from '../../../lib/routing/quality';
+import { decideOptimizationPublish, optimizeCableRoutes } from './optimizeCableRoutes';
 import { computeCableRouteFinalValidation as validateCableRouteContract } from './routeValidation';
 
 /**
@@ -654,15 +656,73 @@ export function CableRouteSync() {
       const { routable: nodes } = collectRoutableNodes(all);
       const edgeRefs = state.edges as RouteEdgeRef[];
       const hash = routingInputHash(nodeLayoutSignature(nodes), edgeTopologySignature(edgeRefs));
+      const generationBefore = currentGeneration;
       const status = tracker.begin(hash);
       publishCableRouteGeneration({
         ...status,
         state: 'routing',
-        geometryHash: currentGeneration?.geometryHash,
+        geometryHash: generationBefore?.geometryHash,
       });
       if (!status.allowed) return;
       try {
+        const published = new Map(current);
         const { routes, summary } = optimizeCableRoutes(nodes, edgeRefs);
+        const obstacles = [...nodeObstacleMap(nodes)].map(([id, rect]) => ({ id, ...rect }));
+        const asRouted = (candidate: Map<string, PathResult>) =>
+          edgeRefs.flatMap((edge) => {
+            const route = candidate.get(edge.id);
+            return route
+              ? [{ id: edge.id, source: edge.source, target: edge.target, waypoints: route.waypoints }]
+              : [];
+          });
+        const candidateReport = validateCableRouteContract(nodes, edgeRefs, routes);
+        const candidateQuality = measureRoutingQuality(asRouted(routes), obstacles, candidateReport);
+        const publishedQuality =
+          published.size > 0
+            ? measureRoutingQuality(
+                asRouted(published),
+                obstacles,
+                validateCableRouteContract(nodes, edgeRefs, published)
+              )
+            : null;
+        const lengthGrows = edgeRefs.some((edge) => {
+          const stored = edge.data as { length?: unknown } | null | undefined;
+          if (typeof stored?.length === 'number' && Number.isFinite(stored.length)) return false;
+          const before = published.get(edge.id);
+          const after = routes.get(edge.id);
+          if (!before || !after) return false;
+          return pathLength(after.waypoints) > pathLength(before.waypoints) + 0.5;
+        });
+        const decision = decideOptimizationPublish({
+          published: publishedQuality,
+          candidate: candidateQuality,
+          lengthGrows,
+        });
+        const feedback =
+          decision === 'improved'
+            ? 'Kabelführung verbessert.'
+            : decision === 'rejected'
+              ? 'Nicht übernommen: die neue Führung würde den Plan verschlechtern.'
+              : 'Keine bessere Kabelführung. Der Plan bleibt unverändert.';
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('planner-action-feedback', { detail: { type: 'info', message: feedback } })
+          );
+        }
+        if (decision !== 'improved') {
+          // Der abgelehnte Kandidat darf den veröffentlichten Stand nicht
+          // anfassen: ein erneutes Validieren derselben Wege hat kritische
+          // Befunde neu in die Warnliste geschrieben, obwohl die Führung
+          // unverändert bleiben sollte.
+          publishCableRouteGeneration(
+            generationBefore ?? {
+              ...status,
+              state: 'valid',
+              geometryHash: status.hash,
+            }
+          );
+          return;
+        }
         completeCableRouteGeneration(
           nodes,
           edgeRefs,
