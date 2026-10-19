@@ -83,9 +83,20 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
 
   await openPlanner(page);
   await showCanvas(page);
-  await expect(
-    page.locator('[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"]')
-  ).toBeVisible();
+  // Unter 768 px und im flachen Querformat nimmt die Werkzeugleiste die
+  // Routing-Plakette aus der Statusgruppe (Platz). Die Spur bleibt die
+  // Prüfung, dass das Routing fertig und danach stabil ist. Ab Tabletbreite
+  // muss die Plakette sichtbar sein.
+  const status = page.locator(
+    '[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"], [data-testid="routing-status-not-converged"], [data-testid="routing-status-error"]'
+  );
+  const viewport = page.viewportSize();
+  const statusHiddenByLayout =
+    viewport !== null &&
+    (viewport.width < 768 || (viewport.height <= 480 && viewport.width > viewport.height));
+  if (!statusHiddenByLayout) {
+    await expect(status).toBeVisible();
+  }
   await waitForRoutingTraceToSettle(page);
 
   const beforePresentation = await routeResultCount(page);
@@ -112,6 +123,9 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
     )
   ).toBe(true);
 
+  // B-22: Eine Auswahl im Popover schließt es. Vor dem erneuten Klick deshalb
+  // den Auslöser wieder öffnen, falls die Anzeigeoptionen kompakt sind.
+  if (hasCompactDisplayOptions) await displayOptions.click();
   await backboneToggle.click();
   await expect(page.locator('.react-flow__node[data-id="__planner-backbone-group"]')).toHaveCount(1);
   await waitForRoutingTraceToSettle(page);
@@ -120,7 +134,8 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
   // The compact mobile/tablet display controls stay open after a toggle. Close
   // them before selecting a node so the click cannot hit an overlapping
   // detail-level button instead of the node.
-  if (hasCompactDisplayOptions) {
+  // B-22: Eine Auswahl schließt das Popover bereits; nur schließen, falls offen.
+  if (hasCompactDisplayOptions && (await displayOptions.getAttribute('aria-expanded')) === 'true') {
     await page.getByRole('button', { name: 'Ansichtsoptionen schließen' }).click();
     await expect(displayOptions).toHaveAttribute('aria-expanded', 'false');
   }

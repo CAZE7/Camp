@@ -1,10 +1,11 @@
 'use client';
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { Handle, Position, useEdges } from '@xyflow/react';
 import type { ConduitNodeData } from './types';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { conduitFillOutcome, type ConduitFillOutcome } from '@/lib/verify';
 import { NodeSymbol } from './NodeSymbol';
+import { DesignatorContext } from './designators';
 
 /**
  * Füllgrad-Anzeige — gerechnet von der Verifikations-Engine.
@@ -20,7 +21,16 @@ import { NodeSymbol } from './NodeSymbol';
  * Kabel der Querschnitt, steht jetzt „nicht bewertet“ mit Begründung statt
  * einer erfundenen Prozentzahl (Regel M — keine stille Annahme).
  */
-const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNodeData; selected?: boolean }) {
+const ConduitNode = function ({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: ConduitNodeData;
+  selected?: boolean;
+}) {
+  const designators = useContext(DesignatorContext);
   const edges = useEdges();
 
   /** Rohrtyp, wie er im Plan steht — fehlt er, wird NICHTS angenommen. */
@@ -58,7 +68,7 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
         selected ? 'node-card--selected' : ''
       } ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="conduit" />
+      <NodeSymbol kind="conduit" dinCode={designators.get(id)} />
 
       <div className="mb-2 text-center text-sm font-bold text-foreground">
         {data.label || 'Leerrohr'} ({declaredType ?? 'Typ nicht angegeben'})

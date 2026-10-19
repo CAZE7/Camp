@@ -170,3 +170,18 @@ export function facingStubLength(gap: number, stubMin: number = ROUTING_TOKENS.s
 export function laneOffset(laneIndex: number, laneGrid: number = ROUTING_TOKENS.laneGrid): number {
   return laneIndex * laneGrid;
 }
+
+/** Postprocessing must preserve the oriented port stubs, not just endpoint coordinates. */
+export function preservesPortDirections(original: readonly Point[], candidate: readonly Point[]): boolean {
+  const before = waypointsToSegments(original);
+  const after = waypointsToSegments(candidate);
+  if (before.length === 0 || after.length === 0) return before.length === after.length;
+  const sameHeading = (a: Segment, b: Segment): boolean => {
+    const ax = Math.sign(a[1].x - a[0].x),
+      ay = Math.sign(a[1].y - a[0].y);
+    return ax === Math.sign(b[1].x - b[0].x) && ay === Math.sign(b[1].y - b[0].y);
+  };
+  return (
+    sameHeading(before[0]!, after[0]!) && sameHeading(before[before.length - 1]!, after[after.length - 1]!)
+  );
+}

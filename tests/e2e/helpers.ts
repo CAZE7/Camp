@@ -38,8 +38,19 @@ export async function openPlanner(page: Page): Promise<void> {
  */
 export async function dismissOnboarding(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog');
+  // Das Onboarding mountet nach dem Planer-Shell; ohne Warten würde ein
+  // sofortiger count()-Check es übersehen und der Starter-Plan bliebe stehen.
+  await dialog
+    .first()
+    .waitFor({ state: 'visible', timeout: 5000 })
+    .catch(() => undefined);
   if ((await dialog.count()) === 0) return;
-  const close = dialog.getByRole('button', { name: /schließen|los geht|starten|überspringen/i });
+  // Der Knopf, der das Onboarding schließt UND den Starter-Plan leert. Das
+  // ✕ („Dialog schließen“) darf nicht gewählt werden: Es lässt den Starter
+  // stehen. „Mit leerem Plan beginnen“ (QA B-06) ersetzt „Leeren Plan starten“.
+  const close = dialog.getByRole('button', {
+    name: /leerem Plan|Leeren Plan|los geht|überspringen/i,
+  });
   if ((await close.count()) > 0) {
     await close.first().click();
     await expect(dialog).toBeHidden();
@@ -145,6 +156,14 @@ export async function autoWire(page: Page): Promise<void> {
   } else {
     await openMoreMenuItem(page, 'action-autowire-menu');
   }
+  // Nachtest Bug 20: Auto-verbinden zeigt zuerst eine Vorschau und wendet
+  // erst nach Bestätigung an. Der Helper bestätigt sie — ohne diesen
+  // Schritt wartete er vergeblich auf Kanten (Altlast seit Einführung der
+  // Vorschau, alle autoWire-Specs waren rot).
+  const preview = page.getByRole('dialog', { name: /Automatisch verbinden/ });
+  await expect(preview).toBeVisible();
+  await page.getByRole('button', { name: 'Vorschlag auf den Plan anwenden' }).click();
+  await expect(preview).toBeHidden();
   await expect
     .poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' })
     .toBeGreaterThan(0);

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import React from 'react';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PlannerDashboard } from './PlannerDashboard';
+import { PlannerDashboard, warningDedupeKey } from './PlannerDashboard';
 import { toPng } from 'html-to-image';
 
 // --- Mocks ---
@@ -11,6 +11,15 @@ import { toPng } from 'html-to-image';
 // Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
+}));
+
+// Nachtest N2: Die Schrittleiste ist ausgeblendet, solange die Einführung
+// offen ist. Diese Suite testet den Zustand NACH der Einführung.
+const mockHasOnboarded = true;
+vi.mock('../../lib/store', () => ({
+  useAppStore: vi.fn((selector: (state: { hasOnboarded: boolean }) => unknown) =>
+    selector({ hasOnboarded: mockHasOnboarded })
+  ),
 }));
 
 // Mock Planner Store
@@ -25,6 +34,7 @@ const mockClearPlan = vi.fn();
 const mockSetGuidedMode = vi.fn();
 const mockFocusElement = vi.fn();
 const mockEdges: Array<{ id: string; source: string; target: string; data: Record<string, unknown> }> = [];
+let mockWaterWarning: string | null = null;
 const mockLockedMutationErrors: Array<{
   code: 'ROUTING_LOCKED_MUTATION';
   severity: 'warning';
@@ -41,6 +51,7 @@ const planState = () => ({
   guidedMode: true as boolean,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  edges: [] as Array<{ id: string; selected?: boolean }>,
   focusElement: mockFocusElement,
   deleteSelected: vi.fn(),
 });
@@ -52,7 +63,7 @@ vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: Object.assign(
     vi.fn((selector: (state: unknown) => unknown) => {
       const state = {
-        viewMode: 'electric',
+        viewMode: mockState.viewMode,
         setViewMode: mockSetViewMode,
         season: 'summer',
         setSeason: mockSetSeason,
@@ -62,11 +73,11 @@ vi.mock('../../store/usePlannerStore', () => ({
         systemMessage: null,
         setSystemMessage: vi.fn(),
         focusElement: mockFocusElement,
-        nodes: [],
+        nodes: mockState.nodes,
         edges: mockEdges,
-        waterNodes: [],
+        waterNodes: mockState.waterNodes,
         waterEdges: [],
-        waterWarning: null,
+        waterWarning: mockWaterWarning,
         undo: mockUndo,
         redo: mockRedo,
         canUndo: true,
@@ -120,6 +131,10 @@ describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {
@@ -139,7 +154,7 @@ describe('PlannerDashboard - Core Interactions', () => {
 
     // Expert actions remain reachable in the overflow menu.
     openMoreMenu();
-    expect(screen.getByRole('menuitem', { name: 'Automatisch verbinden' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Auto-verbinden — Vorschlag prüfen/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /^Stückliste/ })).toBeInTheDocument();
     expect(screen.getByText(/Plan prüfen/)).toBeInTheDocument();
     expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
@@ -269,6 +284,10 @@ describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {
@@ -285,6 +304,54 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
     const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
     expect(event.type).toBe('show-bom-modal');
+  });
+
+  it('hält den Prüfbericht im mobilen Werkzeugleisten-Statusbereich erreichbar', () => {
+    mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
+    render(<PlannerDashboard />);
+
+    const mobileAccess = screen.getByTestId('verification-seal-mobile-access');
+    expect(mobileAccess.className).toContain('inline-flex');
+    expect(mobileAccess.className).not.toContain('hidden');
+    expect(within(mobileAccess).getByTestId('verification-seal-toggle')).toBeInTheDocument();
+  });
+
+  it('zählt elektrische Befunde nicht in der Wasseransicht', () => {
+    mockState.viewMode = 'water';
+    mockLockedMutationErrors.push({
+      code: 'ROUTING_LOCKED_MUTATION',
+      severity: 'warning',
+      category: 'routing',
+      nodeIds: [],
+      edgeIds: ['electric-edge'],
+      message: 'Elektrischer Befund gehört nicht in den Wasserbericht.',
+      suggestedFix: 'Wechsle zur Elektrikansicht.',
+    });
+
+    render(<PlannerDashboard />);
+    expect(screen.getByText('Keine Hinweise')).toBeInTheDocument();
+    expect(screen.queryByText(/Elektrischer Befund/)).not.toBeInTheDocument();
+    mockLockedMutationErrors.splice(0);
+  });
+
+  it('öffnet Fachwissen sowohl über das Hilfemenü als auch über die Werkzeugleiste', () => {
+    const helpMenuRender = render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    openMenu('hilfe');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hilfe & Fachwissen' }));
+    expect(dispatchEventSpy.mock.calls.map(([event]) => (event as Event).type)).toContain(
+      'planner-open-expert-panel'
+    );
+
+    helpMenuRender.unmount();
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hilfe & Fachwissen' }));
+    expect(dispatchEventSpy.mock.calls.map(([event]) => (event as Event).type)).toEqual([
+      'planner-open-expert-panel',
+      'planner-open-expert-panel',
+    ]);
   });
 
   it('calls autoWireSystem from the toolbar primary action in expert mode', () => {
@@ -333,7 +400,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   it('reports the Dagre fallback honestly instead of claiming ELK', async () => {
@@ -343,7 +410,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     openMoreMenu();
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
-    await waitFor(() => expect(screen.getByText(/Dagre-Fallback/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Raster-Anordnung angewendet/)).toBeInTheDocument());
   });
 
   it('dispatches planner-fit-view when clicking the Übersicht (fit view) action', () => {
@@ -368,13 +435,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
-    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan ordnen');
+    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan automatisch ordnen');
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('action-tidy'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
   });
 
   /**
@@ -447,6 +514,10 @@ describe('PlannerDashboard - Image Export', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.guidedMode = true;
+    mockState.nodes = [];
+    mockState.waterNodes = [];
+    mockState.viewMode = 'electric';
+    mockWaterWarning = null;
   });
 
   afterEach(() => {
@@ -635,5 +706,27 @@ describe('blockierte Änderungen an fixierten Leitungen', () => {
     expect(finding).not.toBeNull();
     fireEvent.click(within(finding as HTMLElement).getByRole('button', { name: 'Im Plan zeigen' }));
     expect(mockFocusElement).toHaveBeenCalledWith('edge-locked', 'edge');
+  });
+});
+
+/**
+ * QA B-04: Kopfzeile (27) und Fußzeile (20) zählten dieselben Befunde
+ * unterschiedlich. Gleiche Meldung (Regel, Stufe, Fokus) zählt jetzt genau einmal.
+ */
+describe('PlannerDashboard · Befund-Dedupe (B-04)', () => {
+  it('zählt eine doppelt gemeldete Warnung einmal', () => {
+    const warning = {
+      id: 'a',
+      category: 'safety',
+      type: 'warning',
+      title: 'Kabel knapp',
+      focusId: 'n1',
+      focusType: 'node',
+      ruleId: 'cable-x',
+      message: 'm',
+    } as const;
+    const key = warningDedupeKey(warning as never);
+    expect(key).toBe(warningDedupeKey({ ...warning, id: 'b' } as never));
+    expect(key).not.toBe(warningDedupeKey({ ...warning, focusId: 'n2' } as never));
   });
 });

@@ -95,7 +95,7 @@ describe('ValidatingInput', () => {
   // ── AUDIT S2: deutsches Dezimalkomma ──────────────────────────────────────
   // `parseFloat('2,5')` = 2. Das Feld meldete „gültig" und schrieb 2 — bei
   // Querschnitten/Sicherungen eine Unterdimensionierung ohne Fehleranzeige.
-  it('reads the German decimal comma instead of truncating it', () => {
+  it('keeps decimal-comma input intact and opens the decimal keyboard', () => {
     const onValidChange = vi.fn();
     render(
       <ValidatingInput
@@ -107,7 +107,11 @@ describe('ValidatingInput', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('test-input'), { target: { value: '2,5' } });
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.inputMode).toBe('decimal');
+
+    fireEvent.change(input, { target: { value: '2,5' } });
     expect(onValidChange).toHaveBeenCalledWith(2.5);
     expect(screen.queryByText(INPUT_ERROR_MESSAGES.invalidNumber)).not.toBeInTheDocument();
   });
@@ -122,6 +126,50 @@ describe('ValidatingInput', () => {
     fireEvent.change(screen.getByLabelText('test-input'), { target: { value: '2.5mm' } });
     expect(onValidChange).not.toHaveBeenCalled();
     expect(screen.getByText(INPUT_ERROR_MESSAGES.invalidNumber)).toBeInTheDocument();
+  });
+
+  // Nachtest 2026-10-16 (Komma-Bug): Auch Ganzzahlfelder sind Textfelder —
+  // `type="number"` verschluckte das Komma, bevor der Parser es sah
+  // („12,5“ → 125). Die Tastatur bleibt numerisch, die Ganzzahl-Prüfung
+  // meldet „12,5“ im Ganzzahlfeld als Fehler statt still zu runden.
+  it('keeps whole-number fields on the numeric keyboard', () => {
+    render(<ValidatingInput value={10} onValidChange={vi.fn()} aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.inputMode).toBe('numeric');
+  });
+
+  // Nachtest 2026-10-16, Abb. 15: Mobil wurde aus „12,5“ der Text „12520“ —
+  // der Zwischenstand „12,“ galt als Wert/Fehler und der Prop-Abgleich
+  // schrieb den Feldtext mitten im Tippen um. Jetzt bleibt der Text stehen,
+  // bis die Zahl vollständig ist.
+  it('does not rewrite the field text while a decimal comma is being typed', () => {
+    const onValidChange = vi.fn();
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12,' } });
+    // Zwischenstand: weder Wert noch Fehler.
+    expect(onValidChange).not.toHaveBeenCalled();
+    expect(screen.queryByText(INPUT_ERROR_MESSAGES.invalidNumber)).not.toBeInTheDocument();
+    expect(input.value).toBe('12,');
+
+    fireEvent.change(input, { target: { value: '12,5' } });
+    expect(onValidChange).toHaveBeenCalledWith(12.5);
+    // Der getippte Text bleibt, wie er ist — kein „125“, kein „12.5“-Sprung.
+    expect(input.value).toBe('12,5');
+  });
+
+  it('reverts an unfinished decimal text on blur', () => {
+    const onValidChange = vi.fn();
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12,' } });
+    fireEvent.blur(input);
+    expect(input.value).toBe('20');
+    expect(onValidChange).not.toHaveBeenCalled();
   });
 
   it('reports non-integral input in integer mode instead of rounding it', () => {
@@ -176,5 +224,27 @@ describe('ValidatingInput', () => {
     // Pflichtfeld: letzte gültige Angabe bleibt stehen.
     fireEvent.blur(input);
     expect(input.value).toBe('6000');
+  });
+  // B-01 (QA-Bericht): „12,5“ W wurde als 125 W übernommen, weil das Feld
+  // `type="number"` war. Jetzt ein Textfeld, das das Dezimalkomma liest.
+  it('accepts the German decimal comma in float fields (B-01)', () => {
+    const onValidChange = vi.fn();
+    render(
+      <ValidatingInput
+        value={0}
+        isFloat
+        onValidChange={onValidChange}
+        rules={[COMMON_RULES.strictlyPositive]}
+        aria-label="test-input"
+      />
+    );
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    expect(input).toHaveAttribute('type', 'text');
+    expect(input).toHaveAttribute('inputmode', 'decimal');
+    fireEvent.change(input, { target: { value: '12,5' } });
+
+    expect(onValidChange).toHaveBeenCalledWith(12.5);
+    expect(onValidChange).not.toHaveBeenCalledWith(125);
   });
 });

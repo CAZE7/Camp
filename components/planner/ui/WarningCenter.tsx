@@ -168,6 +168,7 @@ function FindingCard({
   const values = ampacityValues(warning);
   const details = warning.details;
   const hasWhy =
+    Boolean(warning.source) ||
     (details?.contributors?.length ?? 0) > 0 ||
     details?.izBreakdown !== undefined ||
     (details?.assumptions?.length ?? 0) > 0 ||
@@ -180,7 +181,7 @@ function FindingCard({
       <div className="flex items-start gap-2">
         {style.icon}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-foreground">{warning.title || style.label}</p>
+          <p className="break-words text-sm font-bold text-foreground">{warning.title || style.label}</p>
 
           {/* Kompakte Wertzeile (AMP-001): Betriebsstrom / Zulässig / Differenz. */}
           {values && (
@@ -203,7 +204,6 @@ function FindingCard({
               Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
               {' · Soll: '}
               {valueWithUnit(warning.expectedValue, warning.unit)}
-              {warning.source ? ` · Regel: ${warning.source}` : ''}
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
@@ -211,7 +211,7 @@ function FindingCard({
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
           {rootCause && rootCause.findingCount > 1 && (
             <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-soft">
-              Gleiche Ursache ({rootCause.rootCauseId}) · {rootCause.findingCount} Leitungen betroffen
+              Gleiche Ursache · {rootCause.findingCount} Leitungen betroffen
               {warning.status === 'incomplete' ? ' · Datenlage unvollständig, kein Verstoß' : ''}
             </p>
           )}
@@ -225,13 +225,14 @@ function FindingCard({
                 type="button"
                 onClick={() => setWhyOpen((value) => !value)}
                 aria-expanded={whyOpen}
-                className="flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
-                Warum?
+                Warum? Technische Details
               </button>
               {whyOpen && (
                 <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                  {warning.source && <p>Grundlage: {warning.source}</p>}
                   {details?.calculationMethod && (
                     <p>
                       Methode: <strong>{details.calculationMethod}</strong>
@@ -243,7 +244,7 @@ function FindingCard({
                       <ul className="mt-0.5 flex flex-col">
                         {details.contributors.map((entry) => (
                           <li key={`${entry.componentId}-${entry.role}`}>
-                            {entry.label} ({entry.componentId}) — {fmtA(entry.contribution)} A{' '}
+                            {entry.label} — {fmtA(entry.contribution)} A{' '}
                             {entry.role === 'load' ? '(Last)' : '(Quelle)'}
                           </li>
                         ))}
@@ -442,16 +443,6 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     }
     return map;
   }, [warnings]);
-  const stateCounts = useMemo(() => {
-    const value = { violated: 0, incomplete: 0, satisfied: 0, not_applicable: 0 };
-    for (const warning of warnings) {
-      if (warning.status === 'violated') value.violated += 1;
-      else if (warning.status === 'incomplete') value.incomplete += 1;
-      else if (warning.status === 'satisfied') value.satisfied += 1;
-      else if (warning.status === 'not_applicable') value.not_applicable += 1;
-    }
-    return value;
-  }, [warnings]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -556,7 +547,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
         // (WCAG 2.5.3 „Label in Name").
         aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-3 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
+        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:px-3 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
       >
         {topType === 'critical' ? (
           <OctagonAlert className="h-4 w-4" aria-hidden="true" />
@@ -565,8 +556,24 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         ) : (
           <Info className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="whitespace-nowrap">{badgeLabel}</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="cad-warn-chip__text whitespace-nowrap">{badgeLabel}</span>
+        {/* Kompakt: Der vollständige Satz („14 von 24 kritisch“) braucht
+            ~190 px und verdrängt in der 44-px-Werkzeugleiste die Aktionsgruppe.
+            Unter 1400 px zeigt die Leiste nur die Zahl der schwersten Stufe; die
+            vollständige Aussage tragen `aria-label` und der Dialog.
+            Die Ziffer steht als CSS-Inhalt (`::after`, `data-compact`) an einem
+            Element **ohne Textknoten**: `textContent` der Leiste bleibt damit
+            der vollständige Satz — genau der Vertrag, den
+            `WarningCenter.test.tsx` festhält („2 von 3 kritisch“). */}
+        <span
+          className="cad-warn-chip__count whitespace-nowrap tabular-nums"
+          data-compact={counts.critical > 0 ? counts.critical : warnings.length}
+          aria-hidden="true"
+        />
+        <ChevronDown
+          className={`hidden h-4 w-4 transition-transform md:block ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
       </button>
 
       {open && (
@@ -582,7 +589,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           // schwebenden Undo-Leiste), ab `md` als Bericht unter der
           // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
           // sichtbaren Bereich.
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 max-h-[60dvh] overflow-y-auto rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
           aria-label="Planungsprüfung"
         >
@@ -598,13 +605,12 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                 {counts.critical > 0 ? 'Anlage nicht sicher' : 'Keine kritischen Fehler'}
               </p>
               {/* Gruppierung: Sicherheit / Planung / fehlende Angaben. */}
+              {/* Nachtest Bug 4: Zwei Zählerzeilen mit Fachworten
+                  („verletzt“, „ohne ausreichende Angaben“) verwirrten mehr,
+                  als sie erklärten. Eine Zeile, Klartext, dieselben Zahlen
+                  wie die Karten darunter. */}
               <p className="text-xs text-muted-foreground">
-                {stateCounts.violated} verletzt · {stateCounts.incomplete} ohne ausreichende Angaben ·{' '}
-                {rootCauses.size} Ursachen
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {groups.safety} Sicherheitsfehler · {groups.planning} Planungsfehler · {groups.gaps} Angaben
-                fehlen
+                {groups.safety + groups.planning} Probleme · {groups.gaps}× Angaben fehlen
               </p>
             </div>
             <button

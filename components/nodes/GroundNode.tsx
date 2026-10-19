@@ -1,10 +1,12 @@
 'use client';
-import React from 'react';
+import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { type GroundNodeData, type PlannerNodeProps } from './types';
 import { NodeSymbol } from './NodeSymbol';
+import { DesignatorContext } from './designators';
 
-const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps<GroundNodeData>) {
+const GroundNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<GroundNodeData>) {
+  const designators = useContext(DesignatorContext);
   return (
     <div
       role="group"
@@ -12,7 +14,7 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
       aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle flex w-32 flex-col items-center p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="ground" />
+      <NodeSymbol kind="ground" dinCode={designators.get(id)} />
       <div className="mb-1 text-center text-sm font-bold">{data.label || 'Massepunkt'}</div>
       <div className="measure mb-2 text-xs text-muted-foreground">(Karosserie)</div>
 

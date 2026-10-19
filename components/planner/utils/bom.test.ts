@@ -36,12 +36,20 @@ function cable(id: string, data: Partial<CableEdgeData>): Edge<CableEdgeData> {
 const noRoute = () => undefined;
 
 describe('edgeLengthOf — Quelle jeder Länge ist benennbar', () => {
-  it('nimmt bei Widerspruch die größere Länge und nennt beide Quellen', () => {
+  it('Nutzereintrag schlägt den gerouteten Zeichenweg (Nachtest Bug 7: 6,4 m zwischen Nachbarn)', () => {
     const length = edgeLengthOf(38.1 * PX_PER_METER, 22.1, 1);
-    expect(length.meters).toBeCloseTo(38.1, 6);
-    expect(length.source).toBe('routed');
+    expect(length.meters).toBe(22.1);
+    expect(length.source).toBe('stored');
+    // Beide Quellen bleiben benennbar, die Abweichung wird gemeldet.
     expect(length.storedM).toBe(22.1);
     expect(length.routedM).toBeCloseTo(38.1, 6);
+    expect(lengthsDiverge(length)).toBe(true);
+  });
+
+  it('bei einer Planungsannahme bleibt die konservative größere Länge', () => {
+    const length = edgeLengthOf(38.1 * PX_PER_METER, 22.1, 1, true);
+    expect(length.meters).toBeCloseTo(38.1, 6);
+    expect(length.source).toBe('routed');
   });
 
   it('markiert eine fehlende Länge ausdrücklich als Platzhalter', () => {
@@ -101,11 +109,21 @@ describe('buildBom — deterministisch über einen Planstand', () => {
     expect(JSON.stringify(input)).toBe(snapshot);
   });
 
-  it('übernimmt die Routenlänge aus der injizierten Quelle', () => {
-    const bom = buildBom({ ...input, edges: [cable('e1', { length: 2, crossSection: 4 })] }, (id) =>
+  it('übernimmt die Routenlänge aus der injizierten Quelle, wenn keine Länge eingetragen ist', () => {
+    const bom = buildBom({ ...input, edges: [cable('e1', { crossSection: 4 })] }, (id) =>
       id === 'e1' ? { length: 30 * PX_PER_METER } : undefined
     );
     expect(bom.cableLengths['4']).toBeCloseTo(30, 6);
+  });
+
+  it('eine eingetragene Länge schlägt den gerouteten Zeichenweg (Nachtest Bug 7)', () => {
+    const bom = buildBom({ ...input, edges: [cable('e1', { length: 2, crossSection: 4 })] }, (id) =>
+      id === 'e1' ? { length: 30 * PX_PER_METER } : undefined
+    );
+    expect(bom.cableLengths['4']).toBe(2);
+    // Der Widerspruch bleibt als Längenhinweis sichtbar.
+    expect(bom.lengthAssumptions).toHaveLength(1);
+    expect(bom.lengthAssumptions[0]).toMatchObject({ source: 'stored', storedM: 2 });
   });
 
   it('leerer Plan ergibt eine leere Stückliste', () => {

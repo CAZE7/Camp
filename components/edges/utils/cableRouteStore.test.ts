@@ -297,10 +297,10 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
       [
         'e1',
         {
-          path: 'M 0 70 L 300 70',
+          path: 'M 100 30 L 200 30',
           waypoints: [
-            { x: 0, y: 70 },
-            { x: 300, y: 70 },
+            { x: 100, y: 30 },
+            { x: 200, y: 30 },
           ],
           labelX: 150,
           labelY: 75,
@@ -357,10 +357,10 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
         [
           'e1',
           {
-            path: 'M 220 140 L 600 140',
+            path: 'M 220 124 L 600 124',
             waypoints: [
-              { x: 220, y: 140 },
-              { x: 600, y: 140 },
+              { x: 220, y: 124 },
+              { x: 600, y: 124 },
             ],
             labelX: 410,
             labelY: 145,

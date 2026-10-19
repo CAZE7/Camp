@@ -51,7 +51,8 @@ describe('Inspector Component', () => {
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       expect(lengthInput).toBeInTheDocument();
-      expect(lengthInput).toHaveValue(5);
+      expect(lengthInput).toHaveValue('5');
+      expect(lengthInput).toHaveAttribute('inputmode', 'decimal');
     });
 
     it('calls onChangeLength when length input changes', () => {
@@ -82,7 +83,7 @@ describe('Inspector Component', () => {
       render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
-      expect(lengthInput).toHaveValue(3); // Default length is 3
+      expect(lengthInput).toHaveValue('3'); // Default length is 3 (Textfeld seit B-01)
     });
 
     it('does not call onChangeLength when input is NaN', () => {

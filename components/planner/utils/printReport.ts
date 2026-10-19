@@ -111,8 +111,8 @@ function verificationBlock(summary: VerificationSummary | null): string {
       <tbody>
         <tr><th>Regeln angewandt</th><td class="num">${summary.exercised}</td></tr>
         <tr><th>bestanden</th><td class="num">${summary.passed}</td></tr>
-        <tr><th>verletzt</th><td class="num">${summary.failed}</td></tr>
-        <tr><th>nicht entscheidbar</th><td class="num">${summary.unprovable}</td></tr>
+        <tr><th>nicht erfüllt</th><td class="num">${summary.failed}</td></tr>
+        <tr><th>Angaben fehlen (nicht prüfbar)</th><td class="num">${summary.unprovable}</td></tr>
         <tr><th>nicht zutreffend (kein Gegenstand im Plan)</th><td class="num">${summary.notApplicable}</td></tr>
       </tbody>
     </table>
@@ -162,8 +162,17 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
   .status { border: 1px solid black; padding: 6pt 8pt; margin-top: 8pt; }
   .status-blocked { border: 4px double black; }
   .disclaimer { font-size: 9pt; color: dimgray; border-top: 1px solid gray; margin-top: 16pt; padding-top: 6pt; }
-  section { break-inside: avoid-page; }
-  @media print { button { display: none; } }
+  /* Nachtest Bug 8: break-inside:avoid-page auf JEDER Sektion drückte
+     die lange Stückliste komplett auf Seite 2+ — Seite 1 zeigte nur die
+     Statusbox. Jetzt: nur Status/Zeilen unzertrennlich, Tabellen dürfen
+     umbrechen und ihr Kopf wiederholt sich auf jeder Seite. */
+  .status { break-inside: avoid-page; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid-page; }
+  h2, h3 { break-after: avoid-page; }
+  .print-actions { margin: 12pt 0; }
+  .print-actions button { font-size: 12pt; padding: 8pt 16pt; cursor: pointer; }
+  @media print { .print-actions { display: none; } }
 </style>
 </head>
 <body>
@@ -171,6 +180,7 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
 <p class="meta">Erzeugt: ${escapeHtml(input.generatedAt)} · Planstand: <code>${escapeHtml(planRef)}</code>${summary ? ` · Engine ${escapeHtml(summary.engineVersion)} · Zertifikat ${escapeHtml(summary.certificateHash)}` : ''}</p>
 ${body}
 <p class="disclaimer">${escapeHtml(DISCLAIMER)}</p>
+<div class="print-actions"><button type="button" onclick="window.print()">Diesen Bericht drucken / als PDF speichern</button></div>
 </body>
 </html>`;
 }
@@ -185,10 +195,31 @@ export function openPrintReport(html: string): boolean {
   const win = window.open('', '_blank');
   if (!win) return false;
   win.opener = null;
+  // Nachtest Bug 8: Titel vor dem Schreiben, Druck genau einmal nach load.
+  // Ein fester Timer druckte bei langsamem Rendern „about:blank“.
+  const title = /<title>([\s\S]*?)<\/title>/.exec(html)?.[1];
+  if (title) win.document.title = title.replace(/&amp;/g, '&');
+  let printed = false;
+  const printOnce = () => {
+    if (printed) return;
+    printed = true;
+    try {
+      win.focus?.();
+    } catch {
+      /* Fokus ist Komfort; der Druck darf daran nicht scheitern. */
+    }
+    try {
+      win.print();
+    } catch {
+      /* Der Knopf im Dokument bleibt als manueller Ausweg. */
+    }
+  };
   win.document.open();
   win.document.write(html);
   win.document.close();
-  // Druck erst nach dem Rendern starten.
-  win.setTimeout(() => win.print(), 300);
+  if (win.document.readyState === 'complete') printOnce();
+  else win.addEventListener('load', printOnce, { once: true });
+  // Absicherung, falls `load` nicht mehr feuert.
+  win.setTimeout(printOnce, 1500);
   return true;
 }

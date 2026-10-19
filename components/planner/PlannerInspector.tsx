@@ -77,7 +77,14 @@ export function PlannerInspector() {
       <button
         type="button"
         onClick={toggleInspector}
-        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1 z-50 hidden h-11 w-11 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:inline-flex ${
+        /* `xl:visible` ist Pflicht, nicht Kosmetik: Der Griff liegt innerhalb
+           der `<aside id="inspector-panel">`, und die trägt im eingeklappten
+           Zustand `xl:invisible` (damit ihr Inhalt nicht in die Tab-Reihenfolge
+           rutscht). `visibility` wird vererbt und ist am Kind nur mit einer
+           ausdrücklichen `visible`-Regel aufhebbar — ohne sie war der Griff
+           genau dann unsichtbar, wenn er gebraucht wurde: Nach dem Schließen
+           ließ sich die Spalte am Desktop nur über eine neue Auswahl öffnen. */
+        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:visible xl:inline-flex ${
           isInspectorOpen ? 'planner-inspector-toggle--open' : 'right-0.5'
         }`}
         title={isInspectorOpen ? 'Inspector einklappen' : 'Inspector ausklappen'}

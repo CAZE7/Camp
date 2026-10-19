@@ -78,6 +78,9 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.isInspectorOpen = true;
     plannerState.selectedNodes = [];
     plannerState.selectedEdges = [];
+    plannerState.nodes = [];
+    plannerState.waterNodes = [];
+    plannerState.viewMode = 'electric';
     plannerState.canUndo = false;
     plannerState.canRedo = false;
   });
@@ -118,6 +121,23 @@ describe('PlannerInner — responsives Layout', () => {
     expect(plannerState.redo).toHaveBeenCalledTimes(1);
   });
 
+  it('platziert die mobile Planübersicht neben Undo/Redo und passt sie an die aktive Ansicht an', () => {
+    plannerState.nodes = Array.from({ length: 9 }, (_, index) => ({ id: `node-${index}` }));
+    const { rerender } = render(<PlannerInner />);
+    const overview = screen.getByTestId('mobile-overview');
+    const history = screen.getByTestId('mobile-undo').parentElement;
+    expect(history).toContainElement(overview);
+    expect(overview).toHaveClass('h-12');
+
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    fireEvent.click(overview);
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'planner-fit-view' }));
+
+    plannerState.nodes = Array.from({ length: 8 }, (_, index) => ({ id: `node-${index}` }));
+    rerender(<PlannerInner />);
+    expect(screen.queryByTestId('mobile-overview')).not.toBeInTheDocument();
+  });
+
   it('A1: der Canvas ist der Standard-Tab und lässt sich umschalten', () => {
     render(<PlannerInner />);
     expect(column('flow-canvas')).toBeTruthy();
@@ -132,10 +152,26 @@ describe('PlannerInner — responsives Layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bauteile' }));
     const sidebarColumn = column('planner-sidebar');
     expect(sidebarColumn.className).toContain('flex');
-    // Jetzt ist der Canvas auf dem Handy ausgeblendet …
-    expect(screen.getByTestId('planner-canvas-column').className).toContain('hidden');
-    // … bleibt ab Tablet aber sichtbar.
-    expect(screen.getByTestId('planner-canvas-column').className).toContain('md:flex');
+
+    // M12 — bewusste Vertragsänderung der Layout-Runde:
+    // Vorher wechselte die Shell auf dem Handy zwischen zwei Spalten
+    // (`hidden` ↔ `md:flex`): Der Katalog nahm der Zeichenfläche den Platz,
+    // React Flow wurde nach jedem Wechsel neu vermessen und der Plan sprang.
+    // Jetzt bleibt die Zeichenfläche auf jeder Breite montiert; der Katalog
+    // liegt als Blatt (`max-md:absolute`) darüber. Deshalb steht hier keine
+    // `hidden`-Erwartung mehr — dafür prüfen wir, dass das Blatt wirklich ein
+    // Blatt ist und der Shell-Zustand es ankündigt (der CSS-Anker
+    // `data-panel-open` blendet die schwebenden Canvas-Griffe aus).
+    expect(canvasColumn.className).not.toContain('hidden');
+    expect(sidebarColumn.className).toContain('max-md:absolute');
+    expect(sidebarColumn.className).toContain('max-md:z-40');
+    expect(shell()).toHaveAttribute('data-panel-open', 'true');
+
+    // Zurück auf die Zeichenfläche: Blatt zu, Canvas weiter im Aufbau.
+    fireEvent.click(screen.getByRole('button', { name: 'Elektrik' }));
+    expect(shell()).toHaveAttribute('data-panel-open', 'false');
+    expect(column('planner-sidebar').className).toContain('hidden');
+    expect(screen.getByTestId('planner-canvas-column').className).not.toContain('hidden');
   });
 
   it('A2 (768 px): Sidebar + Canvas nebeneinander, Inspector als Overlay', () => {
@@ -151,9 +187,11 @@ describe('PlannerInner — responsives Layout', () => {
     expect(workspace.className).toContain('min-h-0');
     expect(workspace.className).not.toContain('md:flex-rowdark');
 
-    // Sidebar und Canvas sind ab md beide sichtbar.
+    // Sidebar und Canvas sind ab md beide sichtbar. Die Zeichenfläche ist
+    // seit M12 zusätzlich auf jeder Breite montiert (auf dem Handy liegt das
+    // Blatt darüber) — deshalb prüft sie auf `flex` statt auf `md:flex`.
     expect(column('planner-sidebar').className).toContain('md:flex');
-    expect(screen.getByTestId('planner-canvas-column').className).toContain('md:flex');
+    expect(screen.getByTestId('planner-canvas-column').className).toContain('flex');
 
     // Inspector liegt zwischen 768 und 1279 px als Overlay über dem Canvas …
     const aside = screen.getByRole('complementary', { name: 'Eigenschaften' });

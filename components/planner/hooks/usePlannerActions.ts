@@ -5,7 +5,6 @@ import {
   Camera,
   Check,
   Copy,
-  FileDown,
   Frame,
   Grid3x3,
   Info,
@@ -19,6 +18,7 @@ import {
   Plus,
   FolderOpen,
   Redo2,
+  Route,
   Ruler,
   Save,
   ScanSearch,
@@ -39,6 +39,9 @@ import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../.
 import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { requestBomModalOpen } from '../utils/bomModalEvents';
+import { requestConfirm } from '../../ui/ConfirmDialog';
+import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
 import { buildShareUrl } from '../../../store/sharePlan';
@@ -131,8 +134,8 @@ export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> =
  * bzw. nur das Shell-Layout (Vollbild). Als Custom Events, weil die Auslöser in
  * der Chrome-Leiste und die Wirkung im Canvas bzw. in `PlannerInner` liegt.
  */
-export function dispatchPlannerEvent(name: string) {
-  window.dispatchEvent(new CustomEvent(name));
+export function dispatchPlannerEvent(name: string, detail?: unknown) {
+  window.dispatchEvent(new CustomEvent(name, detail === undefined ? undefined : { detail }));
 }
 
 /** Nach einem Planwechsel die Gesamtansicht zeigen — leicht verzögert, damit der neue Graph schon liegt. */
@@ -214,6 +217,14 @@ export function usePlannerActions({
     []
   );
 
+  // Ein langlebiger Listener statt einer Registrierung pro Vorschau: Wird ein
+  // Vorschlag abgebrochen, bleibt kein veralteter Erfolgs-Handler zurück.
+  useEffect(() => {
+    const onApplied = () => onFeedback(autoWireFeedbackFor(usePlannerStore.getState().nodes));
+    window.addEventListener('planner-auto-wired', onApplied);
+    return () => window.removeEventListener('planner-auto-wired', onApplied);
+  }, [onFeedback]);
+
   /**
    * Kurze Rückmeldung am Werkzeugknopf (150–350 ms). Kein Dauer-Spinner: Die
    * Aktion selbst ist synchron, die Anzeige soll nur die Aufnahme bestätigen.
@@ -225,15 +236,19 @@ export function usePlannerActions({
   }, []);
 
   const runAutoWire = useCallback(() => {
+    // N1 (Nachtest): Im Wasserplan erklärt die Aktion sich, statt einen
+    // Elektro-Vorschlag zu öffnen. Der Store-Guard in `previewAutoWire`
+    // bleibt die harte Grenze; hier kommt nur die sichtbare Rückmeldung.
+    if (usePlannerStore.getState().viewMode === 'water') {
+      onFeedback({
+        type: 'info',
+        message:
+          'Automatisch verbinden gibt es nur für den Elektrikplan. Im Wasserplan verbindest du von Hand (Anschluss antippen). Der Elektroplan wurde nicht verändert.',
+      });
+      return;
+    }
     flashBusy('wire');
     autoWireSystem();
-    // Spec #29: Der Vorschlag wird bei Konflikten erst nach Bestätigung
-    // angewendet — Erfolgs-Feedback deshalb erst nach `planner-auto-wired`.
-    const onApplied = () => {
-      onFeedback(autoWireFeedbackFor(usePlannerStore.getState().nodes));
-      window.removeEventListener('planner-auto-wired', onApplied);
-    };
-    window.addEventListener('planner-auto-wired', onApplied);
   }, [autoWireSystem, flashBusy, onFeedback]);
 
   const runLayoutV2 = useCallback(async () => {
@@ -245,12 +260,15 @@ export function usePlannerActions({
       outcome = { applied: false, reason: 'error' };
     }
     if (outcome.applied) {
+      // B-15 (QA): Nach dem Anordnen die Gesamtansicht neu einpassen, sonst
+      // bleibt der Zoom auf dem alten Ausschnitt (44 %, Beschriftungen unlesbar).
+      window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
       onFeedback({
         type: outcome.engine === 'elk' ? 'success' : 'info',
         message:
           outcome.engine === 'elk'
-            ? 'Plan mit ELK global strukturiert. Rückgängig ist möglich.'
-            : 'ELK nicht rechtzeitig fertig — Raster-Layout (Dagre-Fallback) angewendet. Rückgängig ist möglich.',
+            ? 'Plan automatisch angeordnet. Rückgängig ist möglich.'
+            : 'Automatische Anordnung war nicht rechtzeitig fertig — Raster-Anordnung angewendet. Rückgängig ist möglich.',
       });
     } else if (outcome.reason === 'empty') {
       onFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
@@ -277,7 +295,7 @@ export function usePlannerActions({
     }
   }, [warnings.length, flashBusy, onFeedback]);
 
-  const openBom = useCallback(() => dispatchPlannerEvent('show-bom-modal'), []);
+  const openBom = useCallback(() => requestBomModalOpen(), []);
   const openWarnings = useCallback(() => dispatchPlannerEvent('open-warning-center'), []);
   const openShortcuts = useCallback(() => dispatchPlannerEvent('open-shortcut-overlay'), []);
   const openCatalog = useCallback(() => dispatchPlannerEvent('planner-open-catalog'), []);
@@ -416,9 +434,9 @@ export function usePlannerActions({
     const hasContent = state.nodes.length + state.waterNodes.length > 0;
     if (
       hasContent &&
-      !window.confirm(
+      !(await requestConfirm(
         `Der aktuelle Plan wird durch „${picked.name}“ ersetzt. Mit Rückgängig (Strg+Z) lässt sich der Wechsel zurücknehmen. Fortfahren?`
-      )
+      ))
     ) {
       return;
     }
@@ -453,8 +471,9 @@ export function usePlannerActions({
         {
           items: [
             {
+              // Nachtest Bug 9: Kein „BOM“ mehr im Nutzertext — der Hint
+              // machte den Eintrag zu „Stückliste BOM“.
               label: 'Stückliste',
-              hint: 'BOM',
               icon: Package,
               testId: 'action-bom',
               run: openBom,
@@ -514,7 +533,9 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              label: 'Zur Prüfung',
+              // B-16 (QA-Bericht): hieß „Zur Prüfung“, speichert aber nur lokal und
+              // öffnet keine Prüfung. Der Eintrag heißt jetzt wie die Aktion.
+              label: 'Plan speichern',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
@@ -530,7 +551,7 @@ export function usePlannerActions({
               label: 'Gesamtübersicht',
               hint: 'Fit',
               icon: Maximize2,
-              run: () => dispatchPlannerEvent('planner-fit-view'),
+              run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
             },
             {
               label: 'Vollbild (Fokusmodus)',
@@ -591,19 +612,34 @@ export function usePlannerActions({
             },
           ],
         },
+        {
+          // Nachtest Bug 17: Der Expertenmodus versteckte sich im Hilfe-
+          // Menü. Er ist eine Darstellungs-Einstellung und gehört nach
+          // „Ansicht“ — mit Wortlaut, der sagt, was er tut.
+          label: 'Planungshilfe',
+          items: [
+            {
+              label: 'Expertenmodus (ohne Schrittleiste)',
+              icon: SlidersHorizontal,
+              checked: !guidedMode,
+              run: () => setGuidedMode(!guidedMode),
+            },
+          ],
+        },
       ],
       werkzeuge: [
         {
           items: [
             {
-              label: 'Automatisch verbinden',
+              label: 'Auto-verbinden — Vorschlag prüfen',
               icon: Wand2,
+              hint: 'Übernahme erst nach Bestätigung',
               testId: 'action-autowire-menu',
               run: runAutoWire,
             },
             { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
             {
-              label: 'Plan ordnen (ELK)',
+              label: 'Plan automatisch ordnen',
               icon: Network,
               testId: 'action-layout-v2-menu',
               run: () => void runLayoutV2(),
@@ -667,6 +703,11 @@ export function usePlannerActions({
         {
           items: [
             {
+              label: 'Hilfe & Fachwissen',
+              icon: Info,
+              run: () => dispatchPlannerEvent('planner-open-expert-panel'),
+            },
+            {
               label: 'Tastaturkürzel',
               hint: '?',
               icon: Keyboard,
@@ -678,13 +719,9 @@ export function usePlannerActions({
               icon: Info,
               run: () => setHasOnboarded(false),
             },
-            {
-              label: guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden',
-              icon: SlidersHorizontal,
-              checked: !guidedMode,
-              run: () => setGuidedMode(!guidedMode),
-            },
-            { label: 'Plan leeren …', icon: FileDown, danger: true, run: onRequestReset },
+            // Nachtest N6: „Plan leeren …“ stand im Hilfe-Menü und wurde
+            // leicht versehentlich angeklickt. Löschen gibt es nur noch
+            // unter Datei („Neuen leeren Plan starten“).
           ],
         },
       ],
@@ -736,9 +773,30 @@ export function usePlannerActions({
    * nur ein Menü (die Chrome-Leiste hält genau ein offenes Menü), deshalb gibt es
    * nie zwei Elemente mit derselben Kennung.
    */
+  // Dieselbe Sperrbedingung wie der Knopf in der Werkzeugleiste (ein Modul,
+  // eine Wahrheit): Der `⋯`-Eintrag darf nicht anklickbar sein, während der
+  // Knopf gesperrt ist.
+  const optimizeRouting = useOptimizeRoutingCommand();
+
   const overflow = useMemo<PlannerMenuGroup[]>(
     () => [
       { items: menus.werkzeuge[0]!.items },
+      {
+        /* Zugang zur Kabel-Optimierung, wenn der Knopf auf 320 px aus der
+           Werkzeugleiste weicht (globals.css §7a). Dieselbe Aktion, dieselbe
+           Sperrbedingung (`useOptimizeRoutingCommand`) — nur ein anderer Weg
+           dorthin. */
+        label: 'Kabelrouting',
+        items: [
+          {
+            label: 'Kabel optimieren',
+            icon: Route,
+            testId: 'action-optimize-routing',
+            disabled: optimizeRouting.disabled,
+            run: optimizeRouting.run,
+          },
+        ],
+      },
       {
         label: 'Ausgabe',
         items: [
@@ -748,7 +806,17 @@ export function usePlannerActions({
             label: 'Gesamtübersicht',
             icon: Maximize2,
             testId: 'action-fit-view',
-            run: () => dispatchPlannerEvent('planner-fit-view'),
+            run: () => dispatchPlannerEvent('planner-fit-view', { full: true }),
+          },
+        ],
+      },
+      {
+        label: 'Hilfe',
+        items: [
+          {
+            label: 'Hilfe & Fachwissen',
+            icon: Info,
+            run: () => dispatchPlannerEvent('planner-open-expert-panel'),
           },
         ],
       },
@@ -806,6 +874,7 @@ export function usePlannerActions({
       guidedMode,
       menus,
       onRequestReset,
+      optimizeRouting,
       season,
       setDetailLevel,
       setGuidedMode,

@@ -2809,3 +2809,33 @@ routing:audit` Exit 0 ohne Hinweis, `FINAL_VALIDATION_RATCHET` auf 0/0/0/0/0/0.
    `scripts/routing/portCapacity.test.ts` (5 Fälle: Token-Arithmetik,
    Monotonie, gemessener Anlass, Referenzplan-Bündel + Ausnahmeliste), zwei
    neue Locus-Fälle in `lib/routing/rules/portBundle.test.ts`.
+
+## 2026-10-14 — Globales Routing, Worker und Port-Stummel-Korrektur (Draft)
+
+- Normalisiertes Transfermodell, abbrechbarer Worker, Generation/Revision-Guard und
+  atomare Veröffentlichung mit revalidiertem Vorgänger; klare Pending/Stale/Error-Zustände.
+- Fehlende Routen, falsche Endpunkte/-richtungen, fehlende gemessene Handles und
+  Rückkehr durch Anschlussgeräte werden nicht mehr als gültig veröffentlicht.
+- Separations-Nachlauf konnte in `complex/e-auto-2` den Top-Stummel entfernen;
+  Richtungs-Veto plus gemeinsame Lane-Propagation/-Tausch behebt die Ursache.
+- Bewusster Recapture nur `knownPlans/complex.json`, vier Routing-Kanten, keine
+  elektrischen Daten. Kreuzungen 25→24, Länge unverändert, Biegungen 53→54 wegen
+  wiederhergestelltem Pflicht-Stummel. Kreuzungsratchet 25→24 verschärft.
+- Explizites begrenztes Rip-up ohne Geräteverschiebung; keine Elektro-Semantik geändert.
+- Recherche/Experimente und verbleibende Freigabekriterien: `docs/routing/`.
+
+## 2026-10-19 — Vorlagenwerte im Golden Master (Nachtest Bug 2)
+
+Bewusste Neuerfassung nur von `knownPlans/camper.json` (Eingabe `TEMPLATE_MINIMALIST`)
+und `knownPlans/complex.json` (Eingabe `TEMPLATE_AUTARK`). Anlass: die Vorlagen
+starteten mit 0 h / 0 V, der Prüfstand meldete deshalb „Nicht bestanden“.
+
+- camper: Verbraucher bekommen Nutzungsdauer (Kühlbox 8 h, LED 4 h, USB 2 h).
+  Keine Kabel-, Sicherungs- oder Routing-Änderung.
+- complex: dieselben Nutzungsdauern; Solarmodul trägt Arbeitspunkt 31 V / 12,9 A
+  sowie Voc 37 V / Isc 13,7 A; MPPT trägt `maxPvVoltage` 75 V. AutoWire dimensioniert
+  danach den angenommenen Solar-Strang `e-auto-6` mit 16 mm² statt 25 mm² und die
+  Sicherung der Solar-Kante `e-solar-charger` mit 25 A statt 50 A (Strangstrom
+  statt eines aus fehlender Spannung abgeleiteten höheren Stroms). Querschnitt
+  dieser Kante bleibt 25 mm². Routing-Stufe und Electrical-Stufe des Golden
+  Masters bleiben byte-gleich; die übrigen vier Pläne sind unverändert.

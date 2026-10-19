@@ -125,7 +125,11 @@ function OverflowMenu({
   return (
     <div
       ref={ref}
-      className="cad-menu left-auto right-0"
+      /* `planner-toolbar-sheet`: Auf dem Handy hängt die Liste nicht mehr an
+         ihrem Auslöser (sie würde bei 320 px rechts aus dem Bild laufen),
+         sondern liegt als Blatt über der Fußleiste — vollständig im Bild.
+         Ab 768 px bleibt sie das gewohnte Dropdown unter dem Knopf. */
+      className="cad-menu planner-toolbar-sheet left-auto right-0"
       role="menu"
       aria-label="Weitere Aktionen"
       onKeyDown={(event) => handleMenuKeyDown(event, onClose)}
@@ -258,156 +262,192 @@ export function PlannerToolbar({
 
   return (
     <div className="cad-toolbar" role="toolbar" aria-label="Werkzeuge" data-testid="planner-toolbar">
-      <div className="cad-toolbar__group">
-        <ToolButton
-          label="Rückgängig"
-          hint="Strg+Z"
-          icon={Undo2}
-          onClick={onUndo}
-          disabled={!canUndo}
-          testId="toolbar-undo"
-          className="cad-toolbar__desktop-tool hidden md:inline-flex"
-        />
-        <ToolButton
-          label="Wiederholen"
-          hint="Strg+Y"
-          icon={Redo2}
-          onClick={onRedo}
-          disabled={!canRedo}
-          testId="toolbar-redo"
-          className="cad-toolbar__desktop-tool hidden md:inline-flex"
-        />
-      </div>
+      {/*
+        Zwei Zonen statt einer Scroll-Fläche (M12):
+        `__actions` darf waagerecht durchlaufen, `__status` wird nie
+        weggescrollt. Vorher lagen Verlauf, Ausgabe und Statuschips im selben
+        Scrollbereich: Bei 320 px war der Inhalt 356 px breit, das `⋯`-Menü
+        stand unsichtbar rechts außerhalb — sekundäre Aktionen waren damit
+        unerreichbar, und die Leiste scrollte zusätzlich senkrecht (60 px Inhalt
+        in 44 px Höhe), sodass Knöpfe abgeschnitten wirkten.
+      */}
+      <div className="cad-toolbar__actions">
+        <div className="cad-toolbar__group">
+          <ToolButton
+            label="Rückgängig"
+            hint="Strg+Z"
+            icon={Undo2}
+            onClick={onUndo}
+            disabled={!canUndo}
+            testId="toolbar-undo"
+            className="cad-toolbar__desktop-tool hidden md:inline-flex"
+          />
+          <ToolButton
+            label="Wiederholen"
+            hint="Strg+Y"
+            icon={Redo2}
+            onClick={onRedo}
+            disabled={!canRedo}
+            testId="toolbar-redo"
+            className="cad-toolbar__desktop-tool hidden md:inline-flex"
+          />
+        </div>
 
-      {/* Vorlagen und Teilen stehen auch im geführten Modus: Sie sind der
+        {/* Vorlagen und Teilen stehen auch im geführten Modus: Sie sind der
           Einstieg (volle Fläche statt leerer) und der Ausgang (Plan ins Forum)
           — keine Experten-Aktionen, die man verstecken müsste. */}
-      {(onLoadTemplate || onShare) && (
-        <>
-          <span className="cad-toolbar__sep" aria-hidden="true" />
-          <div className="cad-toolbar__group">
-            {onLoadTemplate && <TemplateMenuButton onLoadTemplate={onLoadTemplate} />}
-            {onShare && (
+        {(onLoadTemplate || onShare) && (
+          <>
+            <span className="cad-toolbar__sep" aria-hidden="true" />
+            <div className="cad-toolbar__group">
+              {onLoadTemplate && <TemplateMenuButton onLoadTemplate={onLoadTemplate} />}
+              {onShare && (
+                <ToolButton
+                  label="Link zum Plan kopieren"
+                  visibleLabel="Teilen"
+                  showLabel
+                  hint="Plan als Link weitergeben (ohne Konto)"
+                  icon={Share2}
+                  onClick={onShare}
+                  testId="action-share"
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {!guidedMode && (
+          <>
+            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+
+            <div className="cad-toolbar__group">
+              <button
+                type="button"
+                data-testid="action-autowire"
+                onClick={onAutoWire}
+                disabled={busy !== null}
+                // N1 (Nachtest): Im Wasserplan heißt der Knopf, was er tut —
+                // er erklärt (Toast), statt den Elektroplan vorzuschlagen.
+                aria-label={
+                  viewMode === 'water'
+                    ? 'Auto-verbinden: nur im Elektrikplan verfügbar'
+                    : 'Auto-verbinden: Vorschlag prüfen'
+                }
+                className="cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap"
+                data-tooltip={
+                  viewMode === 'water'
+                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+                }
+                title={
+                  viewMode === 'water'
+                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+                }
+              >
+                {busy === 'wire' ? (
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <Wand2 className="h-4 w-4" aria-hidden="true" />
+                )}
+                {/* Die Beschriftung macht die neue Sicherheitsstufe klar: Jeder
+                  Lauf öffnet erst die Vorschau; übernommen wird nur nach einem
+                  ausdrücklichen Tipp auf „Vorschlag anwenden“. */}
+                <span className="tb-label tb-label--kurz">Vorschau</span>
+                <span className="tb-label tb-label--mittel">Vorschlag prüfen</span>
+                <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="action-tidy"
+                onClick={onTidy}
+                disabled={busy !== null}
+                className="cad-btn cad-toolbar__desktop-tidy"
+                title="Plan ordnen: Bauteile automatisch übersichtlich anordnen. Rückgängig ist möglich."
+              >
+                {busy === 'layoutV2' ? (
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>Plan automatisch ordnen</span>
+              </button>
+            </div>
+
+            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+
+            <div className="cad-toolbar__group cad-toolbar__desktop-group">
               <ToolButton
-                label="Link zum Plan kopieren"
-                visibleLabel="Teilen"
+                label="Plan prüfen"
+                visibleLabel="Prüfen"
                 showLabel
-                hint="Plan als Link weitergeben (ohne Konto)"
-                icon={Share2}
-                onClick={onShare}
-                testId="action-share"
+                hint="Befunde und Empfehlungen"
+                icon={ScanSearch}
+                onClick={onCheck}
               />
-            )}
-          </div>
-        </>
-      )}
+              <ToolButton
+                label="Stückliste"
+                visibleLabel="Stückliste"
+                showLabel
+                hint="Bauteile und Leitungen"
+                icon={Package}
+                onClick={onBom}
+              />
+              <ToolButton
+                label="Plan als Bild exportieren"
+                visibleLabel="Export"
+                showLabel
+                icon={busy === 'export' ? Loader2 : Camera}
+                onClick={onExport}
+              />
+            </div>
 
-      {!guidedMode && (
-        <>
-          <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+          </>
+        )}
 
-          <div className="cad-toolbar__group">
+        <div className="cad-toolbar__group">
+          <div className="hidden items-center gap-0.5 md:flex" role="tablist" aria-label="Planbereich wählen">
+            {/* Symbole plus Beschriftung ab 1536 px: Die Wörter kosten
+                zusammen 103 px. Gemessen bei 1920 px lief die Leiste damit
+                20 px über, *solange* gleichzeitig die langen Statuszusätze
+                sichtbar waren — deshalb erscheinen die Zusätze erst ab
+                1980 px (§7a) und die Beschriftung bleibt im DOM, wie der
+                Komponententest (`getByText('Elektrik')`) sie verlangt. */}
             <button
               type="button"
-              data-testid="action-autowire"
-              onClick={onAutoWire}
-              disabled={busy !== null}
-              className="cad-btn cad-btn--primary"
-              data-tooltip="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
-              title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
+              role="tab"
+              aria-selected={viewMode === 'electric'}
+              aria-label="Elektrikplan anzeigen"
+              title="Elektrikplan anzeigen"
+              data-testid="viewmode-electric"
+              onClick={() => onSelectViewMode('electric')}
+              className={`cad-btn ${viewMode === 'electric' ? 'cad-btn--active' : ''}`}
             >
-              {busy === 'wire' ? (
-                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              ) : (
-                <Wand2 className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span className="hidden lg:inline">Automatisch verbinden</span>
-              {/* Schmal: technisch kurz, aber deutsch — der Knopf ist die
-              Hauptaktion, ein englischer Arbeitstitel wäre hier ein Fremdkörper. */}
-              <span className="lg:hidden">Auto-verbinden</span>
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden 2xl:inline">Elektrik</span>
             </button>
-
             <button
               type="button"
-              data-testid="action-tidy"
-              onClick={onTidy}
-              disabled={busy !== null}
-              className="cad-btn cad-toolbar__desktop-tidy"
-              title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
+              role="tab"
+              aria-selected={viewMode === 'water'}
+              aria-label="Wasserplan anzeigen"
+              title="Wasserplan anzeigen"
+              data-testid="viewmode-water"
+              onClick={() => onSelectViewMode('water')}
+              className={`cad-btn ${viewMode === 'water' ? 'cad-btn--active' : ''}`}
             >
-              {busy === 'layoutV2' ? (
-                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              ) : (
-                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>Plan ordnen</span>
+              <Droplets className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden 2xl:inline">Wasser</span>
             </button>
           </div>
-
-          <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
-
-          <div className="cad-toolbar__group cad-toolbar__desktop-group">
-            <ToolButton
-              label="Plan prüfen"
-              visibleLabel="Prüfen"
-              showLabel
-              hint="Befunde und Empfehlungen"
-              icon={ScanSearch}
-              onClick={onCheck}
-            />
-            <ToolButton
-              label="Stückliste"
-              visibleLabel="Stückliste"
-              showLabel
-              hint="Bauteile und Leitungen"
-              icon={Package}
-              onClick={onBom}
-            />
-            <ToolButton
-              label="Plan als Bild exportieren"
-              visibleLabel="Export"
-              showLabel
-              icon={busy === 'export' ? Loader2 : Camera}
-              onClick={onExport}
-            />
-          </div>
-
-          <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
-        </>
-      )}
-
-      <div className="cad-toolbar__group">
-        <div className="hidden items-center gap-0.5 md:flex" role="tablist" aria-label="Planbereich wählen">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'electric'}
-            aria-label="Elektrikplan anzeigen"
-            title="Elektrikplan anzeigen"
-            data-testid="viewmode-electric"
-            onClick={() => onSelectViewMode('electric')}
-            className={`cad-btn ${viewMode === 'electric' ? 'cad-btn--active' : ''}`}
-          >
-            <Zap className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden lg:inline">Elektrik</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'water'}
-            aria-label="Wasserplan anzeigen"
-            title="Wasserplan anzeigen"
-            data-testid="viewmode-water"
-            onClick={() => onSelectViewMode('water')}
-            className={`cad-btn ${viewMode === 'water' ? 'cad-btn--active' : ''}`}
-          >
-            <Droplets className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden lg:inline">Wasser</span>
-          </button>
         </div>
       </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      {/* Rechts festgenagelt: Status und der Zugang zu allen sekundären
+          Aktionen. Dieses Feld kennt kein `overflow-x` — es bleibt sichtbar. */}
+      <div className="cad-toolbar__status" data-testid="planner-toolbar-status">
         {statusArea}
         <ToolButton
           label={focusMode ? 'Fokusmodus verlassen' : 'Vollbild (Fokusmodus)'}
@@ -431,7 +471,7 @@ export function PlannerToolbar({
             aria-haspopup="menu"
             aria-expanded={openMenu === 'more'}
             onClick={() => onOpenMenu(openMenu === 'more' ? null : 'more')}
-            className={`cad-btn tool-btn ${openMenu === 'more' ? 'cad-btn--active' : ''}`}
+            className={`cad-btn tool-btn min-h-11 min-w-11 shrink-0 justify-center ${openMenu === 'more' ? 'cad-btn--active' : ''}`}
             data-tooltip="Weitere Aktionen"
             title="Weitere Aktionen"
           >

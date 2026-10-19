@@ -73,6 +73,48 @@ export async function exportPlanImage(): Promise<ExportResult> {
   const nodes: Node[] =
     state.viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
 
+  // QA B-17: Auswahl-Rahmen gehören nicht ins Bild. Auswahl vor dem Rendern
+  // lösen und danach wiederherstellen.
+  const previousSelection = {
+    nodeIds: state.nodes.filter((n) => n.selected).map((n) => n.id),
+    edgeIds: state.edges.filter((e) => e.selected).map((e) => e.id),
+  };
+  const clearedSelection = previousSelection.nodeIds.length > 0 || previousSelection.edgeIds.length > 0;
+  if (clearedSelection) {
+    usePlannerStore.setState((s) => ({
+      nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      edges: s.edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      selectedNodes: [],
+      selectedEdges: [],
+    }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }
+  try {
+    return await renderAndDownload(toPng, nodes);
+  } finally {
+    if (clearedSelection) {
+      usePlannerStore.setState((s) => {
+        const nodes = s.nodes.map((n) =>
+          previousSelection.nodeIds.includes(n.id) ? { ...n, selected: true } : n
+        );
+        const edges = s.edges.map((e) =>
+          previousSelection.edgeIds.includes(e.id) ? { ...e, selected: true } : e
+        );
+        return {
+          nodes,
+          edges,
+          selectedNodes: nodes.filter((n) => n.selected),
+          selectedEdges: edges.filter((e) => e.selected),
+        };
+      });
+    }
+  }
+}
+
+async function renderAndDownload(
+  toPng: typeof import('html-to-image').toPng,
+  nodes: Node[]
+): Promise<ExportResult> {
   try {
     const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement | null;
     if (!reactFlowWrapper) throw new Error('Planfläche nicht gefunden');
@@ -90,6 +132,9 @@ export async function exportPlanImage(): Promise<ExportResult> {
     // Wasserzeichen nur für die Aufnahme einhängen und in jedem Fall wieder
     // entfernen — auf der Zeichenfläche selbst hat es nichts zu suchen.
     const removeWatermark = mountWatermark(viewport || reactFlowWrapper, bounds);
+    // Nachtest Bug 13: Auswahlrahmen nicht mit ins PNG rendern.
+    reactFlowWrapper.classList.add('planner-exporting');
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     let dataUrl: string;
     try {
       dataUrl = await toPng(viewport || reactFlowWrapper, {
@@ -113,6 +158,7 @@ export async function exportPlanImage(): Promise<ExportResult> {
           ),
       });
     } finally {
+      reactFlowWrapper.classList.remove('planner-exporting');
       removeWatermark();
     }
     const link = document.createElement('a');
@@ -124,6 +170,7 @@ export async function exportPlanImage(): Promise<ExportResult> {
       message: 'Bild mit Wasserzeichen exportiert — bereit zum Posten im Forum oder in der Gruppe.',
     };
   } catch (error) {
+    document.querySelector('.react-flow.planner-exporting')?.classList.remove('planner-exporting');
     const message =
       nodes.length === 0
         ? 'Nichts zu exportieren — platziere zuerst Komponenten.'

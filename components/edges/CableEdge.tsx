@@ -783,7 +783,11 @@ const CableEdge = function ({
   const routeStatusSuffix = routeStatusDetails.length > 0 ? `, ${routeStatusDetails.join('; ')}` : '';
 
   // Sichtbarkeit des Labels: kompakt = nur bei Auswahl oder nach Tap.
-  const labelVisible = !isCompact || selected || tapRevealed;
+  // Nachtest Bug 16: Im Modus „Physisch“ (Frage: Wo liegt es?) sind die
+  // Längen-Labels immer sichtbar — sonst unterscheidet sich der Modus
+  // nicht von „Planung“.
+  const physicalMode = usePlannerStore((state) => state.plannerMode) === 'physisch';
+  const labelVisible = !isCompact || selected || tapRevealed || physicalMode;
   // Fingerbreite Trefferzone auf Touch, schlanke Zone für die Maus.
   const interactionStrokeWidth = coarsePointer ? 36 : 20;
 

@@ -1012,6 +1012,11 @@
     outline: 3px solid var(--wire-error);
     outline-offset: 5px;
   }
+  /* QA B-21: Prüfmodus — Bauteile mit Befund bekommen eine gestrichelte Markierung. */
+  .react-flow__node.planner-node-finding {
+    outline: 2px dashed var(--destructive);
+    outline-offset: 4px;
+  }
   .react-flow__node.planner-backbone-group-node {
     pointer-events: none !important;
     z-index: -10 !important;
@@ -1274,6 +1279,41 @@
   z-index: 60;
 }
 
+/* Fokus ist ein echter ablenkungsfreier Canvas-Modus, nicht nur ein weiterer
+   Vollbild-Wrapper. Ein klarer, erreichbarer Griff bleibt zum Zurückkehren. */
+.planner-shell--focus [data-testid='planner-dashboard'],
+.planner-shell--focus [data-testid='planner-sidebar-slot'],
+.planner-shell--focus #inspector-panel,
+.planner-shell--focus [data-testid='inspector-backdrop'],
+.planner-shell--focus .planner-statusbar,
+.planner-shell--focus .planner-bottom-nav,
+.planner-shell--focus .planner-mobile-history,
+.planner-shell--focus .planner-expert-panel,
+.planner-shell--focus .de-hud-card,
+.planner-shell--focus .planner-mode-switch-panel,
+.planner-shell--focus .planner-display-options-panel {
+  display: none !important;
+}
+
+.planner-shell--focus .planner-workspace,
+.planner-shell--focus [data-testid='planner-canvas-column'] {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.planner-focus-exit {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top));
+  right: max(0.5rem, env(safe-area-inset-right));
+  z-index: 120;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-panel);
+}
+
 .cad-scroll {
   overflow: auto;
   scrollbar-width: thin;
@@ -1367,10 +1407,16 @@
   font-size: 0.8125rem;
   cursor: default;
 }
-.cad-menubar__item:hover,
-.cad-menubar__item[data-open='true'] {
+.cad-menubar__item:hover {
   background: var(--surface-hover);
   color: var(--text-high);
+}
+/* Nachtest Bug 14: „Offen“ sah exakt wie „Hover“ aus — man erkannte nicht,
+   welches Menü geöffnet ist. Offen bekommt Fläche + Akzentlinie unten. */
+.cad-menubar__item[data-open='true'] {
+  background: var(--surface-raised);
+  color: var(--text-high);
+  box-shadow: inset 0 -2px 0 var(--accent-line);
 }
 .cad-menubar__item:focus-visible {
   outline: 2px solid var(--accent-line);
@@ -1393,13 +1439,18 @@
 .cad-menu {
   position: absolute;
   top: 100%;
-  left: 0;
   z-index: 90;
   min-width: 15rem;
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
   background: var(--surface-raised);
   padding-block: 0.25rem;
+  /* Kein `left`/`right` hier: Der Auslöser bestimmt die Ausrichtung.
+     Mit einem `left: 0` an dieser Stelle öffnete das `⋯`-Menü der
+     Werkzeugleiste nach rechts aus der Leiste heraus — gemessen bei 1280 px:
+     rechte Kante 1285 px, also 5 px abgeschnitten; bei 768 px lag es ganz
+     außerhalb. `left-0` steht jetzt dort, wo es gemeint ist (Menüleiste),
+     `right-0` beim `⋯`. */
 }
 .cad-menu__label {
   padding: 0.25rem 0.75rem;
@@ -1449,7 +1500,22 @@
   background: var(--rule);
 }
 
-/* --- 2. Werkzeugleiste --------------------------------------------------- */
+/* --- 2. Werkzeugleiste ---------------------------------------------------
+   Aufbau (M12): Die Leiste ist zweigeteilt und scrollt NUR in der Waagerechten.
+
+   `.cad-toolbar__actions`  — die Aktionsgruppen. Sie dürfen auf schmalen
+                              Geräten seitlich durchlaufen (`overflow-x: auto`);
+                              die Leiste bleibt dabei hoch wie eine Zeile.
+   `.cad-toolbar__status`   — rechts festgenagelt: `⋯`-Menü und Statuschips.
+                              Dieses Feld wird NIE weggescrollt — vorher lag es
+                              im selben Scrollbereich und war bei 320 px außerhalb
+                              des Bildes (gemessen: Leiste 356 px Inhalt auf
+                              320 px Fläche, `⋯` unsichtbar).
+
+   `overflow-y` ist überall `hidden`: Ein Knopf, der 44 px hoch ist, kann in
+   einer 44-px-Zeile liegen — aber er darf nicht halb abgeschnitten werden und
+   dann eine zweite (unsichtbare) Scroll-Ebene in der Werkzeugleiste erzeugen.
+   Vorher scrollte die Leiste auch senkrecht (Inhalt 60 px in 44 px Höhe). */
 .cad-toolbar {
   display: flex;
   flex-shrink: 0;
@@ -1459,16 +1525,48 @@
   border-bottom: 1px solid var(--rule);
   background: var(--surface-panel);
   padding-inline: 0.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
-.cad-toolbar::-webkit-scrollbar {
+.cad-toolbar__actions {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.cad-toolbar__actions::-webkit-scrollbar {
   display: none;
+}
+.cad-toolbar__status {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+  padding-inline-start: 0.25rem;
+  border-inline-start: 1px solid var(--rule);
 }
 .cad-toolbar__group {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.25rem;
+}
+/* Touch-Ziele in der Werkzeugleiste: 44 px Kante auf Finger-Bedienung.
+   `min-height` in einer Utility-freien Regel, damit `min-h-11` im JSX nicht
+   von einer spaeteren Utility ueberschrieben wird. */
+@media (pointer: coarse) {
+  .cad-toolbar {
+    --cad-toolbar-h: 48px;
+  }
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn {
+    min-height: 44px;
+  }
 }
 .cad-toolbar__sep {
   width: 1px;
@@ -1746,6 +1844,30 @@
 }
 .cad-statusbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Rangfolge der Statuszeile (M12): Was immer da sein muss, bleibt; was
+   zusätzlich ist, erscheint erst, wenn die Zeile breit genug ist. Vorher lief
+   die Zeile auf 320–1024 px über (gemessen: 539 px Inhalt in 375 px, 889 px
+   Inhalt in 764 px) — der Prüfstand am rechten Rand war nur über eine
+   unsichtbare waagerechte Scroll-Geste erreichbar. Bezug ist die
+   Canvas-Spalte, nicht das Fenster: Deshalb greifen die Stufen an der
+   Fensterbreite nur als Näherung und werden durch die Messung im E2E-Test
+   (`layout-geometry.spec.ts`: `scrollWidth === clientWidth`) abgesichert. */
+.cad-statusbar__opt {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .cad-statusbar__opt--coords {
+    display: inline-block;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cad-statusbar__opt--facts {
+    display: inline-block;
+  }
 }
 @media (min-width: 768px) {
   .cad-statusbar {
@@ -2068,6 +2190,31 @@
   box-shadow: 0 0 0 1px var(--error);
 }
 
+/* Nachtest Bug 16: Modus „Prüfung“ — Befunde markieren, Unauffälliges
+   abdunkeln. Reine Anzeige (Klassen setzt FlowCanvas nur in diesem Modus). */
+.de-canvas[data-planner-mode='pruefung'] .react-flow__node.planner-node--clean {
+  opacity: 0.45;
+}
+.de-canvas[data-planner-mode='pruefung'] .react-flow__node.planner-node--finding {
+  outline: 2px solid var(--warn-critical, var(--error));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.de-canvas[data-planner-mode='pruefung'] .react-flow__edge.planner-edge--clean {
+  opacity: 0.35;
+}
+
+/* Nachtest Bug 13 (Rest): Während des PNG-Exports keine Auswahlrahmen
+   ins Bild rendern (Klasse setzt exportPlanImage temporär). */
+.planner-exporting .react-flow__nodesselection-rect,
+.planner-exporting .react-flow__selection {
+  display: none !important;
+}
+.planner-exporting .node-card--selected,
+.planner-exporting .de-node-card--selected {
+  box-shadow: none !important;
+}
+
 .planner-shell .node-symbol {
   align-items: center;
   gap: 0.5rem;
@@ -2324,12 +2471,21 @@
     display: inline-flex;
   }
 
-  .cad-toolbar__desktop-group {
-    display: flex;
-  }
-
   .cad-toolbar__desktop-sep {
     display: block;
+  }
+}
+
+/* Ausgabe-Gruppe (Prüfen/Stückliste/Export) erst ab 1280 px sichtbar (M12).
+   Am Tablet (768–1279 px) war die Werkzeugleiste mit Verlauf, Auto-Wire,
+   Ausgabe, Bereichswechsel und fünf Statuschips 983 px breit auf 768 px
+   Fläche: Der Warnchip stand bei x = 670…861 (gemessen) und die Aktionsgruppe
+   war auf 0 px zusammengedrückt. Am Tablet sind diese drei Aktionen im
+   `⋯`-Menü (dieselben Einträge, dieselben Handlern) und am Handy zusätzlich
+   in der Schrittleiste erreichbar; ab 1280 px steht die Gruppe wieder offen. */
+@media (min-width: 1280px) {
+  .cad-toolbar__desktop-group {
+    display: flex;
   }
 }
 
@@ -2342,5 +2498,783 @@
 @media (min-width: 1280px) {
   .cad-toolbar .tool-btn__label {
     display: inline;
+  }
+}
+
+/* ==========================================================================
+   M12 — Anwendungshülle: eine Scroll-Achse pro Bereich
+   ==========================================================================
+   Ziel dieser Sektion: Der Planer hat genau EINE Scroll-Achse je Zone.
+
+     · Dokument   — scrollt auf `/planer/` nicht. Die Hülle ist der Rahmen
+                    (`.planner-shell`, volle dynamische Fensterhöhe).
+     · Canvas     — bekommt Touch/Pinch/Wheel; er verschiebt den Plan, nie die
+                    Seite (`overscroll-behavior: contain`).
+     · Panels     — scrollen ausschließlich in ihrem eigenen Körper
+                    (`.cad-scroll`), und ihr Ende reicht nicht nach außen
+                    (`overscroll-behavior: contain`).
+     · Popover    — auf dem Handy als Blatt von unten (`position: fixed`),
+                    damit ein Menü nie aus dem Bild oder hinter den Rand
+                    gescrollt wird.
+
+   Diese Sektion ist bewusst NICHT in `@layer components` geschrieben: Sie muss
+   Tailwind-Utilities wie `h-dvh`, `min-h-screen` oder `overflow-hidden`
+   überschreiben können, die später im Kaskadenblatt derselben Spezifität
+   stehen. Jede Regel hier nennt deswegen, was sie ersetzt.
+   ========================================================================== */
+
+/* --- 1. Höhe und Dokument-Sperre ------------------------------------------
+   `height: 100dvh` mit `100vh`-Fallback: Auf Mobil folgt die Hülle der
+   dynamischen Browserleiste. Ein reiner `vh`-Wert bleibt beim Ausblenden der
+   Adressleiste stehen; die Werkzeugleiste läge dann dauerhaft außerhalb des
+   sichtbaren Bereichs (die häufigste Ursache für „Toolbar verschwindet“).
+   Browser ohne `dvh` behalten den `vh`-Wert. */
+.planner-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Solange der Planer montiert ist, ist das Dokument kein Scroll-Container.
+   Die Klasse setzt `components/PlannerInner.tsx` beim Mount und nimmt sie beim
+   Unmount zurück — andere Routen der Website bleiben unberührt. */
+html.planner-root-active,
+html.planner-root-active body {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* --- 2. Menüs als Blatt auf dem Handy ------------------------------------
+   Zwischen 320 und 767 px passen die sechs Menüs nicht nebeneinander; die
+   Menüreihe scrollt waagerecht. Ein Dropdown, das an seinem (gescrollten)
+   Auslöser hängt, ragt dann aus dem Fenster — gemessen bei 375 px: „Hilfe“
+   stand bei x = 331, das 240 px breite Menü endete bei 571 px und war
+   abgeschnitten. Auf dem Handy öffnet es deshalb als Blatt über der
+   Fußleiste: immer vollständig im Bild, immer mit dem Daumen erreichbar. */
+@media (max-width: 767px) {
+  .planner-menubar-sheet,
+  .planner-toolbar-sheet {
+    position: fixed;
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    top: auto;
+    bottom: calc(var(--cad-nav-h) + env(safe-area-inset-bottom) + 0.5rem);
+    max-height: min(60dvh, 26rem);
+    min-width: 0;
+    width: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 70;
+    box-shadow: var(--cad-shadow-overlay);
+  }
+  /* Solange ein Blatt offen ist, liegen die schwebenden Canvas-Griffe ruhig:
+     Sie gehören zur Zeichenfläche DARUNTER und dürfen nicht über dem Blatt
+     stehen (`planner-mobile-history` und Expertenschalter sind `z-50`). */
+  .planner-shell[data-panel-open='true'] .planner-mobile-history,
+  .planner-shell[data-panel-open='true'] .planner-expert-panel,
+  .planner-shell[data-panel-open='true'] .planner-mobile-feedback {
+    display: none;
+  }
+}
+
+/* --- 3. Blatt hinter einer geöffneten Werkzeugleiste ---------------------- */
+@media (max-width: 767px) {
+  .planner-shell {
+    --cad-nav-h: 3.5rem;
+  }
+}
+
+/* --- 4. Flaches Querformat ------------------------------------------------
+   Ein Handy im Querformat ist 320–360 px hoch. Gemessen 2026-10-14 bei
+   640×320: Menüleiste 28 + Werkzeugleiste 40 + Schrittleiste 40 +
+   Statuszeile 26 + Fußleiste 44 = 178 px Chrome — es blieben 121 px
+   Zeichenfläche (38 % der Höhe). Deshalb:
+     · die Statuszeile entfällt (Zoom und Raster sitzen als Bedienelemente auf
+       der Zeichenfläche, Umfang und Prüfstand stehen in Menüleiste und
+       Werkzeugleiste),
+     · die Werkzeugleiste wird 36 px flach (Knöpfe 34 px — über der
+       WCAG-2.5.8-Mindestkante von 24 px, unter dem 44-px-Zielwert: eine
+       bewusste, dokumentierte Abweichung für Fenster unter 480 px Höhe),
+     · die Schrittleiste bleibt bei 32 px und zeigt nur Fortschritt + Aktion,
+     · die Fußleiste bleibt bei 44 px (sie ist der einzige Weg zu den
+       Blättern, dort gilt der Zielwert).
+   Ergebnis: ~178 → 189 px Zeichenfläche bei 320 px Fensterhöhe. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .planner-shell {
+    /* Menüleiste bleibt 44 px: Datei/Hilfe sind die geprüften Tippziele.
+       Die Werkzeugleiste darf hier flacher werden — sonst bleibt bei 320 px
+       Fensterhöhe keine 150 px Zeichenfläche (Nachtest-Querformat vs. M12-Budget). */
+    --cad-menubar-h: 44px;
+    --cad-nav-h: 44px;
+  }
+  .cad-toolbar {
+    --cad-toolbar-h: 36px;
+    min-height: 36px;
+  }
+  /* Dokumentierte Ausnahme nur unter 480 px Höhe: Werkzeugknöpfe 34 px
+     (über der WCAG-2.5.8-Kante von 24 px). Menü und Fußleiste bleiben 44 px. */
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn {
+    min-height: 34px;
+    min-width: 34px;
+  }
+  .cad-statusbar {
+    display: none;
+  }
+  .cad-rail {
+    min-height: 32px;
+    padding-block: 0;
+  }
+  .planner-bottom-nav button {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding-block: 0;
+  }
+
+  /* Schwebende Zeichenflächen-Griffe: Die Hochkant-Werte (8 rem für die
+     Zoom-Bedienung, 6.5 rem für Undo/Redo, 6/7 rem für das Expertenblatt)
+     sind für 812 px Höhe gerechnet. Gemessen bei 640×320: Die Zoom-Bedienung
+     stand bei y = −6 px — hinter der Werkzeugleiste und außerhalb des Bildes
+     (`elementFromPoint` traf die Werkzeugleiste), weil in einer 150 px hohen
+     Zeichenfläche schlicht kein Platz für 134 px senkrechter Griffe plus
+     128 px Abstand ist. Im flachen Querformat deshalb:
+       · Zoom-Bedienung waagerecht (4 × 46 px) mit kurzem Abstand über der
+         44-px-Fußleiste,
+       · Undo/Redo nach oben links (unten ist der Platz belegt),
+       · die reine Statuskarte („Hilfe & Fachwissen“, `pointer-events: none`)
+         entfällt — sie trug die halbe Zeichenfläche und keine Bedienung. */
+  .planner-shell .planner-controls {
+    bottom: calc(3rem + env(safe-area-inset-bottom)) !important;
+    flex-direction: row;
+  }
+  .planner-shell .planner-controls button {
+    border-right: 1px solid var(--rule);
+    border-bottom: 0;
+  }
+  /* Undo/Redo wandern in die Werkzeugleiste (dort ist bei 640 px Breite
+     Platz, sie ist nur 36 px hoch): Der schwebende Griff lag im flachen
+     Fenster immer auf einem der anderen Griffe. */
+  .planner-shell .planner-mobile-history {
+    display: none;
+  }
+  .cad-toolbar__desktop-tool {
+    display: inline-flex;
+  }
+  .cad-toolbar__desktop-sep {
+    display: block;
+  }
+  /* Die Meldungsfläche (Rückmeldung nach Aktionen) bleibt im DOM, wird aber
+     auf 1 px geschrumpft statt ausgeblendet: Sie trägt `role="status"` und
+     `aria-live="polite"` — `display: none` würde sie auch aus dem
+     Barrierefreiheitsbaum nehmen und Ansagen verschlucken. */
+  .planner-shell .planner-mobile-feedback {
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  /* Die Messwert-Karte („Aktueller Status") ist eine dritte Anzeige derselben
+     Zahlen wie Statuszeile und Inspektor; bei 149 px Zeichenflächenhöhe ragte
+     sie unten heraus und lag über dem Expertenblatt (gemessen 640×320). Sie
+     entfällt hier — die Zahlen stehen im Blatt „Details" der Fußleiste. */
+  .planner-shell .de-hud-card {
+    display: none;
+  }
+  /* Expertenblatt unten rechts — unterhalb der Zeile aus Anzeige-Chip
+     (y 137–181) und ohne die Zoom-Bedienung (x 15–149) zu berühren. */
+  .planner-shell .planner-expert-panel--closed,
+  .planner-shell .planner-expert-panel--open {
+    right: 0.5rem;
+    bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;
+  }
+  /* Der geschlossene Zugang schrumpft auf sein Symbol: Die Karte ist
+     197 × 58 px groß und belegte damit 39 % der 149 px hohen Zeichenfläche
+     (gemessen 640×320). Der Text bleibt als `aria-label` erhalten. */
+  .planner-shell .planner-expert-panel--closed {
+    padding: 0.25rem;
+  }
+  .planner-shell .planner-expert-panel--closed .expert-fab__copy {
+    display: none;
+  }
+  .planner-shell .planner-expert-panel--closed .expert-fab__icon {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+}
+
+/* Kurzform der Statuszeile — siehe `PlannerStatusBar`: unter 360 px steht
+   „15 Bt · 23 Lt“ statt „15 Bauteile · 23 Leitungen“. Die Ziffern sind echte
+   Textknoten, die Kürzel CSS-Inhalt; der vollständige Satz bleibt damit im
+   `textContent` (Vertrag: PlannerStatusBar.test.tsx). */
+.cad-statusbar__long {
+  display: inline;
+}
+.cad-statusbar__short {
+  display: none;
+}
+
+@media (max-width: 359.98px) {
+  .cad-statusbar__long {
+    display: none;
+  }
+  .cad-statusbar__short {
+    display: inline;
+  }
+}
+
+/* --- 5. Panel-Körper: Scroll endet im Panel ------------------------------- */
+.cad-scroll {
+  overscroll-behavior: contain;
+}
+
+/* --- 6. Keine unsichtbaren Tooltips in der Werkzeugleiste -----------------
+   `.tool-btn::after` (globals.css §D-6) positioniert die Blase *unter* ihrem
+   Knopf. In einer 44 px hohen Leiste mit `overflow: hidden` — die Leiste darf
+   nicht wachsen, sonst entsteht eine zweite Scroll-Achse — ist sie damit
+   grundsätzlich abgeschnitten: sie war nie sichtbar, erzeugte aber messbare
+   36 px Scrollbreite („Leiste läuft über“) und ließ Knöpfe abgeschnitten
+   wirken. Die Beschriftung trägt deshalb hier die native `title`-Blase und
+   `aria-label`; die Tooltip-Klasse bleibt außerhalb der Leiste erhalten. */
+.cad-toolbar .tool-btn::after {
+  display: none;
+}
+
+/* --- 7a. Breitenbudget der Werkzeugleiste ----------------------------------
+   Die Leiste ist in JEDER Breite 100 % des Fensters breit (sie liegt über
+   Katalog, Zeichenfläche und Inspektor, nicht darin). Gemessen 2026-10-14 am
+   gebauten Export mit dem Referenzplan (`knownPlans/simple.json`) und den
+   M12-Blättern aktiv; die Zahlen sind Ist-Breiten der Statusgruppe
+   (`--cad-toolbar__status`, rechts festgenagelt) und der Aktionsgruppe:
+
+     Fensterbreite | Statusgruppe     | Rest für Aktionen (gemessen)
+     ≤ 359 px      | 145 px (s. u.)   | 155 px
+     360– 767 px   | 232 px           | 123 px @ 375
+     768– 1399 px  | 338 px (Zahl)    | 404 px @ 768
+     ab 1400 px    | 613 px (Satz)    | 761 px @ 1400
+     ab 1980 px    | 1040 px (Texte)  | 784 px @ 1980
+
+   Deshalb hängen die optionalen Texte NICHT an den Tailwind-Breakpoints
+   (`xl` = 1280, `2xl` = 1536), sondern an drei eigenen Stufen, die genau dort
+   liegen, wo die gemessene Restbreite sie zulässt. Vorher zeigte die Leiste
+   ab 1536 px gleichzeitig volle Statuszusätze und alle Aktionsgruppen: In der
+   Messung war die Aktionsgruppe dort 883 px breit bei 513 px Platz, d. h. die
+   Ansichts-Tabs („Wasserplan anzeigen“) lagen außerhalb des sichtbaren
+   Bereichs — auf 1536–1919 px breiten Notebooks unbedienbar. */
+.tb-label,
+.cad-tb-explain {
+  display: none;
+}
+
+/* Grundstufe: die kürzeste Beschriftung. WICHTIG: Diese Regeln stehen VOR den
+   beiden Medienabfragen — Medienabfragen erhöhen die Spezifität nicht, es
+   gewinnt nur die spätere Regel derselben Stufe. */
+.cad-toolbar .tb-label--kurz,
+.cad-toolbar .cad-tb-short {
+  display: inline;
+}
+
+@media (min-width: 520px) {
+  .cad-toolbar .tb-label--kurz {
+    display: none;
+  }
+  .cad-toolbar .tb-label--mittel {
+    display: inline;
+  }
+}
+
+@media (min-width: 1980px) {
+  .cad-toolbar .cad-tb-explain {
+    display: inline;
+  }
+  .cad-toolbar .cad-tb-short {
+    display: none;
+  }
+  .cad-toolbar .tb-label--mittel {
+    display: none;
+  }
+  .cad-toolbar .tb-label--lang {
+    display: inline;
+  }
+}
+
+/* Warnabzeichen: Der Satz („14 von 24 kritisch“, gemessen 191 px) steht erst,
+   wenn die Statusgruppe ihn bezahlen kann; darunter bleibt die Zahl der
+   schwersten Stufe. Die Ziffer ist CSS-Inhalt eines Elements ohne Textknoten,
+   damit der vollständige Satz im `textContent` der Leiste erhalten bleibt
+   (Vertrag: WarningCenter.test.tsx). */
+.cad-warn-chip__text {
+  display: inline;
+}
+.cad-warn-chip__count {
+  display: none;
+}
+.cad-toolbar .cad-warn-chip__count::after {
+  content: attr(data-compact);
+}
+
+@media (max-width: 1399.98px) {
+  .cad-toolbar .cad-warn-chip__text {
+    display: none;
+  }
+  .cad-toolbar .cad-warn-chip__count {
+    display: inline-block;
+  }
+}
+
+/* Kleinste Handybreite (320 px): „Optimieren“ (81 px) passt nicht mehr neben
+   die Hauptaktion. Der Knopf verschwindet aus der Leiste, die Aktion selbst
+   bleibt im `⋯`-Menü erreichbar (`action-optimize-routing`) — kein
+   unsichtbares Element, keine tote Aktion. */
+@media (max-width: 359.98px) {
+  .cad-toolbar__status .cad-status-optimize {
+    display: none;
+  }
+}
+
+/* Schmaler Innenraum: 2 px Polster und 2 px Abstand zurückgewinnen — damit
+   bleibt bei 360 px zwischen „Verbinden“ und Statuschips Luft (gemessen
+   vorher: 2 px zu eng). */
+@media (max-width: 430px) {
+  .cad-toolbar {
+    padding-inline: 0.5rem;
+    gap: 0.25rem;
+  }
+}
+
+/* --- 6b. Sichtbarkeit der Panel-Umschalter ---------------------------------
+   Befund (gemessen 2026-10-14 im gebauten Export): Tailwind gibt `.hidden`
+   WEIT VOR den unlayered Regeln dieser Datei aus (`.hidden{display:none}` bei
+   Byte 25.178, `.cad-btn{display:inline-flex}` bei 64.839). Ein unlayered
+   `display` schlägt damit jedes einfache `hidden` — die beiden Umschalter
+   trugen aber genau diese Kombination:
+
+     .planner-sidebar-toggle    „hidden … md:inline-flex"
+     .planner-inspector-toggle  „hidden … xl:inline-flex"
+
+   Beide waren deshalb auf JEDER Breite sichtbar: Auf dem Handy lag ein
+   44-px-Knopf mitten über dem Katalog-Blatt (gemessen bei 375 px: y = 141,
+   genau auf der Kopfzeile „Eigenschaften" des anderen Blattes) und über der
+   Zeichenfläche. Hier steht die Sichtbarkeit deshalb ausdrücklich und an
+   einer Stelle, die NACH `.cad-btn` liegt; die Varianten-Utilities
+   (`md:inline-flex`, `xl:inline-flex`) liegen noch später und bestätigen
+   dieselben Haltepunkte. */
+.planner-sidebar-toggle,
+.planner-inspector-toggle {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .planner-sidebar-toggle {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 1280px) {
+  .planner-inspector-toggle {
+    display: inline-flex;
+  }
+}
+
+/* --- 7b. Menüleiste: Dropdowns hängen am Auslöser --------------------------
+   Befund (gemessen 2026-10-14, 768 px): `.cad-menubar__menus` trägt
+   `overflow-x: auto` — und weil ein Achsenwert `visible` neben `auto` zu
+   `auto` wird, war die Reihe damit AUCH ein senkrechter Scroll-Container. Das
+   geöffnete Dropdown (359 px hoch) liegt als absolut positioniertes Kind in
+   dieser Reihe, wurde Teil ihres Scroll-Inhalts, und der Fokus im ersten
+   Menüeintrag ließ den Browser die Reihe um 61 px nach unten scrollen: Das
+   Menü stand mit y = -26 px über dem Fensterrand, der Auslöser bei y = -61.
+   Ab 768 px ist `overflow: visible` (die sechs Menüs brauchen 426 px und
+   passen) — nur die Kleinstbreiten scrollen weiter waagerecht, und dort liegt
+   das Menü ohnehin als `position: fixed`-Blatt außerhalb des Scroll-Inhalts
+   (§2/§8). Der Speicherzustand der Leiste entfällt unter 1280 px: Er ist eine
+   zweite Anzeige desselben Werts wie die Statuszeile unten („n Bauteile ·
+   m Leitungen") und hielt bei 768 px 192 px besetzt. */
+@media (min-width: 768px) {
+  .cad-menubar__menus {
+    overflow: visible;
+    flex-shrink: 0;
+  }
+  .cad-menubar__brand {
+    min-width: 0;
+  }
+  .cad-menubar__project-name {
+    max-width: 12rem;
+  }
+}
+
+/* Der Speicherchip der Menüleiste erst ab 1280 px: Unter 768 px lief er aus
+   dem Fenster (gemessen: rechte Kante 621 px bei 375 px Breite, „· 23 Leit…“
+   abgeschnitten), zwischen 768 und 1279 px stehen „n Bauteile · m Leitungen“
+   und der Zoom ohnehin in der Statuszeile unter der Zeichenfläche. */
+.cad-menubar__status {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .cad-menubar__status {
+    display: flex;
+  }
+}
+
+/* --- 8. Menüeinträge in den Blättern (Handy) ------------------------------
+   Ein Menüeintrag ist dort ein Touch-Ziel: 44 px Kante statt der 28 px der
+   Desktop-Dichte. Das Blatt scrollt dann in sich (13 Einträge × 44 px), was
+   ausdrücklich erlaubt ist — es ist EIN Scrollbereich mit sichtbarem Rand. */
+@media (max-width: 767px) {
+  .planner-menubar-sheet .cad-menu__item,
+  .planner-toolbar-sheet .cad-menu__item {
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+  }
+  .planner-menubar-sheet .cad-menu__hint,
+  .planner-toolbar-sheet .cad-menu__hint {
+    font-size: 0.75rem;
+  }
+
+  .planner-mode-switch-panel {
+    left: 0.5rem !important;
+    right: auto !important;
+    transform: none !important;
+  }
+
+  .planner-display-options-panel {
+    top: 4rem !important;
+  }
+
+  /* Die Hilfe bleibt über das Hilfe-Menü erreichbar; ein dauerhaftes FAB
+     nimmt auf der kleinen Zeichenfläche sonst wertvolle Fläche weg. */
+  .planner-shell .planner-expert-panel--closed {
+    display: none !important;
+  }
+}
+
+/* Querformat auf Telefonen ist ein mobiles Arbeitsfeld – nicht automatisch
+   ein Desktop, nur weil die kurze Kante jetzt die lange ist. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .planner-shell:not(.planner-shell--focus) .planner-workspace {
+    flex-direction: column !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .planner-bottom-nav {
+    display: flex !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='canvas'] [data-testid='planner-sidebar-slot'],
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='inspector']
+    [data-testid='planner-sidebar-slot'] {
+    display: none !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] [data-testid='planner-sidebar-slot'] {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 40 !important;
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex-direction: column !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] #component-palette-panel {
+    width: 100% !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] [data-testid='sidebar-close'] {
+    display: inline-flex !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='canvas'] #inspector-panel,
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] #inspector-panel {
+    display: none !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus)[data-active-tab='inspector'] #inspector-panel {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 40 !important;
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: 0 !important;
+    visibility: visible !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) [data-testid='inspector-backdrop'],
+  .planner-shell:not(.planner-shell--focus) .planner-sidebar-toggle,
+  .planner-shell:not(.planner-shell--focus) .planner-inspector-toggle {
+    display: none !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .cad-rail__compact {
+    display: block !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .cad-rail__steps,
+  .planner-shell:not(.planner-shell--focus) .cad-rail__detail {
+    display: none !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
+    position: fixed !important;
+    top: auto !important;
+    right: max(0.5rem, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
+    left: max(0.5rem, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(60dvh, 26rem) !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .planner-menubar-sheet,
+  .planner-toolbar-sheet {
+    position: fixed;
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    top: auto;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem);
+    width: auto;
+    min-width: 0;
+    max-height: min(60dvh, 26rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 70;
+    box-shadow: var(--cad-shadow-overlay);
+  }
+
+  .planner-menubar-sheet .cad-menu__item,
+  .planner-toolbar-sheet .cad-menu__item {
+    min-height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .planner-mode-switch-panel {
+    left: 0.5rem !important;
+    right: auto !important;
+    transform: none !important;
+  }
+
+  .planner-display-options-panel {
+    top: 4rem !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .planner-expert-panel--closed {
+    display: none !important;
+  }
+
+  .planner-shell:not(.planner-shell--focus) .planner-expert-panel--open {
+    top: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem !important;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+  }
+
+  .planner-shell:not(.planner-shell--focus) [data-testid='expert-panel-open'] {
+    height: 100%;
+    max-height: 100% !important;
+  }
+
+  .cad-menubar__item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .cad-menubar__brand,
+  .cad-menubar__home {
+    min-height: 44px;
+  }
+
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn,
+  .planner-bottom-nav button,
+  .cad-section__head,
+  .cad-item,
+  .de-inspector__group-toggle,
+  .planner-shell #component-search {
+    min-height: 44px;
+  }
+
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn {
+    min-width: 44px;
+  }
+
+  .cad-panel__head {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .planner-shell [aria-label='Filter zurücksetzen'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Nachtest Bug 19/28: Die 44-px-Mindesthöhe der Menüleiste hing nur an
+   `pointer: coarse`. In schmalen Fenstern mit feinem Zeiger (und in der
+   Mess-Spec) blieben die Menü-Knöpfe 19,5 px hoch — praktisch untippbar,
+   sobald das Fenster Handy-Breite hat. Breite entscheidet mit. */
+@media (max-width: 900px) {
+  .planner-shell {
+    --cad-menubar-h: 44px;
+  }
+
+  .cad-menubar__item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (pointer: coarse) {
+  .planner-shell {
+    --cad-menubar-h: 44px;
+  }
+
+  .cad-menubar__item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .cad-menubar__brand,
+  .cad-menubar__home,
+  .cad-section__head,
+  .cad-item,
+  .de-inspector__group-toggle,
+  .planner-shell #component-search {
+    min-height: 44px;
+  }
+
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn {
+    min-width: 44px;
+  }
+
+  .cad-panel__head {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .planner-shell [aria-label='Filter zurücksetzen'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Auf kleinen Screens bleiben die drei Prüf-Zugänge im sichtbaren Statusfeld:
+   Warnungszahl, Prüfbericht und das Menü mit „Plan prüfen“/Stückliste. */
+@media (max-width: 767px) {
+  .cad-toolbar__status > [data-testid='save-indicator'],
+  .cad-toolbar__status > [data-testid^='routing-status-'],
+  .cad-toolbar__status > .cad-status-optimize {
+    display: none !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
+    position: fixed !important;
+    top: auto !important;
+    right: max(0.5rem, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
+    left: max(0.5rem, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(60dvh, 26rem) !important;
+  }
+
+  .cad-toolbar__status > [data-testid='save-indicator'],
+  .cad-toolbar__status > [data-testid^='routing-status-'],
+  .cad-toolbar__status > .cad-status-optimize {
+    display: none !important;
+  }
+}
+
+/* Letzte Instanz fürs flache Querformat.
+   Dieselbe Media-Query setzt weiter oben Werkzeugknöpfe auf 44 px
+   (Tippziel-Regel). Das gewinnt gegen die dokumentierte 34-px-Ausnahme
+   und drückt die Zeichenfläche bei 640×320 unter die 150-px-Untergrenze
+   (Menüleiste 44 + Werkzeugleiste 44 + Schrittleiste mit 44-px-Knöpfen
+   + Fußleiste). Menüleiste und Fußleiste bleiben 44 px; Werkzeug- und
+   Schrittleiste werden hier wieder flach. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .cad-toolbar {
+    --cad-toolbar-h: 36px;
+    min-height: 36px;
+    max-height: 36px;
+  }
+
+  .cad-toolbar .cad-btn,
+  .cad-toolbar .tool-btn {
+    min-height: 34px;
+    max-height: 34px;
+    min-width: 34px;
+  }
+
+  .cad-rail {
+    min-height: 32px;
+    max-height: 32px;
+    padding-block: 0;
+  }
+
+  .cad-rail .cad-btn {
+    min-height: 30px;
+    max-height: 30px;
+    padding-block: 0;
+  }
+
+  .planner-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .planner-bottom-nav button {
+    min-height: 44px;
+    max-height: 48px;
+    padding-block: 0;
+  }
+
+  /* Die Modus-Erklärung ist zwei Zeilen hoch und liegt bei 150 px
+     Zeichenfläche auf den Zoom-Griffen. Die drei Modus-Knöpfe bleiben. */
+  [data-testid='planner-mode-caption'] {
+    display: none;
+  }
+
+  .planner-shell .react-flow__controls.planner-controls {
+    top: auto !important;
+    right: auto !important;
+    bottom: 0.25rem !important;
+    left: 0.25rem !important;
+    margin: 0 !important;
+    flex-direction: row !important;
+  }
+}
+
+/* Zoom-Griffe auf dem Handy: nicht mitten auf dem eingepassten Plan
+   (`bottom: 8rem` deckte die Batterie) und nicht auf Rückgängig/Wiederholen
+   (die bleiben links). Sie sitzen unten rechts; die Fußleiste ist ein
+   Geschwister unter der Zeichenfläche. */
+@media (max-width: 767px) {
+  .planner-shell .react-flow__controls.planner-controls {
+    top: auto !important;
+    left: auto !important;
+    right: 0.25rem !important;
+    bottom: 0.25rem !important;
+    margin: 0 !important;
+    flex-direction: row !important;
+  }
+}
+
+/* Tablet: das Ansicht-Blatt ist `fixed` und im Canvas-Stacking-Kontext
+   gefangen (`isolate`). Die Seitenleiste liegt darüber und schluckt
+   Klicks auf „Hauptstromkreis“. Das Blatt beginnt deshalb rechts davon. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #canvas-display-options-panel {
+    left: calc(var(--planner-sidebar-w) + 0.75rem) !important;
   }
 }

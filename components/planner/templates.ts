@@ -1,6 +1,18 @@
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 
+/**
+ * Vorlagen-Pläne (Wizard + Vorlagen-Seiten).
+ *
+ * Nachtest 2026-10-16: Die Vorlagen starteten mit 0 h/Tag an allen
+ * Verbrauchern und 0 V / 0 A am Solarmodul — der Plan galt damit als
+ * „nicht bestanden“, die Autarkie zeigte „Unendlich“. Deshalb trägt jede
+ * Komponente hier vollständige, plausible Startwerte (Nutzungsdauer,
+ * Panel-Arbeitspunkt, Nennspannung, MPPT-Grenze). Es sind Annahmen für
+ * einen sinnvollen Erststart, keine Produktdaten — der Nutzer passt sie
+ * im Inspektor an sein Gerät an.
+ */
+
 export const TEMPLATE_MINIMALIST = {
   nodes: [
     {
@@ -15,19 +27,19 @@ export const TEMPLATE_MINIMALIST = {
       id: 'cons-light',
       type: 'consumer',
       position: { x: 680, y: 60 },
-      data: { label: 'LED-Beleuchtung', watts: 20 },
+      data: { label: 'LED-Beleuchtung', watts: 20, hours: 4 },
     },
     {
       id: 'cons-usb',
       type: 'consumer',
       position: { x: 680, y: 220 },
-      data: { label: 'USB Steckdosen', watts: 36 },
+      data: { label: 'USB Steckdosen', watts: 36, hours: 2 },
     },
     {
       id: 'cons-cool',
       type: 'consumer',
       position: { x: 680, y: 380 },
-      data: { label: 'Kühlbox', watts: 45 },
+      data: { label: 'Kühlbox', watts: 45, hours: 8 },
     },
   ] as Node[],
   edges: [
@@ -86,7 +98,12 @@ export const TEMPLATE_MINIMALIST = {
 
 export const TEMPLATE_ALLROUNDER = {
   nodes: [
-    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '150W Solar', watts: 150 } },
+    {
+      id: 'solar-1',
+      type: 'solar',
+      position: { x: 80, y: 60 },
+      data: { label: '150W Solar', watts: 150, voltage: 18, amps: 8.3, voc: 22.5, isc: 8.8 },
+    },
     {
       id: 'starter-1',
       type: 'battery',
@@ -103,7 +120,7 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'charger-1',
       type: 'mpptController',
       position: { x: 380, y: 60 },
-      data: { label: 'MPPT Solarregler', amps: 30 },
+      data: { label: 'MPPT Solarregler', amps: 30, maxPvVoltage: 75 },
     },
     {
       id: 'charger-2',
@@ -118,31 +135,31 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 440 },
-      data: { label: '500W Inverter', watts: 500, hasRcd: true },
+      data: { label: '500W Inverter', watts: 500, continuousPower: 500, hasRcd: true },
     },
     {
       id: 'cons-fridge',
       type: 'consumer',
       position: { x: 980, y: 60 },
-      data: { label: 'Kompressorkühlschrank', watts: 60 },
+      data: { label: 'Kompressorkühlschrank', watts: 60, hours: 8 },
     },
     {
       id: 'cons-pump',
       type: 'consumer',
       position: { x: 980, y: 220 },
-      data: { label: 'Wasserpumpe', watts: 40 },
+      data: { label: 'Wasserpumpe', watts: 40, hours: 0.5 },
     },
     {
       id: 'cons-light',
       type: 'consumer',
       position: { x: 980, y: 380 },
-      data: { label: 'LED-Beleuchtung', watts: 20 },
+      data: { label: 'LED-Beleuchtung', watts: 20, hours: 4 },
     },
     {
       id: 'cons-230v',
       type: 'consumer230v',
       position: { x: 980, y: 540 },
-      data: { label: '230V Steckdose', watts: 300 },
+      data: { label: '230V Steckdose', watts: 300, hours: 1 },
     },
   ] as Node[],
   edges: [
@@ -268,7 +285,12 @@ export const TEMPLATE_ALLROUNDER = {
 
 export const TEMPLATE_AUTARK = {
   nodes: [
-    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '400W Solar', watts: 400 } },
+    {
+      id: 'solar-1',
+      type: 'solar',
+      position: { x: 80, y: 60 },
+      data: { label: '400W Solar', watts: 400, voltage: 31, amps: 12.9, voc: 37, isc: 13.7 },
+    },
     {
       id: 'starter-1',
       type: 'battery',
@@ -291,7 +313,7 @@ export const TEMPLATE_AUTARK = {
       id: 'charger-1',
       type: 'mpptController',
       position: { x: 380, y: 60 },
-      data: { label: 'MPPT Solarregler', amps: 30 },
+      data: { label: 'MPPT Solarregler', amps: 30, maxPvVoltage: 75 },
     },
     {
       id: 'charger-2',
@@ -320,20 +342,25 @@ export const TEMPLATE_AUTARK = {
       id: 'cons-fridge',
       type: 'consumer',
       position: { x: 980, y: 60 },
-      data: { label: 'Kompressorkühlschrank', watts: 60 },
+      data: { label: 'Kompressorkühlschrank', watts: 60, hours: 8 },
     },
     {
       id: 'cons-heat',
       type: 'consumer',
       position: { x: 980, y: 220 },
-      data: { label: 'Standheizung', watts: 40 },
+      data: { label: 'Standheizung', watts: 40, hours: 3 },
     },
-    { id: 'cons-fan', type: 'consumer', position: { x: 980, y: 380 }, data: { label: 'MaxxFan', watts: 40 } },
+    {
+      id: 'cons-fan',
+      type: 'consumer',
+      position: { x: 980, y: 380 },
+      data: { label: 'MaxxFan', watts: 40, hours: 4 },
+    },
     {
       id: 'cons-induct',
       type: 'consumer230v',
       position: { x: 980, y: 540 },
-      data: { label: 'Induktionskochfeld (1 Platte)', watts: 500 },
+      data: { label: 'Induktionskochfeld (1 Platte)', watts: 500, hours: 0.5 },
     },
   ] as Node[],
   edges: [

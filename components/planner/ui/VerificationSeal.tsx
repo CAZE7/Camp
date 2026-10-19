@@ -45,7 +45,7 @@ const TONE: Record<
   },
 };
 
-const PASS_STATUS_LABEL = { PASS: 'bestanden', FAIL: 'verletzt', UNPROVABLE: 'nicht entscheidbar' } as const;
+const PASS_STATUS_LABEL = { PASS: 'erfüllt', FAIL: 'nicht erfüllt', UNPROVABLE: 'Angaben fehlen' } as const;
 
 function Stat({ value, label, hint }: { value: number; label: string; hint: string }) {
   return (
@@ -77,14 +77,27 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         className={`inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
         title="Bericht der Verifikations-Engine: Verdikt, Abdeckung, Modellgrenzen und Zertifikat"
       >
+        {/* Siegel in drei Stufen (M12, gemessen in der Werkzeugleiste):
+            ganz schmal nur Symbol + Klapppfeil (~50 px), ab `xl` mit
+            Verdikt-Abzeichen (~120 px), ab `2xl` mit der vollen Zeile
+            (~500 px). Die langen Formen waren bei 1440 px der Grund, dass die
+            Aktionsgruppe auf 145 px zusammengedrückt wurde und „Automatisch
+            verbinden“ hinter dem Rand lag — die Angaben selbst sind weiter
+            vollständig im `aria-label`, im Tooltip und im Bericht. */}
         {tone.icon}
-        <span className="hidden sm:inline">{tone.label}:</span>
+        <span className="cad-tb-explain">{tone.label}:</span>
         <span
-          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold sm:inline ${tone.badge}`}
+          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold xl:inline ${tone.badge}`}
         >
           {summary.label}
         </span>
-        <span className="hidden font-normal text-muted-foreground sm:inline">
+        {/* „{n} Regeln angewandt · {x} % entschieden“ bleibt im DOM (Teil des
+            zugänglichen Textes und im `aria-label` des Knopfes), aber ohne
+            eigene Breite: Die Zeile war 314 px breit und ließ in der
+            Werkzeugleiste bei 1920 px keine Aktionsgruppe mehr übrig. Die
+            vollständige Aussage steht im Tooltip, im `aria-label` und im
+            Bericht darunter. */}
+        <span className="sr-only">
           {summary.exercised} Regeln angewandt · {percent} % entschieden
         </span>
         <ChevronDown
@@ -99,30 +112,36 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
           data-testid="verification-seal-panel"
           role="region"
           aria-label="Prüfbericht der Verifikations-Engine"
-          className="absolute right-0 z-[80] mt-2 w-[min(92vw,30rem)] rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)]"
+          /* `fixed` statt `absolute`: Der Bericht ist bis zu 30 rem breit und
+             läge im `absolute`-Fall innerhalb der 44 px hohen Werkzeugleiste,
+             die wegen der scrollbaren Aktionsgruppe `overflow: hidden` trägt —
+             er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
+             nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
+             ab `md` als Panel unter der Kopfzeile. */
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 
           <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <Stat
               value={summary.passed}
-              label="bestanden"
-              hint="Regeln, deren Bedingung im Plan erfüllt ist (PASS)."
+              label="erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan eingehalten ist."
             />
             <Stat
               value={summary.failed}
-              label="verletzt"
-              hint="Regeln, deren Bedingung im Plan verletzt ist (FAIL)."
+              label="nicht erfüllt"
+              hint="Prüfungen, deren Bedingung im Plan nicht eingehalten ist. Diese Punkte müssen korrigiert werden."
             />
             <Stat
               value={summary.unprovable}
-              label="nicht entscheidbar"
-              hint="Regeln, deren Eingaben fehlen: keine Aussage möglich — weder bestanden noch verletzt."
+              label="Angaben fehlen"
+              hint="Für diese Prüfungen fehlen Werte im Plan — sie konnten noch nicht beurteilt werden."
             />
             <Stat
               value={summary.notApplicable}
-              label="ohne Gegenstand"
-              hint="Regeln, die im Plan nichts zu prüfen hatten (z. B. Solar-Regeln ohne Solar). Sie sind NICHT bestanden."
+              label="kommt nicht vor"
+              hint="Prüfungen ohne passendes Bauteil im Plan (z. B. Solar-Regeln ohne Solarmodul). Sie zählen NICHT als erfüllt."
             />
           </div>
 
@@ -144,9 +163,9 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
           {summary.notAppliedRules.length > 0 && (
             <p className="mb-3 text-muted-foreground">
-              Nicht angewandt: <span className="font-mono">{summary.notAppliedRules.join(', ')}</span> —
-              Profil oder Kontext schließen diese Regeln aus. Regeln, die im Plan keinen Gegenstand hatten,
-              stehen unter Modellgrenzen.
+              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und wurden
+              nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil stehen
+              unter „Modellgrenzen“.
             </p>
           )}
 
@@ -161,11 +180,24 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </ul>
           </div>
 
-          <p className="border-t border-border pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
-            <br />
-            Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
-          </p>
+          {/* Nachtest Bug 4: Hashes, Engine-Version und Regel-Codes sind
+              für Laien unverständliches Rauschen — sie bleiben für
+              Nachweise verfügbar, aber hinter einem Aufklapp-Bereich. */}
+          <details className="border-t border-border pt-2">
+            <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
+              Technische Details
+            </summary>
+            <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+              Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
+              <br />
+              Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
+            </p>
+            {summary.notAppliedRules.length > 0 && (
+              <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
+              </p>
+            )}
+          </details>
           <p className="mt-1 leading-relaxed text-muted-foreground">
             Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
             Prüfhinweisen.

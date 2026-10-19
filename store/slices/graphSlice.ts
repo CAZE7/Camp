@@ -1,6 +1,7 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
+import { collidingNodeIds, findNearestFreePosition } from '../../components/planner/utils/collision';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
@@ -21,6 +22,7 @@ import {
   sameElements,
   withHistory,
   withHistoryIfChanged,
+  resetHistoryCoalescing,
   pathDropCache,
   plannerGraphSignature,
   HISTORY_LIMIT,
@@ -228,6 +230,23 @@ function lockedEdgeMutations(
   return mutations;
 }
 
+/**
+ * QA B-03: Ein Drop legt das Bauteil nicht blind auf andere Bauteile. Die
+ * nächste freie Fläche in der aktiven Ansicht gewinnt (dieselbe Regel wie
+ * der Klick-Pfad im Canvas).
+ */
+function freePositionFor(
+  state: { viewMode: string; nodes: Node[]; waterNodes: Node[] },
+  type: string,
+  position: { x: number; y: number }
+): { x: number; y: number } {
+  const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
+  const candidate = { id: 'new-component', type, data: {}, position };
+  // Ein freier Drop bleibt, wo er fallen gelassen wurde; nur ein Treffer sucht neu.
+  if (collidingNodeIds(candidate, domainNodes).length === 0) return position;
+  return findNearestFreePosition(candidate, domainNodes);
+}
+
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   nodes: [],
   edges: [],
@@ -417,7 +436,29 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         ? withHistory(state, { waterEdges: nextEdges })
         : { waterEdges: nextEdges };
     }),
-  onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
+  onSelectionChange: (params) =>
+    set((state) => {
+      // Beim Wechsel der Domäne meldet React Flow für die neu eingeblendete
+      // (noch leere) Zeichenfläche eine leere Auswahl. Die Auswahl der gerade
+      // ausgeblendeten Domäne bleibt dabei erhalten; eine echte neue Auswahl
+      // ersetzt sie, ein Pane-Tipp hebt sie anschließend explizit auf.
+      if (params.nodes.length > 0 || params.edges.length > 0) {
+        return { selectedNodes: params.nodes, selectedEdges: params.edges };
+      }
+      const inactiveNodes =
+        state.viewMode === 'water'
+          ? state.selectedNodes.filter((selected) => state.nodes.some((node) => node.id === selected.id))
+          : state.selectedNodes.filter((selected) =>
+              state.waterNodes.some((node) => node.id === selected.id)
+            );
+      const inactiveEdges =
+        state.viewMode === 'water'
+          ? state.selectedEdges.filter((selected) => state.edges.some((edge) => edge.id === selected.id))
+          : state.selectedEdges.filter((selected) =>
+              state.waterEdges.some((edge) => edge.id === selected.id)
+            );
+      return { selectedNodes: inactiveNodes, selectedEdges: inactiveEdges };
+    }),
 
   // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
   // markiert sie als ausgewählt (ReactFlow-Highlight + Inspector) und passt die Ansicht ein.
@@ -525,57 +566,75 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   updateNodeData: (id, data) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        nodes: state.nodes.map((n) => {
-          if (n.id === id) {
-            return { ...n, data: { ...n.data, ...data } };
-          }
-          return n;
-        }),
-        waterNodes: state.waterNodes.map((n) => {
-          if (n.id === id) {
-            return { ...n, data: { ...n.data, ...data } };
-          }
-          return n;
-        }),
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          nodes: state.nodes.map((n) => {
+            if (n.id === id) {
+              return { ...n, data: { ...n.data, ...data } };
+            }
+            return n;
+          }),
+          waterNodes: state.waterNodes.map((n) => {
+            if (n.id === id) {
+              return { ...n, data: { ...n.data, ...data } };
+            }
+            return n;
+          }),
+        },
+        // N4 (Nachtest): Tippen in einem Feld = EIN Verlaufsschritt,
+        // nicht einer pro Tastendruck (Schlüssel: Bauteil + Feldmenge).
+        `node-data:${id}:${Object.keys(data).sort().join('+')}`
+      )
     ),
   handleChangeLength: (id, length) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        edges: state.edges.map((e) => {
-          if (e.id === id) {
-            // Mit der Nutzereingabe endet der Annahme-Status: Der Wert ist ab
-            // jetzt ein Messwert des Nutzers (dreißigste Fassung) — sonst
-            // stünde am Ende seine eigene Zahl als „Planungsannahme" da.
-            return { ...e, data: { ...e.data!, length, lengthIsAssumption: false } };
-          }
-          return e;
-        }),
-        waterEdges: state.waterEdges.map((e) => {
-          if (e.id === id) {
-            return { ...e, data: { ...e.data!, length } };
-          }
-          return e;
-        }),
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          edges: state.edges.map((e) => {
+            if (e.id === id) {
+              // Mit der Nutzereingabe endet der Annahme-Status: Der Wert ist ab
+              // jetzt ein Messwert des Nutzers (dreißigste Fassung) — sonst
+              // stünde am Ende seine eigene Zahl als „Planungsannahme" da.
+              return { ...e, data: { ...e.data!, length, lengthIsAssumption: false } };
+            }
+            return e;
+          }),
+          waterEdges: state.waterEdges.map((e) => {
+            if (e.id === id) {
+              return { ...e, data: { ...e.data!, length } };
+            }
+            return e;
+          }),
+        },
+        `edge-length:${id}`
+      )
     ),
   handleChangeFuseSize: (id, fuseSize) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
+        },
+        `edge-fuse-size:${id}`
+      )
     ),
   handleChangeFuseOffset: (id, fuseOffset) =>
     set((state) =>
-      withHistoryIfChanged(state, {
-        // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
-        // ungültige Eingaben ändern den Zustand nicht.
-        edges:
-          Number.isFinite(fuseOffset) && fuseOffset >= 0
-            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
-            : state.edges,
-      })
+      withHistoryIfChanged(
+        state,
+        {
+          // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
+          // ungültige Eingaben ändern den Zustand nicht.
+          edges:
+            Number.isFinite(fuseOffset) && fuseOffset >= 0
+              ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
+              : state.edges,
+        },
+        `edge-fuse-offset:${id}`
+      )
     ),
   handleChangeFuseType: (id, fuseType) =>
     set((state) =>
@@ -785,31 +844,33 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     );
   },
   autoWireSystem: () => {
-    // Spec #29 (Auto-Wire Review): Der Knopf berechnet den Vorschlag vor,
-    // wendet ihn aber NICHT direkt an. Der Nutzer sieht im Review-Dialog,
-    // was passiert (neue/geheilte/entfernte Kanten, Konflikte, offene
-    // Fragen) und drückt »Anwenden« oder »Abbrechen«. Sieht der Vorschlag
-    // sauber aus (keine Konflikte, keine Fragen), wird er SOFORT angewendet
-    // — der Nutzer bekommt keine leere Bestätigung für einen trivialen Lauf.
+    // Auto-Wire ist zunächst immer nur eine Vorschau. Auch ein konfliktfreier
+    // Vorschlag verändert weder Leitungen noch Bauteile, bis der Nutzer im
+    // Review-Dialog ausdrücklich „Vorschlag anwenden“ bestätigt.
     get().previewAutoWire();
-    const preview = get().autoWirePreview;
-    if (!preview) return;
-    // Dialog nur, wenn es KRITISCHE Konflikte oder offene Fragen gibt.
-    // Reine Hinweise (healed-user-edge, AUTO-SHUNT-BYPASS u. ä.) werden
-    // automatisch angewendet — der Nutzer sieht das Ergebnis im Report,
-    // der über den Store abrufbar bleibt, muss aber nicht bestätigen.
-    const hasCritical = preview.report.conflicts.some((c) => c.severity === 'critical');
-    const hasQuestions = preview.report.questions.length > 0;
-    if (hasCritical || hasQuestions) {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('planner-auto-wire-review'));
-      }
-      return;
-    }
-    get().applyAutoWirePreview();
   },
   /** Berechnet Auto-Wire als Preview, ohne den echten Graphen zu verändern. */
   previewAutoWire: () => {
+    // N1 (Nachtest 2026-10-16, KRITISCH): „Auto-verbinden“ im Wasser-Tab
+    // verkabelte ohne Rückfrage den ELEKTROPLAN um (13 → 22 Kabel plus
+    // Shunt), weil AutoWire immer auf dem Elektro-Graphen lief. Der Guard
+    // gehört in den Schreibpfad selbst (nicht nur in den Knopf): Im
+    // Wasserplan entsteht kein Elektro-Vorschlag — nur eine Erklärung.
+    if (get().viewMode === 'water') {
+      get().addPlannerError(
+        createPlannerError({
+          code: 'PLAN_INCOMPLETE',
+          severity: 'info',
+          category: 'general',
+          message: 'Automatisch verbinden gibt es nur für den Elektrikplan.',
+          explanation:
+            'Du bist im Wasserplan. Dort verbindest du Leitungen von Hand: ersten Anschluss antippen, dann den zweiten. Der Elektroplan wurde nicht verändert.',
+          suggestedFix: 'Zum automatischen Verbinden in den Elektrikplan wechseln (Tab „Elektrik“).',
+        })
+      );
+      set({ autoWirePreview: null });
+      return;
+    }
     const { nodes, edges } = get();
 
     // ── DIAGNOSTIC: State A (initialer Plan vor AutoWire) ──
@@ -852,6 +913,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     const current = get();
     const preview = current.autoWirePreview;
     if (!preview) return;
+    // N1-Restweg: Wurde seit der Vorschau in den Wasserplan gewechselt,
+    // darf „Anwenden“ nicht aus dem Wasserplan heraus den Elektroplan
+    // umschreiben — Vorschlag verwerfen statt still anzuwenden.
+    if (current.viewMode === 'water') {
+      set({ autoWirePreview: null });
+      return;
+    }
     const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, preview.nodes, preview.edges);
     if (lockedMutations.length > 0) {
       for (const mutation of lockedMutations) {
@@ -1035,7 +1103,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       y: event.clientY,
     });
 
-    get().addNode(type, label, position, wattsStr ? Number(wattsStr) : undefined);
+    get().addNode(
+      type,
+      label,
+      freePositionFor(get(), type, position),
+      wattsStr ? Number(wattsStr) : undefined
+    );
   },
   onCustomDrop: (event, screenToFlowPosition) => {
     // AUDIT T1: `event as CustomEvent` ist `CustomEvent<any>` — damit liefen
@@ -1058,13 +1131,25 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       y: clientY,
     });
 
-    get().addNode(type, label, position, watts);
+    get().addNode(type, label, freePositionFor(get(), type, position), watts);
   },
   addNode: (type, label, position, watts?: number) => {
+    // Nachtest 2026-10-16: „Überlappung neuer Teile“ — der freie Drop legte
+    // das Bauteil exakt auf ein vorhandenes; nur der Tipp-Zusatz über die
+    // Canvas-Mitte wich Kollisionen aus. Jetzt gilt dieselbe Regel für
+    // jeden Zugang (Drop, Tipp, Tastatur): freie Stelle bleibt, Treffer
+    // sucht die nächste freie Rasterposition.
+    const domainNodes = get().viewMode === 'water' ? get().waterNodes : get().nodes;
+    const candidate = { id: 'new-component', type, data: {}, position } as Node;
+    const freePosition =
+      collidingNodeIds(candidate, domainNodes as Node[]).length === 0
+        ? position
+        : findNearestFreePosition(candidate, domainNodes as Node[]);
+
     const newNode: Node = {
       id: `${type}-${newEntityId()}`,
       type,
-      position,
+      position: freePosition,
       data: { label, ...(watts !== undefined ? { watts } : {}) },
     };
 
@@ -1086,7 +1171,17 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     } else if (type === 'consumer230v') {
       newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+      // Geräte-Vorlagen bringen nur die Leistung mit („Solarmodul 200 W“).
+      // Der Arbeitsstrom folgt aus der üblichen Modulspannung, statt mit
+      // den 5 A des 90-W-Defaults eine falsche Kombination (200 W bei
+      // 18 V/5 A) in den Plan zu schreiben (Nachtest: Solar 0 V / 0 A).
+      const panelWatts = watts ?? 90;
+      newNode.data = {
+        voltage: 18,
+        amps: Math.round((panelWatts / 18) * 10) / 10,
+        watts: panelWatts,
+        ...newNode.data,
+      };
     } else if (type === 'inverter') {
       newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
@@ -1169,6 +1264,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     return { applied: true, engine: result.engine };
   },
   undo: () => {
+    resetHistoryCoalescing();
     const current = get();
     const previous = current.historyPast[current.historyPast.length - 1];
     if (!previous) return;
@@ -1198,6 +1294,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     });
   },
   redo: () => {
+    resetHistoryCoalescing();
     const current = get();
     const next = current.historyFuture[0];
     if (!next) return;

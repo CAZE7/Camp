@@ -26,9 +26,15 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     await showCanvas(page);
     await addComponent(page, 'battery');
 
+    // Mobil ist das FAB bewusst ausgeblendet (CSS: „Die Hilfe bleibt über
+    // das Hilfe-Menü erreichbar“) — dort führt der Weg übers Menü.
     const openFab = page.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
-    await expect(openFab).toBeVisible();
-    await openFab.click();
+    if ((await openFab.count()) > 0 && (await openFab.isVisible())) {
+      await openFab.click();
+    } else {
+      await page.getByTestId('menubar-hilfe').click();
+      await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
+    }
 
     const close = page.getByTestId('expert-panel-close');
     await expect(close).toBeVisible();
