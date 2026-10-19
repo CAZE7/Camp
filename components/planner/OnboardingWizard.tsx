@@ -139,8 +139,8 @@ export function OnboardingWizard() {
               1. Woher kommt dein Strom?
             </h3>
             <p className="text-sm text-muted-foreground">
-              Kein Pflichtprogramm: Mit dem ✕ oben rechts oder der Esc-Taste schließt du den
-              Assistenten jederzeit — dein Plan bleibt dabei unverändert.
+              Kein Pflichtprogramm: Mit dem ✕ oben rechts oder der Esc-Taste schließt du den Assistenten
+              jederzeit — dein Plan bleibt dabei unverändert.
             </p>
             <div className="space-y-2">
               {STROMQUELLEN.map((source) => (

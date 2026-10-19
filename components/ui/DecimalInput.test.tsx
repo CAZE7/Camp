@@ -25,9 +25,7 @@ describe('normalizeDecimalInput', () => {
 describe('DecimalInput', () => {
   it('ist ein Textfeld mit Dezimaltastatur und liefert 12.5 für „12,5“', () => {
     const seen: string[] = [];
-    render(
-      <DecimalInput aria-label="Leistung" onChange={(event) => seen.push(event.currentTarget.value)} />
-    );
+    render(<DecimalInput aria-label="Leistung" onChange={(event) => seen.push(event.currentTarget.value)} />);
     const input = screen.getByLabelText('Leistung') as HTMLInputElement;
     expect(input.type).toBe('text');
     expect(input.inputMode).toBe('decimal');

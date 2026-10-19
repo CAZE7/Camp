@@ -217,7 +217,6 @@ function FindingCard({
               Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
               {' · Soll: '}
               {valueWithUnit(warning.expectedValue, warning.unit)}
-
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>

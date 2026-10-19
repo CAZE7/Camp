@@ -163,9 +163,9 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
           {summary.notAppliedRules.length > 0 && (
             <p className="mb-3 text-muted-foreground">
-              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und
-              wurden nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil
-              stehen unter „Modellgrenzen“.
+              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und wurden
+              nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil stehen
+              unter „Modellgrenzen“.
             </p>
           )}
 

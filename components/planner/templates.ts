@@ -98,7 +98,12 @@ export const TEMPLATE_MINIMALIST = {
 
 export const TEMPLATE_ALLROUNDER = {
   nodes: [
-    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '150W Solar', watts: 150, voltage: 18, amps: 8.3, voc: 22.5, isc: 8.8 } },
+    {
+      id: 'solar-1',
+      type: 'solar',
+      position: { x: 80, y: 60 },
+      data: { label: '150W Solar', watts: 150, voltage: 18, amps: 8.3, voc: 22.5, isc: 8.8 },
+    },
     {
       id: 'starter-1',
       type: 'battery',
@@ -280,7 +285,12 @@ export const TEMPLATE_ALLROUNDER = {
 
 export const TEMPLATE_AUTARK = {
   nodes: [
-    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '400W Solar', watts: 400, voltage: 31, amps: 12.9, voc: 37, isc: 13.7 } },
+    {
+      id: 'solar-1',
+      type: 'solar',
+      position: { x: 80, y: 60 },
+      data: { label: '400W Solar', watts: 400, voltage: 31, amps: 12.9, voc: 37, isc: 13.7 },
+    },
     {
       id: 'starter-1',
       type: 'battery',
@@ -340,7 +350,12 @@ export const TEMPLATE_AUTARK = {
       position: { x: 980, y: 220 },
       data: { label: 'Standheizung', watts: 40, hours: 3 },
     },
-    { id: 'cons-fan', type: 'consumer', position: { x: 980, y: 380 }, data: { label: 'MaxxFan', watts: 40, hours: 4 } },
+    {
+      id: 'cons-fan',
+      type: 'consumer',
+      position: { x: 980, y: 380 },
+      data: { label: 'MaxxFan', watts: 40, hours: 4 },
+    },
     {
       id: 'cons-induct',
       type: 'consumer230v',

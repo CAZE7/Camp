@@ -55,8 +55,6 @@ describe('OnboardingWizard — Schließen & Empfehlung (Nachtest)', () => {
     expect(recommendedTemplateId({ landstrom: true }, {})).toBe('autark');
     expect(recommendedTemplateId({}, {})).toBe('minimalist');
     expect(recommendedTemplateId({}, { a: true, b: true, c: true })).toBe('allrounder');
-    expect(recommendedTemplateId({ solar: true }, { a: true, b: true, c: true, d: true })).toBe(
-      'autark'
-    );
+    expect(recommendedTemplateId({ solar: true }, { a: true, b: true, c: true, d: true })).toBe('autark');
   });
 });

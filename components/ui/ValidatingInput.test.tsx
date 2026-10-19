@@ -145,9 +145,7 @@ describe('ValidatingInput', () => {
   // bis die Zahl vollständig ist.
   it('does not rewrite the field text while a decimal comma is being typed', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />
-    );
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
     const input = screen.getByLabelText('test-input') as HTMLInputElement;
 
     fireEvent.focus(input);
@@ -165,9 +163,7 @@ describe('ValidatingInput', () => {
 
   it('reverts an unfinished decimal text on blur', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />
-    );
+    render(<ValidatingInput value={20} onValidChange={onValidChange} isFloat aria-label="test-input" />);
     const input = screen.getByLabelText('test-input') as HTMLInputElement;
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: '12,' } });

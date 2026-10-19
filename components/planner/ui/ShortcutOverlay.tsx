@@ -70,11 +70,15 @@ export function ShortcutOverlay() {
             <div key={row.keys} className="shortcut-overlay__row">
               <span>{row.label}</span>
               <span className="flex gap-1">
-                {row.keys.split('+').map((part) => part.trim()).filter(Boolean).map((key) => (
-                  <kbd key={key} className="shortcut-key">
-                    {key}
-                  </kbd>
-                ))}
+                {row.keys
+                  .split('+')
+                  .map((part) => part.trim())
+                  .filter(Boolean)
+                  .map((key) => (
+                    <kbd key={key} className="shortcut-key">
+                      {key}
+                    </kbd>
+                  ))}
               </span>
             </div>
           ))}

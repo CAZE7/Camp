@@ -75,7 +75,7 @@ const isDesktopProject = (name: string) => name.startsWith('desktop');
 const isMobileProject = (name: string) => name.startsWith('mobile') || name.startsWith('touch');
 
 test.describe('Nachtest Desktop', () => {
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
     test.skip(!isDesktopProject(testInfo.project.name), 'nur Desktop-Projekt');
   });
 
@@ -176,7 +176,9 @@ test.describe('Nachtest Desktop', () => {
     await expect(page.locator('.de-canvas')).toHaveAttribute('data-planner-mode', 'planung');
   });
 
-  test('Bug 9/N6: Menüs sprechen Klartext (Plan speichern, kein „Plan leeren“ in Hilfe)', async ({ page }) => {
+  test('Bug 9/N6: Menüs sprechen Klartext (Plan speichern, kein „Plan leeren“ in Hilfe)', async ({
+    page,
+  }) => {
     await openPlanner(page);
     await page.getByTestId('menubar-bearbeiten').click();
     await expect(page.getByRole('menuitem', { name: 'Plan speichern' })).toBeVisible();
@@ -246,7 +248,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
       const more = page.getByTestId('action-more');
       if ((await more.count()) > 0 && (await more.isVisible())) {
         await more.click();
-        const moreMenu = page.locator('[role="menu"], [data-testid="more-menu"]').first();
+        const moreMenu = page.locator('[role="menu"]').first();
         await expect(moreMenu).toBeVisible();
         await expectWithinViewport(page, moreMenu, 'Weitere Aktionen');
         await page.keyboard.press('Escape');
@@ -276,7 +278,9 @@ for (const viewport of MOBILE_VIEWPORTS) {
       }
     });
 
-    test('Stückliste öffnet ohne Horizontal-Scroll; Tab-Auswahl bleibt (Bug 7/21/26/29)', async ({ page }) => {
+    test('Stückliste öffnet ohne Horizontal-Scroll; Tab-Auswahl bleibt (Bug 7/21/26/29)', async ({
+      page,
+    }) => {
       await openPlanner(page);
       await addComponent(page, 'battery');
       await showCanvas(page);
@@ -314,10 +318,10 @@ for (const viewport of MOBILE_VIEWPORTS) {
         const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
         expect(overlapX > 0 && overlapY > 0, 'Modus-Umschalter und Ansicht überlappen').toBe(false);
       }
-      // Zoom-Kontrollen sind tippbar (≥44px wäre ideal; RF-Standard ist kleiner,
-      // daher nur Erreichbarkeit + nicht verdeckt).
+      // Zoom-Kontrollen: 44 px (per CSS über dem RF-Standard) und unverdeckt.
       const zoomIn = page.locator('.react-flow__controls-zoomin');
       if ((await zoomIn.count()) > 0 && (await zoomIn.isVisible())) {
+        await expectTapTarget(zoomIn, 'Zoom +');
         await expectNotCovered(zoomIn, 'Zoom +');
       }
       // Bug 23: „Planübersicht“ (Fit-View) lag unter der Undo-Leiste.

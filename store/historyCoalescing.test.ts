@@ -34,8 +34,7 @@ describe('Verlauf-Koaleszenz (N4)', () => {
     resetHistoryCoalescing();
   });
 
-  const watts = () =>
-    (usePlannerStore.getState().nodes[0]?.data as { watts?: number } | undefined)?.watts;
+  const watts = () => (usePlannerStore.getState().nodes[0]?.data as { watts?: number } | undefined)?.watts;
 
   it('fasst Tastendrücke im selben Feld zu einem Schritt zusammen', () => {
     const now = vi.spyOn(Date, 'now');

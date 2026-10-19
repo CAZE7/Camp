@@ -5,7 +5,6 @@ import {
   Camera,
   Check,
   Copy,
-  FileDown,
   Frame,
   Grid3x3,
   Info,
@@ -506,6 +505,20 @@ export function usePlannerActions({
               icon: PanelRight,
               checked: isInspectorOpen,
               run: () => setInspectorOpen(!isInspectorOpen),
+            },
+          ],
+        },
+        {
+          // Nachtest Bug 17: Der Expertenmodus versteckte sich im Hilfe-
+          // Menü. Er ist eine Darstellungs-Einstellung und gehört nach
+          // „Ansicht“ — mit Wortlaut, der sagt, was er tut.
+          label: 'Planungshilfe',
+          items: [
+            {
+              label: 'Expertenmodus (ohne Schrittleiste)',
+              icon: SlidersHorizontal,
+              checked: !guidedMode,
+              run: () => setGuidedMode(!guidedMode),
             },
           ],
         },

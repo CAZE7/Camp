@@ -246,9 +246,8 @@ export function BOMModal() {
                 )}
                 {divergingLengths.length > 0 && (
                   <p className="mt-1 text-sm">
-                    Bei {divergingLengths.length}{' '}
-                    {divergingLengths.length === 1 ? 'Strecke' : 'Strecken'} widersprechen sich eingetragene
-                    Länge und gerouteter Verlegeweg um mehr als{' '}
+                    Bei {divergingLengths.length} {divergingLengths.length === 1 ? 'Strecke' : 'Strecken'}{' '}
+                    widersprechen sich eingetragene Länge und gerouteter Verlegeweg um mehr als{' '}
                     {Math.round(LENGTH_DIVERGENCE_TOLERANCE * 100)} %. Verwendet wurde deine eingetragene
                     Länge (bei reinen Planungsannahmen die größere, damit nichts zu knapp wird).
                   </p>

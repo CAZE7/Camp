@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PlannerDashboard } from './PlannerDashboard';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useAppStore } from '../../lib/store';
 import type { PlannerFlowNode } from '../nodes/types';
 
 /**
@@ -27,6 +28,8 @@ function node(id: string, type: string): PlannerFlowNode {
 describe('Geführter Modus (Integration über den echten Store)', () => {
   beforeEach(() => {
     act(() => {
+      // Nachtest N2: Die Schrittleiste erscheint erst nach der Einführung.
+      useAppStore.setState({ hasOnboarded: true });
       usePlannerStore.setState({
         viewMode: 'electric',
         nodes: [],
@@ -40,6 +43,17 @@ describe('Geführter Modus (Integration über den echten Store)', () => {
 
   afterEach(() => {
     cleanup();
+    act(() => {
+      useAppStore.setState({ hasOnboarded: false });
+    });
+  });
+
+  it('bleibt während der Einführung ausgeblendet (Nachtest N2)', () => {
+    act(() => {
+      useAppStore.setState({ hasOnboarded: false });
+    });
+    render(<PlannerDashboard />);
+    expect(screen.queryByTestId('guided-rail')).not.toBeInTheDocument();
   });
 
   it('startet geführt und zeigt den ersten offenen Schritt', () => {

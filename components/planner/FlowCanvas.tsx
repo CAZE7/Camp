@@ -381,7 +381,8 @@ export function FlowCanvas() {
       // Nachtest Bug 25: Automatische Fits respektieren die Zoom-
       // Untergrenze — sonst startet ein großer Plan bei 29 % unlesbar.
       // Nur die bewusste „Gesamtübersicht“ darf weiter herauszoomen.
-      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
+      else
+        void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
 
@@ -641,7 +642,8 @@ export function FlowCanvas() {
     }
     return { nodeIds, edgeIds };
   }, [plannerErrors]);
-  const reviewActive = plannerMode === 'pruefung' && viewMode === 'electric' && (plannerErrors?.length ?? 0) > 0;
+  const reviewActive =
+    plannerMode === 'pruefung' && viewMode === 'electric' && (plannerErrors?.length ?? 0) > 0;
 
   const interactiveNodes = useMemo(() => {
     return groupedNodes.map((node) => {
@@ -664,7 +666,8 @@ export function FlowCanvas() {
     if (!reviewActive) return interactiveNodes;
     return interactiveNodes.map((node) => ({
       ...node,
-      className: `${node.className ?? ''} ${findingSets.nodeIds.has(node.id) ? 'planner-node--finding' : 'planner-node--clean'}`.trim(),
+      className:
+        `${node.className ?? ''} ${findingSets.nodeIds.has(node.id) ? 'planner-node--finding' : 'planner-node--clean'}`.trim(),
     }));
   }, [interactiveNodes, reviewActive, findingSets]);
 
@@ -672,7 +675,8 @@ export function FlowCanvas() {
     if (!reviewActive) return displayedEdges;
     return displayedEdges.map((edge) => ({
       ...edge,
-      className: `${edge.className ?? ''} ${findingSets.edgeIds.has(edge.id) ? 'planner-edge--finding' : 'planner-edge--clean'}`.trim(),
+      className:
+        `${edge.className ?? ''} ${findingSets.edgeIds.has(edge.id) ? 'planner-edge--finding' : 'planner-edge--clean'}`.trim(),
     }));
   }, [displayedEdges, reviewActive, findingSets]);
 
