@@ -1,5 +1,23 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 — CI-Nachzug zum Handy-Nachtest
+
+**Anlass:** Das Pflicht-Gate auf `0cc6fa3` brach an drei Stellen: ein
+`setTimeout` in `usePlannerEntryPlan` feuerte nach dem Test-Abbau (`window`
+weg), „Kabel optimieren“ gab bei Ablehnung die Sperre für den zweiten Lauf
+nicht mehr aus, und die Handy-CSS schob Statuszeile, Zoom und Fachwissen in
+die bestehenden Geometrie-Budgets (Zeichenfläche unter 150 px bei 640×320,
+Zoom über dem Anzeige-Chip, Fachwissen über der Statuszeile).
+
+**Verhalten:** Der Timer wird beim Aushängen gelöscht. Eine abgelehnte
+Optimierung lässt die veröffentlichten Wege stehen, setzt den Routing-Status
+auf „retained“ und behält die Lauf-Sperre. Die Statuszeile im Querformat
+erscheint erst ab 360 px Höhe. Der Zoom bleibt links, das Fachwissen endet
+über der Statuszeile, die Einstiegsmeldung liegt in derselben Stapelebene
+wie die Zeichenfläche.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-19 (2) — Handy-Nachtest: Frischstart, Optimieren, Geometrie
 
 **Anlass:** Zweiter Live-Nachtest nach dem Deploy von #547. Speicher leeren stellte

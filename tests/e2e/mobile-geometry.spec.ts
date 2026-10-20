@@ -84,6 +84,33 @@ async function zoomPercent(page: Page): Promise<number> {
   return match ? Number(match[1]) : Number.NaN;
 }
 
+/** Die Gruppenfläche liegt als erstes `.react-flow__node` über dem Plan und
+ *  wählt kein Bauteil. Ein Strompfad entsteht nur auf einer sichtbaren Karte. */
+async function clickVisiblePart(page: Page, viewport: { width: number; height: number }): Promise<void> {
+  const nodes = page.locator('.react-flow__node:not(.planner-backbone-group-node)');
+  const nodeCount = await nodes.count();
+  for (let index = 0; index < nodeCount; index += 1) {
+    const candidate = nodes.nth(index);
+    const nodeId = await candidate.getAttribute('data-id');
+    const box = await candidate.boundingBox();
+    if (!nodeId || !box || box.width < 40 || box.height < 24 || box.width > 320) continue;
+    const x = box.x + Math.min(36, box.width / 2);
+    const y = box.y + Math.min(22, box.height / 3);
+    if (x < 8 || y < 8 || x > viewport.width - 8 || y > viewport.height - 8) continue;
+    const hitsSelf = await page.evaluate(
+      ({ pointX, pointY, id }) => {
+        const top = document.elementFromPoint(pointX, pointY);
+        return top?.closest('.react-flow__node')?.getAttribute('data-id') === id;
+      },
+      { pointX: x, pointY: y, id: nodeId }
+    );
+    if (!hitsSelf) continue;
+    await page.mouse.click(x, y);
+    return;
+  }
+  throw new Error('kein sichtbares Bauteil zum Anklicken');
+}
+
 test.describe('Frischstart nach geleertem Speicher', () => {
   test('ein fremder Plan kommt nicht zurück und der Assistent erscheint', async ({ page }) => {
     await page.goto('/planer/');
@@ -192,7 +219,7 @@ for (const viewport of [
       const canvasBox = await boxOf(canvas);
       expect(canvasBox.height).toBeGreaterThan(150);
 
-      await page.locator('.react-flow__node').first().click({ force: true });
+      await clickVisiblePart(page, viewport);
       const trace = page.getByTestId('circuit-trace-info');
       await expect(trace).toBeVisible({ timeout: 8_000 });
       const traceBox = await boxOf(trace);
@@ -301,7 +328,7 @@ for (const viewport of [
       expect(scrollHeight).toBeGreaterThan(120);
       await bom.getByRole('button', { name: 'Dialog schließen' }).click();
 
-      await page.locator('.react-flow__node').first().click({ force: true });
+      await clickVisiblePart(page, viewport);
       await page.getByTestId('menubar-hilfe').click();
       await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
       const expert = page.getByTestId('expert-panel-open');

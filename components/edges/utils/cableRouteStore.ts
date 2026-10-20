@@ -713,14 +713,25 @@ export function CableRouteSync() {
           // Der abgelehnte Kandidat darf den veröffentlichten Stand nicht
           // anfassen: ein erneutes Validieren derselben Wege hat kritische
           // Befunde neu in die Warnliste geschrieben, obwohl die Führung
-          // unverändert bleiben sollte.
-          publishCableRouteGeneration(
-            generationBefore ?? {
-              ...status,
-              state: 'valid',
-              geometryHash: status.hash,
-            }
-          );
+          // unverändert bleiben sollte. Die Sperre für einen zweiten Lauf
+          // bleibt: dieselbe Eingabe ist geprüft.
+          const kept = generationBefore ?? {
+            ...status,
+            state: 'optimized' as const,
+            geometryHash: status.hash,
+          };
+          publishCableRouteGeneration({
+            ...kept,
+            // Die Wege bleiben. „retained“ ist der Status, den die Leiste
+            // für einen gehaltenen gültigen Stand schon kennt.
+            state: generationBefore ? 'retained' : 'optimized',
+            reason: feedback,
+            optimization: {
+              attempted: summary.attempted,
+              accepted: summary.accepted,
+              budgetExhausted: summary.budgetExhausted,
+            },
+          });
           return;
         }
         completeCableRouteGeneration(

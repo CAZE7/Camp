@@ -2630,11 +2630,10 @@ html.planner-root-active body {
     min-height: 34px;
     min-width: 34px;
   }
+  /* 22 px Statuszeile würden die Zeichenfläche bei 320 px Höhe unter 150 px
+     drücken. Sichtbar wird sie erst ab 360 px Fensterhöhe (unten). */
   .cad-statusbar {
-    display: flex;
-    min-height: 22px;
-    height: 22px;
-    overflow: hidden;
+    display: none;
   }
   .cad-rail {
     min-height: 32px;
@@ -3325,17 +3324,13 @@ html.planner-root-active body {
     scrollbar-width: thin;
   }
 
-  /* 852 px Breite ist immer noch ein Telefon im Querformat: Undo und
-     Übersicht bleiben, der Zoom sitzt rechts daneben und nicht darauf. */
-  .planner-mobile-history {
-    display: flex !important;
-  }
-
+  /* Zoom bleibt links: rechts sitzt der Anzeige-Chip, und bei 640×320
+     deckt eine rechte Zoomleiste dessen Mitte. */
   .planner-shell .react-flow__controls.planner-controls {
     top: auto !important;
-    right: 0.25rem !important;
+    right: auto !important;
     bottom: 0.25rem !important;
-    left: auto !important;
+    left: 0.25rem !important;
   }
 
   .react-flow__panel:has([data-testid='circuit-trace-info']) {
@@ -3357,13 +3352,13 @@ html.planner-root-active body {
   }
 
   .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
-    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem) !important;
+    top: 7.25rem !important;
     right: 0.5rem !important;
     bottom: auto !important;
     left: 0.5rem !important;
     width: auto !important;
-    max-height: 5.5rem !important;
-    z-index: 70 !important;
+    max-height: 6.5rem !important;
+    z-index: 90 !important;
   }
 
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
@@ -3374,7 +3369,7 @@ html.planner-root-active body {
     position: fixed !important;
     top: 4.5rem !important;
     right: 0.5rem !important;
-    bottom: calc(var(--cad-nav-h, 3.5rem) + 0.25rem) !important;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + var(--cad-statusbar-h, 22px) + 0.35rem) !important;
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
@@ -3384,6 +3379,24 @@ html.planner-root-active body {
   .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
     height: 100%;
     max-height: none;
+  }
+}
+
+/* Ab 360 px Höhe trägt das Querformat die Statuszeile und die schwebende
+   Undo-Leiste, ohne die 150-px-Zeichenfläche bei 320 px zu unterschreiten.
+   Die Leiste sitzt oben, der Zoom unten links. */
+@media (orientation: landscape) and (max-height: 480px) and (min-height: 360px) {
+  .cad-statusbar {
+    display: flex;
+    min-height: 22px;
+    height: 22px;
+    overflow: hidden;
+  }
+
+  .planner-mobile-history {
+    display: flex !important;
+    top: 0.25rem !important;
+    bottom: auto !important;
   }
 }
 
@@ -3409,11 +3422,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: min(28dvh, 11rem) !important;
-    z-index: 70 !important;
-  }
-
-  .planner-action-feedback {
-    top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem);
+    z-index: 90 !important;
   }
 
   .planner-shell .planner-verification-panel {
@@ -3424,7 +3433,9 @@ html.planner-root-active body {
     position: fixed !important;
     top: calc(var(--cad-menubar-h) + var(--cad-toolbar-h) + 0.25rem) !important;
     right: 0.5rem !important;
-    bottom: calc(4.25rem + env(safe-area-inset-bottom)) !important;
+    bottom: calc(
+      var(--cad-nav-h, 3.5rem) + var(--cad-statusbar-h, 28px) + 0.5rem + env(safe-area-inset-bottom)
+    ) !important;
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
@@ -3483,9 +3494,14 @@ html.planner-root-active body {
 /* Zwei Menüzeilen: die Leiste ist höher als die Token-Höhe. Blätter beginnen
    darunter, sonst liegt „Schließen“ auf „Weitere Aktionen“. */
 @media (max-width: 520px) and (orientation: portrait) {
-  .planner-shell .planner-expert-panel--open,
-  .planner-shell .de-warning-center [role='dialog'],
-  .planner-action-feedback {
+  /* Zwei Menüzeilen plus Werkzeug- und Schrittleiste: 8,75 rem liegt auf
+     dem Pixel 5 noch in der Werkzeugleiste, der Schließen-Knopf bleibt
+     darunter. */
+  .planner-shell .planner-expert-panel--open {
+    top: 12rem !important;
+  }
+
+  .planner-shell .de-warning-center [role='dialog'] {
     top: 8.75rem !important;
   }
 
