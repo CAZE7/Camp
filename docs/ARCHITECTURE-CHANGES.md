@@ -1,5 +1,18 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (5) — eine Kopfzeile auf dem Telefon
+
+**Anlass:** Auf dem iPhone SE lagen Menüleiste (zwei Zeilen) und Werkzeugleiste
+übereinander, mit unterschiedlichen Knopfstilen. „Prüfung“ war abgeschnitten.
+
+**Verhalten:** Unter 768 px wird die Menüleiste zum Knopf „Menü“ in der
+Werkzeugzeile. Das Blatt dahinter enthält Datei bis Hilfe. Knöpfe, Modus,
+Schrittleiste und Hinweiszahl teilen Höhe, Radius und Kontur. Der Akzent
+bleibt der nächsten Aktion. Die Modusleiste zeigt Symbol plus Kurzwort.
+Ab 768 px bleibt die Menüleiste.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 (4) — Übersicht, Moduswörter, Bauteilnamen
 
 **Anlass:** Live-Nachtest nach #549. Im Querformat 852×393 lag „Übersicht“

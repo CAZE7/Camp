@@ -61,6 +61,8 @@ export interface PlannerToolbarProps {
   onOpenMenu: (menu: PlannerMenuId | 'more' | null) => void;
   /** Rechts: Speicherzustand und Prüf-Einstiege (Prüfsiegel, Hinweiszahl). */
   statusArea?: React.ReactNode;
+  /** Unter 768 px: der Menü-Knopf am Anfang derselben Zeile. */
+  leading?: React.ReactNode;
 }
 
 function ToolButton({
@@ -191,6 +193,7 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         ref={buttonRef}
         type="button"
         data-testid="action-templates"
+        aria-label="Vorlage laden"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -201,7 +204,7 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
         <span className="tb-label tb-label--kurz">Vorlage</span>
         <span className="tb-label tb-label--mittel">Vorlage laden</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+        <ChevronDown className="cad-template-chevron h-3.5 w-3.5" aria-hidden="true" />
       </button>
       {open && (
         <div className="cad-menu left-0 right-auto" role="menu" aria-label="Vorlage laden">
@@ -296,6 +299,7 @@ export function PlannerToolbar({
   openMenu,
   onOpenMenu,
   statusArea,
+  leading,
 }: PlannerToolbarProps) {
   const moreButtonRef = React.useRef<HTMLButtonElement>(null);
   const closeMore = React.useCallback(
@@ -318,6 +322,7 @@ export function PlannerToolbar({
         in 44 px Höhe), sodass Knöpfe abgeschnitten wirkten.
       */}
       <div className="cad-toolbar__actions">
+        {leading}
         <div className="cad-toolbar__group">
           <ToolButton
             label="Rückgängig"

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openMenubar } from './helpers';
 
 /**
  * Geometrie auf einem frischen Beispielplan.
@@ -176,17 +177,34 @@ for (const viewport of [
     test('Menü, Übersicht, Zoom und Strompfad liegen frei', async ({ page }) => {
       await openFreshExample(page);
 
-      for (const id of ['ansicht', 'hilfe']) {
-        const item = page.getByTestId(`menubar-${id}`);
-        await expect(item).toBeVisible();
-        const box = await boxOf(item);
-        expect(insideViewport(box, viewport)).toBe(true);
-        const clipped = await item.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
-        expect(clipped).toBe(false);
+      if (viewport.width < 768) {
+        await expect(page.locator('.cad-menubar')).toBeHidden();
+        const phone = page.getByTestId('phone-menu');
+        const toolbar = page.getByTestId('planner-toolbar');
+        await expect(phone).toBeVisible();
+        const phoneBox = await boxOf(phone);
+        const toolbarBox = await boxOf(toolbar);
+        expect(phoneBox.y).toBeGreaterThanOrEqual(toolbarBox.y - 1);
+        expect(phoneBox.y + phoneBox.height).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height + 1);
+        expect(toolbarBox.height).toBeLessThanOrEqual(56);
+        const rail = page.getByTestId('guided-rail');
+        if (await rail.isVisible()) {
+          const railBox = await boxOf(rail);
+          expect(railBox.y - toolbarBox.y).toBeLessThanOrEqual(toolbarBox.height + 4);
+        }
+      } else {
+        for (const id of ['ansicht', 'hilfe']) {
+          const item = page.getByTestId(`menubar-${id}`);
+          await expect(item).toBeVisible();
+          const box = await boxOf(item);
+          expect(insideViewport(box, viewport)).toBe(true);
+          const clipped = await item.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+          expect(clipped).toBe(false);
+        }
       }
 
       const caption = page.getByTestId('planner-mode-caption');
-      if (await caption.isVisible()) {
+      if ((await caption.isVisible()) && viewport.width >= 768) {
         expect(boxesOverlap(await boxOf(caption), await boxOf(page.getByTestId('menubar-ansicht')))).toBe(
           false
         );
@@ -244,12 +262,18 @@ for (const viewport of [
       await openFreshExample(page);
       const ids = ['planner-mode-planung', 'planner-mode-physisch', 'planner-mode-pruefung'] as const;
       const boxes = [];
+      const labelClass = viewport.width < 768 ? '.planner-mode-short' : '.planner-mode-label';
       for (const id of ids) {
         const button = page.getByTestId(id);
         await expect(button).toBeVisible();
-        const label = button.locator('.planner-mode-label');
+        const label = button.locator(labelClass);
+        await expect(label).toBeVisible();
         const clipped = await label.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
         expect(clipped, id).toBe(false);
+        const buttonClipped = await button.evaluate(
+          (element) => element.scrollWidth > element.clientWidth + 1
+        );
+        expect(buttonClipped, id).toBe(false);
         boxes.push(await boxOf(button));
       }
       expect(boxesOverlap(boxes[0]!, boxes[1]!)).toBe(false);
@@ -278,7 +302,7 @@ for (const viewport of [
     test('Auto-verbinden bleibt im Menü vollständig lesbar', async ({ page }) => {
       await openFreshExample(page);
 
-      await page.getByTestId('menubar-werkzeuge').click();
+      await openMenubar(page, 'werkzeuge');
       const menuItem = page.getByTestId('action-autowire-menu');
       await expect(menuItem).toBeVisible();
       await expect(menuItem).toContainText('Auto-verbinden');
@@ -381,7 +405,7 @@ for (const viewport of [
       await bom.getByRole('button', { name: 'Dialog schließen' }).click();
 
       await clickVisiblePart(page, viewport);
-      await page.getByTestId('menubar-hilfe').click();
+      await openMenubar(page, 'hilfe');
       await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
       const expert = page.getByTestId('expert-panel-open');
       await expect(expert).toBeVisible();
@@ -457,13 +481,13 @@ for (const viewport of [
       expect(labelLines).toBeLessThanOrEqual(2.2);
       await page.keyboard.press('Escape');
 
-      await page.getByTestId('menubar-ansicht').click();
+      await openMenubar(page, 'ansicht');
       await page.getByRole('menuitem', { name: /Expertenmodus/ }).click();
       const autoBtn = page.getByTestId('action-autowire');
       await expect(autoBtn).toBeVisible();
       expect(boxesOverlap(await boxOf(autoBtn), await boxOf(page.getByTestId('action-more')))).toBe(false);
 
-      await page.getByTestId('menubar-hilfe').click();
+      await openMenubar(page, 'hilfe');
       const hilfe = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
       await expect(hilfe).toBeVisible();
       const hilfeBox = await boxOf(hilfe);
