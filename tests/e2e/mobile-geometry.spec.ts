@@ -622,6 +622,11 @@ for (const viewport of [
       await expect(sheet).toBeHidden();
     });
 
+    test('Einstiegsmeldung deckt Modus und Werkzeugleiste nicht', async ({ page }) => {
+      await openFreshExample(page);
+      await expectNoticeClearsControls(page);
+    });
+
     test('Einstiegsmeldung im Querformat liegt frei und lässt sich aufklappen', async ({ page }) => {
       test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
       await openFreshExample(page);
@@ -657,6 +662,53 @@ for (const viewport of [
       expect(insideViewport(await boxOf(minimap), viewport)).toBe(true);
     });
   });
+}
+
+async function expectNoticeClearsControls(page: Page): Promise<void> {
+  const notice = page.locator('.planner-entry-notice');
+  // Der Beispielplan kann aus dem Speicher zurückkommen, ohne die Meldung
+  // noch einmal zu setzen. Dann einmal sauber neu laden.
+  if (!(await notice.isVisible().catch(() => false))) {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.reload();
+    const dialog = page.getByRole('dialog');
+    await dialog
+      .first()
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .catch(() => undefined);
+    if ((await dialog.count()) > 0) {
+      await dialog.getByRole('button', { name: 'Dialog schließen' }).click();
+      await expect(dialog).toBeHidden();
+    }
+  }
+  await expect(notice).toBeVisible();
+  const noticeBox = await boxOf(notice);
+  for (const id of [
+    'planner-mode-planung',
+    'planner-mode-physisch',
+    'planner-mode-pruefung',
+    'planner-mode-caption',
+    'canvas-display-options',
+    'planner-toolbar',
+    'guided-rail',
+    'phone-menu',
+  ]) {
+    const control = page.getByTestId(id);
+    if ((await control.count()) === 0 || !(await control.isVisible())) continue;
+    expect(boxesOverlap(noticeBox, await boxOf(control)), id).toBe(false);
+  }
+  const mode = page.getByTestId('planner-mode-physisch');
+  const hit = await mode.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return top != null && element.contains(top);
+  });
+  expect(hit).toBe(true);
+  await mode.click();
+  await expect(page.getByTestId('planner-mode-caption')).toContainText('Physisch');
 }
 
 async function assertClearOfChrome(page: Page, panel: Locator): Promise<void> {
@@ -737,6 +789,24 @@ test.describe('Hilfe-Menü bei knapp 910 px', () => {
     const box = await boxOf(item);
     expect(box.y).toBeGreaterThanOrEqual(32);
     expect(insideViewport(box, { width: 910, height: 700 })).toBe(true);
+  });
+});
+
+test.describe('Einstiegsmeldung bei 1440', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'einmal, im Projekt desktop-1440');
+  });
+
+  test('deckt Modus, Ansicht und Werkzeugleiste nicht', async ({ page }) => {
+    await openFreshExample(page);
+    await expectNoticeClearsControls(page);
+    await page.getByTestId('planner-mode-pruefung').click();
+    await expect(page.getByTestId('planner-mode-caption')).toContainText('Prüfung');
+    const notice = page.locator('.planner-entry-notice');
+    expect(boxesOverlap(await boxOf(notice), await boxOf(page.getByTestId('planner-mode-caption')))).toBe(
+      false
+    );
   });
 });
 

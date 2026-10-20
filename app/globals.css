@@ -4172,6 +4172,32 @@ html.planner-root-active body {
   }
 }
 
+/* Desktop und Tablet: die Meldung beginnt unter der Moduszeile samt
+   Hinweis. Oben liegen Modus (Mitte) und Ansicht (rechts); eine Leiste
+   über die volle Breite nahm dort die Klicks auf „Physisch“ an. */
+@media (min-width: 768px) and (min-height: 501px) {
+  .planner-entry-notice {
+    top: 8rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    max-height: 4.5rem;
+    overflow: auto;
+  }
+}
+
+/* Hochformat: dieselbe Freigabe. Die Modusknöpfe sind 44 px, der Hinweis
+   darunter zwei Zeilen. Die frühere Lage (3,25 rem) schnitt den Hinweis. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .planner-entry-notice {
+    top: 7.25rem;
+  }
+
+  .planner-canvas-column:has(.planner-entry-notice)
+    .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 10.35rem !important;
+  }
+}
+
 .planner-sheet-backdrop {
   position: fixed;
   top: calc(var(--cad-menubar-h, 0px) + var(--cad-toolbar-h, 44px));

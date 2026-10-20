@@ -1,5 +1,18 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (7) — Einstiegsmeldung unter dem Modus
+
+**Anlass:** Die Aufklappzeile von „Beispiel geladen“ lag auf 1440 px über
+Planung, Physisch, Prüfung und Ansicht und nahm die Klicks an. Im Hochformat
+schnitt sie den Modushinweis.
+
+**Verhalten:** Ab 768 px Breite und 501 px Höhe beginnt die Meldung unter der
+Moduszeile. Im Hochformat ebenfalls, der Strompfad folgt darunter. Im kurzen
+Querformat bleibt sie eine Zeile in der Lücke zwischen Modus und Ansicht und
+klappt dort auf.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 (6) — Menüblatt, Querformat, Hilfe unter der Leiste
 
 **Anlass:** Nach #550 lag ein geöffneter Menüabschnitt durchscheinend über den
