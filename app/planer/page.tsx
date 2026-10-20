@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { metadataForPage } from '@/app/seoMetadata';
 import Planner from '@/components/Planner';
 import { PlanerSeoContent } from '@/components/planner/PlanerSeoContent';
-import { PLANER_FAQ } from '@/components/planner/planerSeoContent';
+import { PLANER_FAQ } from '@/components/planner/planerSeoTexte';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
 import { pageByPath } from '@/lib/seo/inventory';
 
@@ -34,7 +34,7 @@ import { pageByPath } from '@/lib/seo/inventory';
  *
  * Kopfdaten und strukturierte Beschreibung kommen aus dem Seiteninventar
  * (`lib/seo/inventory.ts`) — dieselbe Quelle, aus der Sitemap, Canonical und
- * die Exportprüfung lesen. Die FAQ-Texte kommen aus `planerSeoContent.ts`
+ * die Exportprüfung lesen. Die FAQ-Texte kommen aus `planerSeoTexte.ts`
  * und sind identisch in Anzeige und `FAQPage`-Schema.
  */
 
