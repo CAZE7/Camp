@@ -195,7 +195,19 @@ for (const viewport of [
       await expect(page.getByTestId('mobile-overview')).toHaveCount(1);
       const overview = page.getByTestId('mobile-overview');
       const undo = page.getByTestId('mobile-undo');
-      expect(boxesOverlap(await boxOf(overview), await boxOf(undo))).toBe(false);
+      const overviewBox = await boxOf(overview);
+      expect(insideViewport(overviewBox, viewport)).toBe(true);
+      expect(boxesOverlap(overviewBox, await boxOf(undo))).toBe(false);
+      const nav = page.getByTestId('planner-bottom-nav');
+      if (await nav.isVisible()) {
+        expect(boxesOverlap(overviewBox, await boxOf(nav))).toBe(false);
+      }
+      const overviewHit = await overview.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return element.contains(top);
+      });
+      expect(overviewHit).toBe(true);
 
       const zoomIn = page.locator('.react-flow__controls-zoomin');
       await expect(zoomIn).toBeVisible();
@@ -226,6 +238,41 @@ for (const viewport of [
       expect(traceBox.height).toBeLessThanOrEqual(72);
       expect(boxesOverlap(traceBox, await boxOf(overview))).toBe(false);
       expect(boxesOverlap(traceBox, await boxOf(zoomIn))).toBe(false);
+    });
+
+    test('Modus-Wörter bleiben ganz und liegen nicht übereinander', async ({ page }) => {
+      await openFreshExample(page);
+      const ids = ['planner-mode-planung', 'planner-mode-physisch', 'planner-mode-pruefung'] as const;
+      const boxes = [];
+      for (const id of ids) {
+        const button = page.getByTestId(id);
+        await expect(button).toBeVisible();
+        const label = button.locator('.planner-mode-label');
+        const clipped = await label.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+        expect(clipped, id).toBe(false);
+        boxes.push(await boxOf(button));
+      }
+      expect(boxesOverlap(boxes[0]!, boxes[1]!)).toBe(false);
+      expect(boxesOverlap(boxes[1]!, boxes[2]!)).toBe(false);
+      const ansicht = page.getByTestId('canvas-display-options');
+      if (await ansicht.isVisible()) {
+        const ansichtBox = await boxOf(ansicht);
+        for (const box of boxes) expect(boxesOverlap(box!, ansichtBox)).toBe(false);
+      }
+    });
+
+    test('Auto-verbinden-Symbol unter 480 px liegt frei in der Leiste', async ({ page }) => {
+      test.skip(viewport.width >= 480, 'nur die schmale Leiste');
+      await openFreshExample(page);
+      const wire = page.getByTestId('action-autowire');
+      await expect(wire).toBeVisible();
+      const wireBox = await boxOf(wire);
+      expect(insideViewport(wireBox, viewport)).toBe(true);
+      for (const id of ['action-more', 'action-templates', 'save-indicator']) {
+        const other = page.getByTestId(id);
+        if (!(await other.isVisible())) continue;
+        expect(boxesOverlap(wireBox, await boxOf(other)), id).toBe(false);
+      }
     });
 
     test('Auto-verbinden bleibt im Menü vollständig lesbar', async ({ page }) => {
@@ -318,6 +365,11 @@ for (const viewport of [
       await page.getByRole('menuitem', { name: /^Stückliste/ }).click();
       const bom = page.getByRole('dialog', { name: 'Stückliste' });
       await expect(bom).toBeVisible();
+      const subtitle = bom.locator('.planner-dialog__description');
+      const subtitleClipped = await subtitle.evaluate(
+        (element) => element.scrollHeight > element.clientHeight + 1
+      );
+      expect(subtitleClipped).toBe(false);
       const release = bom.getByTestId('bom-release-status');
       await expect(release).toBeVisible();
       const releaseBox = await boxOf(release);
@@ -387,7 +439,7 @@ for (const viewport of [
         false
       );
       const autowire = page.getByTestId('action-autowire');
-      if ((await autowire.count()) > 0) {
+      if ((await autowire.count()) > 0 && (await autowire.isVisible())) {
         expect(boxesOverlap(await boxOf(autowire), await boxOf(page.getByTestId('action-more')))).toBe(false);
       }
 

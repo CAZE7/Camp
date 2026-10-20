@@ -1,5 +1,21 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (4) — Übersicht, Moduswörter, Bauteilnamen
+
+**Anlass:** Live-Nachtest nach #549. Im Querformat 852×393 lag „Übersicht“
+hinter der Fußleiste. Auf 375 und 393 px liefen „Physisch“ und „Prüfung“
+ineinander. Der Auto-verbinden-Hinweis nannte `battery-1`. Unter 480 px
+fehlte das Auto-verbinden-Symbol in der Leiste. Der Stücklisten-Untertitel
+endete mit Auslassung.
+
+**Verhalten:** Übersicht sitzt über Fußleiste und Statuszeile. Die drei
+Moduswörter stehen auf schmalen Hochformaten ohne Symbole nebeneinander.
+`toPlainGerman` ersetzt Bauteil-Ids (`battery-1`) durch den Registry-Namen.
+Unter 480 px zeigt die Leiste das Auto-verbinden-Symbol; Teilen liegt im
+⋯-Menü. Dialog-Untertitel umbrechen.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 (3) — Einstiegsmeldung unter der Ansicht-Zeile
 
 **Anlass:** Auf dem Telefon lag „Meldung schließen“ der Einstiegsmeldung auf

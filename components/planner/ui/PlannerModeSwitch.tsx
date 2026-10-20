@@ -66,8 +66,8 @@ export function PlannerModeSwitch({ mode, onSelect }: PlannerModeSwitchProps) {
             onClick={() => onSelect(option.mode)}
             className={`cad-btn min-h-11 min-w-0 flex-1 px-1.5 text-xs sm:flex-none sm:px-2.5 sm:text-sm ${active ? 'cad-btn--active' : ''}`}
           >
-            <option.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {option.label}
+            <option.Icon aria-hidden="true" className="planner-mode-icon h-4 w-4 shrink-0" />
+            <span className="planner-mode-label">{option.label}</span>
           </button>
         );
       })}

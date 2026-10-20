@@ -2788,7 +2788,23 @@ html.planner-root-active body {
   }
 }
 
+/* Unter 480 px bleibt Auto-verbinden als Symbol in der Leiste, auch im
+   geführten Modus. Teilen weicht in das ⋯-Menü, sonst liegt das Symbol auf
+   dem Statusfeld. Ab 480 px zeigt der geführte Modus den Knopf nicht — die
+   Schrittleiste ist dort die primäre Aktion. */
+.cad-autowire-phone {
+  display: none;
+}
+
 @media (max-width: 479.98px) {
+  .cad-autowire-phone {
+    display: inline-flex;
+  }
+
+  .cad-toolbar [data-testid='action-share'] {
+    display: none;
+  }
+
   .cad-toolbar [data-testid='action-autowire'] .tb-label,
   .cad-toolbar [data-testid='action-share'] .tool-btn__label {
     display: none;
@@ -3445,10 +3461,12 @@ html.planner-root-active body {
   .planner-mobile-history {
     display: flex !important;
     top: auto !important;
-    bottom: 0.25rem !important;
+    /* Über Fußleiste und Statuszeile. `bottom: 0.25rem` lag in der Fußleiste
+       (z-50) und die Übersicht war dort verdeckt. */
+    bottom: calc(var(--cad-nav-h, 44px) + var(--cad-statusbar-h, 22px) + 0.35rem) !important;
     left: auto !important;
     right: 0.25rem !important;
-    z-index: 40;
+    z-index: 45;
   }
 
   .planner-shell .planner-mobile-feedback {
@@ -3741,10 +3759,7 @@ html.planner-root-active body {
   }
 
   .planner-dialog__description {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
+    white-space: normal;
   }
 
   [data-testid='bom-scroll-body'] {
@@ -3778,5 +3793,31 @@ html.planner-root-active body {
   .planner-entry-notice {
     top: 5.15rem;
     max-height: 2.5rem;
+  }
+}
+
+/* Drei Wörter plus Symbole passen neben Ansicht nicht auf 375/393 px:
+   der Text lief aus dem Knopf in den Nachbarn. Ohne Symbole bleiben
+   Planung, Physisch und Prüfung ganz; ein Überlauf wird abgeschnitten,
+   nicht über den nächsten Knopf gemalt. */
+@media (max-width: 430px) and (orientation: portrait) {
+  .planner-mode-switch-panel {
+    right: 7.25rem !important;
+  }
+
+  .planner-mode-switch-panel .planner-mode-icon {
+    display: none;
+  }
+
+  .planner-mode-switch-panel .cad-btn {
+    min-width: 0;
+    justify-content: center;
+    overflow: hidden;
+    padding-inline: 0.15rem;
+  }
+
+  .planner-mode-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
