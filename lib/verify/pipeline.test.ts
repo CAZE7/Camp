@@ -8,6 +8,7 @@ import {
   verifyPlan,
   type VerificationInput,
 } from './pipeline';
+import { VDE_GROUP_FACTORS_MAX_N } from '../electrical';
 import { assumptionStatements, bundledCircuitsFor, verificationOptions } from './context';
 import { buildConductionGraph } from './graph';
 import { fixtureNode, healthyDcPlan, islandPlan, shorePlan, withEdge } from './planFixtures';
@@ -243,6 +244,24 @@ describe('lib/verify/pipeline — Laufannahmen (context.ts)', () => {
       verificationOptions({ ampacity: { ambientC: 80, insulation: 'XLPE', bundledCircuits: 1 } }).ampacity
         .ambientC
     ).toBe(80);
+  });
+
+  it('weist einen unbekannten Isolierstoff und eine Häufung über der Tabellenreichweite zurück', () => {
+    // Ohne Isolierstoff-Prüfung wäre `MAX_CONDUCTOR_TEMPERATURE_C['GUMMI']`
+    // gleich `undefined`, der Temperaturvergleich damit `false` — der Lauf
+    // rechnete still mit einer Grenzleitertemperatur, die es nicht gibt.
+    expect(() =>
+      verificationOptions({ ampacity: { ambientC: 40, insulation: 'GUMMI' as never, bundledCircuits: 2 } })
+    ).toThrow(/Isolierstoff/);
+    // `groupFactor` endet bei 9 definierten Stromkreisen und wirft darüber. Ein
+    // Planwert jenseits der Tabelle darf die Engine nie erreichen: sonst bricht
+    // die Live-Validierung mit einem RangeError, den die Oberfläche selbst
+    // ausgelöst hat.
+    expect(() =>
+      verificationOptions({
+        ampacity: { ambientC: 30, insulation: 'PVC', bundledCircuits: VDE_GROUP_FACTORS_MAX_N + 1 },
+      })
+    ).toThrow(/Häufung/);
   });
 
   it('nimmt die Häufung kantenspezifisch und sonst global', () => {

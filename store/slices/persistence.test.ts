@@ -50,9 +50,11 @@ describe('persistOptions — Speicher-Vertrag', () => {
     expect(Object.keys(subset).sort()).toEqual(
       [
         'backboneGrouping',
+        'cableBundling',
         'detailLevel',
         'edges',
         'guidedMode',
+        'installConditions',
         'isInspectorOpen',
         'isSidebarOpen',
         'nodes',
@@ -65,6 +67,64 @@ describe('persistOptions — Speicher-Vertrag', () => {
     // Der gewählte Modus (geführt/Experte) überlebt den Reload.
     expect(subset.guidedMode).toBe(false);
     expect(subset.detailLevel).toBe('overview');
+  });
+});
+
+describe('Verlegebedingungen in der Persistenz (P1: das Urteil überlebt den Reload)', () => {
+  const bedingungen = { ambientC: 55, insulation: 'XLPE', bundledCircuits: 4 };
+
+  it('partialize hält Planbedingungen und Kabel-Häufung fest', () => {
+    const full = {
+      ...migratePlannerPersisted({}, PLANNER_STORAGE_VERSION),
+      nodes: [],
+      edges: [],
+      waterNodes: [],
+      waterEdges: [],
+      installConditions: bedingungen,
+      cableBundling: { 'e-bat-inv': 6 },
+    };
+    const subset = persistOptions.partialize?.(full as never) as Record<string, unknown>;
+    // Ohne diese beiden Felder wäre die Einstellung nach dem Reload wieder auf
+    // 30 °C/PVC/1 — ein Urteil, das der Nutzer nie gewählt hat (Regel M).
+    expect(subset.installConditions).toEqual(bedingungen);
+    expect(subset.cableBundling).toEqual({ 'e-bat-inv': 6 });
+  });
+
+  it('migrate übernimmt wohlgeformte Bedingungen', () => {
+    const safe = migratePlannerPersisted(
+      { installConditions: bedingungen, cableBundling: { e1: 3, e2: 9 } },
+      PLANNER_STORAGE_VERSION
+    );
+    expect(safe.installConditions).toEqual(bedingungen);
+    expect(safe.cableBundling).toEqual({ e1: 3, e2: 9 });
+  });
+
+  it('migrate verwirft Bedingungen, für die die Engine einen RangeError wirft', () => {
+    // 80 °C bei PVC (T_max 70 °C) kann die Engine nicht verantworten. Ein
+    // Alt-Stand aus einer früheren Fassung darf die Live-Validierung nicht
+    // abschießen — und er darf auch nicht still auf die Defaults gebogen
+    // werden, denn das wäre eine Aussage über die Verlegung, die niemand getätigt hat.
+    const safe = migratePlannerPersisted(
+      { installConditions: { ambientC: 80, insulation: 'PVC', bundledCircuits: 1 } },
+      PLANNER_STORAGE_VERSION
+    );
+    expect(safe.installConditions).toBeUndefined();
+  });
+
+  it('migrate verwirft unbenennbare Isolierstoffe und fremde Felder in den Bedingungen', () => {
+    const safe = migratePlannerPersisted(
+      { installConditions: { ambientC: 40, insulation: 'GUMMI', bundledCircuits: 2, watt: 99 } },
+      PLANNER_STORAGE_VERSION
+    );
+    expect(safe.installConditions).toBeUndefined();
+  });
+
+  it('migrate hält nur zulässige Kabel-Häufungen fest', () => {
+    const safe = migratePlannerPersisted(
+      { cableBundling: { e1: 4, e0: 0, eNan: Number.NaN, eStr: 'drei', eFremd: { anzahl: 9 } } },
+      PLANNER_STORAGE_VERSION
+    );
+    expect(safe.cableBundling).toEqual({ e1: 4 });
   });
 });
 

@@ -4,6 +4,8 @@ import { sanitizeEdgeDataBySchema } from '../../lib/edgeSchema'; // DOM-004
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 
 import { LEGACY_PLANNER_STORAGE_KEY, PLANNER_STORAGE_KEY, withLegacyTakeover } from '../../lib/storageKeys';
+import { VDE_GROUP_FACTORS_MAX_N } from '../../lib/electrical';
+import { installConditionsError, type RunConditions } from '../../lib/verify';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
 import type { PlannerState } from './types';
@@ -151,6 +153,50 @@ function sanitizeEdgeData<T extends Edge>(edge: T): T {
 }
 
 /**
+ * Verlegebedingungen aus dem Speicher: genaue drei Felder, und nur Werte, für
+ * die die Engine keinen RangeError wirft (`installConditionsError` prüft mit den
+ * Schwellen von `verificationOptions` — nicht mit einer zweiten Liste hier).
+ * Ein Alt-Stand mit 80 °C bei PVC würde `verifyPlan` otherwise abschießen und
+ * damit die Live-Validierung pro Anschlag killen.
+ */
+export function isRunConditions(value: unknown): value is RunConditions {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).length !== 3) return false;
+  if (typeof v.ambientC !== 'number' || !Number.isFinite(v.ambientC)) return false;
+  if (typeof v.insulation !== 'string') return false;
+  if (typeof v.bundledCircuits !== 'number' || !Number.isInteger(v.bundledCircuits)) return false;
+  return (
+    installConditionsError({
+      ambientC: v.ambientC,
+      insulation: v.insulation as RunConditions['insulation'],
+      bundledCircuits: v.bundledCircuits,
+    }) === null
+  );
+}
+
+/**
+ * Gehäufte Leitungen je Kabel: Kanten-ID → Anzahl Stromkreise. Die Obergrenze
+ * ist die Tabellenreichweite der Häufungsfaktoren (`VDE_GROUP_FACTORS_MAX_N`);
+ * darüber hätte der Wert keine Datenbasis mehr, also wird er nicht übernommen.
+ */
+export function isCableBundling(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object') return {};
+  const accepted: Record<string, number> = {};
+  for (const [edgeId, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      typeof entry === 'number' &&
+      Number.isInteger(entry) &&
+      entry >= 1 &&
+      entry <= VDE_GROUP_FACTORS_MAX_N
+    ) {
+      accepted[edgeId] = entry;
+    }
+  }
+  return accepted;
+}
+
+/**
  * Defensive Migration für den Planner-Store. Alte localStorage-Stände können
  * Felder in anderem Shape oder teilkorrupte Knoten/Kanten enthalten. Diese
  * Funktion normalisiert, bevor Zustand den Stand merged — so lösen veraltete
@@ -171,6 +217,8 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
   if (typeof p.guidedMode === 'boolean') safe.guidedMode = p.guidedMode;
   if (p.detailLevel === 'overview' || p.detailLevel === 'detail') safe.detailLevel = p.detailLevel;
+  if (isRunConditions(p.installConditions)) safe.installConditions = p.installConditions;
+  if (p.cableBundling !== undefined) safe.cableBundling = isCableBundling(p.cableBundling);
   // `stripNodeMeasurement` in BEIDEN Richtungen (Laden hier, Speichern in
   // `partialize`): gemessene Boxen sind Darstellung, nicht Planinhalt.
   if (Array.isArray(p.nodes))
@@ -205,6 +253,8 @@ export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>>
   partialize: (state) => ({
     viewMode: state.viewMode,
     season: state.season,
+    installConditions: state.installConditions,
+    cableBundling: state.cableBundling,
     nodes: state.nodes.map(stripNodeMeasurement),
     edges: state.edges,
     waterNodes: state.waterNodes.map(stripNodeMeasurement),

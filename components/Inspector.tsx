@@ -59,6 +59,13 @@ interface InspectorProps {
   onChangeIntent?: (id: string, intent: 'auto' | 'user' | 'locked') => void;
   /** AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, Charakteristik, Icn). */
   onChangeAcProtection?: (id: string, acProtection: CableEdgeData['acProtection']) => void;
+  /**
+   * P1 Verlegebedingungen: Häufung je Leitung (Kanten-ID → Stromkreise) und ihr
+   * Setter. Die Karte kommt herein, weil `EdgeInspector` eine Kante zeigt und
+   * der Plan die Angaben für viele Leitungen trägt.
+   */
+  cableBundling?: Record<string, number>;
+  onChangeBundledCircuits?: (id: string, circuits: number | null) => void;
 
   // data props
   edges?: Edge[];
@@ -316,6 +323,8 @@ export default function Inspector({
   onChangeFuseType,
   onChangeIntent,
   onChangeAcProtection,
+  cableBundling,
+  onChangeBundledCircuits,
   edges,
   nodes,
   chargingTimeStr,
@@ -364,6 +373,8 @@ export default function Inspector({
               onChangeFuseType={onChangeFuseType}
               onChangeAcProtection={onChangeAcProtection}
               onChangeIntent={onChangeIntent}
+              bundledCircuits={cableBundling?.[selectedEdge.id]}
+              onChangeBundledCircuits={onChangeBundledCircuits}
             />
           )}
           {onDelete && (

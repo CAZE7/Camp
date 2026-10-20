@@ -9,10 +9,12 @@
  *
  * Alle Werte sind überschreibbar; die Voreinstellungen entsprechen den
  * Referenzbedingungen der Tabellenwerte (`VDE_AMPACITY`, 30 °C Luft) und der
- * konservativen Leiter-Betriebstemperatur (70 °C PVC) aus `physics.ts`.
+ * Grenzleitertemperatur des gewählten Isolierstoffs (70 °C bei PVC, 90 °C bei
+ * XLPE) aus `physics.ts`.
  */
 
 import type { Node } from '../domain/graph';
+import { VDE_GROUP_FACTORS_MAX_N } from '../electrical';
 
 import type { PlanEdge } from './graph';
 import { MAX_CONDUCTOR_TEMPERATURE_C, REFERENCE_AMBIENT_C } from './physics';
@@ -81,6 +83,12 @@ export const DEFAULT_VERIFICATION_OPTIONS: Readonly<VerificationOptions> = Objec
 });
 
 /**
+ * Zulässige Isolierstoffe — aus DER TABELLE abgeleitet, nicht als zweite
+ * Aufzählung. Ein neuer Isolierstoff kann so nicht vergessen werden.
+ */
+const INSULATION_CLASSES = Object.keys(MAX_CONDUCTOR_TEMPERATURE_C) as readonly InsulationClass[];
+
+/**
  * Erzeugt vollständige Optionen aus Teilangaben.
  *
  * @throws RangeError bei unplausiblen Werten — die Engine rechnet nicht mit
@@ -108,16 +116,39 @@ export function verificationOptions(overrides: Partial<VerificationOptions> = {}
       `verificationOptions: unbekannter Installationskontext „${String(merged.context)}“ — zulässig: ${INSTALLATION_CONTEXTS.join(', ')}`
     );
   }
+  // Dasselbe Argument für den Isolierstoff: ohne diese Prüfung wäre
+  // `MAX_CONDUCTOR_TEMPERATURE_C[ein Tippfehler]` gleich `undefined`, der
+  // Größenvergleich damit `false` — und ein undicht definierter Lauf würde
+  // rechnen, als wäre nichts gewesen.
+  if (!(INSULATION_CLASSES as readonly string[]).includes(merged.ampacity.insulation)) {
+    throw new RangeError(
+      `verificationOptions: unbekannter Isolierstoff „${String(merged.ampacity.insulation)}“ — zulässig: ${INSULATION_CLASSES.join(', ')}`
+    );
+  }
   const tMax = MAX_CONDUCTOR_TEMPERATURE_C[merged.ampacity.insulation];
   if (!Number.isFinite(merged.ampacity.ambientC) || merged.ampacity.ambientC >= tMax) {
     throw new RangeError(
       `verificationOptions: Umgebungstemperatur ${merged.ampacity.ambientC} °C ist für ${merged.ampacity.insulation} (T_max ${tMax} °C) unzulässig`
     );
   }
-  if (!(merged.ampacity.bundledCircuits >= 1)) {
+  // Reichweite und Ganzzahligkeit HIER, nicht erst in `groupFactor`: die Engine
+  // wirft bei n > 9 oder bei 2,5 — wer das erst dort merkt, bricht die
+  // Live-Validierung mit einem RangeError, den die Oberfläche ausgelöst hat.
+  if (
+    !Number.isInteger(merged.ampacity.bundledCircuits) ||
+    merged.ampacity.bundledCircuits < 1 ||
+    merged.ampacity.bundledCircuits > VDE_GROUP_FACTORS_MAX_N
+  ) {
     throw new RangeError(
-      `verificationOptions: Häufung muss ≥ 1 Stromkreis sein (erhielt ${merged.ampacity.bundledCircuits})`
+      `verificationOptions: Häufung muss eine ganze Zahl von 1…${VDE_GROUP_FACTORS_MAX_N} Stromkreisen sein (erhielt ${merged.ampacity.bundledCircuits})`
     );
+  }
+  // Die Leiter-Betriebstemperatur des Spannungsfalls folgt dem Isolierstoff,
+  // wenn der Aufrufer sie nicht ausdrücklich setzt: XLPE verträgt 90 °C, und
+  // den Spannungsfall trotzdem mit dem PVC-Wert 70 °C zu rechnen, wäre eine
+  // Annahme, die niemand gewählt hat.
+  if (overrides.voltageDropTemperatureC === undefined) {
+    merged.voltageDropTemperatureC = tMax;
   }
   if (!(merged.voltageDropTemperatureC > 0) || merged.voltageDropTemperatureC >= 200) {
     throw new RangeError(
@@ -125,6 +156,35 @@ export function verificationOptions(overrides: Partial<VerificationOptions> = {}
     );
   }
   return merged;
+}
+
+/**
+ * Die Verlegebedingungen, mit denen ein Lauf rechnet, wenn niemand welche
+ * angibt: die Tabellenreferenz der `VDE_AMPACITY`-Werte. Bewusst HIERhergezogen
+ * und nicht nachgebaut — ein zweiter Ort mit „30 °C, PVC, 1“ wäre ein zweiter
+ * Default, der still auseinanderläuft.
+ */
+export const DEFAULT_INSTALL_CONDITIONS: RunConditions = DEFAULT_VERIFICATION_OPTIONS.ampacity;
+
+/**
+ * Prüft Verlegebedingungen MIT den Schwellen der Engine, statt sie ein zweites
+ * Mal zu notieren: Was die Engine ablehnt, lehnt die Oberfläche ab — und es
+ * kann keine Zahl durchrutschen, mit der `verifyPlan` danach einen RangeError
+ * wirft und die Live-Validierung abstürzt.
+ *
+ * @returns Klartext-Ablehnung oder `null`, wenn die Engine mit diesen Werten rechnet.
+ */
+export function installConditionsError(conditions: RunConditions): string | null {
+  try {
+    verificationOptions({ ampacity: conditions });
+    return null;
+  } catch (error) {
+    if (!(error instanceof RangeError)) return String(error);
+    // Der Text kommt aus der Engine und trägt dort den Funktionsnamen als
+    // Absender („verificationOptions: …") — für einen Log richtig, in einer
+    // Oberfläche nicht. Die Aussage selbst bleibt unverändert.
+    return error.message.replace(/^verificationOptions:\s*/, '');
+  }
 }
 
 /** Kontext eines Passes: Plan, Modell und Annahmen. */

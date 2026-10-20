@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 import { pageByPath } from '@/lib/seo/inventory';
 
-import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_SCHRITTE } from './planerSeoContent';
+import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_SCHRITTE } from './planerSeoTexte';
 import { PLANNER_TEMPLATES } from './templates';
 
 /**

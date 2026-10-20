@@ -120,3 +120,67 @@ describe('V2-INTENT-002: Verbindlichkeit', () => {
     expect(onChangeIntent).toHaveBeenCalledWith('edge-1', 'locked');
   });
 });
+
+/**
+ * P1 Verlegebedingungen: die Häufung war nur als Planwert setzbar. In einem
+ * Camper liegen aber längst nicht alle Leitungen in einer gemeinsamen Trasse —
+ * wer das dem Prüflauf nicht sagen kann, bekommt eine Belastbarkeit für einen
+ * Kabelkanal, den es so nicht gibt.
+ */
+describe('Häufung dieser Leitung', () => {
+  const leitungsKante: Edge<CableEdgeData> = { id: 'edge-1', source: 'node-1', target: 'node-2', data: {} };
+
+  it('zeigt die für die Leitung gesetzte Häufung', () => {
+    render(
+      <EdgeInspector
+        edge={leitungsKante}
+        onChangeLength={vi.fn()}
+        bundledCircuits={4}
+        onChangeBundledCircuits={vi.fn()}
+      />
+    );
+    expect((screen.getByLabelText(/Häufung/i) as HTMLInputElement).value).toBe('4');
+  });
+
+  it('meldet eine geänderte Häufung mit Kanten-ID', () => {
+    const onChangeBundledCircuits = vi.fn();
+    render(
+      <EdgeInspector
+        edge={leitungsKante}
+        onChangeLength={vi.fn()}
+        bundledCircuits={undefined}
+        onChangeBundledCircuits={onChangeBundledCircuits}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(/Häufung/i), { target: { value: '6' } });
+    expect(onChangeBundledCircuits).toHaveBeenCalledWith('edge-1', 6);
+  });
+
+  it('löst eine einzelne Angabe zurück ins Plan-Mittel, wenn das Feld geleert wird', () => {
+    const onChangeBundledCircuits = vi.fn();
+    render(
+      <EdgeInspector
+        edge={leitungsKante}
+        onChangeLength={vi.fn()}
+        bundledCircuits={4}
+        onChangeBundledCircuits={onChangeBundledCircuits}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(/Häufung/i), { target: { value: '' } });
+    expect(onChangeBundledCircuits).toHaveBeenCalledWith('edge-1', null);
+  });
+
+  it('sagt, was ohne eigene Angabe gilt', () => {
+    render(
+      <EdgeInspector
+        edge={leitungsKante}
+        onChangeLength={vi.fn()}
+        bundledCircuits={undefined}
+        onChangeBundledCircuits={vi.fn()}
+      />
+    );
+    // Leer heißt „Planwert", nicht „keine Häufung" — die Unterscheidung ist der
+    // Inhalt des Feldes, nicht sein Zustand.
+    expect(screen.getByText(/Planwert/i)).toBeInTheDocument();
+  });
+});

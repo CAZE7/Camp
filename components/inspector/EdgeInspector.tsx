@@ -5,7 +5,7 @@ import { type CableEdgeData } from '../edges/CableEdge';
 import { useCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
-import { FUSE_MAP } from '../../lib/electrical';
+import { FUSE_MAP, VDE_GROUP_FACTORS_MAX_N } from '../../lib/electrical';
 import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
 import { edgeIntentOf } from '../../lib/electricalGraph/intent';
 import {
@@ -28,6 +28,13 @@ export interface EdgeInspectorProps {
   onChangeAcProtection?: (id: string, acProtection: AcProtectionDescriptor | undefined) => void;
   /** V2-INTENT-002: Verbindlichkeit der Leitung gegenüber der Automatik. */
   onChangeIntent?: (id: string, intent: 'auto' | 'user' | 'locked') => void;
+  /**
+   * P1 Verlegebedingungen: Anzahl gleichzeitig belasteter Stromkreise in der
+   * Trasse DIESER Leitung. `undefined` = keine eigene Angabe, es gilt der
+   * Planwert — deshalb ist Leer ein Zustand und kein leerer Wert.
+   */
+  bundledCircuits?: number;
+  onChangeBundledCircuits?: (id: string, circuits: number | null) => void;
 }
 
 /**
@@ -63,6 +70,8 @@ export function EdgeInspector({
   onChangeFuseType,
   onChangeAcProtection,
   onChangeIntent,
+  bundledCircuits,
+  onChangeBundledCircuits,
 }: EdgeInspectorProps) {
   // Die angezeigte Stufe kommt aus DERSELBEN Ableitung, die AutoWire und
   // Routing lesen (`edgeIntentOf`) — nicht aus einem zweiten Feldvergleich im
@@ -191,6 +200,40 @@ export function EdgeInspector({
           </div>
         </div>
       </InspectorSection>
+      {onChangeBundledCircuits && (
+        <InspectorSection title="Verlegung">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor="bundling-input"
+            >
+              Häufung (Stromkreise in dieser Trasse)
+            </label>
+            <ValidatingInput
+              id="bundling-input"
+              min="1"
+              max={String(VDE_GROUP_FACTORS_MAX_N)}
+              step="1"
+              allowEmpty
+              value={bundledCircuits ?? ''}
+              rules={[
+                {
+                  validate: (val) => Number.isInteger(val) && val >= 1 && val <= VDE_GROUP_FACTORS_MAX_N,
+                  message: `Ganze Zahl von 1 bis ${VDE_GROUP_FACTORS_MAX_N} Stromkreisen — weiter trägt die Häufungstabelle nicht.`,
+                },
+              ]}
+              onValidChange={(val) => onChangeBundledCircuits(edge.id, val)}
+              onEmptyChange={() => onChangeBundledCircuits(edge.id, null)}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {bundledCircuits === undefined
+                ? 'Ohne eigene Angabe gilt der Planwert aus „Verlegebedingungen“. Leeren setzt auf ihn zurück.'
+                : `Diese Leitung rechnet mit ${bundledCircuits} gleichzeitig belasteten Stromkreisen; der Häufungsfaktor senkt ihre Belastbarkeit.`}
+            </p>
+          </div>
+        </InspectorSection>
+      )}
       <InspectorSection title="Anschluss" defaultOpen>
         <div className="flex flex-col gap-3">
           {!isAc && onChangeFuseSize && (

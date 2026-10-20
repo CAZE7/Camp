@@ -51,9 +51,13 @@ export function BOMModal() {
 
   useEffect(() => {
     const handleShowBom = () => {
-      const { nodes, edges, waterNodes, waterEdges } = usePlannerStore.getState();
+      const { nodes, edges, waterNodes, waterEdges, installConditions, cableBundling } =
+        usePlannerStore.getState();
       const bom = buildBom({ nodes, edges, waterNodes, waterEdges });
-      const report = verificationReportFor(nodes, edges);
+      const report = verificationReportFor(nodes, edges, {
+        conditions: installConditions,
+        bundlingByEdge: cableBundling,
+      });
       const summary = verificationSummary(report);
       const componentCount = nodes.length + waterNodes.length;
       const assessment = assessRelease(componentCount > 0 ? summary : null, componentCount);

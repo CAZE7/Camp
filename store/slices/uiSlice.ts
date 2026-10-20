@@ -1,11 +1,12 @@
+import { DEFAULT_INSTALL_CONDITIONS } from '../../lib/verify';
 import { dedupePlannerErrors } from '../../lib/planner/plannerError';
 import type { PlannerSlice, PlannerState } from './types';
 
 /**
  * UI-Slice: alles, was die Anordnung/Oberfläche des Planers beschreibt —
- * Modus, Panel-Offen-Zustände, Saison, Hinweismeldungen, Selektion und
- * Anzeigeschalter. Bewusst frei von Graphmutationen; die Selektions-Setter
- * schreiben nur Flagnamen des Graph-Slices fort.
+ * Modus, Panel-Offen-Zustände, Saison, Verlegebedingungen, Hinweismeldungen,
+ * Selektion und Anzeigeschalter. Bewusst frei von Graphmutationen; die
+ * Selektions-Setter schreiben nur Flagnamen des Graph-Slices fort.
  */
 export type UiSlice = Pick<
   PlannerState,
@@ -21,6 +22,10 @@ export type UiSlice = Pick<
   | 'setSystemMessage'
   | 'season'
   | 'setSeason'
+  | 'installConditions'
+  | 'setInstallConditions'
+  | 'cableBundling'
+  | 'setCableBundling'
   | 'waterWarning'
   | 'setWaterWarning'
   | 'firstTappedHandle'
@@ -93,6 +98,21 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
     })),
   season: 'summer',
   setSeason: (season) => set({ season }),
+  // Tabellenreferenz der Engine: wer nichts angibt, lässt sich gegen 30 °C
+  // Luft, PVC und einen einzelnen Stromkreis prüfen — und der Bericht sagt das.
+  installConditions: DEFAULT_INSTALL_CONDITIONS,
+  setInstallConditions: (conditions) => set({ installConditions: conditions }),
+  cableBundling: {},
+  setCableBundling: (edgeId, circuits) =>
+    set((state) => {
+      if (circuits !== null) return { cableBundling: { ...state.cableBundling, [edgeId]: circuits } };
+      if (!(edgeId in state.cableBundling)) return state;
+      return {
+        cableBundling: Object.fromEntries(
+          Object.entries(state.cableBundling).filter(([otherEdgeId]) => otherEdgeId !== edgeId)
+        ),
+      };
+    }),
   waterWarning: null,
   setWaterWarning: (warning) => set({ waterWarning: warning }),
   firstTappedHandle: null,

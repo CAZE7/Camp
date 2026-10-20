@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   Sun,
   Snowflake,
+  Thermometer,
   Trash2,
   Undo2,
   Wand2,
@@ -638,6 +639,16 @@ export function usePlannerActions({
               run: runAutoWire,
             },
             { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
+            {
+              /* P1 Verlegebedingungen: die Prüfung rechnet mit Umgebung,
+                 Isolierstoff und Häufung. Ohne diesen Zugang rechnet sie mit
+                 30 °C Luft, PVC und einem Stromkreis — für einen heißen
+                 Kabelkanal ein Urteil über Luft. */
+              label: 'Verlegebedingungen der Prüfung …',
+              icon: Thermometer,
+              testId: 'action-install-conditions',
+              run: () => dispatchPlannerEvent('planner-open-install-conditions'),
+            },
             {
               label: 'Plan automatisch ordnen',
               icon: Network,
