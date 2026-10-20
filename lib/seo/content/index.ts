@@ -17,6 +17,7 @@ import { HEIZUNG_CONTENT } from './heizung';
 import { KABELQUERSCHNITT_CONTENT } from './kabelquerschnitt';
 import { LADEN_CONTENT } from './laden';
 import { LADEBOOSTER_CONTENT } from './ladebooster';
+import { LADEBOOSTER_VERGLEICH_CONTENT } from './ladebooster-vergleich';
 import { LIFEPO4_CONTENT } from './lifepo4';
 import { MPPT_CONTENT } from './mppt';
 import { CAMPER_ELEKTRIK_PILLAR } from './pillar';
@@ -55,6 +56,7 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   ELEKTRIK_FEHLER_CONTENT,
   LADEN_CONTENT,
   LADEBOOSTER_CONTENT,
+  LADEBOOSTER_VERGLEICH_CONTENT,
   UEBER_ELEKTROPLANER_CONTENT,
   HEIZUNG_CONTENT,
   DIESEL_STANDHEIZUNG_CONTENT,

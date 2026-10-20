@@ -318,6 +318,11 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
   related: [
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
     {
+      href: '/camper-elektrik/ladebooster-vergleich/',
+      label: 'Erfahrungsbericht: mein Wechsel von Victron zu Votronic',
+      description: 'Wie sich zwei Ladebooster im Alltag unterschieden haben — mit Vor- und Nachteilen.',
+    },
+    {
       href: '/camper-elektrik/lifepo4/',
       label: 'LiFePO4 im Camper',
       description: 'Warum die Lichtmaschine allein keine geregelte Ladequelle ist.',
