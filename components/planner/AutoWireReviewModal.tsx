@@ -34,6 +34,7 @@ import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { AlertTriangle, CheckCircle2, HelpCircle, Wrench, X, Zap } from 'lucide-react';
 import type { AutoWireConflict, AutoWireReport } from '../../lib/autoWire/conflicts';
+import { toPlainGerman } from './utils/plainGerman';
 
 type Summary = {
   safeNew: number;
@@ -190,7 +191,7 @@ export function AutoWireReviewModal() {
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-6" style={{ color: 'var(--warn-warning)' }}>
               {preview.report.questions.map((q) => (
-                <li key={q}>{q}</li>
+                <li key={q}>{toPlainGerman(q)}</li>
               ))}
             </ul>
             <p className="mt-2 text-xs" style={{ opacity: 0.8 }}>
@@ -295,9 +296,8 @@ function ConflictItem({ conflict }: { conflict: AutoWireConflict }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs font-semibold">
             <span style={style.toneStyle}>{style.label}</span>
-            <span className="text-xs text-muted-foreground">{conflict.ruleId}</span>
           </div>
-          <p className="mt-0.5 text-sm">{conflict.message}</p>
+          <p className="mt-0.5 text-sm">{toPlainGerman(conflict.message)}</p>
         </div>
       </div>
     </li>

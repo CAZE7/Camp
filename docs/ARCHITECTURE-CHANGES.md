@@ -1,5 +1,23 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (2) — Handy-Blätter und Klartext nach dem Live-Nachtest
+
+**Anlass:** Nach dem Deploy von #548 blieben auf 375×667, 393×852 und 852×393
+Prüfbericht, Hilfe und Stückliste zu flach und lagen unter Ansicht, Undo und
+Übersicht. Die Werkzeugleiste schnitt „Vorlage laden“ ab und legte
+Auto-verbinden über `⋯`. Hinweise zeigten Regel-Ids und URL-kodierte
+Knoten-Ids. Abbrechen im Auto-verbinden-Dialog schrieb den Bericht schon in
+die Prüfliste.
+
+**Verhalten:** Die drei Blätter füllen auf dem Telefon den Streifen zwischen
+den Leisten; die schwebenden Griffe weichen, solange ein Blatt offen ist.
+„Vorlage“ und das Auto-verbinden-Symbol bleiben in der schmalen Leiste ganz,
+das `⋯`-Menü liegt darüber. Primärtexte laufen durch `toPlainGerman`
+(Class T, Prüfstrom, Bauteilnamen, ohne `AUTO-…`). Der Auto-Wire-Bericht
+landet erst beim Anwenden im Warn-Center.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 — CI-Nachzug zum Handy-Nachtest
 
 **Anlass:** Das Pflicht-Gate auf `0cc6fa3` brach an drei Stellen: ein

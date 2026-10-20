@@ -84,6 +84,29 @@ const DynamicAutoWireReviewModal = dynamic(
   { ssr: false, loading: () => null }
 );
 
+/**
+ * Unterkante von Moduszeile und Ansicht, wenn sie die obere Zeichenfläche
+ * belegen. `null`, wenn dort nichts liegt — dann bleibt die Mitte.
+ */
+function canvasOverlayBottom(bounds: DOMRect): number | null {
+  let bottom = bounds.top;
+  let found = false;
+  const midX = bounds.left + bounds.width / 2;
+  for (const selector of ['.planner-mode-switch-panel', '.planner-display-options-panel']) {
+    const node = document.querySelector(selector);
+    if (!(node instanceof HTMLElement)) continue;
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden') continue;
+    const rect = node.getBoundingClientRect();
+    if (rect.height < 8 || rect.width < 8) continue;
+    if (rect.bottom <= bounds.top || rect.top >= bounds.top + bounds.height * 0.6) continue;
+    if (rect.right < midX - 24 || rect.left > midX + 24) continue;
+    bottom = Math.max(bottom, rect.bottom);
+    found = true;
+  }
+  return found ? bottom : null;
+}
+
 function useAccessibleHandles() {
   React.useEffect(() => {
     let frame = 0;
@@ -456,9 +479,11 @@ export function FlowCanvas() {
         return;
       }
 
+      const overlayBottom = canvasOverlayBottom(bounds);
+      const preferredY = overlayBottom === null ? bounds.top + bounds.height / 2 : overlayBottom + 84;
       const center = screenToFlowPosition({
         x: bounds.left + bounds.width / 2,
-        y: bounds.top + bounds.height / 2,
+        y: Math.min(bounds.bottom - 48, Math.max(bounds.top + 48, preferredY)),
       });
       const initialPosition = { x: center.x - 96, y: center.y - 60 };
       const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
@@ -477,7 +502,7 @@ export function FlowCanvas() {
       // oben).
       const visibleTopLeft = screenToFlowPosition({
         x: bounds.left + NODE_TOUCH_MARGIN,
-        y: bounds.top + NODE_TOUCH_MARGIN,
+        y: (overlayBottom ?? bounds.top) + NODE_TOUCH_MARGIN,
       });
       const visibleBottomRight = screenToFlowPosition({
         x: bounds.right - NODE_TOUCH_MARGIN,
@@ -1005,7 +1030,14 @@ export function FlowCanvas() {
                     vorher wechselten die Knöpfe ohne erkennbaren Effekt. */}
                 <p
                   data-testid="planner-mode-caption"
-                  className="mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
+                  title={
+                    plannerMode === 'physisch'
+                      ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
+                      : plannerMode === 'pruefung'
+                        ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
+                        : 'Planung: Was gehört elektrisch zusammen?'
+                  }
+                  className="mx-auto mt-1 max-w-full border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
                 >
                   {plannerMode === 'physisch'
                     ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'

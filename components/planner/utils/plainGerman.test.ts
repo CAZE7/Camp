@@ -15,4 +15,20 @@ describe('toPlainGerman', () => {
     );
     expect(toPlainGerman('Regel AMP-001-ib-in-iz bleibt intern.')).not.toMatch(/AMP-/);
   });
+
+  it('schreibt Auto-Wire-Konflikte und Sicherungshinweise in Klartext', () => {
+    const conflict = toPlainGerman(
+      'Verbindung umgelegt (Regel AUTO-SHUNT-BYPASS): Rückleiter. auto-node:shunt:Smart%20Shunt → busbar-minus.'
+    );
+    expect(conflict).not.toMatch(/AUTO-|%20|auto-node:|busbar-minus/);
+    expect(conflict).toContain('Batteriecomputer „Smart Shunt“');
+    expect(conflict).toContain('Minus-Sammelschiene');
+
+    const hint = toPlainGerman(
+      'Sicherung 80 A (ul248-classT classT): I_2 im Feld `i2A` eintragen (Regel AUTO-SHUNT-BYPASS).'
+    );
+    expect(hint).not.toMatch(/ul248|classT|i2A|AUTO-/);
+    expect(hint).toContain('Class T');
+    expect(hint).toContain('Prüfstrom');
+  });
 });
