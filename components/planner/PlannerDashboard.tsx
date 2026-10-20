@@ -77,7 +77,7 @@ export function PlannerDashboard() {
 
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia('(max-width: 767px)');
+    const query = window.matchMedia('(max-width: 767px), (max-height: 500px)');
     const apply = () => setPhoneChrome(query.matches);
     apply();
     query.addEventListener('change', apply);

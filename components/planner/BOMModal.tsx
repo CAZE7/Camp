@@ -139,7 +139,7 @@ export function BOMModal() {
             aria-labelledby="bom-status"
             data-testid="bom-release-status"
             data-status={assessment.status}
-            className={`min-w-0 break-words rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical' : 'border-border'}`}
+            className={`min-w-0 break-words rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical flex-col' : 'border-border'}`}
           >
             <h3 id="bom-status" className="font-semibold">
               Dokumentstatus: {assessment.label}
@@ -227,7 +227,10 @@ export function BOMModal() {
 
             {/* AUDIT L1: Längen, deren Quelle nicht der Plan selbst ist. */}
             {lengthAssumptions.length > 0 && (
-              <section aria-labelledby="bom-lengths" className="warn-card warn-card-warning p-3">
+              <section
+                aria-labelledby="bom-lengths"
+                className="warn-card warn-card-warning min-w-0 flex-col p-3"
+              >
                 <h3 id="bom-lengths" className="mb-1 font-semibold">
                   {inventedLengths.length > 0 && divergingLengths.length > 0
                     ? 'Längen weichen ab oder fehlen'
@@ -252,9 +255,9 @@ export function BOMModal() {
                     Länge (bei reinen Planungsannahmen die größere, damit nichts zu knapp wird).
                   </p>
                 )}
-                <ul className="mt-2 space-y-1 text-sm">
+                <ul className="mt-2 min-w-0 space-y-1 break-words text-sm">
                   {lengthAssumptions.slice(0, 8).map((entry) => (
-                    <li key={`${entry.label}-${entry.source}`}>
+                    <li key={`${entry.label}-${entry.source}`} className="min-w-0 break-words">
                       <span className="font-medium">{entry.label}</span>:{' '}
                       {entry.source === 'fallback' ? (
                         <>
@@ -298,7 +301,7 @@ export function BOMModal() {
             />
           </div>
         )}
-        <div data-testid="bom-actions" className="grid grid-cols-2 gap-2 sm:flex">
+        <div data-testid="bom-actions" className="flex flex-col gap-2">
           <Button
             variant="outline"
             onClick={exportCsv}

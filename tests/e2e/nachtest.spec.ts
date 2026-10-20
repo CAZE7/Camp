@@ -237,14 +237,29 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await showCanvas(page);
 
       // Jedes Menü öffnen: Dropdown muss im Bild liegen.
-      await revealMainMenus(page);
       for (const menu of ['datei', 'bearbeiten', 'ansicht', 'werkzeuge', 'planung', 'hilfe']) {
+        await revealMainMenus(page);
         const trigger = page.getByTestId(`menubar-${menu}`);
         await trigger.scrollIntoViewIfNeeded();
         await trigger.click();
         const dropdown = page.locator('[role="menu"]').first();
         await expect(dropdown).toBeVisible();
-        await expectWithinViewport(page, dropdown, `Menü ${menu}`);
+        const phoneSheet = page.getByTestId('phone-menu-sheet');
+        if (await phoneSheet.isVisible()) {
+          await expectWithinViewport(page, phoneSheet, `Menüblatt ${menu}`);
+          const item = dropdown.getByRole('menuitem').first();
+          const sheetBox = await boxOf(phoneSheet, `Menüblatt ${menu}`);
+          const itemBox = await boxOf(item, `Menü ${menu}`);
+          expect(itemBox.y, `Menü ${menu}: erster Eintrag über dem Blatt`).toBeGreaterThanOrEqual(
+            sheetBox.y - 1
+          );
+          expect(
+            itemBox.y + itemBox.height,
+            `Menü ${menu}: erster Eintrag unter dem Blatt`
+          ).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
+        } else {
+          await expectWithinViewport(page, dropdown, `Menü ${menu}`);
+        }
         await page.keyboard.press('Escape');
         await expect(dropdown).toBeHidden();
       }

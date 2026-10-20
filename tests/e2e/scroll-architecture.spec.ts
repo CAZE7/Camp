@@ -171,12 +171,23 @@ test.describe('M12 Scroll-Architektur', () => {
     await openMenubar(page, 'ansicht');
     const menubarMenu = page.getByRole('menu', { name: onPhone ? 'Ansicht' : 'Menü' });
     await expect(menubarMenu).toBeVisible();
-    const menubarBox = roundBox((await menubarMenu.boundingBox())!);
-    expectInsideViewport(menubarBox, view, 'Menüleiste-Dropdown');
-    if (view.width < 768) {
-      // Auf dem Handy liegt es als Blatt über der Fußleiste, nicht an der Maus.
-      const nav = await boxOf(page, 'planner-bottom-nav');
-      expect(menubarBox.bottom, 'Menüblatt liegt unter der Fußleiste').toBeLessThanOrEqual(nav.y + 1);
+    if (onPhone) {
+      // Der Abschnitt darf im Blatt scrollen. Gemessen wird das Blatt, nicht
+      // die volle Höhe der Einträge, und der erste Eintrag liegt darin.
+      const sheet = page.getByTestId('phone-menu-sheet');
+      const sheetBox = roundBox((await sheet.boundingBox())!);
+      expectInsideViewport(sheetBox, view, 'Menüblatt');
+      const nav = page.getByTestId('planner-bottom-nav');
+      if (await nav.isVisible()) {
+        const navBox = await boxOf(page, 'planner-bottom-nav');
+        expect(sheetBox.bottom, 'Menüblatt liegt unter der Fußleiste').toBeLessThanOrEqual(navBox.y + 1);
+      }
+      const itemBox = roundBox((await menubarMenu.getByRole('menuitem').first().boundingBox())!);
+      expect(itemBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
+      expect(itemBox.bottom).toBeLessThanOrEqual(sheetBox.bottom + 1);
+    } else {
+      const menubarBox = roundBox((await menubarMenu.boundingBox())!);
+      expectInsideViewport(menubarBox, view, 'Menüleiste-Dropdown');
     }
     await page.keyboard.press('Escape');
   });

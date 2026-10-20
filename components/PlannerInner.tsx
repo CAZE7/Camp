@@ -105,6 +105,8 @@ function PlannerShell() {
   // Einstieg: geteilter Plan (#plan=) → Vorlage (?template=) → Beispiel-Setup
   // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
+  const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+  const entryNoticeExpanded = entryNotice?.message != null && expandedNotice === entryNotice.message;
 
   // „Clear site data“ leert localStorage, während der Plan noch im Speicher
   // der offenen Seite liegt. Ohne diese Wache schreibt der Flush ihn zurück
@@ -354,13 +356,25 @@ function PlannerShell() {
               <div
                 role={entryNotice.type === 'error' ? 'alert' : 'status'}
                 aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-                className="planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
+                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
               >
-                <span className="flex-1">{entryNotice.message}</span>
+                <button
+                  type="button"
+                  className="planner-entry-notice__text"
+                  aria-expanded={entryNoticeExpanded}
+                  onClick={() =>
+                    setExpandedNotice((value) => (value === entryNotice.message ? null : entryNotice.message))
+                  }
+                >
+                  {entryNotice.message}
+                </button>
                 <button
                   type="button"
                   aria-label="Meldung schließen"
-                  onClick={dismissEntryNotice}
+                  onClick={() => {
+                    setExpandedNotice(null);
+                    dismissEntryNotice();
+                  }}
                   className="cad-btn pointer-events-auto shrink-0 px-1"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -483,9 +497,10 @@ function PlannerShell() {
             <button
               type="button"
               data-testid="mobile-overview"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }))
-              }
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
+                window.dispatchEvent(new CustomEvent('planner-toggle-minimap'));
+              }}
               className="cad-btn cad-btn--line flex h-12 items-center gap-2 px-3"
               aria-label="Planübersicht anzeigen"
               title="Planübersicht anzeigen"

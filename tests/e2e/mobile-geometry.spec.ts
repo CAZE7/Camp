@@ -177,7 +177,8 @@ for (const viewport of [
     test('Menü, Übersicht, Zoom und Strompfad liegen frei', async ({ page }) => {
       await openFreshExample(page);
 
-      if (viewport.width < 768) {
+      const phoneChrome = viewport.width < 768 || viewport.height <= 500;
+      if (phoneChrome) {
         await expect(page.locator('.cad-menubar')).toBeHidden();
         const phone = page.getByTestId('phone-menu');
         const toolbar = page.getByTestId('planner-toolbar');
@@ -191,6 +192,14 @@ for (const viewport of [
         if (await rail.isVisible()) {
           const railBox = await boxOf(rail);
           expect(railBox.y - toolbarBox.y).toBeLessThanOrEqual(toolbarBox.height + 4);
+          const primary = page.getByTestId('guided-primary-action');
+          if (await primary.isVisible()) {
+            const primaryBg = await primary.evaluate((element) => getComputedStyle(element).backgroundColor);
+            const menuBg = await phone.evaluate((element) => getComputedStyle(element).backgroundColor);
+            expect(primaryBg).not.toBe('rgba(0, 0, 0, 0)');
+            expect(menuBg).toBe('rgba(0, 0, 0, 0)');
+            expect(primaryBg).not.toBe(menuBg);
+          }
         }
       } else {
         for (const id of ['ansicht', 'hilfe']) {
@@ -204,7 +213,7 @@ for (const viewport of [
       }
 
       const caption = page.getByTestId('planner-mode-caption');
-      if ((await caption.isVisible()) && viewport.width >= 768) {
+      if ((await caption.isVisible()) && viewport.width >= 768 && viewport.height > 500) {
         expect(boxesOverlap(await boxOf(caption), await boxOf(page.getByTestId('menubar-ansicht')))).toBe(
           false
         );
@@ -262,7 +271,8 @@ for (const viewport of [
       await openFreshExample(page);
       const ids = ['planner-mode-planung', 'planner-mode-physisch', 'planner-mode-pruefung'] as const;
       const boxes = [];
-      const labelClass = viewport.width < 768 ? '.planner-mode-short' : '.planner-mode-label';
+      const labelClass =
+        viewport.width < 768 || viewport.height <= 500 ? '.planner-mode-short' : '.planner-mode-label';
       for (const id of ids) {
         const button = page.getByTestId(id);
         await expect(button).toBeVisible();
@@ -278,6 +288,19 @@ for (const viewport of [
       }
       expect(boxesOverlap(boxes[0]!, boxes[1]!)).toBe(false);
       expect(boxesOverlap(boxes[1]!, boxes[2]!)).toBe(false);
+      if (viewport.width < 768 || viewport.height <= 500) {
+        const panel = page.locator('.planner-mode-switch-panel');
+        const group = page.getByRole('group', { name: 'Arbeitsmodus' });
+        const panelBox = await boxOf(panel);
+        const groupBox = await boxOf(group);
+        expect(panelBox.width).toBeLessThanOrEqual(groupBox.width + 4);
+        const hint = page.getByTestId('planner-mode-caption');
+        if (await hint.isVisible()) {
+          const hintBox = await boxOf(hint);
+          expect(hintBox.width).toBeGreaterThan(20);
+          expect(hintBox.width).toBeLessThanOrEqual(groupBox.width + 4);
+        }
+      }
       const ansicht = page.getByTestId('canvas-display-options');
       if (await ansicht.isVisible()) {
         const ansichtBox = await boxOf(ansicht);
@@ -292,10 +315,23 @@ for (const viewport of [
       await expect(wire).toBeVisible();
       const wireBox = await boxOf(wire);
       expect(insideViewport(wireBox, viewport)).toBe(true);
-      for (const id of ['action-more', 'action-templates', 'save-indicator']) {
+      const icon = wire.locator('svg').first();
+      const iconBox = await boxOf(icon);
+      expect(iconBox.x).toBeGreaterThanOrEqual(wireBox.x - 1);
+      expect(iconBox.y).toBeGreaterThanOrEqual(wireBox.y - 1);
+      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(wireBox.x + wireBox.width + 1);
+      expect(iconBox.y + iconBox.height).toBeLessThanOrEqual(wireBox.y + wireBox.height + 1);
+      const toolbarBox = await boxOf(page.getByTestId('planner-toolbar'));
+      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(toolbarBox.x + toolbarBox.width + 1);
+      for (const id of ['action-more', 'action-templates', 'save-indicator', 'verification-seal-toggle']) {
         const other = page.getByTestId(id);
         if (!(await other.isVisible())) continue;
         expect(boxesOverlap(wireBox, await boxOf(other)), id).toBe(false);
+        expect(boxesOverlap(iconBox, await boxOf(other)), id).toBe(false);
+      }
+      const warn = page.locator('.de-warning-center > button');
+      if (await warn.isVisible()) {
+        expect(boxesOverlap(iconBox, await boxOf(warn))).toBe(false);
       }
     });
 
@@ -398,10 +434,17 @@ for (const viewport of [
       await expect(release).toBeVisible();
       const releaseBox = await boxOf(release);
       expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(viewport.width + 1);
-      const scrollHeight = await bom
-        .getByTestId('bom-scroll-body')
-        .evaluate((element) => element.clientHeight);
+      const scrollBody = bom.getByTestId('bom-scroll-body');
+      const scrollHeight = await scrollBody.evaluate((element) => element.clientHeight);
       expect(scrollHeight).toBeGreaterThan(120);
+      const sideways = await scrollBody.evaluate((element) => element.scrollWidth - element.clientWidth);
+      expect(sideways).toBeLessThanOrEqual(1);
+      for (const name of [/CSV exportieren/, /Druckbericht/, /Stückliste kopieren/]) {
+        const action = bom.getByRole('button', { name });
+        const mark = action.locator('svg');
+        await expect(mark).toBeVisible();
+        expect((await boxOf(mark)).width).toBeGreaterThan(10);
+      }
       await bom.getByRole('button', { name: 'Dialog schließen' }).click();
 
       await clickVisiblePart(page, viewport);
@@ -527,7 +570,145 @@ for (const viewport of [
       });
       expect(reportHeaderHit).toBe(true);
     });
+
+    test('Menü-Abschnitte bleiben im Blatt und die Seite rutscht nicht seitlich', async ({ page }) => {
+      test.skip(viewport.width >= 768 && viewport.height > 500, 'nur der kompakte Kopf');
+      await openFreshExample(page);
+      const metrics = () =>
+        page.evaluate(() => ({
+          x: document.documentElement.scrollLeft,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }));
+      expect((await metrics()).overflow).toBeLessThanOrEqual(1);
+
+      await page.getByTestId('phone-menu').click();
+      const sheet = page.getByTestId('phone-menu-sheet');
+      await expect(sheet).toBeVisible();
+      await page.getByTestId('menubar-planung').click();
+      const menu = page.getByRole('menu', { name: 'Planung' });
+      await expect(menu).toBeVisible();
+      const sheetBox = await boxOf(sheet);
+      const item = page.getByRole('menuitem', { name: /Prüfbericht öffnen/ });
+      await expect(item).toBeVisible();
+      const itemBox = await boxOf(item);
+      expect(itemBox.x).toBeGreaterThanOrEqual(sheetBox.x - 1);
+      expect(itemBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
+      expect(itemBox.x + itemBox.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width + 1);
+      expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
+      expect(boxesOverlap(await boxOf(page.getByTestId('menubar-planung')), itemBox)).toBe(false);
+      const sectionLabel = menu.locator('.cad-menu__label').first();
+      if (await sectionLabel.count()) {
+        const family = await sectionLabel.evaluate((element) => getComputedStyle(element).fontFamily);
+        expect(family.toLowerCase()).not.toContain('mono');
+      }
+      const opaque = await menu.evaluate((element) => {
+        const bg = getComputedStyle(element).backgroundColor;
+        const match = bg.match(/rgba?\(([^)]+)\)/);
+        const body = match?.[1];
+        if (!body) return bg !== 'transparent';
+        const parts = body.split(',').map((part) => part.trim());
+        const alpha = parts.length === 4 ? Number(parts[3]) : 1;
+        return alpha > 0.9;
+      });
+      expect(opaque).toBe(true);
+
+      const shift = await metrics();
+      expect(shift.x).toBeLessThanOrEqual(1);
+      expect(shift.overflow).toBeLessThanOrEqual(1);
+      expect((await boxOf(page.getByTestId('phone-menu'))).x).toBeGreaterThanOrEqual(-1);
+
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(sheet).toBeHidden();
+    });
+
+    test('Einstiegsmeldung deckt Modus und Werkzeugleiste nicht', async ({ page }) => {
+      await openFreshExample(page);
+      await expectNoticeClearsControls(page);
+    });
+
+    test('Einstiegsmeldung im Querformat liegt frei und lässt sich aufklappen', async ({ page }) => {
+      test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
+      await openFreshExample(page);
+      const notice = page.locator('.planner-entry-notice');
+      await expect(notice).toBeVisible();
+      const text = notice.locator('.planner-entry-notice__text');
+      const clipped = await text.evaluate((element) => element.scrollHeight > element.clientHeight + 2);
+      expect(clipped).toBe(false);
+      const noticeBox = await boxOf(notice);
+      for (const id of ['planner-mode-caption', 'canvas-display-options', 'planner-mode-planung']) {
+        const other = page.getByTestId(id);
+        if (await other.isVisible()) expect(boxesOverlap(noticeBox, await boxOf(other)), id).toBe(false);
+      }
+      await text.click();
+      await expect(text).toContainText('neu starten');
+      const expandedClipped = await text.evaluate(
+        (element) => element.scrollHeight > element.clientHeight + 2
+      );
+      expect(expandedClipped).toBe(false);
+      const expanded = await boxOf(notice);
+      expect(insideViewport(expanded, viewport)).toBe(true);
+      const caption = page.getByTestId('planner-mode-caption');
+      if (await caption.isVisible()) expect(boxesOverlap(expanded, await boxOf(caption))).toBe(false);
+    });
+
+    test('Übersicht blendet im Querformat die Miniaturkarte ein', async ({ page }) => {
+      test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
+      await openFreshExample(page);
+      const minimap = page.locator('.react-flow__minimap');
+      await expect(minimap).toBeHidden();
+      await page.getByTestId('mobile-overview').click();
+      await expect(minimap).toBeVisible();
+      expect(insideViewport(await boxOf(minimap), viewport)).toBe(true);
+    });
   });
+}
+
+async function expectNoticeClearsControls(page: Page): Promise<void> {
+  const notice = page.locator('.planner-entry-notice');
+  // Der Beispielplan kann aus dem Speicher zurückkommen, ohne die Meldung
+  // noch einmal zu setzen. Dann einmal sauber neu laden.
+  if (!(await notice.isVisible().catch(() => false))) {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.reload();
+    const dialog = page.getByRole('dialog');
+    await dialog
+      .first()
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .catch(() => undefined);
+    if ((await dialog.count()) > 0) {
+      await dialog.getByRole('button', { name: 'Dialog schließen' }).click();
+      await expect(dialog).toBeHidden();
+    }
+  }
+  await expect(notice).toBeVisible();
+  const noticeBox = await boxOf(notice);
+  for (const id of [
+    'planner-mode-planung',
+    'planner-mode-physisch',
+    'planner-mode-pruefung',
+    'planner-mode-caption',
+    'canvas-display-options',
+    'planner-toolbar',
+    'guided-rail',
+    'phone-menu',
+  ]) {
+    const control = page.getByTestId(id);
+    if ((await control.count()) === 0 || !(await control.isVisible())) continue;
+    expect(boxesOverlap(noticeBox, await boxOf(control)), id).toBe(false);
+  }
+  const mode = page.getByTestId('planner-mode-physisch');
+  const hit = await mode.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return top != null && element.contains(top);
+  });
+  expect(hit).toBe(true);
+  await mode.click();
+  await expect(page.getByTestId('planner-mode-caption')).toContainText('Physisch');
 }
 
 async function assertClearOfChrome(page: Page, panel: Locator): Promise<void> {
@@ -608,6 +789,49 @@ test.describe('Hilfe-Menü bei knapp 910 px', () => {
     const box = await boxOf(item);
     expect(box.y).toBeGreaterThanOrEqual(32);
     expect(insideViewport(box, { width: 910, height: 700 })).toBe(true);
+  });
+});
+
+test.describe('Einstiegsmeldung bei 1440', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'einmal, im Projekt desktop-1440');
+  });
+
+  test('deckt Modus, Ansicht und Werkzeugleiste nicht', async ({ page }) => {
+    await openFreshExample(page);
+    await expectNoticeClearsControls(page);
+    await page.getByTestId('planner-mode-pruefung').click();
+    await expect(page.getByTestId('planner-mode-caption')).toContainText('Prüfung');
+    const notice = page.locator('.planner-entry-notice');
+    expect(boxesOverlap(await boxOf(notice), await boxOf(page.getByTestId('planner-mode-caption')))).toBe(
+      false
+    );
+  });
+});
+
+test.describe('Hilfe-Menü bei 1440', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'einmal, im Projekt desktop-1440');
+  });
+
+  test('Hilfe & Fachwissen liegt unter der Werkzeugleiste', async ({ page }) => {
+    await openFreshExample(page);
+    const toolbar = page.getByTestId('planner-toolbar');
+    await page.getByTestId('menubar-hilfe').click();
+    const item = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
+    await expect(item).toBeVisible();
+    const itemBox = await boxOf(item);
+    const toolbarBox = await boxOf(toolbar);
+    expect(itemBox.y).toBeGreaterThanOrEqual(toolbarBox.y + toolbarBox.height - 1);
+    expect(insideViewport(itemBox, { width: 1440, height: 900 })).toBe(true);
+    const hit = await item.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const top = document.elementFromPoint(rect.left + 16, rect.top + Math.min(12, rect.height / 2));
+      return element.contains(top);
+    });
+    expect(hit).toBe(true);
   });
 });
 

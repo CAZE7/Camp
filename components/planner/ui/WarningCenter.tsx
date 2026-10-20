@@ -471,13 +471,15 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setOpen(false);
     };
     document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     return () => {
       document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
     };
   }, [open]);
 
@@ -580,6 +582,14 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
       </button>
 
       {open && (
+        <button
+          type="button"
+          className="planner-sheet-backdrop"
+          aria-label="Prüfliste zuklappen"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      {open && (
         <div
           ref={panelRef}
           tabIndex={-1}
@@ -596,7 +606,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           role="dialog"
           aria-label="Planungsprüfung"
         >
-          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
+          <div className="planner-layer-header sticky top-0 z-10">
             <div>
               <h3 className="text-sm font-bold text-foreground">Planungsprüfung</h3>
               {/* Urteilszeile (Auftrag §17): kritisch = nur severity critical. */}
