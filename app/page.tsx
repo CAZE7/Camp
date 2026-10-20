@@ -1,6 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, CalendarCheck, Flame, Map as MapIcon, Sun, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarCheck,
+  ClipboardList,
+  Flame,
+  Map as MapIcon,
+  Stamp,
+  Sun,
+  Thermometer,
+  Zap,
+} from 'lucide-react';
 import { metadataForPage } from '@/app/seoMetadata';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
@@ -66,6 +76,24 @@ const GUIDES = [
     body: 'Sechs Schritte für den Möbelbau.',
     href: '/guides/holzausbau',
     icon: MapIcon,
+  },
+  {
+    title: 'Ausbau-Dokumentation',
+    body: 'Der eigene Camper: Elektrik-Schritte, Tabelle, Rechenbeispiel.',
+    href: '/camper-ausbau',
+    icon: ClipboardList,
+  },
+  {
+    title: 'Heizung & Dämmung',
+    body: 'Heizlast, Dämmung und Heizsysteme — welche Leistung passt?',
+    href: '/heizung-daemmung',
+    icon: Thermometer,
+  },
+  {
+    title: 'Wohnmobilzulassung',
+    body: 'TÜV, Schaltplan und Dokumente für die Abnahme.',
+    href: '/wohnmobilzulassung',
+    icon: Stamp,
   },
 ];
 
