@@ -202,6 +202,14 @@ export const TOPICS: readonly Topic[] = [
     summary: 'Heizlast, Dämmung und Heizsysteme für den Camper — mit Rechner und Praxiswissen.',
   },
   {
+    id: 'diesel-standheizung',
+    label: 'Diesel-Standheizung',
+    parent: 'heizung',
+    path: '/heizung-daemmung/diesel-standheizung/',
+    role: 'cluster',
+    summary: 'Leistung, Stromverbrauch des Gebläses, Absicherung und Abgas der Diesel-Standheizung.',
+  },
+  {
     id: 'wohnmobilzulassung',
     label: 'Wohnmobilzulassung',
     path: '/wohnmobilzulassung/',

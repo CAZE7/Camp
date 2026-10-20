@@ -174,7 +174,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
           description: 'Hauptsicherung und Leitungssicherung dimensionieren.',
         },
         {
-          href: '/camper-elektrik/elektrik-fehler/',
+          href: '/camper-elektrik/fehler/',
           label: 'Die 15 häufigsten Elektrik-Fehler',
           description: 'Was beim Einbau schiefgehen kann.',
         },

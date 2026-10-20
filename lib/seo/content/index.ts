@@ -11,6 +11,7 @@ import { AGM_CONTENT } from './agm';
 import { AUSAUS_DOKUMENTATION_CONTENT } from './ausbau-dokumentation';
 import { BATTERIE_CONTENT } from './batterie';
 import { BATTERIEKAPAZITAET_CONTENT } from './batteriekapazitaet';
+import { DIESEL_STANDHEIZUNG_CONTENT } from './diesel-standheizung';
 import { ELEKTRIK_FEHLER_CONTENT } from './elektrik-fehler';
 import { HEIZUNG_CONTENT } from './heizung';
 import { KABELQUERSCHNITT_CONTENT } from './kabelquerschnitt';
@@ -56,5 +57,6 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   LADEBOOSTER_CONTENT,
   UEBER_ELEKTROPLANER_CONTENT,
   HEIZUNG_CONTENT,
+  DIESEL_STANDHEIZUNG_CONTENT,
   WOHNMOBILZULASSUNG_CONTENT,
 ];

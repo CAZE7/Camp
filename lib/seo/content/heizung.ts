@@ -1,5 +1,5 @@
 /**
- * lib/seo/content/heizung.ts — Pillar-Seite `/camper-elektrik/heizung-daemmung/`.
+ * lib/seo/content/heizung.ts — Pillar-Seite `/heizung-daemmung/`.
  *
  * Die Hauptseite für Heizung und Dämmung im Camper. Verlinkt auf den
  * Heizlast-Rechner (`/tools/heizung/`) und auf alle Spokes des Clusters
@@ -13,7 +13,7 @@
 import type { SeoPageContent } from '../types';
 
 export const HEIZUNG_CONTENT: SeoPageContent = {
-  path: '/camper-elektrik/heizung-daemmung/',
+  path: '/heizung-daemmung/',
   slug: 'heizung-daemmung',
   topicId: 'heizung',
   kind: 'pillar',
@@ -84,6 +84,13 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
         tone: 'warning',
         text: 'Die 230-V-Anlage (Landstrom, Wechselrichter-Ausgang mit Steckdosen) errichtet, ändert und prüft eine Elektrofachkraft nach DIN VDE 0100-721.',
       },
+      links: [
+        {
+          href: '/heizung-daemmung/diesel-standheizung/',
+          label: 'Diesel-Standheizung im Camper',
+          description: 'Einbau, Abgas, Stromverbrauch und 2-kW- vs. 4-kW-Auslegung.',
+        },
+      ],
     },
     {
       id: 'strom',
@@ -91,7 +98,7 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       body: [
         'Eine Diesel-Standheizung braucht Strom für Gebläse, Pumpe und Zündglühen — im Betrieb meist zwischen 10 und 40 W, beim Anlauf kurz mehr. Über eine kalte Winter-Nacht summiert sich das auf mehrere hundert Wattstunden.',
         'Der Stromverbrauch der Heizung gehört in die Energiebilanz des Campers. Wer zwei Tage autark stehen will, rechnet den Heizstrom mit ein — sonst fehlt die Kapazität für Kühlbox und Licht.',
-        '[Erfahrung] Mein Gebläse der Diesel-Standheizung zieht im Betrieb rund 25 A über 8 Stunden — das sind 200 Wh allein für die Luftzirkulation. Das habe ich erst bemerkt, als die Batterie nach zwei Nächten leer war, obwohl ich kaum andere Verbraucher hatte. Foto: Heizlast-Rechner mit Heizungsauslegung für Ducato.',
+        '[Erfahrung] Das Gebläse meiner Diesel-Standheizung zieht im Betrieb rund 2,9 A über 8 Stunden — bei 12 V sind das etwa 35 W und 280 Wh allein für die Luftzirkulation. Das habe ich erst bemerkt, als die Batterie nach zwei Nächten leer war, obwohl ich kaum andere Verbraucher hatte. Foto: Heizlast-Rechner mit Heizungsauslegung für Ducato.',
       ],
       links: [
         {

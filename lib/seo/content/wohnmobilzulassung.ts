@@ -1,5 +1,5 @@
 /**
- * lib/seo/content/wohnmobilzulassung.ts — Pillar-Seite `/camper-elektrik/wohnmobilzulassung/`.
+ * lib/seo/content/wohnmobilzulassung.ts — Pillar-Seite `/wohnmobilzulassung/`.
  *
  * Hauptseite zur Wohnmobilzulassung: Voraussetzungen, Ablauf, Nachteile,
  * Kosten und die Brücke zur Elektrik-Dokumentation für den TÜV.
@@ -8,7 +8,7 @@
 import type { SeoPageContent } from '../types';
 
 export const WOHNMOBILZULASSUNG_CONTENT: SeoPageContent = {
-  path: '/camper-elektrik/wohnmobilzulassung/',
+  path: '/wohnmobilzulassung/',
   slug: 'wohnmobilzulassung',
   topicId: 'wohnmobilzulassung',
   kind: 'pillar',
