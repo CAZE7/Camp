@@ -188,7 +188,7 @@ export function PlannerPhoneMenu({ menus }: { menus: PlannerMenus }) {
             <button
               type="button"
               className="planner-phone-menu-backdrop"
-              aria-label="Menü schließen"
+              aria-label="Menü zuklappen"
               onClick={close}
             />
             <div

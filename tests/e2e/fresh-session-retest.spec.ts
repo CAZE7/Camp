@@ -61,7 +61,7 @@ test.describe('Frischstart: Beispielplan', () => {
     await expect(warnings).toBeVisible();
     const warningText = await warnings.innerText();
     expect(warningText).not.toMatch(/I_[bnz2]|AMP-\d{3}|\(In\s*[≤≥]/);
-    await page.getByRole('button', { name: 'Prüfhinweise schließen' }).click();
+    await warnings.getByRole('button', { name: 'Prüfhinweise schließen' }).click();
 
     await page.getByTestId('verification-seal-toggle').click();
     const panel = page.getByTestId('verification-seal-panel');
@@ -72,7 +72,7 @@ test.describe('Frischstart: Beispielplan', () => {
     const failedStat = panel.locator('div.rounded', {
       has: page.getByText('nicht erfüllt', { exact: true }),
     });
-    await expect(failedStat.locator('.font-mono')).toHaveText('0');
+    await expect(failedStat.locator('div').first()).toHaveText('0');
     await expect(panel.locator('li', { hasText: 'nicht erfüllt' })).toHaveCount(0);
     const limitations = await page.getByTestId('verification-limitations').innerText();
     expect(limitations).not.toMatch(/I_[bnz2]|AMP-\d{3}|In\s*[≤≥]/);

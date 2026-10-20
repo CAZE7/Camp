@@ -121,7 +121,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         <button
           type="button"
           className="planner-sheet-backdrop"
-          aria-label="Prüfbericht schließen"
+          aria-label="Prüfbericht zuklappen"
           onClick={() => setOpen(false)}
         />
       )}

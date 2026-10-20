@@ -585,7 +585,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         <button
           type="button"
           className="planner-sheet-backdrop"
-          aria-label="Prüfhinweise schließen"
+          aria-label="Prüfliste zuklappen"
           onClick={() => setOpen(false)}
         />
       )}

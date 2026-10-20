@@ -527,7 +527,7 @@ export function ExpertPanel() {
         <button
           type="button"
           className="planner-sheet-backdrop pointer-events-auto"
-          aria-label="Panel schließen"
+          aria-label="Fachwissen zuklappen"
           onClick={() => setIsOpen(false)}
         />
       )}
