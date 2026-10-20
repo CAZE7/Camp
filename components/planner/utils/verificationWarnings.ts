@@ -1,5 +1,6 @@
 import type { Node } from '../../../lib/domain/graph';
 import {
+  DEFAULT_INSTALL_CONDITIONS,
   isCoverageEvent,
   rulesForContext,
   ruleSpec,
@@ -8,6 +9,7 @@ import {
   verifyPlan,
   type AuditEvent,
   type PassNumber,
+  type RunConditions,
   type VerificationReport,
   type VerificationVerdict,
 } from '../../../lib/verify';
@@ -44,15 +46,46 @@ import { toPlainGerman } from './plainGerman';
  * sind Filter über die Herkunftsstufen der Regeln — der Bericht nennt sie
  * namentlich, damit ein »COMPLIANT« nicht als Aussage über ein anderes
  * Profil gelesen wird.
+ *
+ * Die Verlegebedingungen gehören NICHT hierher: Sie sind eine Angabe des Plans
+ * (`DEFAULT_INSTALL_CONDITIONS` unten, vom Nutzer änderbar) und werden dem
+ * Bericht mitgegeben, weil ein Urteil über ein heißen Kabelkanal ein anderes
+ * ist als eines über Luft bei 30 °C.
  */
 export const PLANNER_VERIFICATION_OPTIONS = { profile: 'PRACTICE', context: 'VEHICLE' } as const;
+
+/**
+ * Verlegebedingungen des Plans (`RunConditions` der Engine — dieselben Namen,
+ * damit die Anzeige keine zweite Vokabular-Ebene baut) und ihre
+ * Tabellenreferenz. Beides stammt aus `lib/verify`, damit es genau EINEN Ort
+ * mit „30 °C, PVC, 1 Stromkreis“ gibt.
+ */
+export { DEFAULT_INSTALL_CONDITIONS, installConditionsError } from '../../../lib/verify';
+export type { RunConditions as PlanInstallConditions } from '../../../lib/verify';
+
+/** Eingabe des Prüfberichts über die Bauteile hinaus. */
+export interface PlannerRunInput {
+  /** Abweichung von der Tabellenreferenz; fehlende Felder bleiben bei ihr. */
+  conditions?: Partial<RunConditions>;
+  /** Häufung einzelner Leitungen (Kanten-ID → Stromkreise), überschreibt `bundledCircuits`. */
+  bundlingByEdge?: Readonly<Record<string, number>>;
+}
 
 /** Vollständiger Prüfbericht für den aktuellen Plan (reine Funktion). */
 export function verificationReportFor(
   nodes: readonly Node[],
-  edges: readonly Edge<CableEdgeData>[]
+  edges: readonly Edge<CableEdgeData>[],
+  input: PlannerRunInput = {}
 ): VerificationReport {
-  return verifyPlan({ nodes, edges, options: { ...PLANNER_VERIFICATION_OPTIONS } });
+  return verifyPlan({
+    nodes,
+    edges,
+    options: {
+      ...PLANNER_VERIFICATION_OPTIONS,
+      ampacity: { ...DEFAULT_INSTALL_CONDITIONS, ...input.conditions },
+      ...(input.bundlingByEdge === undefined ? {} : { bundlingByEdge: input.bundlingByEdge }),
+    },
+  });
 }
 
 const PROVENANCE_LABEL: Record<AuditEvent['provenance'], string> = {
@@ -220,7 +253,7 @@ export function verificationSummary(report: VerificationReport): VerificationSum
   // den Kennzahlen (Technische Details) und im Druckbericht.
   const headline =
     verdict === 'COMPLIANT'
-      ? `Alle ${coverage.exercised} anwendbaren Prüfungen sind erfüllt. ${coverage.notApplicable} Prüfungen kamen in diesem Plan nicht vor.`
+      ? `Alle ${coverage.exercised} anwendbaren Prüfungen sind erfüllt — für die Verlegebedingungen dieses Plans, nicht für jede Verlegung (siehe Modellgrenzen). ${coverage.notApplicable} Prüfungen kamen in diesem Plan nicht vor.`
       : verdict === 'INCOMPLETE'
         ? `Für ${coverage.unprovable} Prüfung(en) fehlen Angaben — ohne sie gilt der Plan als nicht geprüft.`
         : `${coverage.failed} Prüfung(en) sind nicht erfüllt; bei ${coverage.unprovable} weiteren fehlen Angaben für eine Prüfung.`;

@@ -23,6 +23,8 @@ export function PlannerInspector() {
     handleChangeFuseType,
     handleChangeAcProtection,
     setEdgeIntent,
+    cableBundling,
+    setCableBundling,
     deleteSelected,
     updateNodeData,
     isInspectorOpen,
@@ -43,6 +45,8 @@ export function PlannerInspector() {
       handleChangeFuseType: state.handleChangeFuseType,
       handleChangeAcProtection: state.handleChangeAcProtection,
       setEdgeIntent: state.setEdgeIntent,
+      cableBundling: state.cableBundling,
+      setCableBundling: state.setCableBundling,
       deleteSelected: state.deleteSelected,
       updateNodeData: state.updateNodeData,
       isInspectorOpen: state.isInspectorOpen,
@@ -112,6 +116,8 @@ export function PlannerInspector() {
             onChangeFuseType={handleChangeFuseType}
             onChangeAcProtection={handleChangeAcProtection}
             onChangeIntent={handleChangeIntent}
+            cableBundling={cableBundling}
+            onChangeBundledCircuits={setCableBundling}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}

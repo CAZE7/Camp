@@ -9,7 +9,9 @@ import {
   type VerificationVerdict,
 } from '../../../lib/verify';
 import {
+  DEFAULT_INSTALL_CONDITIONS,
   PLANNER_VERIFICATION_OPTIONS,
+  installConditionsError,
   verificationReportFor,
   verificationSummary,
   verificationWarning,
@@ -259,5 +261,105 @@ describe('verificationReportFor — der Plan wird geprüft, nicht geglättet', (
     expect(critical[0]?.focusType).toBe('edge');
     expect(critical.some((finding) => finding.ruleId === 'RCD-001-rcd-deviation')).toBe(true);
     expect(summary.findings.some((finding) => finding.unverified === true)).toBe(true);
+  });
+});
+
+describe('Installationsbedingungen — das Urteil gilt nur für die angegebenen Bedingungen', () => {
+  const shore = shorePlan();
+  const shoreReport = (input?: Parameters<typeof verificationReportFor>[2]) =>
+    verificationReportFor(shore.nodes as never, shore.edges as never, input);
+
+  it('ohne Angabe gelten die Tabellen-Defaults unverändert (30 °C, PVC, 1 Stromkreis)', () => {
+    const ohne = shoreReport();
+    const mit = shoreReport({ conditions: DEFAULT_INSTALL_CONDITIONS });
+    expect(mit.verdict).toBe(ohne.verdict);
+    expect(ohne.limitations.join(' ')).toContain('Umgebungstemperatur 30 °C');
+  });
+
+  it('Wärme allein kippt nichts: 45 °C bleiben beim Urteil, 60 °C verschlagen es', () => {
+    // f₁(45 °C, PVC) = 0,791 ist milder als die Planer-Pauschale 0,7 — das
+    // Verdikt darf sich nicht bewegen, nur weil eine Zahl im Dialog größer ist.
+    expect(shoreReport({ conditions: { ambientC: 45 } }).verdict).toBe('INCOMPLETE');
+
+    const heiß = shoreReport({ conditions: { ambientC: 60 } });
+    expect(heiß.verdict).toBe('NON_COMPLIANT');
+    const verletzung = verificationWarnings(heiß).find((warning) => warning.ruleId === 'AMP-001-ib-in-iz');
+    expect(verletzung?.focusId).toBe('e-shore-load');
+    // f₁ = √((70 − 60) / (70 − 30)) = 0,5 — die Aufschlüsselung weist den Faktor aus.
+    expect(verletzung?.details?.izBreakdown?.ambientFactor).toBeCloseTo(0.5, 3);
+  });
+
+  it('Häufung in derselben Trasse: 6 Stromkreise bleiben harmlos, 9 verschlagen das Urteil', () => {
+    expect(shoreReport({ conditions: { bundledCircuits: 6 } }).verdict).toBe('INCOMPLETE');
+    expect(shoreReport({ conditions: { bundledCircuits: 9 } }).verdict).toBe('NON_COMPLIANT');
+  });
+
+  it('Häufung je Kabel betrifft genau dieses Kabel — die übrigen rechnen mit dem Planwert', () => {
+    const insel = islandPlan();
+    const basis = verificationReportFor(insel.nodes as never, insel.edges as never);
+    const groupingFaktoren = (report: VerificationReport) =>
+      new Map(
+        report.events
+          .filter((event) => event.details?.izBreakdown !== undefined)
+          .map((event) => [event.entity.id, event.details?.izBreakdown?.groupingFactor] as const)
+      );
+    const verletzteLeitungen = [
+      ...new Set(
+        basis.events
+          .filter((event) => event.ruleId === 'AMP-001-ib-in-iz' && event.kind === 'VIOLATION')
+          .map((event) => event.entity.id)
+      ),
+    ];
+    expect(verletzteLeitungen.length).toBeGreaterThan(0);
+    const eine = verletzteLeitungen[0]!;
+    expect(groupingFaktoren(basis).get(eine), `keine Iz-Aufschlüsselung für ${eine}`).toBeDefined();
+
+    const mitHaufung = verificationReportFor(insel.nodes as never, insel.edges as never, {
+      bundlingByEdge: { [eine]: 9 },
+    });
+    expect(groupingFaktoren(mitHaufung).get(eine)).toBeLessThan(groupingFaktoren(basis).get(eine)!);
+    for (const andere of verletzteLeitungen.filter((id) => id !== eine)) {
+      expect(groupingFaktoren(mitHaufung).get(andere), `Häufung überschreibt ${andere}`).toBe(
+        groupingFaktoren(basis).get(andere)
+      );
+    }
+  });
+
+  it('der Isolierstoff bestimmt die Leiter-Betriebstemperatur des Spannungsfalls mit', () => {
+    // PVC und XLPE haben verschiedene Grenzleitertemperaturen; den Spannungsfall
+    // mit dem PVC-Wert 70 °C zu rechnen, während XLPE gewählt ist, wäre eine
+    // stille Annahme aus der Zeit, als es die Auswahl noch nicht gab.
+    expect(shoreReport({ conditions: { insulation: 'PVC' } }).limitations.join(' ')).toContain(
+      'Leiter-Betriebstemperatur 70 °C'
+    );
+    expect(shoreReport({ conditions: { insulation: 'XLPE', ambientC: 80 } }).limitations.join(' ')).toContain(
+      'Leiter-Betriebstemperatur 90 °C'
+    );
+  });
+
+  it('ein Urteil nennt die Bedingungen, unter denen es gilt', () => {
+    const summary = verificationSummary(shoreReport({ conditions: { ambientC: 60 } }));
+    expect(summary.limitations.some((line) => line.includes('60 °C'))).toBe(true);
+  });
+
+  it('sagt schon die Überschrift des grünen Urteils als bedingte Zusage', () => {
+    // Das Siegel ist der Ort, an dem ein Plan abgenommen wird. Stand dort nur
+    // „Alle N Prüfungen erfüllt“, las sich das als Freispruch für jede
+    // Verlegung — während die Rechnung mit genau einer durchgeführt wurde.
+    const summary = verificationSummary(plan(healthyDcPlan()));
+    expect(summary.verdict).toBe('COMPLIANT');
+    expect(summary.headline).toContain('Verlegebedingungen');
+  });
+
+  it('installConditionsError lehnt ab, was die Engine nicht verantwortet', () => {
+    expect(installConditionsError(DEFAULT_INSTALL_CONDITIONS)).toBeNull();
+    expect(installConditionsError({ ambientC: 70, insulation: 'PVC', bundledCircuits: 1 })).toContain('70');
+    expect(installConditionsError({ ambientC: 95, insulation: 'XLPE', bundledCircuits: 1 })).toContain('95');
+    expect(installConditionsError({ ambientC: 30, insulation: 'PVC', bundledCircuits: 0 })).toContain(
+      'Häufung'
+    );
+    expect(
+      installConditionsError({ ambientC: Number.NaN, insulation: 'PVC', bundledCircuits: 1 })
+    ).not.toBeNull();
   });
 });

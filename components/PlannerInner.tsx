@@ -12,6 +12,7 @@ import { PlannerStatusBar } from './planner/ui/PlannerStatusBar';
 import { usePlannerEntryPlan } from './planner/hooks/usePlannerEntryPlan';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
+import { InstallConditionsDialog } from './planner/ui/InstallConditionsDialog';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
 import { ConfirmDialogHost, requestConfirm } from './ui/ConfirmDialog';
@@ -414,6 +415,7 @@ function PlannerShell() {
               </ErrorBoundary>
             </React.Suspense>
             <ExpertPanel />
+            <InstallConditionsDialog />
           </div>
 
           {/* Statuszeile unter der Zeichenfläche: Cursor, Zoom, Raster,

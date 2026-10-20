@@ -23,6 +23,12 @@ vi.mock('./planner/FlowCanvas', () => ({
 vi.mock('./planner/ExpertPanel', () => ({
   ExpertPanel: () => <div data-testid="expert-panel">ExpertPanel</div>,
 }));
+// Wie jede andere Panel-Kinderkomponente hier gemockt: dieser Test prüft die
+// Shell (Spalten, Touch-Targets, Safe-Area), nicht den Dialog — dessen eigenes
+// Verhalten steht in `planner/ui/InstallConditionsDialog.test.tsx`.
+vi.mock('./planner/ui/InstallConditionsDialog', () => ({
+  InstallConditionsDialog: () => null,
+}));
 vi.mock('./planner/OnboardingWizard', () => ({
   OnboardingWizard: () => <div data-testid="onboarding" />,
 }));

@@ -5,6 +5,7 @@ import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes
 import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
 import type { AutoWireReport } from '../../lib/autoWire/conflicts';
 import type { PlannerError } from '../../lib/planner/plannerError';
+import type { RunConditions } from '../../lib/verify';
 
 export type { PlannerFlowNode };
 
@@ -101,6 +102,22 @@ export interface PlannerState {
 
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
+
+  /**
+   * Verlegebedingungen des Plans (Umgebungstemperatur, Isolierstoff, Häufung).
+   * Jeder Prüfbericht rechnet mit diesen Werten — deshalb sind sie Planinhalt
+   * und werden persistiert, nicht Laufzeit-Einstellung eines Dialogs.
+   */
+  installConditions: RunConditions;
+  setInstallConditions: (conditions: RunConditions) => void;
+
+  /**
+   * Häufung einzelner Leitungen (Kanten-ID → belastete Stromkreise in derselben
+   * Trasse). Bewusst NICHT in `edge.data`: Das würde den Plan-Fingerprint und
+   * die eingefrorenen Referenz-SVGs berühren.
+   */
+  cableBundling: Record<string, number>;
+  setCableBundling: (edgeId: string, circuits: number | null) => void;
 
   waterWarning: string | null;
   setWaterWarning: (warning: string | null) => void;

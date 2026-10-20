@@ -6,6 +6,7 @@ import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // A
 import { isHouseBattery, reachesHouseBattery } from '../../../lib/autoWire/validation'; // TOPO-002
 import { reachableNodeIds } from '../../../lib/domain/graph';
 import type { VerificationReport } from '../../../lib/verify';
+import { usePlannerStore } from '../../../store/usePlannerStore';
 
 import { getSystemVoltage } from '../utils/voltage';
 // V2: Bauteilgrenzen und Strombudget kommen aus der elektrischen Ebene —
@@ -180,9 +181,21 @@ function nodeField(node: { data?: unknown } | undefined, field: string, fallback
  * auseinanderlaufen — aber sie würden die Rechnung doppelt bezahlen, und ein
  * späterer Zwischenspeicher hätte zwei Wahrheiten (Regel A: ein Plan, ein
  * Ergebnis).
+ *
+ * Die Verlegebedingungen des Plans (Umgebung, Isolierstoff, Häufung) kommen aus
+ * dem Store und sind Teil derselben Berechnung: Ein Urteil über einen heißen
+ * Kabelkanal ist ein anderes als eines über Luft bei 30 °C, und die Anzeige
+ * darf nicht die Tabellenreferenz prüfen, während der Nutzer etwas anderes
+ * eingestellt hat.
  */
 export function useVerificationReport(nodes: Node[], edges: Edge<CableEdgeData>[]): VerificationReport {
-  return useMemo(() => verificationReportFor(nodes, edges), [nodes, edges]);
+  const installConditions = usePlannerStore((state) => state.installConditions);
+  const cableBundling = usePlannerStore((state) => state.cableBundling);
+  return useMemo(
+    () =>
+      verificationReportFor(nodes, edges, { conditions: installConditions, bundlingByEdge: cableBundling }),
+    [nodes, edges, installConditions, cableBundling]
+  );
 }
 
 /**
