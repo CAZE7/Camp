@@ -1,5 +1,16 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (3) — Einstiegsmeldung unter der Ansicht-Zeile
+
+**Anlass:** Auf dem Telefon lag „Meldung schließen“ der Einstiegsmeldung auf
+dem Ansicht-Knopf. Der Klick im Nachtest lief deshalb in die Zeitgrenze.
+
+**Verhalten:** Die Meldung beginnt unter Modus und Ansicht. Im Hochformat
+rückt der Strompfad darunter, solange sie offen ist. Im kurzen Querformat
+bleibt der Strompfad in seiner Zeile, die Meldung folgt darunter.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 (2) — Handy-Blätter und Klartext nach dem Live-Nachtest
 
 **Anlass:** Nach dem Deploy von #548 blieben auf 375×667, 393×852 und 852×393

@@ -3753,3 +3753,30 @@ html.planner-root-active body {
     overflow: auto;
   }
 }
+
+/* Die Einstiegsmeldung („Beispiel geladen“) lag mit „Meldung schließen“
+   auf dem Ansicht-Knopf: volle Breite, oben rechts, z-30. Auf dem Telefon
+   beginnt sie unter der Zeile aus Modus und Ansicht. Der Strompfad rückt
+   darunter, solange die Meldung offen ist. Im kurzen Querformat bleibt der
+   Strompfad in seiner Zeile; die Meldung folgt darunter. */
+@media (max-width: 767px), ((orientation: landscape) and (max-height: 520px)) {
+  .planner-entry-notice {
+    top: 3.25rem;
+    max-height: 2.75rem;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .planner-canvas-column:has(.planner-entry-notice)
+    .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 6.35rem !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .planner-entry-notice {
+    top: 5.15rem;
+    max-height: 2.5rem;
+  }
+}
