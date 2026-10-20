@@ -598,7 +598,10 @@ export function ExpertPanel() {
           })()}
 
           {/* Tip Accordion */}
-          <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div
+            data-testid="expert-sheet-body"
+            className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (

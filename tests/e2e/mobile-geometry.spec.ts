@@ -359,7 +359,108 @@ for (const viewport of [
       await expect(hints).toBeVisible();
       expect(boxesOverlap(await boxOf(hints), await boxOf(reportHeader))).toBe(false);
     });
+
+    test('Prüfbericht und Hilfe liegen frei und haben eine nutzbare Höhe', async ({ page }) => {
+      await openFreshExample(page);
+      const minBody = viewport.height < 500 ? 100 : viewport.height < 750 ? 180 : 240;
+
+      const ansicht = page.getByTestId('canvas-display-options');
+      const caption = page.getByTestId('planner-mode-caption');
+      if ((await ansicht.isVisible()) && (await caption.isVisible())) {
+        expect(boxesOverlap(await boxOf(ansicht), await boxOf(caption))).toBe(false);
+      }
+      const trace = page.getByTestId('circuit-trace-info');
+      if (await trace.isVisible()) {
+        if (await ansicht.isVisible())
+          expect(boxesOverlap(await boxOf(trace), await boxOf(ansicht))).toBe(false);
+        if (await caption.isVisible())
+          expect(boxesOverlap(await boxOf(trace), await boxOf(caption))).toBe(false);
+      }
+
+      const template = page.getByTestId('action-templates');
+      await expect(template).toBeVisible();
+      const templateClipped = await template.evaluate(
+        (element) => element.scrollWidth > element.clientWidth + 2
+      );
+      expect(templateClipped).toBe(false);
+      expect(boxesOverlap(await boxOf(template), await boxOf(page.getByTestId('save-indicator')))).toBe(
+        false
+      );
+      const autowire = page.getByTestId('action-autowire');
+      if ((await autowire.count()) > 0) {
+        expect(boxesOverlap(await boxOf(autowire), await boxOf(page.getByTestId('action-more')))).toBe(false);
+      }
+
+      await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+      const overflowLabel = page
+        .getByRole('menuitem', { name: /Auto-verbinden/ })
+        .locator('span')
+        .first();
+      await expect(overflowLabel).toBeVisible();
+      const labelLines = await overflowLabel.evaluate((element) => {
+        const line = parseFloat(getComputedStyle(element).lineHeight);
+        const linePx = Number.isFinite(line) ? line : 18;
+        return element.getBoundingClientRect().height / linePx;
+      });
+      expect(labelLines).toBeLessThanOrEqual(2.2);
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('menubar-ansicht').click();
+      await page.getByRole('menuitem', { name: /Expertenmodus/ }).click();
+      const autoBtn = page.getByTestId('action-autowire');
+      await expect(autoBtn).toBeVisible();
+      expect(boxesOverlap(await boxOf(autoBtn), await boxOf(page.getByTestId('action-more')))).toBe(false);
+
+      await page.getByTestId('menubar-hilfe').click();
+      const hilfe = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
+      await expect(hilfe).toBeVisible();
+      const hilfeBox = await boxOf(hilfe);
+      expect(hilfeBox.y).toBeGreaterThanOrEqual(0);
+      expect(insideViewport(hilfeBox, viewport)).toBe(true);
+      await hilfe.click();
+
+      const expert = page.getByTestId('expert-panel-open');
+      await expect(expert).toBeVisible();
+      const expertBody = page.getByTestId('expert-sheet-body');
+      expect(await expertBody.evaluate((element) => element.clientHeight)).toBeGreaterThan(minBody);
+      await assertClearOfChrome(page, expert);
+      const headerHit = await expert.locator('h3').evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return element.contains(top);
+      });
+      expect(headerHit).toBe(true);
+      await page.getByTestId('expert-panel-close').click();
+
+      const seal = page.getByTestId('verification-seal-toggle');
+      if (await seal.isVisible()) await seal.click();
+      else {
+        await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+        await page.getByRole('menuitem', { name: /Prüfbericht/ }).click();
+      }
+      const report = page.getByTestId('verification-seal-panel');
+      await expect(report).toBeVisible();
+      const reportBody = page.getByTestId('verification-sheet-body');
+      expect(await reportBody.evaluate((element) => element.clientHeight)).toBeGreaterThan(minBody);
+      await assertClearOfChrome(page, report);
+      const reportHeader = report.locator('.planner-sheet-header');
+      const reportHeaderHit = await reportHeader.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + 12, rect.top + rect.height / 2);
+        return element.contains(top);
+      });
+      expect(reportHeaderHit).toBe(true);
+    });
   });
+}
+
+async function assertClearOfChrome(page: Page, panel: Locator): Promise<void> {
+  const panelBox = await boxOf(panel);
+  for (const id of ['mobile-overview', 'mobile-undo', 'canvas-display-options']) {
+    const control = page.getByTestId(id);
+    if (!(await control.isVisible())) continue;
+    expect(boxesOverlap(panelBox, await boxOf(control))).toBe(false);
+  }
 }
 
 test.describe('Assistent im kurzen Fenster', () => {
@@ -410,5 +511,49 @@ test.describe('Bauteil aus der Bibliothek im Querformat', () => {
     expect(addedBox.y).toBeLessThan(393);
     expect(addedBox.x + addedBox.width).toBeGreaterThan(0);
     expect(addedBox.x).toBeLessThan(852);
+    const ansicht = page.getByTestId('canvas-display-options');
+    if (await ansicht.isVisible()) {
+      expect(boxesOverlap(addedBox, await boxOf(ansicht))).toBe(false);
+    }
+  });
+});
+
+test.describe('Hilfe-Menü bei knapp 910 px', () => {
+  test.use({ viewport: { width: 910, height: 700 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile-375', 'einmal, im Projekt mobile-375');
+  });
+
+  test('Hilfe & Fachwissen beginnt unter der Titelleiste', async ({ page }) => {
+    await openFreshExample(page);
+    await page.getByTestId('menubar-hilfe').click();
+    const item = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
+    await expect(item).toBeVisible();
+    const box = await boxOf(item);
+    expect(box.y).toBeGreaterThanOrEqual(32);
+    expect(insideViewport(box, { width: 910, height: 700 })).toBe(true);
+  });
+});
+
+test.describe('Auto-verbinden abbrechen', () => {
+  test.use({ viewport: { width: 393, height: 852 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile-375', 'einmal, im Projekt mobile-375');
+  });
+
+  test('der Dialog spricht Klartext und Abbrechen ändert die Befunde nicht', async ({ page }) => {
+    await openFreshExample(page);
+    const probe = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    await expect(probe).toBeVisible();
+    const before = await probe.getAttribute('aria-label');
+    await page.getByTestId('action-more').click();
+    await page.getByTestId('action-autowire-menu').click();
+    const dialog = page.getByRole('dialog', { name: /Vorschlag prüfen/ });
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
+    const text = await dialog.innerText();
+    expect(text).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/);
+    await dialog.getByRole('button', { name: 'Vorschlag verwerfen' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(probe).toHaveAttribute('aria-label', before ?? '');
   });
 });

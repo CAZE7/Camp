@@ -118,93 +118,98 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
-          <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
+          <p className="planner-sheet-header mb-2 font-semibold text-foreground">{summary.headline}</p>
 
-          <div className="mb-3 grid grid-cols-2 gap-1.5">
-            <Stat
-              value={summary.passed}
-              label="erfüllt"
-              hint="Prüfungen, deren Bedingung im Plan eingehalten ist."
-            />
-            <Stat
-              value={summary.failed}
-              label="nicht erfüllt"
-              hint="Prüfungen, deren Bedingung im Plan nicht eingehalten ist. Diese Punkte müssen korrigiert werden."
-            />
-            <Stat
-              value={summary.unprovable}
-              label="Angaben fehlen"
-              hint="Für diese Prüfungen fehlen Werte im Plan — sie konnten noch nicht beurteilt werden."
-            />
-            <Stat
-              value={summary.notApplicable}
-              label="kommt nicht vor"
-              hint="Prüfungen ohne passendes Bauteil im Plan (z. B. Solar-Regeln ohne Solarmodul). Sie zählen NICHT als erfüllt."
-            />
-          </div>
-
-          <div className="mb-3">
-            <div className="mb-1 font-semibold text-foreground">Prüfungen (5 Durchgänge)</div>
-            <ul className="space-y-0.5">
-              {summary.passes.map((pass) => (
-                <li key={pass.pass} className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">
-                    {pass.pass}. {pass.name}
-                  </span>
-                  <span className="font-mono text-[11px]">
-                    {PASS_STATUS_LABEL[pass.status]} · {pass.ruleCount} Regeln
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {summary.notAppliedRules.length > 0 && (
-            <p className="mb-3 text-muted-foreground">
-              {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und wurden
-              nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil stehen
-              unter „Modellgrenzen“.
-            </p>
-          )}
-
-          <div className="mb-3">
-            <div className="mb-1 flex items-center gap-1 font-semibold text-foreground">
-              <Info className="h-3.5 w-3.5" aria-hidden="true" /> Modellgrenzen
+          <div
+            data-testid="verification-sheet-body"
+            className="planner-sheet-body min-h-0 flex-1 overflow-y-auto"
+          >
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              <Stat
+                value={summary.passed}
+                label="erfüllt"
+                hint="Prüfungen, deren Bedingung im Plan eingehalten ist."
+              />
+              <Stat
+                value={summary.failed}
+                label="nicht erfüllt"
+                hint="Prüfungen, deren Bedingung im Plan nicht eingehalten ist. Diese Punkte müssen korrigiert werden."
+              />
+              <Stat
+                value={summary.unprovable}
+                label="Angaben fehlen"
+                hint="Für diese Prüfungen fehlen Werte im Plan — sie konnten noch nicht beurteilt werden."
+              />
+              <Stat
+                value={summary.notApplicable}
+                label="kommt nicht vor"
+                hint="Prüfungen ohne passendes Bauteil im Plan (z. B. Solar-Regeln ohne Solarmodul). Sie zählen NICHT als erfüllt."
+              />
             </div>
-            <ul
-              className="list-disc space-y-0.5 pl-4 text-muted-foreground"
-              data-testid="verification-limitations"
-            >
-              {summary.limitations.map((limitation) => (
-                <li key={limitation}>{limitation}</li>
-              ))}
-            </ul>
-          </div>
 
-          {/* Nachtest Bug 4: Hashes, Engine-Version und Regel-Codes sind
-              für Laien unverständliches Rauschen — sie bleiben für
-              Nachweise verfügbar, aber hinter einem Aufklapp-Bereich. */}
-          <details className="border-t border-border pt-2">
-            <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
-              Technische Details
-            </summary>
-            <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
-              Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
-              <br />
-              Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
-            </p>
+            <div className="mb-3">
+              <div className="mb-1 font-semibold text-foreground">Prüfungen (5 Durchgänge)</div>
+              <ul className="space-y-0.5">
+                {summary.passes.map((pass) => (
+                  <li key={pass.pass} className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">
+                      {pass.pass}. {pass.name}
+                    </span>
+                    <span className="font-mono text-[11px]">
+                      {PASS_STATUS_LABEL[pass.status]} · {pass.ruleCount} Regeln
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             {summary.notAppliedRules.length > 0 && (
-              <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
-                Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
+              <p className="mb-3 text-muted-foreground">
+                {summary.notAppliedRules.length} Prüfung(en) sind für dieses Profil nicht vorgesehen und
+                wurden nicht angewendet (Liste unter „Technische Details“). Prüfungen ohne passendes Bauteil
+                stehen unter „Modellgrenzen“.
               </p>
             )}
-          </details>
-          <p className="mt-1 leading-relaxed text-muted-foreground">
-            Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
-            Prüfhinweisen.
-          </p>
+
+            <div className="mb-3">
+              <div className="mb-1 flex items-center gap-1 font-semibold text-foreground">
+                <Info className="h-3.5 w-3.5" aria-hidden="true" /> Modellgrenzen
+              </div>
+              <ul
+                className="list-disc space-y-0.5 pl-4 text-muted-foreground"
+                data-testid="verification-limitations"
+              >
+                {summary.limitations.map((limitation) => (
+                  <li key={limitation}>{limitation}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Nachtest Bug 4: Hashes, Engine-Version und Regel-Codes sind
+              für Laien unverständliches Rauschen — sie bleiben für
+              Nachweise verfügbar, aber hinter einem Aufklapp-Bereich. */}
+            <details className="border-t border-border pt-2">
+              <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
+                Technische Details
+              </summary>
+              <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
+                <br />
+                Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
+              </p>
+              {summary.notAppliedRules.length > 0 && (
+                <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                  Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
+                </p>
+              )}
+            </details>
+            <p className="mt-1 leading-relaxed text-muted-foreground">
+              Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
+              Prüfhinweisen.
+            </p>
+          </div>
         </div>
       )}
     </div>

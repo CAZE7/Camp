@@ -746,6 +746,7 @@ describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
     expect(css).toContain("[data-active-tab='inspector'] #inspector-panel");
     expect(css).toContain('.planner-menubar-sheet,\n  .planner-toolbar-sheet');
     expect(css).toContain('.planner-display-options-panel {\n    top: 4rem !important;');
+    expect(css).toContain('.planner-entry-notice {\n    top: 3.25rem;');
     expect(css).toContain('.planner-shell .planner-expert-panel--closed {\n    display: none !important;');
   });
 });

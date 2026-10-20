@@ -731,6 +731,43 @@ describe('Auto-Wire-Vorschau braucht immer ausdrückliche Bestätigung', () => {
     expect(applied.nodes).not.toBe(nodes);
     expect(applied.edges.length).toBeGreaterThan(0);
     expect(applied.historyPast).toHaveLength(1);
+    expect(applied.autoWireReport).not.toBeNull();
+  });
+
+  it('Abbrechen lässt Graph und Prüfbericht unverändert', () => {
+    const nodes = [
+      makeNode('battery-1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('load-1', 'consumer', { label: 'Kühlbox', watts: 60 }),
+    ];
+    usePlannerStore.setState({
+      viewMode: 'electric',
+      nodes,
+      edges: [],
+      waterNodes: [],
+      waterEdges: [],
+      autoWirePreview: null,
+      autoWireReport: null,
+      historyPast: [],
+      historyFuture: [],
+      canUndo: false,
+      canRedo: false,
+    });
+
+    const before = usePlannerStore.getState();
+    act(() => before.previewAutoWire());
+    const open = usePlannerStore.getState();
+    expect(open.autoWirePreview).not.toBeNull();
+    expect(open.autoWireReport).toBeNull();
+    expect(open.nodes).toBe(nodes);
+    expect(open.edges).toEqual([]);
+
+    act(() => open.dismissAutoWirePreview());
+    const after = usePlannerStore.getState();
+    expect(after.autoWirePreview).toBeNull();
+    expect(after.autoWireReport).toBeNull();
+    expect(after.nodes).toBe(nodes);
+    expect(after.edges).toEqual([]);
+    expect(after.historyPast).toHaveLength(0);
   });
 });
 

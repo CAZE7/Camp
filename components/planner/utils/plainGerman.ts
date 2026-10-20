@@ -26,10 +26,42 @@ const PHRASES: ReadonlyArray<readonly [RegExp, string]> = [
 ];
 
 const RULE_ID = /\b(?:AMP|RCD|VDR|POL|GND|BAT|SOL|STR|DOM|FUSE)-\d{3}[A-Za-z0-9-]*/g;
+const AUTO_RULE_ID = /\bAUTO-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g;
 
-/** Primärtext ohne Formelzeichen und Regel-Codes. Technische Details nicht hier durchreichen. */
+const AUTO_NODE_TYPE: Readonly<Record<string, string>> = {
+  shunt: 'Batteriecomputer',
+  fuse: 'Sicherung',
+  busbar: 'Sammelschiene',
+  battery: 'Batterie',
+};
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/** Technische Knoten-Ids (`auto-node:…`, URL-Kodierung, Schienenkürzel) als Bauteilnamen. */
+function humanizeIds(text: string): string {
+  return text
+    .replace(/auto-node:([^\s→,.;)]+)/g, (_match, rest: string) => {
+      const decoded = safeDecode(rest);
+      const [type, ...labelParts] = decoded.split(':');
+      const label = labelParts.join(':').replace(/:\d+$/, '');
+      const named = type ? AUTO_NODE_TYPE[type] : undefined;
+      if (named && label) return `${named} „${label}“`;
+      return label || decoded;
+    })
+    .replace(/(?:%[0-9A-Fa-f]{2})+/g, (encoded) => safeDecode(encoded))
+    .replace(/\bbusbar-minus\b/g, 'Minus-Sammelschiene')
+    .replace(/\bbusbar-plus\b/g, 'Plus-Sammelschiene');
+}
+
+/** Primärtext ohne Formelzeichen, Regel-Codes und technische Ids. Technische Details nicht hier durchreichen. */
 export function toPlainGerman(text: string): string {
-  let result = text;
+  let result = humanizeIds(text);
   for (const [pattern, replacement] of PHRASES) result = result.replace(pattern, replacement);
   result = result
     .replace(/I²t/g, 'Durchlassenergie')
@@ -37,13 +69,22 @@ export function toPlainGerman(text: string): string {
     .replace(/I_z/g, 'zulässige Strombelastbarkeit')
     .replace(/I_n/g, 'Nennstrom')
     .replace(/I_b/g, 'Betriebsstrom')
+    .replace(/ul248-classT(?:\s+classT)?/g, 'Class T')
+    .replace(/\bclassT\b/g, 'Class T')
+    .replace(/im Feld `i2A`/g, 'als Prüfstrom laut Datenblatt')
+    .replace(/Feld `i2A`/g, 'Prüfstrom laut Datenblatt')
+    .replace(/`i2A`/g, 'Prüfstrom laut Datenblatt')
+    .replace(/\bi2A\b/g, 'Prüfstrom laut Datenblatt')
+    .replace(/\(\s*Regel\s+[^)]*\)/g, '')
     .replace(RULE_ID, '')
+    .replace(AUTO_RULE_ID, '')
     .replace(/≤/g, ' höchstens ')
     .replace(/≥/g, ' mindestens ')
     .replace(/\(\s*\)/g, '')
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([,.;:)])/g, '$1')
     .replace(/(\()\s+/g, '$1')
+    .replace(/\s+→/g, ' →')
     .trim();
   return result;
 }

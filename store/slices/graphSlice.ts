@@ -896,10 +896,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       set({ autoWirePreview: null });
       return;
     }
-    // Der Bericht geht immer in den Store; der Preview liegt getrennt
-    // davon, damit Dialog und Warn-Center beide die gleichen Fakten lesen.
+    // Der Bericht bleibt im Vorschlag. Erst „Anwenden“ schreibt ihn ins
+    // Warn-Center. Abbrechen lässt Plan und Befunde unverändert.
     set({
-      autoWireReport: result.report,
       autoWirePreview: {
         nodes: [...result.nodes],
         edges: [...result.edges],
@@ -933,6 +932,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         nodes: [...preview.nodes],
         edges: [...preview.edges],
         autoStructurePending: true,
+        autoWireReport: preview.report,
         autoWirePreview: null,
       })
     );

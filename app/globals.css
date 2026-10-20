@@ -2779,10 +2779,30 @@ html.planner-root-active body {
   display: none;
 }
 
-/* Speicherzustand ist eine Aussage, kein optionaler Zusatz ab 1980 px.
-   „Gespeichert“ bleibt auf jeder Breite lesbar. */
-.cad-toolbar [data-testid='save-indicator'] .cad-tb-explain {
-  display: inline;
+/* Speicherzustand ist eine Aussage. Unter 480 px bleibt das Häkchen; das Wort
+   „Gespeichert“ wich sonst „Vorlage laden“ aus der Leiste. Der Satz steht
+   weiter in `aria-label`. */
+@media (min-width: 480px) {
+  .cad-toolbar [data-testid='save-indicator'] .cad-tb-explain {
+    display: inline;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .cad-toolbar [data-testid='action-autowire'] .tb-label,
+  .cad-toolbar [data-testid='action-share'] .tool-btn__label {
+    display: none;
+  }
+
+  .cad-toolbar__actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .cad-toolbar__status {
+    position: relative;
+    z-index: 3;
+  }
 }
 
 /* Grundstufe: die kürzeste Beschriftung. WICHTIG: Diese Regeln stehen VOR den
@@ -2958,7 +2978,36 @@ html.planner-root-active body {
   }
 
   .planner-display-options-panel {
-    top: 4rem !important;
+    top: 0.25rem !important;
+    right: 0.25rem !important;
+    left: auto !important;
+  }
+
+  .planner-menubar-sheet,
+  .planner-toolbar-sheet {
+    position: fixed;
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    top: auto;
+    bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem);
+    width: auto;
+    min-width: min(18rem, calc(100vw - 1rem));
+    max-height: min(70dvh, 26rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 80;
+  }
+
+  .planner-toolbar-sheet .cad-menu__item,
+  .planner-menubar-sheet .cad-menu__item {
+    flex-wrap: wrap;
+  }
+
+  .planner-toolbar-sheet .cad-menu__hint,
+  .planner-menubar-sheet .cad-menu__hint {
+    flex-basis: 100%;
+    margin-left: 1.5rem;
+    padding-left: 0;
   }
 
   /* Die Hilfe bleibt über das Hilfe-Menü erreichbar; ein dauerhaftes FAB
@@ -3395,8 +3444,24 @@ html.planner-root-active body {
 
   .planner-mobile-history {
     display: flex !important;
-    top: 0.25rem !important;
+    top: auto !important;
+    bottom: 0.25rem !important;
+    left: auto !important;
+    right: 0.25rem !important;
+    z-index: 40;
+  }
+
+  .planner-shell .planner-mobile-feedback {
+    top: 0.35rem !important;
+    right: auto !important;
     bottom: auto !important;
+    left: 50% !important;
+    width: min(24rem, calc(100% - 7rem));
+    height: auto;
+    max-height: 3.25rem;
+    overflow: hidden;
+    clip-path: none;
+    z-index: 45;
   }
 }
 
@@ -3494,22 +3559,224 @@ html.planner-root-active body {
 /* Zwei Menüzeilen: die Leiste ist höher als die Token-Höhe. Blätter beginnen
    darunter, sonst liegt „Schließen“ auf „Weitere Aktionen“. */
 @media (max-width: 520px) and (orientation: portrait) {
-  /* Zwei Menüzeilen plus Werkzeug- und Schrittleiste: 8,75 rem liegt auf
-     dem Pixel 5 noch in der Werkzeugleiste, der Schließen-Knopf bleibt
-     darunter. */
-  .planner-shell .planner-expert-panel--open {
-    top: 12rem !important;
+  .planner-shell {
+    --planner-phone-sheet-top: 12.5rem;
+  }
+}
+
+/* Handy-Blätter: Prüfbericht, Prüfhinweise und Hilfe füllen den Streifen
+   zwischen den Leisten. Die früheren Höhenkappen (5–8 rem) ließen nur einen
+   Schlitz, und Ansicht, Undo und Übersicht lagen auf Kopf und Fuß.
+   Solange ein Blatt offen ist, weichen diese Griffe. */
+@media (max-width: 767px), ((orientation: landscape) and (max-height: 520px)) {
+  .planner-shell {
+    --planner-phone-sheet-top: 8.75rem;
   }
 
-  .planner-shell .de-warning-center [role='dialog'] {
-    top: 8.75rem !important;
+  .planner-shell:not(.planner-shell--focus) .planner-verification-panel,
+  .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
+    position: fixed !important;
+    top: var(--planner-phone-sheet-top) !important;
+    right: 0.35rem !important;
+    bottom: calc(var(--cad-nav-h, 44px) + 0.25rem) !important;
+    left: 0.35rem !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    z-index: 95 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
 
-  .planner-shell .de-warning-center [role='dialog'] {
-    max-height: 7.5rem !important;
+  .planner-shell:not(.planner-shell--focus) .planner-expert-panel--open {
+    position: fixed !important;
+    top: var(--planner-phone-sheet-top) !important;
+    right: 0.35rem !important;
+    bottom: calc(var(--cad-nav-h, 44px) + 0.25rem) !important;
+    left: 0.35rem !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    z-index: 95 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: stretch !important;
   }
 
-  .planner-shell .planner-verification-panel {
-    max-height: min(32dvh, 14rem) !important;
+  .planner-shell:not(.planner-shell--focus) .planner-expert-panel--open [data-testid='expert-panel-open'] {
+    height: 100% !important;
+    max-height: none !important;
+    flex: 1 1 auto;
+  }
+
+  .planner-sheet-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-panel);
+  }
+
+  .planner-shell:has(.planner-verification-panel) .planner-mobile-history,
+  .planner-shell:has(.planner-verification-panel) .planner-display-options-panel,
+  .planner-shell:has(.planner-verification-panel) .planner-mode-switch-panel,
+  .planner-shell:has(.de-warning-center [role='dialog']) .planner-mobile-history,
+  .planner-shell:has(.de-warning-center [role='dialog']) .planner-display-options-panel,
+  .planner-shell:has(.de-warning-center [role='dialog']) .planner-mode-switch-panel,
+  .planner-shell:has(.planner-expert-panel--open) .planner-mobile-history,
+  .planner-shell:has(.planner-expert-panel--open) .planner-display-options-panel,
+  .planner-shell:has(.planner-expert-panel--open) .planner-mode-switch-panel,
+  .planner-shell:has(.planner-verification-panel) .cad-statusbar,
+  .planner-shell:has(.de-warning-center [role='dialog']) .cad-statusbar,
+  .planner-shell:has(.planner-expert-panel--open) .cad-statusbar {
+    display: none !important;
+  }
+
+  .planner-shell:has(.planner-verification-panel):has(.de-warning-center [role='dialog'])
+    .planner-verification-panel {
+    bottom: 54% !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .planner-shell:has(.planner-verification-panel) .de-warning-center [role='dialog'] {
+    top: 48% !important;
+    height: auto !important;
+    max-height: none !important;
+    bottom: calc(var(--cad-nav-h, 44px) + 0.25rem) !important;
+  }
+
+  .planner-mode-switch-panel {
+    top: 0.25rem !important;
+    left: 0.25rem !important;
+    right: 8.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    overflow: hidden;
+  }
+
+  [data-testid='planner-mode-caption'] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .planner-display-options-panel {
+    top: 0.25rem !important;
+    right: 0.25rem !important;
+    left: auto !important;
+    margin: 0 !important;
+  }
+
+  .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 5rem !important;
+    right: 0.35rem !important;
+    bottom: auto !important;
+    left: 0.35rem !important;
+    width: auto !important;
+    max-height: 2.25rem !important;
+    margin: 0 !important;
+    z-index: 4 !important;
+  }
+}
+
+@media (max-width: 520px) and (orientation: portrait) {
+  .planner-shell {
+    --planner-phone-sheet-top: 12.5rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .planner-shell {
+    --planner-phone-sheet-top: 7.25rem;
+  }
+
+  [data-testid='planner-mode-caption'] {
+    display: none;
+  }
+
+  .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 2.85rem !important;
+    right: 8.5rem !important;
+    bottom: auto !important;
+    left: 0.35rem !important;
+    max-height: 2rem !important;
+  }
+
+  .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] > div:first-child,
+  .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] > div:last-child {
+    padding-block: 0.35rem !important;
+  }
+}
+
+/* Zwischen Tablet-Breite und vollem Desktop hing „Hilfe“ am Auslöser und
+   ragte über den oberen Fensterrand. Das Menü sitzt unter der Titelleiste. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .cad-menubar .planner-menubar-sheet {
+    position: fixed;
+    top: calc(var(--cad-menubar-h, 32px) + var(--cad-toolbar-h, 40px) + 4px);
+    right: 0.75rem;
+    bottom: auto;
+    left: auto;
+    z-index: 80;
+    max-height: calc(100dvh - var(--cad-menubar-h, 32px) - var(--cad-toolbar-h, 40px) - 1rem);
+    min-width: min(22rem, calc(100vw - 1.5rem));
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 767px), (max-height: 700px) {
+  .planner-dialog-backdrop {
+    align-items: stretch;
+    padding: 0.35rem;
+  }
+
+  .planner-dialog {
+    height: calc(100dvh - 0.7rem);
+    max-height: calc(100dvh - 0.7rem) !important;
+  }
+
+  .planner-dialog__description {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  [data-testid='bom-scroll-body'] {
+    flex: 1 1 auto;
+    min-height: 9rem;
+    overflow: auto;
+  }
+}
+
+/* Die Einstiegsmeldung („Beispiel geladen“) lag mit „Meldung schließen“
+   auf dem Ansicht-Knopf: volle Breite, oben rechts, z-30. Auf dem Telefon
+   beginnt sie unter der Zeile aus Modus und Ansicht. Der Strompfad rückt
+   darunter, solange die Meldung offen ist. Im kurzen Querformat bleibt der
+   Strompfad in seiner Zeile; die Meldung folgt darunter. */
+@media (max-width: 767px), ((orientation: landscape) and (max-height: 520px)) {
+  .planner-entry-notice {
+    top: 3.25rem;
+    max-height: 2.75rem;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .planner-canvas-column:has(.planner-entry-notice)
+    .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 6.35rem !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .planner-entry-notice {
+    top: 5.15rem;
+    max-height: 2.5rem;
   }
 }

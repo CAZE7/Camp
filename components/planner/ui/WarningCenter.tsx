@@ -592,11 +592,11 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           // schwebenden Undo-Leiste), ab `md` als Bericht unter der
           // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
           // sichtbaren Bereich.
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 max-h-[60dvh] min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
           aria-label="Planungsprüfung"
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
+          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
             <div>
               <h3 className="text-sm font-bold text-foreground">Planungsprüfung</h3>
               {/* Urteilszeile (Auftrag §17): kritisch = nur severity critical. */}
@@ -626,7 +626,10 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             </button>
           </div>
 
-          <ul className="flex flex-col gap-3 p-3">
+          <ul
+            data-testid="warning-sheet-body"
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
+          >
             {sorted.map((warning) => (
               <FindingCard
                 key={warning.id}

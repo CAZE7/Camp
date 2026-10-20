@@ -135,7 +135,10 @@ export function AccessibleDialog({
               {title}
             </h2>
             {description && (
-              <p id={descriptionId} className="mt-1 break-words text-sm text-muted-foreground">
+              <p
+                id={descriptionId}
+                className="planner-dialog__description mt-1 break-words text-sm text-muted-foreground"
+              >
                 {description}
               </p>
             )}

@@ -199,7 +199,8 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         title="Fertiges Setup laden und anpassen"
       >
         <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
-        <span>Vorlage laden</span>
+        <span className="tb-label tb-label--kurz">Vorlage</span>
+        <span className="tb-label tb-label--mittel">Vorlage laden</span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
       {open && (

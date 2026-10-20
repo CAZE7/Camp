@@ -354,7 +354,7 @@ function PlannerShell() {
               <div
                 role={entryNotice.type === 'error' ? 'alert' : 'status'}
                 aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-                className="pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
+                className="planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
               >
                 <span className="flex-1">{entryNotice.message}</span>
                 <button
