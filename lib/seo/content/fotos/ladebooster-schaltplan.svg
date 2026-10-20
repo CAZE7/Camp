@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#ffffff"/>
+  <rect x="0" y="0" width="800" height="56" fill="#0f4c5c"/>
+  <text x="24" y="36" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Ladebooster im Schaltplan — 30 A DC-DC</text>
+  <rect x="24" y="96" width="220" height="260" fill="#f4f6f8" rx="8"/>
+  <text x="40" y="128" font-family="system-ui, sans-serif" font-size="14" fill="#374151" font-weight="600">Starterbatterie</text>
+  <text x="40" y="156" font-family="system-ui, sans-serif" font-size="14" fill="#111827">12 V</text>
+  <rect x="40" y="180" width="140" height="40" fill="#d1d5db" rx="4"/>
+  <text x="68" y="202" font-family="system-ui, sans-serif" font-size="14" fill="#374151">Kabel</text>
+  <rect x="280" y="96" width="220" height="260" fill="#dcfce7" rx="8"/>
+  <text x="296" y="128" font-family="system-ui, sans-serif" font-size="14" fill="#15803d" font-weight="600">Ladebooster</text>
+  <text x="296" y="156" font-family="system-ui, sans-serif" font-size="14" fill="#374151">30 A DC-DC</text>
+  <text x="296" y="184" font-family="system-ui, sans-serif" font-size="14" fill="#374151">IUoU-Ladung</text>
+  <rect x="536" y="96" width="220" height="260" fill="#f4f6f8" rx="8"/>
+  <text x="552" y="128" font-family="system-ui, sans-serif" font-size="14" fill="#374151" font-weight="600">Wohnraumbatterie</text>
+  <text x="552" y="156" font-family="system-ui, sans-serif" font-size="14" fill="#111827">LiFePO4 200 Ah</text>
+  <text x="24" y="380" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">Trennrelais ersetzt durch Ladebooster (IUoU)</text>
+</svg>

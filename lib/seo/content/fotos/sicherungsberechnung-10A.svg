@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#ffffff"/>
+  <rect x="0" y="0" width="800" height="56" fill="#0f4c5c"/>
+  <text x="24" y="36" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Sicherungsberechnung — 12 V</text>
+  <rect x="24" y="96" width="360" height="300" fill="#f4f6f8" rx="8"/>
+  <text x="40" y="128" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#111827">Eingaben</text>
+  <text x="40" y="156" font-family="system-ui, sans-serif" font-size="14" fill="#374151">Leitung: 2,5 mm²</text>
+  <text x="40" y="184" font-family="system-ui, sans-serif" font-size="14" fill="#374151">Stromstärke: 10 A</text>
+  <text x="40" y="212" font-family="system-ui, sans-serif" font-size="14" fill="#374151">Leitungslänge: 3 m</text>
+  <rect x="40" y="236" width="280" height="40" fill="#ffffff" rx="4" stroke="#d1d5db" stroke-width="1"/>
+  <text x="56" y="262" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">Empfohlene Sicherung</text>
+  <rect x="416" y="96" width="360" height="300" fill="#ffffff" rx="8" stroke="#d1d5db" stroke-width="1"/>
+  <text x="432" y="128" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#111827">Ergebnis</text>
+  <rect x="432" y="156" width="140" height="96" fill="#dcfce7" rx="8"/>
+  <text x="448" y="208" font-family="system-ui, sans-serif" font-size="34" font-weight="800" fill="#15803d">10 A</text>
+  <text x="432" y="264" font-family="system-ui, sans-serif" font-size="14" fill="#374151">Hauptsicherung ≤ 0,2 m</text>
+  <text x="432" y="292" font-family="system-ui, sans-serif" font-size="14" fill="#374151">ab Batteriepol (ISO 10133)</text>
+  <text x="24" y="416" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">κ = 58, 3 % Spannungsfall, Derating 0,7</text>
+</svg>

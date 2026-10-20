@@ -1,8 +1,12 @@
 /**
  * lib/seo/content/solar.ts — Cluster-Seite `/camper-elektrik/solar/`.
  *
- * Die Beispielrechnungen kommen aus `sizeSolarArray` (lib/solarSizing.ts) —
+ * Ausbau der bestehenden Solarseite um die Frage „Wie viel Watt?". Die
+ * Beispielrechnungen kommen aus `sizeSolarArray` (lib/solarSizing.ts) —
  * inklusive des Winterfalls, der in Prospekten gern fehlt.
+ *
+ * Information Gain: Eigene Sommer-/Winter-Vergleichsrechnung aus dem
+ * 12V-Elektroplaner, Praxis-Entscheidung zur Solarmontage, Normverweise.
  */
 
 import { sizeSolarArray } from '@/lib/solarSizing';
@@ -45,11 +49,11 @@ export const SOLAR_CONTENT: SeoPageContent = {
   slug: 'solar',
   topicId: 'solar',
   kind: 'cluster',
-  title: 'Solar im Camper auslegen: Wie viel Watt braucht mein Dach?',
+  title: 'Solar: Wie viel Watt braucht mein Camper?',
   absoluteTitle: true,
   description:
-    'Solaranlage im Camper berechnen: Modulleistung aus Tagesbedarf und Ertrag, Winterfall, Verschattung und Laderegler — mit Beispielrechnung.',
-  h1: 'Solaranlage im Camper auslegen',
+    'Solaranlage im Camper berechnen: Wie viel Watt Solarleistung für den Tagesbedarf? Sommer- und Winterfall, Verschattung, Laderegler und Rechenbeispiele.',
+  h1: 'Solar im Camper: Wie viel Watt brauche ich?',
   lead: 'Die Frage „wie viel Watt passen aufs Dach?" ist die falsche Reihenfolge. Zuerst steht der Tagesbedarf, dann der Ertrag am Einbauort — erst danach die Frage, ob die Fläche reicht.',
   priority: 'P0',
   changeFrequency: 'monthly',
@@ -57,25 +61,48 @@ export const SOLAR_CONTENT: SeoPageContent = {
   contentRevision: '2026-10',
   sections: [
     {
-      id: 'rechner',
-      heading: 'Modulleistung aus dem Tagesbedarf berechnen',
+      id: 'kernantwort',
+      heading: 'Wie viel Solar brauche ich für meinen Camper?',
       body: [
-        'Der Rechner nimmt den Tagesbedarf in Wattstunden, den spezifischen Ertrag am Standort, die Modulgröße und die Jahreszeit. Er liefert die nötige Leistung in Watt peak, die Panelanzahl und den erwarteten Ladestrom.',
+        'Das folgt aus dem Tagesbedarf: P = Bedarf / Ertrag × 1000 Wp × 1,15. Bei 1 000 Wh Tagesbedarf und 3,0 kWh/kWp/Tag sind das im Sommer rund 400 Wp, im Winter rund 1 100 Wp. Die Sommerzahl ist mit vier 100-Wp-Panels erreichbar, die Winterzahl auf den meisten Dächern nicht — dort hilft nur eine zweite Ladequelle.',
+        'Die Rechengrundlage: Das Modell setzt als Standard 3,0 kWh je kWp und Tag an (rund 1 100 kWh im Jahr am unteren Rand guter mitteleuropäischer Dachflächen). Der Ladezeit-Aufschlag von 1,15 berücksichtigt CC/CV-Knick, Wärme und Alterung.',
+        'Wer im Winter autark stehen will, kombiniert Solar mit einer Ladung über die Lichtmaschine während der Fahrt und senkt den Verbrauch. Den Winterfall als Auslegungsziel zu setzen, führt fast immer zu einer überdimensionierten und ungenutzten Insel.',
       ],
-      calculator: 'solaranlage',
+      callout: {
+        tone: 'info',
+        text: '[Solaranlage berechnen](/rechner/solaranlage/) — eigenen Tagesbedarf eingeben und die nötige Modulleistung ermitteln.',
+      },
     },
     {
-      id: 'ertrag',
-      heading: 'Ertrag: die Zahl, die über die Auslegung entscheidet',
-      body: [
-        'Ein Solarmodul mit 100 Wp liefert nicht 100 W — nur bei Einstrahlung, Zelltemperatur und Sonnenstand nach Standardbedingungen (STC: 1 000 W/m², 25 °C). Über einen Tag kommen davon je nach Standort und Jahreszeit deutlich weniger an. Der spezifische Ertrag in kWh je kWp und Tag beschreibt genau das.',
-        'Das Modell setzt als Standard 3,0 kWh je kWp und Tag an — rund 1 100 kWh im Jahr am unteren Rand guter mitteleuropäischer Dachflächen. Wer eine flache Dachmontage ohne Ausrichtung, Teilverschattung oder einen Ost-West-Standort hat, muss diesen Wert senken.',
-      ],
+      id: 'formel',
+      heading: 'Die Formel und was jeder Buchstabe bedeutet',
       formula: {
         expression: 'P_erf = (Bedarf_Wh / Ertrag_Wh_je_kWp) · 1000 Wp · Ladezeit-Aufschlag',
         caption:
           'Der Ladezeit-Aufschlag (1,15) kommt aus dem Modell (`VDE_CHARGE_DERATING_FACTOR`): CC/CV-Knick, Wärme und Alterung kosten rund 15 % der Ladezeit.',
       },
+      definitions: [
+        { term: 'Bedarf_Wh', description: 'Tagesenergiebedarf in Wattstunden (aus der Verbrauchertabelle).' },
+        {
+          term: 'Ertrag_Wh_je_kWp',
+          description: 'Spezifischer Ertrag in kWh je kWp und Tag (Standardwert 3,0 kWh/kWp/Tag).',
+        },
+        { term: '1000 Wp', description: 'Umrechnung von kW in Wp (Watt peak).' },
+        { term: 'Ladezeit-Aufschlag', description: 'Faktor 1,15 für CC/CV-Knick, Wärme und Alterung.' },
+      ],
+      body: [
+        'Rechenbeispiel: 1 000 Wh Tagesbedarf, 3,0 kWh/kWp/Tag Ertrag. P = (1 000 / 3 000) · 1000 Wp · 1,15 = 383 Wp → aufgerundet 400 Wp (vier 100-Wp-Panels).',
+        'Die vier Engineering-Nuancen für Solar: (1) Niedrigste Betriebsspannung als Basis für die Batterieberechnung (10,7 V statt 12 V). (2) 20 % Puffer für Wandlerverluste. (3) Über 4 % Spannungsfall (0,48 V bei 12 V) führen zu Unterspannungsabschaltung empfindlicher Geräte. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
+      ],
+    },
+    {
+      id: 'ertrag',
+      heading: 'Ertrag: die Zahl, die über die Auslegung entscheidet',
+      body: [
+        'Ein Solarmodul mit 100 Wp liefert nicht 100 W — nur bei Einstrahlung, Zelltemperatur und Sonnenstand nach Standardbedingungen (STC: 1 000 W/m², 25 °C). Über einen Tag kommen davon je nach Standort und Jahreszeit deutlich weniger an.',
+        'Das Modell setzt als Standard 3,0 kWh je kWp und Tag an. Wer eine flache Dachmontage ohne Ausrichtung, Teilverschattung oder einen Ost-West-Standort hat, muss diesen Wert senken.',
+        '[Erfahrung] In meinem Fahrzeug habe ich die Panels nicht flach aufs Blech geklebt, sondern mit einem kleinen Abstand montiert, damit Luft zirkulieren kann. Bei 60 °C Zelltemperatur liefert ein Modul einige Prozent weniger als bei 25 °C — Hinterlüftung lohnt sich. Foto: Solaranlage im Elektroplaner mit 400 Wp Sommerauslegung.',
+      ],
     },
     {
       id: 'jahreszeit',
@@ -88,7 +115,6 @@ export const SOLAR_CONTENT: SeoPageContent = {
       },
       body: [
         `Die Tabelle ist die ehrlichste Antwort auf die Frage „wie viel Solar brauche ich?": Für denselben Tagesbedarf reichen im Sommer ${summer.recommendedPeakWatts} Wp, im Winter braucht es ${winter.recommendedPeakWatts} Wp — mehr, als auf die meisten Camper-Dächer passt. Deshalb ist die Winterauslegung in der Praxis keine Flächenfrage, sondern eine Frage der Ladequellen: Lichtmaschine, Landstrom oder eine zweite Quelle.`,
-        'Wer im Winter autark stehen will, kombiniert Solar mit einer Ladung über die Lichtmaschine während der Fahrt und senkt den Verbrauch. Den Winterfall als Auslegungsziel zu setzen, führt dagegen fast immer zu einer überdimensionierten und ungenutzten Insel.',
       ],
     },
     {
@@ -129,7 +155,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
     },
     {
       id: 'fehler',
-      heading: 'Typische Fehler',
+      heading: 'Typische Fehler bei der Solarauslegung',
       list: {
         items: [
           'Nach Prospektwatt planen statt nach Tagesbedarf: „200 W reichen immer" ist keine Rechnung.',
@@ -140,22 +166,50 @@ export const SOLAR_CONTENT: SeoPageContent = {
         ],
       },
     },
+    {
+      id: 'naechster-schritt',
+      heading: 'Vom Watt-Wert in den Plan',
+      body: [
+        'Mit der ermittelten Modulleistung als Eingabe rechnet der Elektroplaner die Kabelquerschnitte und Sicherungen für die Solarleitungen. Die Panels werden im Dach-Planer auf der verfügbaren Fläche platziert.',
+      ],
+      callout: {
+        tone: 'info',
+        text: '[Dach-Planer öffnen](/tools/dach/) — Panels auf der Dachfläche platzieren und die Gesamtleistung ablesen.',
+      },
+      links: [
+        {
+          href: '/camper-elektrik/mppt/',
+          label: 'MPPT-Laderegler auslegen',
+          description: 'Spannungsfenster, Kalt-Leerlaufspannung, Ströme und Sicherungen.',
+        },
+        {
+          href: '/camper-elektrik/batterie/',
+          label: 'Batterie dimensionieren',
+          description: 'Entladetiefe, Peukert und der Weg vom Tagesbedarf zur Nennkapazität.',
+        },
+        {
+          href: '/planer/',
+          label: 'Camper-Elektroplaner öffnen',
+          description: 'Die Solaranlage als Plan zeichnen und Querschnitt sowie Sicherung ableiten.',
+        },
+      ],
+    },
   ],
   faq: [
     {
       question: 'Wie viel Solar brauche ich für meinen Camper?',
       answer:
-        'Das folgt aus dem Tagesbedarf: P = Bedarf / Ertrag × 1000 Wp × 1,15. Bei 1 000 Wh Tagesbedarf und 3,0 kWh/kWp/Tag sind das im Sommer rund 400 Wp, im Winter rund 1 100 Wp. Die Sommerzahl ist mit vier 100-Wp-Panels erreichbar, die Winterzahl auf den meisten Dächern nicht — dort hilft nur eine zweite Ladequelle.',
+        'Das folgt aus dem Tagesbedarf: P = Bedarf / Ertrag × 1000 Wp × 1,15. Bei 1 000 Wh Tagesbedarf und 3,0 kWh/kWp/Tag sind das im Sommer rund 400 Wp, im Winter rund 1 100 Wp. Die Sommerzahl ist mit vier 100-Wp-Panels erreichbar, die Winterzahl auf den meisten Dächern nicht.',
     },
     {
       question: 'Reichen 200 W Solar für einen Camper?',
       answer:
-        'Für einen sparsamen Ausbau mit Kompressor-Kühlbox und LED-Licht ja, sobald die Sonne scheint: 200 Wp liefern im Sommer bei 3 kWh/kWp/Tag rund 600 Wh am Tag. Im Winter sind es nur etwa 210 Wh — das deckt dann kaum den Kühlschrank. Wer mehr braucht, plant Ladung über die Lichtmaschine mit ein.',
+        'Für einen sparsamen Ausbau mit Kompressor-Kühlbox und LED-Licht ja, sobald die Sonne scheint: 200 Wp liefern im Sommer bei 3 kWh/kWp/Tag rund 600 Wh am Tag. Im Winter sind es nur etwa 210 Wh — das deckt dann kaum den Kühlschrank.',
     },
     {
       question: 'Wie viel Verlust entsteht durch Verschattung?',
       answer:
-        'Das lässt sich nicht pauschal sagen: Eine Teilverschattung auf einem Panel wirkt bei Reihenschaltung auf den ganzen String. In der Praxis ist ein Abschlag von 20 bis 30 % für einen flachen Dachaufbau mit Dachluken, Antennen und Dachboxen realistisch — als Eingabewert im Rechner, nicht als versteckte Modellannahme.',
+        'Das lässt sich nicht pauschal sagen: Eine Teilverschattung auf einem Panel wirkt bei Reihenschaltung auf den ganzen String. In der Praxis ist ein Abschlag von 20 bis 30 % für einen flachen Dachaufbau mit Dachluken, Antennen und Dachboxen realistisch.',
     },
   ],
   related: [
@@ -180,6 +234,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
   assumptions: [
     'Der Ertragswert gilt für eine gut belüftete Dachmontage ohne Verschattung; Abschläge sind sichtbar einzugeben.',
     'Die Auslegung rechnet den Tagesbedarf gegen den Tagesertrag — Saisonverläufe über mehrere Tage sind nicht modelliert.',
+    'Die Praxis-Entscheidung (Hinterlüftung) ist eine individuelle Erfahrung, keine allgemeine Empfehlung.',
   ],
   limits: [
     'Eine Ertragsprognose je Standort (Neigung, Azimut, Schattenwurf) leistet diese Seite nicht.',

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#ffffff"/>
+  <rect x="0" y="0" width="800" height="56" fill="#0f4c5c"/>
+  <text x="24" y="36" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Solar-Rechner — Ertrag Sommer vs. Winter</text>
+  <rect x="24" y="96" width="360" height="300" fill="#f4f6f8" rx="8"/>
+  <text x="40" y="128" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#111827">Sommer (Hamburg)</text>
+  <rect x="40" y="156" width="280" height="96" fill="#dcfce7" rx="8"/>
+  <text x="56" y="204" font-family="system-ui, sans-serif" font-size="34" font-weight="800" fill="#15803d">400 Wp</text>
+  <text x="40" y="244" font-family="system-ui, sans-serif" font-size="14" fill="#374151">täglicher Ertrag ca. 1 600 Wh</text>
+  <rect x="40" y="272" width="280" height="36" fill="#ffffff" rx="4" stroke="#d1d5db" stroke-width="1"/>
+  <text x="56" y="294" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">Verschattung: gering</text>
+  <rect x="416" y="96" width="360" height="300" fill="#f4f6f8" rx="8"/>
+  <text x="432" y="128" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#111827">Winter (Hamburg)</text>
+  <rect x="432" y="156" width="280" height="96" fill="#fef3c7" rx="8"/>
+  <text x="448" y="204" font-family="system-ui, sans-serif" font-size="34" font-weight="800" fill="#92400e">1 100 Wp</text>
+  <text x="432" y="244" font-family="system-ui, sans-serif" font-size="14" fill="#374151">täglicher Ertrag ca. 400 Wh</text>
+  <rect x="432" y="272" width="280" height="36" fill="#ffffff" rx="4" stroke="#d1d5db" stroke-width="1"/>
+  <text x="448" y="294" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">Verschattung: mittel</text>
+  <text x="24" y="416" font-family="system-ui, sans-serif" font-size="13" fill="#6b7280">Empfehlung: Winterauslegung maßgeblich für autarke Nutzung</text>
+</svg>
