@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 
-import { expandAllCategories, openPlanner, showCanvas, showSidebar } from './helpers';
+import { expandAllCategories, openMenubar, openPlanner, showCanvas, showSidebar } from './helpers';
 
 /**
  * tests/e2e/scroll-architecture.spec.ts
@@ -162,9 +162,14 @@ test.describe('M12 Scroll-Architektur', () => {
     await page.keyboard.press('Escape');
 
     // 4. Ein Menü der Menüleiste.
-    // Der Auslöser ist Teil des ARIA-Menümusters (`role="menuitem"`).
-    await page.getByRole('menuitem', { name: 'Ansicht' }).click();
-    const menubarMenu = page.getByRole('menu', { name: 'Menü' });
+    // Ab 768 px ist der Auslöser ein `menuitem`, das Dropdown heißt „Menü“.
+    // Darunter liegt er als Knopf im Blatt hinter „Menü“; das geöffnete
+    // Menü heißt dann nach dem Abschnitt („Ansicht“).
+    const onPhone =
+      (await page.getByTestId('phone-menu').count()) > 0 &&
+      (await page.getByTestId('phone-menu').isVisible());
+    await openMenubar(page, 'ansicht');
+    const menubarMenu = page.getByRole('menu', { name: onPhone ? 'Ansicht' : 'Menü' });
     await expect(menubarMenu).toBeVisible();
     const menubarBox = roundBox((await menubarMenu.boundingBox())!);
     expectInsideViewport(menubarBox, view, 'Menüleiste-Dropdown');
