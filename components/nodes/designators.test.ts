@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { designatorForIndex, designatorMapFor } from './designators';
+import {
+  designatorForIndex,
+  designatorMapFor,
+  nodesWithUniqueDesignators,
+  resolvedDesignator,
+} from './designators';
 
 /**
  * Nachtest 2026-10-16: „G1, G2, W1 doppelt, E1 dreifach“ — jedes Bauteil
@@ -41,5 +46,22 @@ describe('designatorMapFor (Nachtest: keine doppelten Kürzel)', () => {
   it('designatorForIndex hängt erst ab dem zweiten Bauteil an', () => {
     expect(designatorForIndex('W1', 0)).toBe('W1');
     expect(designatorForIndex('W1', 1)).toBe('W1.2');
+  });
+
+  it('schreibt eindeutige Bezeichnungen auf Vorlagen und doppelte Altpläne', () => {
+    const stamped = nodesWithUniqueDesignators([
+      { id: 'starter', type: 'battery', data: { label: 'Starterbatterie', designator: 'G1' } },
+      { id: 'lithium', type: 'battery', data: { label: 'Lithium', designator: 'G1' } },
+      { id: 'mppt', type: 'mpptController', data: { label: 'MPPT' } },
+      { id: 'booster', type: 'dcdcCharger', data: { label: 'Ladebooster' } },
+    ]);
+    const labels = stamped.map((node) => (node.data as { designator: string }).designator);
+    expect(labels).toEqual(['G1', 'G1.2', 'G2', 'G2.2']);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('fällt ohne Kontext auf die gespeicherte Bezeichnung zurück', () => {
+    expect(resolvedDesignator(new Map(), 'bat', { designator: 'G1.2' })).toBe('G1.2');
+    expect(resolvedDesignator(new Map([['bat', 'G1']]), 'bat', { designator: 'G9' })).toBe('G1');
   });
 });

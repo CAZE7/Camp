@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
+import { toPlainGerman } from '../utils/plainGerman';
 
 interface WarningCenterProps {
   warnings: ValidationWarning[];
@@ -47,10 +48,12 @@ const TYPE_STYLES: Record<
 // Separat-Bereiche der alten Klasse waren bei /g ohne /u fehleranfällig.
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\uFE0F]/gu;
 function toPlainExplanation(message: string) {
-  return message
-    .replace(EMOJI_PATTERN, '')
-    .replace(/^\s*(Kritisch|Hinweis|Warnung|Tipp)\s*:\s*/i, '')
-    .trim();
+  return toPlainGerman(
+    message
+      .replace(EMOJI_PATTERN, '')
+      .replace(/^\s*(Kritisch|Hinweis|Warnung|Tipp)\s*:\s*/i, '')
+      .trim()
+  );
 }
 
 /**
@@ -331,7 +334,7 @@ export function nextStep(warning: ValidationWarning) {
   // Befunde der Verifikations-Engine bringen ihre Abhilfe mit: Sie kennen die
   // Zahlen (Querschnittsstufe, Nennstrom, Einbauort) und dürfen nicht von
   // einer zweiten, ID-basierten Textzuordnung überschrieben werden.
-  if (warning.remedy) return `So löst du es: ${warning.remedy}`;
+  if (warning.remedy) return `So löst du es: ${toPlainGerman(warning.remedy)}`;
   if (warning.id.startsWith('missing-fuse'))
     return 'So löst du es: Füge am Anfang der Plusleitung eine passende Sicherung oder einen Sicherungskasten ein.';
   if (warning.id.startsWith('reversed-polarity'))

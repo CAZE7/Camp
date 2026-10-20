@@ -209,6 +209,16 @@ describe('lib/verify/protection — RCD-002 (FI-Typ)', () => {
     expect(check.events[0]?.kind).toBe('UNVERIFIABLE');
     expect(check.events[0]?.message).toContain('glatte Gleichfehlerströme');
   });
+
+  it('nimmt einen eingetragenen FI Typ B als belegt (kein UNPROVABLE)', () => {
+    const plan = withEdge(islandPlan(), 'e-inv-load-a', {
+      acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+    });
+    const check = checkRcdType(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.events).toHaveLength(0);
+    expect(check.evaluatedEntities).toBe(1);
+  });
 });
 
 describe('lib/verify/protection — RCD-003 (kein Abzweig vor dem FI)', () => {

@@ -122,7 +122,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 
-          <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 gap-1.5">
             <Stat
               value={summary.passed}
               label="erfüllt"
@@ -173,7 +173,10 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             <div className="mb-1 flex items-center gap-1 font-semibold text-foreground">
               <Info className="h-3.5 w-3.5" aria-hidden="true" /> Modellgrenzen
             </div>
-            <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+            <ul
+              className="list-disc space-y-0.5 pl-4 text-muted-foreground"
+              data-testid="verification-limitations"
+            >
               {summary.limitations.map((limitation) => (
                 <li key={limitation}>{limitation}</li>
               ))}

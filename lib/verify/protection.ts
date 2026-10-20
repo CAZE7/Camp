@@ -613,6 +613,12 @@ export function checkRcdType(context: PassContext): CheckResult {
       continue;
     }
 
+    // Formale Bedingung der Regel: residualType ∈ {B}. Ein eingetragener Typ B
+    // auf der Insel ist damit belegt. Typ A/F ohne Herstellererklärung bleibt
+    // eine Lücke — und ein nur integrierter FI ohne Typangabe ebenfalls.
+    const otherTypes = [...residualTypes].filter((type) => type !== 'B');
+    if (residualTypes.has('B') && otherTypes.length === 0) continue;
+
     const types = [...residualTypes].sort().join(', ');
     events.push(
       auditEvent({

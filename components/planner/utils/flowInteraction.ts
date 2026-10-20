@@ -80,11 +80,11 @@ export function getFlowInteractionProps(mode: PointerMode): FlowInteractionProps
       // Große Fangzone: ein Finger ist ~10 mm breit, 20 px reichen nicht.
       connectionRadius: TOUCH_CONNECTION_RADIUS,
 
-      // Nodes sind grundsätzlich beweglich …
+      // Nodes sind grundsätzlich beweglich — am Finger wie an der Maus am
+      // Kartenkörper, nicht nur am schmalen Griff. Pannen bleibt ein Finger
+      // auf leerer Fläche; der Griff bleibt als zusätzliche Affordance.
       nodesDraggable: true,
-      // … aber nur über den Griff (`dragHandle`), damit Wischen über einem Node
-      // die Karte pannt statt das Bauteil zu verschieben. Das ist der Kern von A4.
-      requiresDragHandle: true,
+      requiresDragHandle: false,
 
       // Kleine Totzone gegen Wackler beim Antippen des Griffs.
       nodeDragThreshold: 4,

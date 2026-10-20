@@ -123,7 +123,7 @@ export interface UsePlannerActionsOptions {
 export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> = [
   { keys: 'Strg + Z', label: 'Rückgängig' },
   { keys: 'Strg + Y', label: 'Wiederholen' },
-  { keys: 'Strg + S', label: 'Plan speichern' },
+  { keys: 'Strg + S', label: 'Speichern bestätigen (automatisch lokal)' },
   { keys: 'Entf', label: 'Auswahl löschen' },
   { keys: 'Esc', label: 'Auswahl aufheben / Dialog schließen' },
   { keys: '?', label: 'Tastaturkürzel-Übersicht' },
@@ -533,9 +533,9 @@ export function usePlannerActions({
               run: () => usePlannerStore.getState().deleteSelected(),
             },
             {
-              // B-16 (QA-Bericht): hieß „Zur Prüfung“, speichert aber nur lokal und
-              // öffnet keine Prüfung. Der Eintrag heißt jetzt wie die Aktion.
-              label: 'Plan speichern',
+              // Es gibt keinen separaten Speichern-Knopf: Der Plan liegt laufend
+              // lokal im Browser. Strg+S und dieser Eintrag bestätigen das nur.
+              label: 'Speichern bestätigen',
               hint: 'Strg + S',
               icon: Check,
               run: () => dispatchPlannerEvent('planner-save'),
@@ -713,6 +713,14 @@ export function usePlannerActions({
               icon: Keyboard,
               testId: 'action-shortcuts',
               run: openShortcuts,
+            },
+            {
+              label: 'Version',
+              hint: process.env.NEXT_PUBLIC_BUILD_ID || 'dev',
+              icon: Info,
+              testId: 'planner-build-id',
+              disabled: true,
+              run: () => undefined,
             },
             {
               label: 'Einführung erneut öffnen',

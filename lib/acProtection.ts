@@ -89,6 +89,12 @@ export type AcProtectionDescriptor = {
   characteristic?: string;
   /** Bemessungs-Abschaltvermögen (Icn) in kA — übliche Stufen 6/10. */
   breakingCapacityKA?: number;
+  /**
+   * Fehlerstromtyp eines FI/LS. Die Insel-Prüfung wertet nur den ausdrücklich
+   * eingetragenen Typ: `B` erfüllt die formale Bedingung für Halbleiterquellen,
+   * `AC` ist unzureichend. Fehlt das Feld, behauptet der Plan keinen Typ.
+   */
+  residualType?: 'AC' | 'A' | 'F' | 'B';
 };
 
 /** Zusammensetzung einer 3-adrigen AC-Leitung in mm². */

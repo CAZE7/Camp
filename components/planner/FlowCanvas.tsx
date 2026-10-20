@@ -1,5 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { MapIcon } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { measuredHeight, measuredWidth, nodeHeight, nodeWidth } from '../edges/utils/nodeGeometry';
 import {
   ReactFlow,
@@ -152,6 +151,54 @@ function useAccessibleHandles() {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
+}
+
+/**
+ * Der zweite Tipp auf „+“ ging auf dem Handy verloren: Der Browser wertet
+ * zwei schnelle Taps als Doppeltipp und schluckt den zweiten `click`, während
+ * eine laufende Zoom-Animation denselben Ausgangswert noch einmal ansetzt.
+ * Touch und Stift zoomen deshalb sofort (`duration: 0`) auf `pointerup`;
+ * der nachfolgende `click` wird verschluckt, damit nicht doppelt gezählt wird.
+ * Die Maus bleibt beim React-Flow-`click`.
+ */
+function TouchZoomFix() {
+  const { zoomIn, zoomOut } = useReactFlow();
+
+  useEffect(() => {
+    const root = document.querySelector('.planner-controls');
+    if (!root) return;
+    let swallowClick = false;
+    const onPointerUp = (event: Event) => {
+      const pointer = event as PointerEvent;
+      if (pointer.pointerType === 'mouse') return;
+      const button = (pointer.target as Element | null)?.closest('button');
+      if (!button || !root.contains(button)) return;
+      const direction = button.classList.contains('react-flow__controls-zoomin')
+        ? 1
+        : button.classList.contains('react-flow__controls-zoomout')
+          ? -1
+          : 0;
+      if (direction === 0 || button.hasAttribute('disabled')) return;
+      pointer.preventDefault();
+      swallowClick = true;
+      const run = direction > 0 ? zoomIn : zoomOut;
+      void run({ duration: 0 });
+    };
+    const onClick = (event: Event) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    root.addEventListener('pointerup', onPointerUp);
+    root.addEventListener('click', onClick, true);
+    return () => {
+      root.removeEventListener('pointerup', onPointerUp);
+      root.removeEventListener('click', onClick, true);
+    };
+  }, [zoomIn, zoomOut]);
+
+  return null;
 }
 
 export function FlowCanvas() {
@@ -937,6 +984,7 @@ export function FlowCanvas() {
               showInteractive={false}
               className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
             />
+            <TouchZoomFix />
             {rawNodes.length > 0 && (
               <MiniMap
                 position="bottom-left"
@@ -1000,23 +1048,6 @@ export function FlowCanvas() {
                   <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
                   {traceLabel}
                 </div>
-              </Panel>
-            )}
-
-            {rawNodes.length > 8 && (
-              <Panel position="bottom-left" className="mb-36 ml-2 md:hidden">
-                <button
-                  type="button"
-                  data-testid="mobile-overview"
-                  onClick={() => {
-                    void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
-                  }}
-                  className="cad-btn cad-btn--line min-h-12 gap-2 px-3"
-                  aria-label="Planübersicht anzeigen"
-                >
-                  <MapIcon className="h-5 w-5" aria-hidden="true" />
-                  Übersicht
-                </button>
               </Panel>
             )}
 

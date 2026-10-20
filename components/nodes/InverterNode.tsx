@@ -5,7 +5,7 @@ import { type InverterNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { type CommonNodeData } from './types';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<InverterNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -41,7 +41,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       aria-label={`${data.label || 'Wechselrichter'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${overloadStats.isOverloaded ? 'node-card--error' : ''} ${overloadStats.isOverloaded ? 'de-node-card--error bg-warn-critical-bg' : ''} ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="inverter" dinCode={designators.get(id)} />
+      <NodeSymbol kind="inverter" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

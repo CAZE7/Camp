@@ -4,7 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 import { type ShorePowerNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const ShorePowerNode = function ({
   id,
@@ -23,7 +23,7 @@ const ShorePowerNode = function ({
       aria-label={`${data.label || 'Landstromanschluss'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="shore" dinCode={designators.get(id)} />
+      <NodeSymbol kind="shore" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

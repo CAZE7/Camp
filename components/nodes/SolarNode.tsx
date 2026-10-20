@@ -4,7 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 import { type SolarNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<SolarNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -18,7 +18,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
       aria-label={`${data.label || 'Solarmodul'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="solar" dinCode={designators.get(id)} />
+      <NodeSymbol kind="solar" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

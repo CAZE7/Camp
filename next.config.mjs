@@ -40,7 +40,23 @@
  * Die Typbindung steht als JSDoc am Objekt: `npm run typecheck` prüft diese
  * Datei über `tsconfig.typecheck.json` mit `// @ts-check` gegen `NextConfig`.
  */
+import { execSync } from 'node:child_process';
+
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || undefined;
+
+/** Kurzer Stand der Auslieferung, sichtbar unter Hilfe → Version. */
+function shortBuildId() {
+  const explicit = process.env.NEXT_PUBLIC_BUILD_ID || process.env.GITHUB_SHA || '';
+  if (explicit.trim() !== '') return explicit.trim().slice(0, 7);
+  try {
+    const id = execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+    return id || 'dev';
+  } catch {
+    return 'dev';
+  }
+}
 
 const nextConfig = /** @type {import('next').NextConfig} */ ({
   output: 'export',
@@ -58,6 +74,9 @@ const nextConfig = /** @type {import('next').NextConfig} */ ({
   ...(process.env.NODE_ENV !== 'production' ? { allowedDevOrigins: ['*.e2b.app', 'localhost'] } : {}),
   images: {
     unoptimized: true,
+  },
+  env: {
+    NEXT_PUBLIC_BUILD_ID: shortBuildId(),
   },
 });
 

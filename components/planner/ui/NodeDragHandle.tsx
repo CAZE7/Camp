@@ -5,11 +5,9 @@ import type { NodeProps } from '@xyflow/react';
 /**
  * Dedizierter Drag-Griff für Touch-Geräte.
  *
- * Warum ein Griff? Auf Touch kann ein Finger auf einem Bauteil entweder die
- * Karte pannen oder das Bauteil ziehen. React Flow bekommt deshalb pro Node
- * `dragHandle: '.node-drag-handle'` (siehe FlowCanvas): Wischen über dem Node
- * pannt, Ziehen am Griff verschiebt. Damit kollidieren Pan und Node-Drag
- * konstruktionsbedingt nicht mehr (Akzeptanzkriterium A4).
+ * Der Griff bleibt als sichtbare Affordance. Gezogen wird die Karte auch am
+ * Körper (`requiresDragHandle: false` in `flowInteraction.ts`): ein Finger auf
+ * leerer Fläche pannt, ein Finger auf der Karte verschiebt das Bauteil.
  *
  * Der Griff wird bewusst per CSS (`@media (pointer: fine)`) ausgeblendet statt
  * per JS entfernt: so ist er schon vor der Hydration korrekt und erzeugt keine

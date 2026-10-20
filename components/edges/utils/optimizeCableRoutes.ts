@@ -93,3 +93,22 @@ export function optimizeCableRoutes(
     },
   };
 }
+
+export type OptimizationPublishDecision = 'improved' | 'unchanged' | 'rejected';
+
+/**
+ * Veröffentlichung gegen den SICHTBAREN Stand, nicht gegen den frischen
+ * Erstlauf. Ein Kandidat, der die Prüfung verschärft (ungültig, mehr
+ * Verletzungen, längere Einzelleitung), ersetzt den Plan nicht.
+ */
+export function decideOptimizationPublish(input: {
+  published: RoutingQuality | null;
+  candidate: RoutingQuality;
+  lengthGrows: boolean;
+}): OptimizationPublishDecision {
+  if (input.lengthGrows || !input.candidate.valid) return 'rejected';
+  if (!input.published) return 'improved';
+  if (input.candidate.hardViolations > input.published.hardViolations) return 'rejected';
+  if (improvesRoutingQuality(input.candidate, input.published)) return 'improved';
+  return 'unchanged';
+}

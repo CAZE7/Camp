@@ -1,5 +1,57 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 — CI-Nachzug zum Handy-Nachtest
+
+**Anlass:** Das Pflicht-Gate auf `0cc6fa3` brach an drei Stellen: ein
+`setTimeout` in `usePlannerEntryPlan` feuerte nach dem Test-Abbau (`window`
+weg), „Kabel optimieren“ gab bei Ablehnung die Sperre für den zweiten Lauf
+nicht mehr aus, und die Handy-CSS schob Statuszeile, Zoom und Fachwissen in
+die bestehenden Geometrie-Budgets (Zeichenfläche unter 150 px bei 640×320,
+Zoom über dem Anzeige-Chip, Fachwissen über der Statuszeile).
+
+**Verhalten:** Der Timer wird beim Aushängen gelöscht. Eine abgelehnte
+Optimierung lässt die veröffentlichten Wege stehen, setzt den Routing-Status
+auf „retained“ und behält die Lauf-Sperre. Die Statuszeile im Querformat
+erscheint erst ab 360 px Höhe. Der Zoom bleibt links, das Fachwissen endet
+über der Statuszeile, die Einstiegsmeldung liegt in derselben Stapelebene
+wie die Zeichenfläche.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
+## LEDGER 2026-10-19 (2) — Handy-Nachtest: Frischstart, Optimieren, Geometrie
+
+**Anlass:** Zweiter Live-Nachtest nach dem Deploy von #547. Speicher leeren stellte
+den Plan wieder her; „Kabel optimieren“ erhöhte kritische Befunde ohne Meldung;
+Menü, Stückliste, Assistent und Strompfad lagen auf 375×667, 393×852 und 852×393
+übereinander oder außerhalb des Fensters.
+
+**Verhalten:** Ein von außen gelöschter `localStorage`-Schlüssel wird nicht aus dem
+Debounce zurückgeschrieben (`store/storage.ts`). Danach lädt der erste Besuch das
+Beispiel und den Assistenten (`store/freshVisit.ts`). „Kabel optimieren“ übernimmt
+eine Führung nur, wenn sie die veröffentlichte Qualität verbessert und keine
+ungespeicherte Strecke länger wird; sonst bleibt der veröffentlichte Stand stehen
+und eine Meldung sagt das. Auf dem Handy ist die Karte am Körper ziehbar. Die
+Geometrie prüft `tests/e2e/mobile-geometry.spec.ts`.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
+## LEDGER 2026-10-19 — Anlagenkennungen auf Vorlagen (Anzeige, keine Elektrik)
+
+**Anlass:** Nachtest am ausgelieferten Beispielplan. Doppelte Kürzel (G1, G2, W1, E1)
+kamen daher, dass Vorlagen und gespeicherte Pläne nur das statische Art-Kürzel
+der Karte zeigten. `nodesWithUniqueDesignators` schreibt die laufende Bezeichnung
+nach `node.data.designator`. Die Golden-Pläne `camper` und `complex` binden
+`TEMPLATE_MINIMALIST` bzw. `TEMPLATE_AUTARK` direkt; ihre Fixtures tragen deshalb
+dieselbe Anzeigekennung.
+
+**Abweichung der Fixtures:** nur das Feld `data.designator` an den Knoten (Eingabe
+und AutoWire-Knoten). `electrical` und `routing` sind unverändert — der
+Golden-Harness vergleicht diese Stufen vor dem Byte-Vergleich, beide blieben
+gleich. Keine Querschnitte, Sicherungen, Ströme oder Kabelgeometrie.
+
+**Recapture:** `npm run goldenmaster:capture` für `knownPlans/camper.json` und
+`knownPlans/complex.json`.
+
 ## LEDGER 2026-10-07 (2) — Elektrische Berechnungs- und Validierungsschicht: eine I_z-Wahrheit, leitwertgewichtete Parallelpfade, AC-Schutzkette, Prüfzustände
 
 **Anlass:** Auftrag „Elektrische Berechnungs- und Validierungsschicht" (Phasen 1–12).

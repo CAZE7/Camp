@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { verifyPlan } from '../../lib/verify';
 import {
   isStarterPlan,
   PLANNER_TEMPLATES,
   resolvePlannerTemplateId,
   shouldLoadStarterPlan,
   STARTER_TEMPLATE_ID,
+  TEMPLATE_ALLROUNDER,
   TEMPLATE_KASTENWAGEN,
   templateIdFromSearch,
   TEMPLATES_DICT,
@@ -132,4 +134,33 @@ describe('Vorlagen tragen vollständige Startwerte (Nachtest)', () => {
       }
     });
   }
+});
+
+describe('Beispielplan des Erststarts (Nachtest live)', () => {
+  it('vergibt jede Bezeichnung nur einmal', () => {
+    for (const template of [TEMPLATE_KASTENWAGEN, TEMPLATE_ALLROUNDER]) {
+      const designators = template.nodes.map((node) => (node.data as { designator?: string }).designator);
+      expect(designators.every((value) => typeof value === 'string' && value !== '')).toBe(true);
+      expect(new Set(designators).size).toBe(designators.length);
+    }
+    const starter = TEMPLATE_KASTENWAGEN.nodes.map(
+      (node) => (node.data as { designator: string }).designator
+    );
+    expect(starter.filter((value) => value === 'G1')).toHaveLength(1);
+    expect(starter.filter((value) => value === 'G2')).toHaveLength(1);
+    expect(starter.filter((value) => value === 'W1')).toHaveLength(1);
+    expect(starter.filter((value) => value === 'E1')).toHaveLength(1);
+    expect(starter).toEqual(expect.arrayContaining(['G1.2', 'G2.2', 'W1.2', 'E1.2', 'E1.3']));
+  });
+
+  it('besteht den eigenen Prüfbericht ohne Fehlschlag und ohne Sicherung 0', () => {
+    const fuse = TEMPLATE_KASTENWAGEN.nodes.find((node) => node.id === 'fusebox-1');
+    expect((fuse?.data as { rating?: number }).rating).toBeGreaterThan(0);
+    const report = verifyPlan({
+      nodes: TEMPLATE_KASTENWAGEN.nodes,
+      edges: TEMPLATE_KASTENWAGEN.edges,
+    });
+    expect(report.verdict).not.toBe('NON_COMPLIANT');
+    expect(report.coverage.failed).toBe(0);
+  });
 });

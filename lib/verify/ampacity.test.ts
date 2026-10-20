@@ -492,10 +492,11 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     // 160 A dürfen GENANNT werden (so viel wäre nötig) — aber nicht als Vorgabe:
     // „auf ≥ 160 A vergrößern/erhöhen" war der selbstzerstörende Altvorschlag.
     expect(remedy).not.toMatch(/auf (I_n )?≥ 160,0 A (vergrößern|erhöhen)/);
-    expect(remedy).toContain('≥ 160,0 A wären für das Verhältnis 1,6:1 nötig');
+    expect(remedy).toContain('mindestens 160,0 A wären für das Verhältnis 1,6:1 nötig');
     expect(remedy).toContain('höchstens 100 A');
-    expect(remedy).toContain('AMP-001');
-    expect(remedy).toContain('nachgelagerte Organ auf ≤ 62,5 A');
+    expect(remedy).toContain('zulässige Strombelastbarkeit');
+    expect(remedy).not.toMatch(/AMP-\d|I_[bnz]/);
+    expect(remedy).toContain('nachgelagerte Schutzorgan auf höchstens 62,5 A');
     // Deutsches Dezimaltrennzeichen auch im Verhältnis (vorher „1.00:1 … 1.6:1").
     expect(check.events[0]?.message).toContain('1,00:1 liegt unter 1,6:1');
   });
@@ -505,7 +506,7 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     // VDE_AMPACITY ⇒ I_z nicht bestimmbar ⇒ die Grenze ist UNBEKANNT und wird
     // nicht erfunden; die Vorgabe bleibt die reine Verhältnisrechnung.
     const unknown = checkSelectivity(contextOf(equalCascade(95)));
-    expect(unknown.events[0]?.autoFixRemedy).toContain('I_n ≥ 160,0 A');
+    expect(unknown.events[0]?.autoFixRemedy).toContain('mindestens 160,0 A');
     expect(unknown.events[0]?.autoFixRemedy).toContain('nicht zugeordnet');
   });
 
@@ -537,7 +538,7 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     const check = checkSelectivity(contextOf(cascade));
     expect(check.status).toBe('FAIL');
     const remedy = check.events[0]?.autoFixRemedy ?? '';
-    expect(remedy).toContain('I_n ≥ 32,0 A');
+    expect(remedy).toContain('mindestens 32,0 A');
     expect(remedy).toContain('nicht zugeordnet');
     expect(remedy).toContain('gesondert nachzuweisen');
   });

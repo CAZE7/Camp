@@ -50,8 +50,22 @@ function hasPersistedPlan(): boolean {
   }
 }
 
+let fitViewTimer: ReturnType<typeof setTimeout> | undefined;
+
 function fitViewSoon() {
-  window.setTimeout(() => window.dispatchEvent(new CustomEvent('planner-fit-view')), 50);
+  if (typeof window === 'undefined') return;
+  if (fitViewTimer !== undefined) clearTimeout(fitViewTimer);
+  fitViewTimer = setTimeout(() => {
+    fitViewTimer = undefined;
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('planner-fit-view'));
+  }, 50);
+}
+
+function cancelFitViewSoon() {
+  if (fitViewTimer === undefined) return;
+  clearTimeout(fitViewTimer);
+  fitViewTimer = undefined;
 }
 
 export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice: () => void } {
@@ -62,6 +76,10 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
   useEffect(() => {
     if (handled.current) return;
     handled.current = true;
+    let alive = true;
+    const scheduleFit = () => {
+      if (alive) fitViewSoon();
+    };
 
     const state = usePlannerStore.getState();
     if (typeof state.applyTemplate !== 'function' || typeof state.importProject !== 'function') return;
@@ -111,7 +129,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         return true;
       }
       setHasOnboarded(true);
-      fitViewSoon();
+      scheduleFit();
       setNotice({
         type: 'success',
         message:
@@ -130,7 +148,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         if (confirmReplace('Die Vorlage')) {
           usePlannerStore.getState().applyTemplate(templateId);
           setHasOnboarded(true);
-          fitViewSoon();
+          scheduleFit();
           setNotice({
             type: 'success',
             message: 'Vorlage geladen — alle Werte lassen sich direkt anpassen.',
@@ -149,7 +167,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         })
       ) {
         usePlannerStore.getState().applyTemplate(STARTER_TEMPLATE_ID);
-        fitViewSoon();
+        scheduleFit();
         setNotice({
           type: 'info',
           message:
@@ -157,6 +175,10 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         });
       }
     })();
+    return () => {
+      alive = false;
+      cancelFitViewSoon();
+    };
   }, [setHasOnboarded]);
 
   return { notice, dismissNotice: () => setNotice(null) };

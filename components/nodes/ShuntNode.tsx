@@ -4,7 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 import { type ShuntNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
-import { DesignatorContext } from './designators';
+import { DesignatorContext, resolvedDesignator } from './designators';
 
 const ShuntNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<ShuntNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -18,7 +18,7 @@ const ShuntNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
       aria-label={`${data.label || 'Batteriemonitor mit Shunt'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
-      <NodeSymbol kind="shunt" dinCode={designators.get(id)} />
+      <NodeSymbol kind="shunt" dinCode={resolvedDesignator(designators, id, data)} />
       {editingField === 'label' ? (
         <input
           autoFocus

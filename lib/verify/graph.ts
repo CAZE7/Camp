@@ -419,10 +419,13 @@ export function edgeAcDevices(data: CableEdgeData | undefined): ProtectionDevice
     });
   }
   if (descriptor?.kind === 'rcbo') {
+    const declared = descriptor.residualType;
+    const residualType =
+      declared === 'AC' || declared === 'A' || declared === 'F' || declared === 'B' ? declared : 'A';
     devices.push({
       type: 'rcd',
       ratedResidualCurrentA: 0.03,
-      residualType: 'A',
+      residualType,
       poles: 2,
       selective: false,
     });

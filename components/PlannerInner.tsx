@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
+import { forgetAuxiliaryBrowserStorage, hasPlannerStorage, restoreFirstVisit } from '../store/freshVisit';
+import { subscribePlannerStorageCleared } from '../store/storage';
 
 /**
  * Layout-Container des Planers — drei Geräteklassen, ein DOM-Baum.
@@ -103,6 +105,30 @@ function PlannerShell() {
   // Einstieg: geteilter Plan (#plan=) → Vorlage (?template=) → Beispiel-Setup
   // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
+
+  // „Clear site data“ leert localStorage, während der Plan noch im Speicher
+  // der offenen Seite liegt. Ohne diese Wache schreibt der Flush ihn zurück
+  // und der Assistent bleibt aus. IndexedDB, Cache und Service Worker halten
+  // hier keinen Plan — sie werden beim Leeren mit vergessen.
+  useEffect(() => {
+    let seen = hasPlannerStorage();
+    if (!seen) void forgetAuxiliaryBrowserStorage();
+    const restore = () => {
+      seen = false;
+      restoreFirstVisit();
+      void forgetAuxiliaryBrowserStorage();
+    };
+    const unsubscribe = subscribePlannerStorageCleared(() => restore());
+    const timer = window.setInterval(() => {
+      const present = hasPlannerStorage();
+      if (seen && !present) restore();
+      else seen = present;
+    }, 400);
+    return () => {
+      unsubscribe();
+      window.clearInterval(timer);
+    };
+  }, []);
 
   // Auswahl öffnet den Inspector, leere Auswahl schließt ihn — dokumentierte
   // Slide-over-Semantik unterhalb des Andock-Breakpoints. Das Effect hängt an
@@ -227,6 +253,8 @@ function PlannerShell() {
    *  < 768 px  : Blatt über dem Arbeitsbereich (`max-md:absolute inset-0`),
    *              Sichtbarkeit über den Fußleisten-Schalter (`activeTab`).
    *  768–1279  : Slide-over von rechts, 320 px, mit Backdrop (`md:fixed`).
+   *              Es beginnt unter Menü- und Werkzeugleiste, damit Prüfbericht
+   *              und andere Kopfleisten-Knöpfe nicht unter dem Blatt liegen.
    *  ≥ 1280 px : dritte Spalte; eingeklappt bleibt sie als 0-px-Spalte im
    *              Layout (kein Overlay, kein Schatten), `invisible` nimmt sie
    *              aus der Tastatur-Reihenfolge.
@@ -238,7 +266,7 @@ function PlannerShell() {
     'min-h-0 flex-col bg-surface-panel',
     activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex' : 'max-md:hidden',
     isInspectorOpen
-      ? 'md:fixed md:inset-y-0 md:right-0 md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
+      ? 'md:fixed md:bottom-0 md:right-0 md:top-[calc(var(--cad-menubar-h)+var(--cad-toolbar-h))] md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
       : 'md:hidden',
     isInspectorOpen
       ? 'xl:static xl:z-auto xl:flex xl:w-[288px] xl:flex-none 2xl:w-[320px]'
@@ -296,28 +324,6 @@ function PlannerShell() {
         // Anwendungsshell, sonst lägen sie unter der Menüleiste.
         className="planner-workspace relative flex min-h-0 min-w-0 flex-1 flex-col md:flex-row"
       >
-        {/* Einstiegs-Meldung (Beispiel/Vorlage/geteilter Plan) als Toast über
-            dem Arbeitsbereich: Sie darf weder die Canvas-Höhe verkleinern
-            (Panels rechnen mit der vollen Höhe) noch Klicks auf Panels
-            abfangen — nur ihr Schließen-Knopf ist klickbar. */}
-        {entryNotice && (
-          <div
-            role={entryNotice.type === 'error' ? 'alert' : 'status'}
-            aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-            className="pointer-events-none absolute inset-x-2 top-2 z-40 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
-          >
-            <span className="flex-1">{entryNotice.message}</span>
-            <button
-              type="button"
-              aria-label="Meldung schließen"
-              onClick={dismissEntryNotice}
-              className="cad-btn pointer-events-auto shrink-0 px-1"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        )}
-
         {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 248 px
             Desktop) setzt das einklappbare Panel selbst, damit „eingeklappt“
             auch wirklich 0 px Spaltenbreite bedeutet. */}
@@ -338,9 +344,29 @@ function PlannerShell() {
             Handys zeichnen, die eine Ebene höher liegen. */}
         <div
           data-testid="planner-canvas-column"
-          className="isolate flex min-w-0 flex-1 flex-col xl:min-w-[600px]"
+          className="isolate flex min-h-0 min-w-0 flex-1 flex-col xl:min-w-[600px]"
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            {/* Einstiegs-Meldung in derselben Stapel-Ebene wie die Zeichenfläche.
+                Außerhalb läge sie über dem Fachwissen-Blatt, weil die Spalte
+                `isolate` ist und die Meldung dann eine höhere Ebene hat. */}
+            {entryNotice && (
+              <div
+                role={entryNotice.type === 'error' ? 'alert' : 'status'}
+                aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
+                className="pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
+              >
+                <span className="flex-1">{entryNotice.message}</span>
+                <button
+                  type="button"
+                  aria-label="Meldung schließen"
+                  onClick={dismissEntryNotice}
+                  className="cad-btn pointer-events-auto shrink-0 px-1"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
             <React.Suspense fallback={<CanvasSkeleton />}>
               {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
                   reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
@@ -391,7 +417,7 @@ function PlannerShell() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
+            className="absolute inset-0 z-20 hidden bg-ink/25 md:block xl:hidden"
           />
         )}
 

@@ -239,6 +239,7 @@
         "data": {
           "capacity": 100,
           "chemistry": "AGM",
+          "designator": "G1",
           "label": "12V Batterie"
         },
         "id": "battery-1",
@@ -250,6 +251,7 @@
       },
       {
         "data": {
+          "designator": "E1.3",
           "hours": 8,
           "label": "Kühlbox",
           "watts": 45
@@ -263,6 +265,7 @@
       },
       {
         "data": {
+          "designator": "E1",
           "hours": 4,
           "label": "LED-Beleuchtung",
           "watts": 20
@@ -276,6 +279,7 @@
       },
       {
         "data": {
+          "designator": "E1.2",
           "hours": 2,
           "label": "USB Steckdosen",
           "watts": 36
@@ -289,6 +293,7 @@
       },
       {
         "data": {
+          "designator": "F1",
           "label": "Sicherungskasten",
           "rating": 10
         },
@@ -301,6 +306,7 @@
       },
       {
         "data": {
+          "designator": "PE",
           "label": "Massepunkt"
         },
         "id": "ground-1",
@@ -405,6 +411,7 @@
         "data": {
           "capacity": 100,
           "chemistry": "AGM",
+          "designator": "G1",
           "label": "12V Batterie"
         },
         "id": "battery-1",
@@ -416,6 +423,7 @@
       },
       {
         "data": {
+          "designator": "E1.3",
           "hours": 8,
           "label": "Kühlbox",
           "watts": 45
@@ -429,6 +437,7 @@
       },
       {
         "data": {
+          "designator": "E1",
           "hours": 4,
           "label": "LED-Beleuchtung",
           "watts": 20
@@ -442,6 +451,7 @@
       },
       {
         "data": {
+          "designator": "E1.2",
           "hours": 2,
           "label": "USB Steckdosen",
           "watts": 36
@@ -455,6 +465,7 @@
       },
       {
         "data": {
+          "designator": "F1",
           "label": "Sicherungskasten"
         },
         "id": "fusebox-1",
@@ -466,6 +477,7 @@
       },
       {
         "data": {
+          "designator": "PE",
           "label": "Massepunkt"
         },
         "id": "ground-1",

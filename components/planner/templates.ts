@@ -1,5 +1,6 @@
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
+import { nodesWithUniqueDesignators } from '../nodes/designatorModel';
 
 /**
  * Vorlagen-Pläne (Wizard + Vorlagen-Seiten).
@@ -497,17 +498,67 @@ export const TEMPLATE_AUTARK = {
  * Klassisches Kastenwagen-Setup — der Plan, den ein Erstbesucher statt einer
  * leeren Zeichenfläche sieht (siehe `STARTER_TEMPLATE_ID` unten).
  *
- * Bewusst als Ableitung des geprüften Allrounders statt als vierter
- * handgepflegter Graph: Topologie, Querschnitte und Sicherungen bleiben
- * dieselben belegten Werte; einziger Unterschied ist das 200-W-Modul, nach
- * dem in Ratgebern und Foren gefragt wird (statt der 150 W des Allrounders).
+ * Topologie wie der Allrounder, aber eigene Knoten- und Kantenkopie: Der
+ * Erstplan muss seinen eigenen Prüfbericht bestehen. Dafür reichen die
+ * 35-mm²-/63-A-Werte des Allrounders nicht — die Selektivität (Verhältnis
+ * mindestens 1,6:1) und das Abschaltvermögen gegen den geschätzten
+ * Kurzschlussstrom beider Batterien scheitern daran. Die Stufen hier sind
+ * die Tabellenwerte des Modells (50 mm² trägt 80 A, Class T schaltet 20 kA
+ * ab), keine erfundenen Datenblattzahlen. Ein I₂ für Class T ist nicht
+ * belegt und wird nicht erfunden.
+ *
+ * Das 200-W-Modul übernimmt den Arbeitspunkt des 150-W-Moduls (18 V) und
+ * skaliert Strom und Kurzschlussstrom mit 200/150, damit Leistung und Strom
+ * zusammenpassen.
  */
-export const TEMPLATE_KASTENWAGEN = {
-  nodes: TEMPLATE_ALLROUNDER.nodes.map((node) =>
-    node.id === 'solar-1' ? { ...node, data: { ...node.data, label: '200W Solar', watts: 200 } } : node
-  ) as Node[],
-  edges: TEMPLATE_ALLROUNDER.edges,
+function cloneTemplateNodes(nodes: readonly Node[]): Node[] {
+  return nodes.map((node) => ({
+    ...node,
+    position: { ...node.position },
+    data: { ...(node.data as Record<string, unknown>) },
+  }));
+}
+
+const KASTENWAGEN_EDGE_DATA: Record<string, CableEdgeData> = {
+  'e-batt-plus': { crossSection: 50, fuseSize: 80, fuseType: 'classT' },
+  'e-batt-minus': { crossSection: 50 },
+  'e-solar-charger': { fuseType: 'classT' },
+  'e-charger-busbar': { fuseType: 'classT' },
+  'e-starter-dcdc': { fuseType: 'classT' },
+  'e-dcdc-busbar': { fuseType: 'classT' },
+  'e-busbar-fuse': { fuseSize: 40, fuseType: 'classT' },
+  'e-fuse-fridge': { fuseSize: 10, fuseType: 'classT' },
+  'e-fuse-pump': { fuseSize: 10, fuseType: 'classT' },
+  'e-fuse-light': { fuseSize: 5, fuseType: 'classT' },
+  'e-busbar-inv-plus': { fuseSize: 50, fuseType: 'classT' },
+  'e-inv-230': {
+    fuseSize: 10,
+    acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+  },
 };
+
+export const TEMPLATE_KASTENWAGEN = {
+  nodes: cloneTemplateNodes(TEMPLATE_ALLROUNDER.nodes).map((node) => {
+    if (node.id === 'solar-1') {
+      return {
+        ...node,
+        data: { ...node.data, label: '200W Solar', watts: 200, amps: 11.1, isc: 11.7 },
+      };
+    }
+    if (node.id === 'fusebox-1') {
+      return { ...node, data: { ...node.data, rating: 40, fuseType: 'classT' } };
+    }
+    return node;
+  }) as Node[],
+  edges: TEMPLATE_ALLROUNDER.edges.map((edge) => {
+    const extra = KASTENWAGEN_EDGE_DATA[edge.id];
+    return extra ? { ...edge, data: { ...edge.data, ...extra } } : { ...edge, data: { ...edge.data } };
+  }) as Edge<CableEdgeData>[],
+};
+
+for (const template of [TEMPLATE_MINIMALIST, TEMPLATE_ALLROUNDER, TEMPLATE_AUTARK, TEMPLATE_KASTENWAGEN]) {
+  template.nodes = nodesWithUniqueDesignators(template.nodes);
+}
 
 export const TEMPLATES_DICT: Record<string, { nodes: Node[]; edges: Edge<CableEdgeData>[] }> = {
   minimalist: TEMPLATE_MINIMALIST,
