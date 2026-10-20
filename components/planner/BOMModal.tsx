@@ -227,7 +227,10 @@ export function BOMModal() {
 
             {/* AUDIT L1: Längen, deren Quelle nicht der Plan selbst ist. */}
             {lengthAssumptions.length > 0 && (
-              <section aria-labelledby="bom-lengths" className="warn-card warn-card-warning min-w-0 flex-col p-3">
+              <section
+                aria-labelledby="bom-lengths"
+                className="warn-card warn-card-warning min-w-0 flex-col p-3"
+              >
                 <h3 id="bom-lengths" className="mb-1 font-semibold">
                   {inventedLengths.length > 0 && divergingLengths.length > 0
                     ? 'Längen weichen ab oder fehlen'
