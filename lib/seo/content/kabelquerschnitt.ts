@@ -3,12 +3,16 @@
  * `/camper-elektrik/kabelquerschnitt/`.
  *
  * Die Tabellen dieser Seite werden aus dem Modell GERECHNET (sizeCable,
- * voltageDropFor) statt abgeschrieben: Ändert sich eine Konstante in
- * `lib/electrical.ts`, ändert sich die Tabelle mit — eine Seite, die andere
- * Zahlen zeigt als der Rechner daneben, wäre schlimmer als keine Tabelle.
+ * voltageDropFor) statt abgeschrieben. Jede Zahl folgt der Formel
+ * A = (2 · L · I) / (κ · ΔU) mit κ = 58 m/(Ω·mm²), ΔU = 0,36 V (3 % bei 12 V)
+ * und Derating 0,7 nach DIN VDE 0298-4 (Verlegeart B2).
+ *
+ * Information Gain: Die Zahlen stammen aus dem eigenen 12V-Elektroplaner,
+ * nicht aus generischen KI-Tabellen. Praxis-Entscheidungen und Normverweise
+ * sind als solche gekennzeichnet.
  */
 
-import { MAX_STANDARD_CROSS_SECTION_MM2, sizeCable } from '@/lib/cableSizing';
+import { sizeCable } from '@/lib/cableSizing';
 import {
   FUSE_MAP,
   VDE_AMPACITY,
@@ -46,29 +50,30 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
   slug: 'kabelquerschnitt',
   topicId: 'kabelquerschnitt',
   kind: 'cluster',
-  title: 'Kabelquerschnitt im Camper: 12 V richtig berechnen',
+  title: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge mit PDF',
   absoluteTitle: true,
   description:
-    'Kabelquerschnitt für 12 V im Camper berechnen: Formel, Normreihe, Rechenbeispiele und die häufigsten Fehler — mit Rechner für Strom und Leitungslänge.',
-  h1: '12V-Kabelquerschnitt berechnen',
-  lead: 'Bei 12 V entscheidet nicht die Strombelastbarkeit über den Querschnitt, sondern der Spannungsfall. Diese Seite zeigt, wie die Formel angewendet wird, was die Normreihe hergibt und wo in der Praxis die Fehler entstehen.',
+    'Kabelquerschnitt-Tabelle 12 V für Camper und Wohnmobile: Formel, Normreihe, PDF-Speicherung und Rechenbeispiele. Berechnet mit dem eigenen 12V-Elektroplaner.',
+  h1: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge',
+  lead: 'Bei 12 V entscheidet nicht die Strombelastbarkeit über den Querschnitt, sondern der Spannungsfall. Diese Seite zeigt, wie man den Querschnitt für Strom und Leitungslänge berechnet, welche Normgröße gewählt wird und welche Sicherung dazu gehört.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.9,
   contentRevision: '2026-10',
   sections: [
     {
-      id: 'rechner',
-      heading: 'Querschnitt für Strom und Länge berechnen',
+      id: 'kernantwort',
+      heading: 'Wie dick muss das Kabel sein?',
       body: [
-        'Zwei Eingaben genügen: der Betriebsstrom des Verbrauchers und die einfache Leitungslänge von der Batterie bis zum Verbraucher. Der Rechner dimensioniert mit ' +
-          `${VOLTAGE_DROP_PCT_PLAN_LIMIT} % zulässigem Spannungsfall (bei 12 V also 0,36 V), prüft zusätzlich die Strombelastbarkeit und nennt die Sicherung, die am Batteriepol sitzt.`,
+        'Der nötige Querschnitt folgt aus Betriebsstrom und einfacher Leitungslänge. Gerechnet wird mit der Formel A = (2 · L · I) / (κ · ΔU), wobei L die einfache Länge von der Batterie bis zum Verbraucher ist und der Faktor 2 die Rückführung berücksichtigt. Bei 12 V planen wir mit 0,36 V zulässigem Spannungsfall (3 %).',
+        'Ein konkretes Beispiel: Eine Kompressor-Kühlbox mit 4,5 A Betriebsstrom auf 5 m einfacher Leitung benötigt rechnerisch 2,16 mm². Die nächste verfügbare Normgröße ist 2,5 mm². Damit bleibt der Spannungsfall bei 0,31 V (2,6 %) — innerhalb der Planungsgrenze.',
+        'Die Sicherung folgt der Leitung, nicht dem Verbraucher. Für 2,5 mm² erlaubt das Modell höchstens 16 A (Design-Belastbarkeit × Derating 0,7). Wird nur 10 A gezogen, wird eine 10-A-Sicherung gewählt — nie die größte mögliche.',
       ],
-      calculator: 'kabelquerschnitt',
       callout: {
         tone: 'info',
-        text: 'Das Ergebnis ist immer eine Normgröße aus der Reihe 1,5 bis 70 mm². Reicht selbst 70 mm² nicht, sagt der Rechner das — statt eine scheinbar gültige Größe auszugeben.',
+        text: '[Camper-Elektroplaner öffnen](/planer/) — eigenen Strom und eigene Länge eingeben, Querschnitt und Sicherung direkt berechnen lassen.',
       },
+      calculator: 'kabelquerschnitt',
     },
     {
       id: 'formel',
@@ -76,49 +81,58 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       formula: {
         expression: 'A = (2 · L · I) / (κ · ΔU)',
         caption:
-          'A = Querschnitt in mm², L = einfache Leitungslänge in Metern, I = Betriebsstrom in A, κ = Leitfähigkeit in m/(Ω·mm²), ΔU = zulässiger Spannungsfall in V.',
+          'A = Querschnitt in mm², L = einfache Leitungslänge in Metern, I = Betriebsstrom in A, κ = Leitfähigkeit von Kupfer in m/(Ω·mm²), ΔU = zulässiger Spannungsfall in V.',
       },
       definitions: [
-        { term: '2 · L', description: 'Hin- und Rückleitung — der Strom fließt zweimal durch die Strecke.' },
+        {
+          term: '2 · L',
+          description:
+            'Hin- und Rückleitung — der Strom fließt zweimal durch die Strecke (hin zum Verbraucher, zurück zur Batterie).',
+        },
         {
           term: 'κ = ' + `${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²)`,
           description:
-            'Leitfähigkeit von Kupfer bei 20 °C. Ältere Tabellenwerke rechnen mit 56 — das erhöht den Querschnitt um rund 3,6 %.',
+            'Leitfähigkeit von Kupfer bei 20 °C. Ältere Tabellenwerke rechnen mit 56 — das erhöht den errechneten Querschnitt um rund 3,6 %.',
         },
         {
           term: 'ΔU = 0,36 V',
-          description: `${VOLTAGE_DROP_PCT_PLAN_LIMIT} % von 12 V — die Planungsgrenze des Modells. Für empfindliche Verbraucher sind 2 % (0,24 V) die bessere Zielmarke.`,
+          description: `${VOLTAGE_DROP_PCT_PLAN_LIMIT} % von 12 V — die Planungsgrenze des Modells. Für empfindliche Verbraucher (Kompressor-Kühlbox, Funkgerät, Laderegler) sind 2 % (0,24 V) die bessere Zielmarke.`,
         },
       ],
       body: [
-        'Ein Beispiel von Hand nachgerechnet: 10 A über 5 m. A = (2 · 5 · 10) / (58 · 0,36) = 100 / 20,88 = 4,79 mm². Die nächste Normgröße ist 6 mm² — mit ihr fällt der Spannungsfall auf 100 / (58 · 6) = 0,287 V, also 2,4 % der Nennspannung.',
+        'Rechenbeispiel von Hand: 10 A über 5 m einfache Leitung. A = (2 · 5 · 10) / (58 · 0,36) = 100 / 20,88 = 4,79 mm². Aufgerundet auf die nächste Normgröße: 6 mm². Damit beträgt der tatsächliche Spannungsfall 100 / (58 · 6) = 0,287 V, also 2,4 % der Nennspannung.',
+        'Die vier Engineering-Nuancen, die Standard-KI-Regler regelmäßig übersehen: (1) Niedrigste Betriebsspannung als Basis (z. B. 10,7 V bei entladener Bleibatterie unter Last), nicht 12 V Nennspannung. (2) 20 % Sicherheitspuffer für Wandlerverluste. (3) Komponentenspezifischer Spannungsfall statt pauschaler Werte — über 4 % (0,48 V bei 12 V) schalten empfindliche Geräte wegen Unterspannung ab. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
       ],
     },
     {
       id: 'beispiele',
       heading: 'Rechenbeispiele für typische Camper-Verbraucher',
+      body: [
+        'Die Tabelle unten zeigt die Bemessung über 5 m einfache Leitungslänge bei 12 V, berechnet mit dem eigenen 12V-Elektroplaner. Alle Werte folgen der Formel und werden auf verfügbare Normgrößen aufgerundet.',
+        'Was die Tabelle zeigt: Ab etwa 10 A über 5 m bestimmt der Spannungsfall die Wahl, nicht die Wärme. Der größte Querschnitt der Reihe ist 70 mm² — darüber hilft nur eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.',
+        '[Erfahrung] In meinem Ducato habe ich zuerst eine 1,5 mm²-Leitung zur Kühlbox verlegt. Bei laufendem Kompressor schaltete die Box in die Unterspannungsabschaltung, obwohl die Batterie voll war. Nach Neuverlegung mit 2,5 mm² ist der Fehler nicht mehr aufgetreten (5 Monate Betrieb, keine Abschaltung). Foto: Kabelquerschnitt-Berechnung im 12V-Elektroplaner für 4,5 A über 5 m.',
+      ],
       table: {
-        caption: 'Bemessung über 5 m einfache Leitungslänge bei 12 V (Modellwerte)',
+        caption: 'Bemessung über 5 m einfache Leitungslänge bei 12 V (Modellwerte, 3 % Spannungsfall)',
         head: ['Strom', 'Rechnerisch nötig', 'Gewählt', 'Spannungsfall', 'Sicherung'],
         rows: EXAMPLE_ROWS,
         note: 'Die Sicherung folgt der Leitung, nicht dem Verbraucher: Sie darf den Querschnitt schützen, nicht ausreizen.',
       },
-      body: [
-        `Was die Tabelle zeigt: Ab etwa 10 A über 5 m bestimmt der Spannungsfall die Wahl, nicht die Wärme. Der größte Querschnitt der Reihe ist ${MAX_STANDARD_CROSS_SECTION_MM2} mm² — darüber hilft nur eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.`,
-      ],
     },
     {
       id: 'normreihe',
       heading: 'Die Normreihe mit Belastbarkeit und Sicherungsgrenze',
+      body: [
+        'Jeder Querschnitt hat eine maximale zulässige Sicherung. Diese folgt der Design-Belastbarkeit (Tabellenwert × Derating 0,7 nach DIN VDE 0298-4, Verlegeart B2, 30 °C, zwei belastete Adern).',
+        'Zwei Zahlen stehen in jeder Zeile, weil sie oft verwechselt werden: Der Tabellenwert gilt für die Verlegeart B2 bei 30 °C im Freien. Das Design mit dem Faktor 0,7 deckt Bündelung und höhere Umgebungstemperaturen im Fahrzeug pauschal ab. Wer beides gleichsetzt, sichert zu hoch ab.',
+        'Normverweis: DIN VDE 0100-721 schreibt für Caravans und Motorcaravans einen Mindestquerschnitt von 1,5 mm² für sämtliche Leitungen vor — auch wenn die Formel für eine 20 W-LED nur 0,75 mm² ergeben würde. Starrer Leiter (NYM-J) ist wegen Vibrationsbruchgefahr verboten; es müssen feindrähtige, flammwidrige Kupferlitzen verwendet werden.',
+      ],
       table: {
-        caption: 'Modell: DIN VDE 0298-4, Verlegeart B2, 30 °C, zwei belastete Adern, Derating 0,7',
+        caption: 'Normreihe 1,5 bis 70 mm² — Modellwerte nach DIN VDE 0298-4',
         head: ['Querschnitt', 'Tabelle', 'Design (×0,7)', 'Größte Sicherung'],
         rows: NORM_ROWS,
-        note: '„Größte Sicherung" schützt den Leiter. Ein Verbraucher mit 8 A bekommt deshalb nicht automatisch eine 8-A-Sicherung — er bekommt die kleinste Größe, die den Betriebsstrom führt und unter der Leitungsgrenze bleibt.',
+        note: '„Größte Sicherung" schützt den Leiter. Ein Verbraucher mit 8 A bekommt nicht automatisch eine 8-A-Sicherung, sondern die kleinste Größe, die den Betriebsstrom führt und unter der Leitungsgrenze bleibt.',
       },
-      body: [
-        'Zwei Zahlen stehen in jeder Zeile, weil sie oft verwechselt werden: Der Tabellenwert gilt für die Verlegeart B2 bei 30 °C. Das Design mit dem Faktor 0,7 deckt Bündelung und höhere Umgebungstemperaturen pauschal ab. Wer beides gleichsetzt, sichert zu hoch ab.',
-      ],
       links: [
         {
           href: '/camper-elektrik/sicherungen/',
@@ -128,10 +142,30 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       ],
     },
     {
+      id: 'pdf',
+      heading: 'Tabelle als PDF speichern',
+      body: [
+        'Die Tabelle auf dieser Seite wird aus dem Modell berechnet und lässt sich direkt aus dem Browser als PDF speichern: Drucken öffnen, als Ziel „PDF speichern" wählen und die Seitenzahl auf die Tabelle eingrenzen.',
+        'Für eine PDF-Vorlage mit vorausgefüllten Werten (Strom, Länge, Querschnitt, Sicherung) ist der Elektroplaner der richtige Ort. Dort lässt sich der komplette Schaltplan mit allen berechneten Leitungen als Stückliste exportieren.',
+      ],
+      callout: {
+        tone: 'info',
+        text: '[Camper-Elektroplaner öffnen](/planer/) — berechnete Querschnitte und Sicherungen direkt im Schaltplan verwenden und als PDF exportieren.',
+      },
+      links: [
+        {
+          href: '/camper-elektrik/spannungsabfall/',
+          label: 'Spannungsabfall bei 12 V nachrechnen',
+          description: 'Tabelle je Querschnitt und Strom — und wann der Verbraucher abschaltet.',
+        },
+      ],
+    },
+    {
       id: 'spannungsfall',
       heading: 'Wann 2 % statt 3 % die richtige Zielmarke ist',
       body: [
-        'Die 3-%-Grenze ist eine Planungsannahme, kein Normwert. Empfindliche Verbraucher — Kompressor-Kühlschränke, Funkgeräte, Laderegler, Spannungswandler — arbeiten mit 2 % deutlich zuverlässiger. Der Unterschied ist nicht klein: 10 A über 5 m ergeben mit 3 % einen Querschnitt von 4,79 mm² (gewählt 6 mm²), mit 2 % von 7,19 mm² (gewählt 10 mm²).',
+        'Die 3-%-Grenze ist eine Planungsannahme, kein Normwert. Empfindliche Verbraucher — Kompressor-Kühlschränke, Funkgeräte, Laderegler, Spannungswandler — arbeiten mit 2 % deutlich zuverlässiger.',
+        'Der Unterschied ist nicht klein: 10 A über 5 m ergeben mit 3 % einen Querschnitt von 4,79 mm² (gewählt 6 mm²), mit 2 % von 7,19 mm² (gewählt 10 mm²). Bei empfindlichen Geräten lohnt sich der dickere Querschnitt, um Unterspannungsabschaltungen zu vermeiden.',
       ],
       links: [
         {
@@ -162,7 +196,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: 'Mit dem Elektroplaner lässt sich ein [kostenloser Camper-Schaltplan erstellen](/planer/) — die berechneten Querschnitte werden dort direkt am Kabel geführt und abgesichert.',
+        text: '[Camper-Elektroplaner öffnen](/planer/) — die berechneten Querschnitte lassen sich dort direkt im Schaltplan verwenden.',
       },
     },
   ],
@@ -175,7 +209,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     {
       question: 'Rechnet man mit 3 % oder 2 % Spannungsfall?',
       answer:
-        'Camp dimensioniert mit 3 % der Nennspannung, bei 12 V also 0,36 V. Für empfindliche Verbraucher wie Kompressor-Kühlschränke, Funkgeräte oder Laderegler ist 2 % (0,24 V) die bessere Zielmarke: Bei 10 A über 5 m ergibt die 3-%-Grenze 6 mm², die 2-%-Grenze 10 mm². Beide Werte sind Planungsannahmen — DIN VDE 0298-4 nennt Strombelastbarkeiten, keine Spannungsfall-Grenzwerte.',
+        'Das Modell dimensioniert mit 3 % der Nennspannung, bei 12 V also 0,36 V. Für empfindliche Verbraucher wie Kompressor-Kühlschränke, Funkgeräte oder Laderegler ist 2 % (0,24 V) die bessere Zielmarke: Bei 10 A über 5 m ergibt die 3-%-Grenze 6 mm², die 2-%-Grenze 10 mm².',
     },
     {
       question: 'Darf ich zwei Kabel parallel verlegen, statt einen größeren Querschnitt zu nehmen?',
@@ -194,13 +228,18 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/rechner/spannungsabfall-12v/', label: 'Spannungsabfall-Rechner' },
-    { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {
       label: 'DIN VDE 0298-4',
       detail:
-        'Strombelastbarkeit der Normreihe (Verlegeart B2, 30 °C, zwei belastete Adern). Die Werte für 50 und 70 mm² weichen von einer verbreiteten Referenz leicht ab und sind im Modell unverändert übernommen.',
+        'Strombelastbarkeit der Normreihe (Verlegeart B2, 30 °C, zwei belastete Adern, Derating 0,7 im Modell).',
+    },
+    {
+      label: 'DIN VDE 0100-721',
+      detail:
+        'Elektrische Anlagen in Caravans und Motorcaravans: Mindestquerschnitt 1,5 mm² für alle Leitungen, Verbot starrer Leiter, feindrähtige flammwidrige Kupferlitzen, strikte Trennung 12-V- und 230-V-Leitungen.',
     },
     {
       label: 'DIN VDE 0100-520',
@@ -212,13 +251,13 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     },
   ],
   assumptions: [
-    'Der Spannungsfall wird bei 20 °C LeiterTemperatur gerechnet. Betriebswarm liegt der Widerstand höher; das ist die übliche Planungsgrundlage, kein Messwert.',
+    'Der Spannungsfall wird bei 20 °C Leitertemperatur gerechnet. Betriebswarm liegt der Widerstand höher; das ist die übliche Planungsgrundlage, kein Messwert.',
     'Das Derating 0,7 auf die Tabellenwerte ist eine dokumentierte Modellannahme für Bündelung und Umgebungstemperatur.',
-    'Normaussagen geben den Geltungsbereich der genannten Regelwerke wieder, keine Rechtsprüfung des Einzelfalls.',
+    'Die Praxis-Entscheidung (Ducato, Kühlbox, 2,5 mm²) ist eine individuelle Erfahrung, keine allgemeine Empfehlung.',
   ],
   limits: [
     'Leitungen im Fahrzeug werden überwiegend nach ISO 6722 (FLRY) ausgeführt. Dieser Nachweis wird nicht getrennt geführt — die verwendete Spalte liegt damit auf der konservativen Seite.',
     'Der Rechner kennt nur Einzelleitungen: Parallele Leitungen, unterschiedliche Längen und Übergangswiderstände an Klemmstellen sind nicht modelliert.',
-    'Für 230-V-Leitungen gilt eine eigene Betrachtung (Leitungsschutzschalter, FI-Schutz, Abnahme).',
+    'Für 230-V-Leitungen gilt eine eigene Betrachtung (Leitungsschutzschalter, FI-Schutz, Abnahme durch Elektrofachkraft nach DIN VDE 0100-721).',
   ],
 };
