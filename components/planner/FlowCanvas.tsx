@@ -311,14 +311,11 @@ export function FlowCanvas() {
         );
       }
     };
-    const handleToggleMinimap = () => setMinimapOpen((open) => !open);
     window.addEventListener('planner-fit-view', handleFitView);
     window.addEventListener('planner-focus-element', handleFocusElement);
-    window.addEventListener('planner-toggle-minimap', handleToggleMinimap);
     return () => {
       window.removeEventListener('planner-fit-view', handleFitView);
       window.removeEventListener('planner-focus-element', handleFocusElement);
-      window.removeEventListener('planner-toggle-minimap', handleToggleMinimap);
     };
   }, [fitView, getNode, setCenter]);
 
@@ -601,6 +598,11 @@ export function FlowCanvas() {
   // Domänen-Filter (nur Elektrik): alle Domänen standardmäßig aktiv.
   const [activeDomains, setActiveDomains] = useState<Set<Domain>>(() => new Set(DOMAINS));
   const [minimapOpen, setMinimapOpen] = useState(false);
+  React.useEffect(() => {
+    const handleToggleMinimap = () => setMinimapOpen((open) => !open);
+    window.addEventListener('planner-toggle-minimap', handleToggleMinimap);
+    return () => window.removeEventListener('planner-toggle-minimap', handleToggleMinimap);
+  }, []);
   const toggleDomain = React.useCallback((domain: Domain) => {
     setActiveDomains((prev) => {
       const next = new Set(prev);
