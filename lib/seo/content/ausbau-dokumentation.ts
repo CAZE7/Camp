@@ -179,7 +179,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
           description: 'Was beim Einbau schiefgehen kann.',
         },
         {
-          href: '/ueber-elektroplaner-camper/',
+          href: '/ueber-elektroplaner/',
           label: 'Über elektroplaner-camper.de',
           description: 'Autor Jonas Rieckhoff und die Philosophie hinter den Inhalten.',
         },

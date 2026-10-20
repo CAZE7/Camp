@@ -261,6 +261,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/camper-elektrik/solar/', label: 'Solar auslegen' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
+    { href: '/camper-ausbau/', label: 'Ausbau dokumentieren' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
     { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
   ],
