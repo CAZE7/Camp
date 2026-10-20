@@ -19,24 +19,29 @@ import type { PlannerMode } from '../../../store/slices/types';
 export const PLANNER_MODES: readonly {
   mode: PlannerMode;
   label: string;
+  /** Kurzwort für die segmentierte Leiste unter 768 px. */
+  short: string;
   question: string;
   Icon: typeof CircuitBoard;
 }[] = [
   {
     mode: 'planung',
     label: 'Planung',
+    short: 'Plan',
     question: 'Was gehört elektrisch zusammen? (Bänke, Stromkreise, Verbindungen)',
     Icon: CircuitBoard,
   },
   {
     mode: 'physisch',
     label: 'Physisch',
+    short: 'Lage',
     question: 'Wo liegt es? (Einbauorte, Leitungslängen, Kabelführung)',
     Icon: Ruler,
   },
   {
     mode: 'pruefung',
     label: 'Prüfung',
+    short: 'Prüf',
     question: 'Stimmt es? (Befunde, Grenzen, offene Entscheidungen)',
     Icon: ShieldCheck,
   },
@@ -62,12 +67,16 @@ export function PlannerModeSwitch({ mode, onSelect }: PlannerModeSwitchProps) {
             type="button"
             data-testid={`planner-mode-${option.mode}`}
             aria-pressed={active}
+            aria-label={option.label}
             title={option.question}
             onClick={() => onSelect(option.mode)}
             className={`cad-btn min-h-11 min-w-0 flex-1 px-1.5 text-xs sm:flex-none sm:px-2.5 sm:text-sm ${active ? 'cad-btn--active' : ''}`}
           >
-            <option.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {option.label}
+            <option.Icon aria-hidden="true" className="planner-mode-icon h-4 w-4 shrink-0" />
+            <span className="planner-mode-label">{option.label}</span>
+            <span className="planner-mode-short" aria-hidden="true">
+              {option.short}
+            </span>
           </button>
         );
       })}

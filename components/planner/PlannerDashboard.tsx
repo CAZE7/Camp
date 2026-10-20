@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -9,7 +9,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
 import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions';
-import { PlannerMenubar } from './ui/PlannerMenubar';
+import { PlannerMenubar, PlannerPhoneMenu } from './ui/PlannerMenubar';
 import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
 import { OptimizeRoutingButton } from './ui/OptimizeRoutingButton';
@@ -73,6 +73,16 @@ export function PlannerDashboard() {
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<PlannerMenuId | 'more' | null>(null);
+  const [phoneChrome, setPhoneChrome] = useState(false);
+
+  useLayoutEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(max-width: 767px)');
+    const apply = () => setPhoneChrome(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
 
   const {
     viewMode,
@@ -278,6 +288,7 @@ export function PlannerDashboard() {
       <PlannerMenubar
         menus={actions.menus}
         projectName={projectName}
+        showMenus={!phoneChrome}
         openMenu={typeof openMenu === 'string' && openMenu !== 'more' ? openMenu : null}
         onOpenMenu={(menu) => setOpenMenu(menu)}
         status={
@@ -317,6 +328,7 @@ export function PlannerDashboard() {
         overflow={actions.overflow}
         openMenu={openMenu}
         onOpenMenu={setOpenMenu}
+        leading={<PlannerPhoneMenu menus={actions.menus} />}
         statusArea={
           /*
             Statuschips rechts in der Werkzeugleiste — festgenagelt, nie

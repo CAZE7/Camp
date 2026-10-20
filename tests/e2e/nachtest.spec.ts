@@ -4,8 +4,10 @@ import {
   edgeCount,
   expandAllCategories,
   nodeCount,
+  openMenubar,
   openMoreMenuItem,
   openPlanner,
+  revealMainMenus,
   PLANNER_URL,
   showCanvas,
   showSidebar,
@@ -153,7 +155,7 @@ test.describe('Nachtest Desktop', () => {
 
   test('Bug 15: Hilfe → Tastaturkürzel öffnet die Übersicht', async ({ page }) => {
     await openPlanner(page);
-    await page.getByTestId('menubar-hilfe').click();
+    await openMenubar(page, 'hilfe');
     await page.getByTestId('action-shortcuts').click();
     const overlay = page.getByRole('dialog', { name: 'Tastaturkürzel' });
     await expect(overlay).toBeVisible();
@@ -180,13 +182,13 @@ test.describe('Nachtest Desktop', () => {
     page,
   }) => {
     await openPlanner(page);
-    await page.getByTestId('menubar-bearbeiten').click();
+    await openMenubar(page, 'bearbeiten');
     await expect(page.getByRole('menuitem', { name: 'Speichern bestätigen' })).toBeVisible();
     await page.keyboard.press('Escape');
-    await page.getByTestId('menubar-hilfe').click();
+    await openMenubar(page, 'hilfe');
     await expect(page.getByRole('menuitem', { name: /Plan leeren/ })).toHaveCount(0);
     await page.keyboard.press('Escape');
-    await page.getByTestId('menubar-datei').click();
+    await openMenubar(page, 'datei');
     await expect(page.getByRole('menuitem', { name: /Stückliste/ })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /BOM|ELK/ })).toHaveCount(0);
   });
@@ -218,7 +220,9 @@ for (const viewport of MOBILE_VIEWPORTS) {
         await expectNotCovered(tab, testId);
       }
 
-      // Menüleisten-Knöpfe müssen erreichbar sein (ggf. in der wischbaren Leiste).
+      // Menüleisten-Knöpfe müssen erreichbar sein. Auf dem Telefon liegen sie
+      // im Blatt hinter „Menü“, nicht in einer zweiten Kopfzeile.
+      await revealMainMenus(page);
       for (const menu of ['datei', 'hilfe']) {
         const trigger = page.getByTestId(`menubar-${menu}`);
         await expect(trigger).toBeVisible();
@@ -233,6 +237,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await showCanvas(page);
 
       // Jedes Menü öffnen: Dropdown muss im Bild liegen.
+      await revealMainMenus(page);
       for (const menu of ['datei', 'bearbeiten', 'ansicht', 'werkzeuge', 'planung', 'hilfe']) {
         const trigger = page.getByTestId(`menubar-${menu}`);
         await trigger.scrollIntoViewIfNeeded();
@@ -285,7 +290,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await addComponent(page, 'battery');
       await showCanvas(page);
 
-      await page.getByTestId('menubar-datei').click();
+      await openMenubar(page, 'datei');
       await page.getByTestId('action-bom').click();
       const dialog = page.getByRole('dialog', { name: 'Stückliste' });
       await expect(dialog).toBeVisible();
@@ -371,7 +376,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
         await expectNotCovered(fab, 'Fachwissen-Knopf');
         await fab.click();
       } else {
-        await page.getByTestId('menubar-hilfe').click();
+        await openMenubar(page, 'hilfe');
         await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
       }
       const expertPanel = page.getByTestId('expert-panel-open');
@@ -406,7 +411,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
       if ((await inspectorTab.count()) > 0 && (await inspectorTab.isVisible())) {
         await inspectorTab.click();
       }
-      await page.getByTestId('menubar-datei').click();
+      await openMenubar(page, 'datei');
       await page.getByTestId('action-bom').click();
       const dialog = page.getByRole('dialog', { name: 'Stückliste' });
       await expect(dialog).toBeVisible();

@@ -1,3 +1,5 @@
+import { getComponentSpec } from '../../registry';
+
 /**
  * Klartext für die primäre Oberfläche (Warnung, Abhilfe, Modellgrenzen).
  *
@@ -56,7 +58,10 @@ function humanizeIds(text: string): string {
     })
     .replace(/(?:%[0-9A-Fa-f]{2})+/g, (encoded) => safeDecode(encoded))
     .replace(/\bbusbar-minus\b/g, 'Minus-Sammelschiene')
-    .replace(/\bbusbar-plus\b/g, 'Plus-Sammelschiene');
+    .replace(/\bbusbar-plus\b/g, 'Plus-Sammelschiene')
+    .replace(/\b([A-Za-z][A-Za-z0-9]*)-\d+\b/g, (match, type: string) => {
+      return getComponentSpec(type)?.label ?? match;
+    });
 }
 
 /** Primärtext ohne Formelzeichen, Regel-Codes und technische Ids. Technische Details nicht hier durchreichen. */

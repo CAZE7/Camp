@@ -66,9 +66,10 @@ test.describe('Responsives Layout', () => {
     for (const id of ['toolbar-undo', 'toolbar-redo', 'action-more']) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
-    // Im geführten Modus konkurriert Auto-Wire nicht mit dem nächsten Schritt,
-    // bleibt aber über den Experten-Überlauf erreichbar.
-    await expect(page.getByTestId('action-autowire')).toHaveCount(0);
+    // Im geführten Modus konkurriert Auto-Wire nicht mit dem nächsten Schritt.
+    // Das Telefonsymbol bleibt im DOM (unter 480 px sichtbar), ist auf dem
+    // Tablet aber ausgeblendet. Erreichbar bleibt die Aktion über das Menü.
+    await expect(page.getByTestId('action-autowire')).toBeHidden();
     await page.getByTestId('action-more').click();
     await expect(page.getByTestId('action-autowire-menu')).toBeVisible();
     await expectNoHorizontalOverflow(page);

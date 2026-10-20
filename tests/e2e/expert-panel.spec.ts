@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { addComponent, openPlanner, showCanvas } from './helpers';
+import { addComponent, openMenubar, openPlanner, showCanvas } from './helpers';
 
 function overlap(
   a: { x: number; y: number; width: number; height: number },
@@ -32,7 +32,7 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     if ((await openFab.count()) > 0 && (await openFab.isVisible())) {
       await openFab.click();
     } else {
-      await page.getByTestId('menubar-hilfe').click();
+      await openMenubar(page, 'hilfe');
       await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
     }
 

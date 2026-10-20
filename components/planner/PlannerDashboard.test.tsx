@@ -147,10 +147,10 @@ describe('PlannerDashboard - Core Interactions', () => {
     // View toggles
     expect(screen.getByText('Elektrik')).toBeInTheDocument();
     expect(screen.getByText('Wasser')).toBeInTheDocument();
-    // Guided mode shows exactly the next step; AutoWire stays available in
-    // the overflow and does not compete with the guided primary action.
+    // Guided mode shows exactly the next step. Auto-verbinden bleibt im
+    // Überlauf und zusätzlich als Symbol, das erst unter 480 px sichtbar ist.
     expect(screen.getByTestId('guided-primary-action')).toHaveTextContent('Batterie hinzufügen');
-    expect(screen.queryByTestId('action-autowire')).not.toBeInTheDocument();
+    expect(screen.getByTestId('action-autowire')).toHaveClass('cad-autowire-phone');
 
     // Expert actions remain reachable in the overflow menu.
     openMoreMenu();

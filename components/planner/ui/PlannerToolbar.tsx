@@ -61,6 +61,8 @@ export interface PlannerToolbarProps {
   onOpenMenu: (menu: PlannerMenuId | 'more' | null) => void;
   /** Rechts: Speicherzustand und Prüf-Einstiege (Prüfsiegel, Hinweiszahl). */
   statusArea?: React.ReactNode;
+  /** Unter 768 px: der Menü-Knopf am Anfang derselben Zeile. */
+  leading?: React.ReactNode;
 }
 
 function ToolButton({
@@ -191,6 +193,7 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         ref={buttonRef}
         type="button"
         data-testid="action-templates"
+        aria-label="Vorlage laden"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -201,7 +204,7 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
         <span className="tb-label tb-label--kurz">Vorlage</span>
         <span className="tb-label tb-label--mittel">Vorlage laden</span>
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+        <ChevronDown className="cad-template-chevron h-3.5 w-3.5" aria-hidden="true" />
       </button>
       {open && (
         <div className="cad-menu left-0 right-auto" role="menu" aria-label="Vorlage laden">
@@ -229,6 +232,51 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
   );
 }
 
+function AutoWireButton({
+  busy,
+  viewMode,
+  onAutoWire,
+  className = '',
+}: {
+  busy: PlannerBusy;
+  viewMode: 'electric' | 'water';
+  onAutoWire: () => void;
+  className?: string;
+}) {
+  const water = viewMode === 'water';
+  return (
+    <button
+      type="button"
+      data-testid="action-autowire"
+      onClick={onAutoWire}
+      disabled={busy !== null}
+      aria-label={
+        water ? 'Auto-verbinden: nur im Elektrikplan verfügbar' : 'Auto-verbinden: Vorschlag prüfen'
+      }
+      className={`cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap ${className}`}
+      data-tooltip={
+        water
+          ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+          : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+      }
+      title={
+        water
+          ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
+          : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
+      }
+    >
+      {busy === 'wire' ? (
+        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      ) : (
+        <Wand2 className="h-4 w-4" aria-hidden="true" />
+      )}
+      <span className="tb-label tb-label--kurz">Vorschau</span>
+      <span className="tb-label tb-label--mittel">Vorschlag prüfen</span>
+      <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
+    </button>
+  );
+}
+
 export function PlannerToolbar({
   busy,
   canUndo,
@@ -251,6 +299,7 @@ export function PlannerToolbar({
   openMenu,
   onOpenMenu,
   statusArea,
+  leading,
 }: PlannerToolbarProps) {
   const moreButtonRef = React.useRef<HTMLButtonElement>(null);
   const closeMore = React.useCallback(
@@ -273,6 +322,7 @@ export function PlannerToolbar({
         in 44 px Höhe), sodass Knöpfe abgeschnitten wirkten.
       */}
       <div className="cad-toolbar__actions">
+        {leading}
         <div className="cad-toolbar__group">
           <ToolButton
             label="Rückgängig"
@@ -297,11 +347,19 @@ export function PlannerToolbar({
         {/* Vorlagen und Teilen stehen auch im geführten Modus: Sie sind der
           Einstieg (volle Fläche statt leerer) und der Ausgang (Plan ins Forum)
           — keine Experten-Aktionen, die man verstecken müsste. */}
-        {(onLoadTemplate || onShare) && (
+        {(onLoadTemplate || onShare || guidedMode) && (
           <>
             <span className="cad-toolbar__sep" aria-hidden="true" />
             <div className="cad-toolbar__group">
               {onLoadTemplate && <TemplateMenuButton onLoadTemplate={onLoadTemplate} />}
+              {guidedMode && (
+                <AutoWireButton
+                  busy={busy}
+                  viewMode={viewMode}
+                  onAutoWire={onAutoWire}
+                  className="cad-autowire-phone"
+                />
+              )}
               {onShare && (
                 <ToolButton
                   label="Link zum Plan kopieren"
@@ -322,42 +380,7 @@ export function PlannerToolbar({
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
 
             <div className="cad-toolbar__group">
-              <button
-                type="button"
-                data-testid="action-autowire"
-                onClick={onAutoWire}
-                disabled={busy !== null}
-                // N1 (Nachtest): Im Wasserplan heißt der Knopf, was er tut —
-                // er erklärt (Toast), statt den Elektroplan vorzuschlagen.
-                aria-label={
-                  viewMode === 'water'
-                    ? 'Auto-verbinden: nur im Elektrikplan verfügbar'
-                    : 'Auto-verbinden: Vorschlag prüfen'
-                }
-                className="cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap"
-                data-tooltip={
-                  viewMode === 'water'
-                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
-                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
-                }
-                title={
-                  viewMode === 'water'
-                    ? 'Nur im Elektrikplan — Wasserleitungen verbindest du von Hand'
-                    : 'Vorschlag berechnen, prüfen und erst nach Bestätigung übernehmen'
-                }
-              >
-                {busy === 'wire' ? (
-                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                ) : (
-                  <Wand2 className="h-4 w-4" aria-hidden="true" />
-                )}
-                {/* Die Beschriftung macht die neue Sicherheitsstufe klar: Jeder
-                  Lauf öffnet erst die Vorschau; übernommen wird nur nach einem
-                  ausdrücklichen Tipp auf „Vorschlag anwenden“. */}
-                <span className="tb-label tb-label--kurz">Vorschau</span>
-                <span className="tb-label tb-label--mittel">Vorschlag prüfen</span>
-                <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
-              </button>
+              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
 
               <button
                 type="button"

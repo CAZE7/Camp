@@ -24,6 +24,13 @@ describe('toPlainGerman', () => {
     expect(conflict).toContain('Batteriecomputer „Smart Shunt“');
     expect(conflict).toContain('Minus-Sammelschiene');
 
+    const path = toPlainGerman(
+      'Minus-Abgang. battery-1 → busbar-minus → auto-node:shunt:Smart%20Shunt → busbar-minus.'
+    );
+    expect(path).not.toMatch(/battery-1|auto-node:|busbar-minus/);
+    expect(path).toContain('Batterie');
+    expect(path).toContain('Minus-Sammelschiene');
+
     const hint = toPlainGerman(
       'Sicherung 80 A (ul248-classT classT): I_2 im Feld `i2A` eintragen (Regel AUTO-SHUNT-BYPASS).'
     );

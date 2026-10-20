@@ -144,13 +144,19 @@ export async function edgeCount(page: Page): Promise<number> {
 }
 
 /**
- * Startet Auto-Wire über den sichtbaren Expertenknopf oder — im geführten
- * Modus — über das Mehr-Menü, und wartet auf die entstandenen Kanten.
+ * Startet Auto-Wire über den sichtbaren Werkzeugleisten-Knopf oder — im
+ * geführten Modus ab 480 px — über das Mehr-Menü, und wartet auf die
+ * entstandenen Kanten.
+ *
+ * Unter 480 px hängt der geführte Modus denselben Knopf als Symbol in die
+ * Leiste (`cad-autowire-phone`). Darüber bleibt er im DOM, ist aber per CSS
+ * unsichtbar. `count()` allein würde den Klick auf dieses versteckte Symbol
+ * legen und bis zum Timeout warten.
  */
 export async function autoWire(page: Page): Promise<void> {
   await showCanvas(page);
-  const toolbarButton = page.getByTestId('action-autowire');
-  if ((await toolbarButton.count()) > 0) {
+  const toolbarButton = page.getByTestId('action-autowire').first();
+  if ((await toolbarButton.count()) > 0 && (await toolbarButton.isVisible())) {
     await expect(toolbarButton).toBeEnabled();
     await toolbarButton.click();
   } else {
@@ -167,6 +173,27 @@ export async function autoWire(page: Page): Promise<void> {
   await expect
     .poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' })
     .toBeGreaterThan(0);
+}
+
+/**
+ * Öffnet ein Hauptmenü. Unter 768 px liegt es im Blatt hinter „Menü“,
+ * darüber direkt in der Menüleiste.
+ */
+/** Macht die Hauptmenüs sichtbar: auf dem Telefon das Blatt, sonst die Leiste. */
+export async function revealMainMenus(page: Page): Promise<void> {
+  const phone = page.getByTestId('phone-menu');
+  if ((await phone.count()) > 0 && (await phone.isVisible())) {
+    const sheet = page.getByTestId('phone-menu-sheet');
+    if (!(await sheet.isVisible())) await phone.click();
+    await expect(sheet).toBeVisible();
+  }
+}
+
+export async function openMenubar(page: Page, menu: string): Promise<void> {
+  const trigger = page.getByTestId(`menubar-${menu}`);
+  if (!(await trigger.isVisible().catch(() => false))) await revealMainMenus(page);
+  await expect(trigger).toBeVisible();
+  await trigger.click();
 }
 
 /** Öffnet einen Eintrag aus dem „Mehr“-Menü der Kopfzeile. */
