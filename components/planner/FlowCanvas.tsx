@@ -311,11 +311,14 @@ export function FlowCanvas() {
         );
       }
     };
+    const handleToggleMinimap = () => setMinimapOpen((open) => !open);
     window.addEventListener('planner-fit-view', handleFitView);
     window.addEventListener('planner-focus-element', handleFocusElement);
+    window.addEventListener('planner-toggle-minimap', handleToggleMinimap);
     return () => {
       window.removeEventListener('planner-fit-view', handleFitView);
       window.removeEventListener('planner-focus-element', handleFocusElement);
+      window.removeEventListener('planner-toggle-minimap', handleToggleMinimap);
     };
   }, [fitView, getNode, setCenter]);
 
@@ -597,6 +600,7 @@ export function FlowCanvas() {
 
   // Domänen-Filter (nur Elektrik): alle Domänen standardmäßig aktiv.
   const [activeDomains, setActiveDomains] = useState<Set<Domain>>(() => new Set(DOMAINS));
+  const [minimapOpen, setMinimapOpen] = useState(false);
   const toggleDomain = React.useCallback((domain: Domain) => {
     setActiveDomains((prev) => {
       const next = new Set(prev);
@@ -1013,7 +1017,7 @@ export function FlowCanvas() {
             {rawNodes.length > 0 && (
               <MiniMap
                 position="bottom-left"
-                className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block"
+                className={`planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block ${minimapOpen ? 'planner-minimap--open' : ''}`}
                 ariaLabel="Miniaturübersicht des Plans"
                 nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
                 maskColor={minimapColors.mask}

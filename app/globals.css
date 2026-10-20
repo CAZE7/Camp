@@ -1432,7 +1432,7 @@
   margin-left: auto;
   padding-inline: 0.75rem;
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.75rem;
   white-space: nowrap;
 }
@@ -1838,7 +1838,7 @@
   border-top: 1px solid var(--rule);
   background: var(--surface-panel);
   padding-inline: 0.5rem;
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   color: var(--text-med);
@@ -2553,7 +2553,9 @@ html.planner-root-active,
 html.planner-root-active body {
   height: 100%;
   min-height: 0;
+  max-width: 100%;
   overflow: hidden;
+  overflow-x: clip;
   overscroll-behavior: none;
 }
 
@@ -2810,14 +2812,18 @@ html.planner-root-active body {
     display: none;
   }
 
-  .cad-toolbar__actions {
-    position: relative;
-    z-index: 1;
+  .cad-toolbar .cad-status-optimize,
+  .cad-toolbar [data-testid^='routing-status'] {
+    display: none;
   }
 
   .cad-toolbar__status {
-    position: relative;
-    z-index: 3;
+    gap: 0.15rem;
+    padding-inline-start: 0.15rem;
+  }
+
+  [data-testid='verification-seal-toggle'] svg:last-of-type {
+    display: none;
   }
 }
 
@@ -3730,20 +3736,27 @@ html.planner-root-active body {
   }
 }
 
-/* Zwischen Tablet-Breite und vollem Desktop hing „Hilfe“ am Auslöser und
-   ragte über den oberen Fensterrand. Das Menü sitzt unter der Titelleiste. */
-@media (min-width: 768px) and (max-width: 1100px) {
-  .cad-menubar .planner-menubar-sheet {
-    position: fixed;
-    top: calc(var(--cad-menubar-h, 32px) + var(--cad-toolbar-h, 40px) + 4px);
-    right: 0.75rem;
-    bottom: auto;
-    left: auto;
+/* Das Dropdown hängt am Auslöser in der Titelleiste. Die Werkzeugleiste
+   darunter liegt im selben Stapel und deckte den Anfang („Hilfe & Fachwissen“)
+   ab, sobald das Menü bei y der Titelleiste begann. Es startet deshalb unter
+   beiden Leisten. „Hilfe“ ist der letzte Eintrag und bleibt rechts im Bild. */
+@media (min-width: 768px) and (min-height: 501px) {
+  .cad-menubar {
+    z-index: 80;
+  }
+
+  .cad-menubar .cad-menu.planner-menubar-sheet {
+    top: calc(100% + var(--cad-toolbar-h, 40px) + 4px);
     z-index: 80;
     max-height: calc(100dvh - var(--cad-menubar-h, 32px) - var(--cad-toolbar-h, 40px) - 1rem);
-    min-width: min(22rem, calc(100vw - 1.5rem));
+    min-width: min(16rem, calc(100vw - 1.5rem));
     overflow-x: hidden;
     overflow-y: auto;
+  }
+
+  .cad-menubar__menus > div:last-child .planner-menubar-sheet {
+    left: auto;
+    right: 0;
   }
 }
 
@@ -3765,7 +3778,15 @@ html.planner-root-active body {
   [data-testid='bom-scroll-body'] {
     flex: 1 1 auto;
     min-height: 9rem;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  [data-testid='bom-actions'] svg {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
   }
 }
 
@@ -3824,9 +3845,10 @@ html.planner-root-active body {
 
 /* Telefon-Kopf: eine Werkzeugzeile, ein Knopfstil.
    Die Menüleiste (Datei … Hilfe) wird zum Knopf „Menü“ in derselben Zeile.
-   Höhe, Radius und Kontur sind gemeinsam; der Akzent bleibt der nächsten
-   Aktion in der Schrittleiste. Schrift der Chromelemente ist die UI-Schrift,
-   nicht die Maßschrift. Desktop ab 768 px bleibt unverändert. */
+   Dasselbe gilt bei wenig Höhe (Querformat), sonst bleiben Titelleiste,
+   Werkzeugleiste, Schritt und Modus übereinander. Höhe, Radius und Kontur
+   sind gemeinsam; der Akzent bleibt der nächsten Aktion in der Schrittleiste.
+   Schrift der Chromelemente ist die UI-Schrift, nicht die Maßschrift. */
 .planner-mode-short {
   display: none;
 }
@@ -3835,7 +3857,7 @@ html.planner-root-active body {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) {
   .cad-menubar {
     display: none !important;
     height: 0 !important;
@@ -3891,36 +3913,35 @@ html.planner-root-active body {
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   }
 
+  .cad-toolbar [data-testid='save-indicator'] svg,
+  .cad-toolbar [data-testid='verification-seal-toggle'] svg,
+  .cad-toolbar [data-testid^='routing-status'] svg {
+    color: var(--text-high);
+  }
+
   .de-warning-center > button.bg-warn-info,
   .de-warning-center > button.bg-warn-warning,
   .de-warning-center > button.bg-warn-critical {
     background: transparent !important;
     color: var(--text-high) !important;
-  }
-
-  .de-warning-center > button.bg-warn-info {
-    border-color: var(--warn-info, var(--rule-strong));
-  }
-
-  .de-warning-center > button.bg-warn-warning {
-    border-color: var(--warn-warning, var(--rule-strong));
-  }
-
-  .de-warning-center > button.bg-warn-critical {
-    border-color: var(--warn-critical, var(--rule-strong));
+    border-color: var(--rule-strong);
   }
 
   .planner-mode-switch-panel {
     top: 0.35rem !important;
     left: 0.35rem !important;
     right: auto !important;
-    width: auto !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    width: max-content !important;
     max-width: calc(100% - 7rem) !important;
     overflow: visible !important;
   }
 
   .planner-mode-switch-panel [role='group'] {
-    width: auto;
+    width: max-content;
+    max-width: 100%;
     border-radius: 8px;
     border: 1px solid var(--rule-strong);
     background: var(--surface-panel);
@@ -3960,6 +3981,8 @@ html.planner-root-active body {
   }
 
   .planner-mode-caption {
+    width: min(16rem, 100%);
+    max-width: 100%;
     white-space: normal;
     text-overflow: clip;
     overflow: hidden;
@@ -3968,18 +3991,81 @@ html.planner-root-active body {
     -webkit-box-orient: vertical;
   }
 
-  .planner-phone-menu-sheet {
+  .planner-phone-menu-layer {
     position: fixed;
+    inset: 0;
     z-index: 80;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .planner-phone-menu-backdrop {
+    pointer-events: auto;
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+  }
+
+  .planner-phone-menu-sheet {
+    pointer-events: auto;
+    position: absolute;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
     left: max(0.5rem, env(safe-area-inset-left));
     right: max(0.5rem, env(safe-area-inset-right));
     top: calc(var(--cad-toolbar-h, 44px) + 0.35rem);
-    max-height: min(70dvh, 28rem);
-    overflow: auto;
+    bottom: calc(var(--cad-nav-h, 56px) + env(safe-area-inset-bottom) + 0.35rem);
+    max-height: none;
+    overflow: hidden;
     border: 1px solid var(--rule-strong);
     border-radius: 8px;
     background: var(--surface-raised);
+    color: var(--text-high);
+    padding: 0;
+  }
+
+  .planner-phone-menu-sheet__header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding-inline: 0.75rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-raised);
+  }
+
+  .planner-phone-menu-sheet__title {
+    margin: 0;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .planner-phone-menu-sheet__close {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-high);
+  }
+
+  .planner-phone-menu-sheet__body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.35rem;
+    background: var(--surface-raised);
   }
 
   .planner-phone-menu-sheet__section {
@@ -4001,10 +4087,107 @@ html.planner-root-active body {
   .planner-phone-menu-sheet__section[aria-expanded='true'] {
     background: var(--surface-hover);
   }
+
+  .planner-phone-menu-sheet__menu {
+    position: static;
+    margin: 0 0.15rem 0.35rem;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--surface-panel);
+    color: var(--text-high);
+  }
+
+  .planner-phone-menu-sheet__menu .cad-menu__item {
+    min-height: 44px;
+    height: auto;
+    align-items: flex-start;
+    background: var(--surface-panel);
+    white-space: normal;
+  }
+
+  .planner-phone-menu-sheet__menu .cad-menu__item span {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+.planner-sheet-backdrop {
+  position: fixed;
+  top: calc(var(--cad-menubar-h, 0px) + var(--cad-toolbar-h, 44px));
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.planner-layer-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface-panel);
+  padding: 0.35rem 0.75rem;
+}
+
+.planner-layer-header h3 {
+  margin: 0;
+  color: var(--text-high);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.planner-layer-close {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-high);
+}
+
+.planner-minimap.planner-minimap--open {
+  display: block !important;
+  z-index: 30;
+}
+
+/* Kurzes Querformat: Prüfbericht und Prüfliste teilen sich die Höhe,
+   sonst liegt die Überschrift des Berichts auf der Liste. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .planner-shell:has(.planner-verification-panel):has(.de-warning-center [role='dialog'])
+    .planner-verification-panel {
+    top: var(--planner-phone-sheet-top, 7.25rem) !important;
+    bottom: auto !important;
+    height: 7.25rem !important;
+    max-height: 7.25rem !important;
+  }
+
+  .planner-shell:has(.planner-verification-panel) .de-warning-center [role='dialog'] {
+    top: calc(var(--planner-phone-sheet-top, 7.25rem) + 7.5rem) !important;
+    bottom: calc(var(--cad-nav-h, 44px) + 0.25rem) !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .planner-minimap.planner-minimap--open {
+    left: 0.5rem !important;
+    bottom: calc(var(--cad-nav-h, 44px) + var(--cad-statusbar-h, 22px) + 3.25rem) !important;
+    width: 7.5rem !important;
+    height: 5.25rem !important;
+  }
 }
 
 /* Flaches Querformat behält die niedrige Werkzeugleiste (Zeichenfläche). */
-@media (max-width: 767px) and (max-height: 480px) {
+@media (max-height: 480px) {
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn,
   .cad-phone-menu__button,

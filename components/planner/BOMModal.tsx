@@ -298,7 +298,7 @@ export function BOMModal() {
             />
           </div>
         )}
-        <div data-testid="bom-actions" className="grid grid-cols-2 gap-2 sm:flex">
+        <div data-testid="bom-actions" className="flex flex-col gap-2">
           <Button
             variant="outline"
             onClick={exportCsv}

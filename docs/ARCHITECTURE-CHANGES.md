@@ -1,5 +1,19 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-20 (6) — Menüblatt, Querformat, Hilfe unter der Leiste
+
+**Anlass:** Nach #550 lag ein geöffneter Menüabschnitt durchscheinend über den
+anderen Zeilen. Im Querformat 852×393 blieb die Desktop-Titelleiste. Bei
+1440 px begann „Hilfe“ hinter der Werkzeugleiste.
+
+**Verhalten:** Abschnitte bleiben im Menüblatt, deckend und scrollbar, mit
+Schließen und Klick daneben. Unter 768 px oder 500 px Höhe gibt es eine
+Kopfzeile mit „Menü“. Desktop-Menüs starten unter der Werkzeugleiste. Der
+Akzent in der kompakten Leiste bleibt die nächste Aktion. Statuszeile und
+Prüfbericht nutzen die UI-Schrift. „Übersicht“ schaltet die Miniaturkarte.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-20 (5) — eine Kopfzeile auf dem Telefon
 
 **Anlass:** Auf dem iPhone SE lagen Menüleiste (zwei Zeilen) und Werkzeugleiste

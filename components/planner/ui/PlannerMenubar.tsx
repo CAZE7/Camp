@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import type { PlannerMenuGroup, PlannerMenuId, PlannerMenus } from '../hooks/usePlannerActions';
 import { handleMenuKeyDown } from './menuKeyboard';
 
@@ -143,19 +143,27 @@ export function PlannerPhoneMenu({ menus }: { menus: PlannerMenus }) {
       if (buttonRef.current?.contains(target) || sheetRef.current?.contains(target)) return;
       close();
     };
+    // Capture: React Flow und andere Leisten schlucken Escape auf dem Weg
+    // nach oben. Ein Druck schließt das ganze Blatt, sonst bleibt die
+    // Fläche liegen und fängt die nächsten Klicks ab.
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.key !== 'Escape') return;
       event.preventDefault();
-      if (section) setSection(null);
-      else close();
+      close();
     };
     document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [open, section, close]);
+
+  useEffect(() => {
+    if (!open || !section) return;
+    const block = sheetRef.current?.querySelector(`[data-testid="menubar-${section}"]`)?.parentElement;
+    block?.scrollIntoView({ block: 'start', inline: 'nearest' });
+  }, [open, section]);
 
   return (
     <div ref={buttonRef} className="cad-phone-menu">
@@ -176,35 +184,62 @@ export function PlannerPhoneMenu({ menus }: { menus: PlannerMenus }) {
       </button>
       {open &&
         createPortal(
-          <div
-            ref={sheetRef}
-            id="phone-menu-sheet"
-            data-testid="phone-menu-sheet"
-            role="dialog"
-            aria-label="Menü"
-            className="planner-phone-menu-sheet"
-          >
-            {MENU_ORDER.map((menu) => {
-              const expanded = section === menu;
-              return (
-                <div key={menu} className="planner-phone-menu-sheet__block">
-                  <button
-                    type="button"
-                    data-testid={`menubar-${menu}`}
-                    aria-expanded={expanded}
-                    className="planner-phone-menu-sheet__section"
-                    onClick={() => setSection(expanded ? null : menu)}
-                  >
-                    {MENU_LABELS[menu]}
-                  </button>
-                  {expanded && (
-                    <div role="menu" aria-label={MENU_LABELS[menu]} className="planner-menubar-sheet">
-                      <MenuGroupList groups={menus[menu]} onClose={close} />
+          <div className="planner-phone-menu-layer">
+            <button
+              type="button"
+              className="planner-phone-menu-backdrop"
+              aria-label="Menü schließen"
+              onClick={close}
+            />
+            <div
+              ref={sheetRef}
+              id="phone-menu-sheet"
+              data-testid="phone-menu-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menü"
+              className="planner-phone-menu-sheet"
+            >
+              <div className="planner-phone-menu-sheet__header">
+                <h2 className="planner-phone-menu-sheet__title">Menü</h2>
+                <button
+                  type="button"
+                  data-testid="phone-menu-close"
+                  className="planner-phone-menu-sheet__close"
+                  aria-label="Menü schließen"
+                  onClick={close}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="planner-phone-menu-sheet__body">
+                {MENU_ORDER.map((menu) => {
+                  const expanded = section === menu;
+                  return (
+                    <div key={menu} className="planner-phone-menu-sheet__block">
+                      <button
+                        type="button"
+                        data-testid={`menubar-${menu}`}
+                        aria-expanded={expanded}
+                        className="planner-phone-menu-sheet__section"
+                        onClick={() => setSection(expanded ? null : menu)}
+                      >
+                        {MENU_LABELS[menu]}
+                      </button>
+                      {expanded && (
+                        <div
+                          role="menu"
+                          aria-label={MENU_LABELS[menu]}
+                          className="planner-phone-menu-sheet__menu"
+                        >
+                          <MenuGroupList groups={menus[menu]} onClose={close} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>,
           document.body
         )}

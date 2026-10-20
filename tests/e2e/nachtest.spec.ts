@@ -237,8 +237,8 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await showCanvas(page);
 
       // Jedes Menü öffnen: Dropdown muss im Bild liegen.
-      await revealMainMenus(page);
       for (const menu of ['datei', 'bearbeiten', 'ansicht', 'werkzeuge', 'planung', 'hilfe']) {
+        await revealMainMenus(page);
         const trigger = page.getByTestId(`menubar-${menu}`);
         await trigger.scrollIntoViewIfNeeded();
         await trigger.click();

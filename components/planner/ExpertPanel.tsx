@@ -458,6 +458,17 @@ export function ExpertPanel() {
     return () => window.removeEventListener('planner-open-expert-panel', openExpertPanel);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setIsOpen(false);
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [isOpen]);
+
   const currentKnowledge = useMemo(() => {
     const firstSelected = selectedNodes.at(0);
     if (!firstSelected) return DEFAULT_TIP;
@@ -512,6 +523,14 @@ export function ExpertPanel() {
           : 'planner-expert-panel--closed bottom-20 right-4 w-auto max-w-xs md:bottom-16'
       )}
     >
+      {isOpen && (
+        <button
+          type="button"
+          className="planner-sheet-backdrop pointer-events-auto"
+          aria-label="Panel schließen"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
       {/* Expanded Panel */}
       {isOpen && (
         <div
@@ -520,7 +539,7 @@ export function ExpertPanel() {
           // schmalen Schlitz mit Dauer-Scrollen. Auf Desktop darf das
           // Panel deutlich höher wachsen (36 rem), begrenzt bleibt die
           // Fensterhöhe minus Leisten.
-          className="pointer-events-auto flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
+          className="pointer-events-auto relative z-[45] flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">

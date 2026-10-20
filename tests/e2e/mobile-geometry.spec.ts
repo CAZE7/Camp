@@ -177,7 +177,8 @@ for (const viewport of [
     test('Menü, Übersicht, Zoom und Strompfad liegen frei', async ({ page }) => {
       await openFreshExample(page);
 
-      if (viewport.width < 768) {
+      const phoneChrome = viewport.width < 768 || viewport.height <= 500;
+      if (phoneChrome) {
         await expect(page.locator('.cad-menubar')).toBeHidden();
         const phone = page.getByTestId('phone-menu');
         const toolbar = page.getByTestId('planner-toolbar');
@@ -204,7 +205,7 @@ for (const viewport of [
       }
 
       const caption = page.getByTestId('planner-mode-caption');
-      if ((await caption.isVisible()) && viewport.width >= 768) {
+      if ((await caption.isVisible()) && viewport.width >= 768 && viewport.height > 500) {
         expect(boxesOverlap(await boxOf(caption), await boxOf(page.getByTestId('menubar-ansicht')))).toBe(
           false
         );
@@ -262,7 +263,8 @@ for (const viewport of [
       await openFreshExample(page);
       const ids = ['planner-mode-planung', 'planner-mode-physisch', 'planner-mode-pruefung'] as const;
       const boxes = [];
-      const labelClass = viewport.width < 768 ? '.planner-mode-short' : '.planner-mode-label';
+      const labelClass =
+        viewport.width < 768 || viewport.height <= 500 ? '.planner-mode-short' : '.planner-mode-label';
       for (const id of ids) {
         const button = page.getByTestId(id);
         await expect(button).toBeVisible();
@@ -527,6 +529,62 @@ for (const viewport of [
       });
       expect(reportHeaderHit).toBe(true);
     });
+
+    test('Menü-Abschnitte bleiben im Blatt und die Seite rutscht nicht seitlich', async ({ page }) => {
+      test.skip(viewport.width >= 768 && viewport.height > 500, 'nur der kompakte Kopf');
+      await openFreshExample(page);
+      const metrics = () =>
+        page.evaluate(() => ({
+          x: document.documentElement.scrollLeft,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }));
+      expect((await metrics()).overflow).toBeLessThanOrEqual(1);
+
+      await page.getByTestId('phone-menu').click();
+      const sheet = page.getByTestId('phone-menu-sheet');
+      await expect(sheet).toBeVisible();
+      await page.getByTestId('menubar-planung').click();
+      const menu = page.getByRole('menu', { name: 'Planung' });
+      await expect(menu).toBeVisible();
+      const sheetBox = await boxOf(sheet);
+      const item = page.getByRole('menuitem', { name: /Prüfbericht öffnen/ });
+      await expect(item).toBeVisible();
+      const itemBox = await boxOf(item);
+      expect(itemBox.x).toBeGreaterThanOrEqual(sheetBox.x - 1);
+      expect(itemBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
+      expect(itemBox.x + itemBox.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width + 1);
+      expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
+      expect(boxesOverlap(await boxOf(page.getByTestId('menubar-planung')), itemBox)).toBe(false);
+      const opaque = await menu.evaluate((element) => {
+        const bg = getComputedStyle(element).backgroundColor;
+        const match = bg.match(/rgba?\(([^)]+)\)/);
+        const body = match?.[1];
+        if (!body) return bg !== 'transparent';
+        const parts = body.split(',').map((part) => part.trim());
+        const alpha = parts.length === 4 ? Number(parts[3]) : 1;
+        return alpha > 0.9;
+      });
+      expect(opaque).toBe(true);
+
+      const shift = await metrics();
+      expect(shift.x).toBeLessThanOrEqual(1);
+      expect(shift.overflow).toBeLessThanOrEqual(1);
+      expect((await boxOf(page.getByTestId('phone-menu'))).x).toBeGreaterThanOrEqual(-1);
+
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(sheet).toBeHidden();
+    });
+
+    test('Übersicht blendet im Querformat die Miniaturkarte ein', async ({ page }) => {
+      test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
+      await openFreshExample(page);
+      const minimap = page.locator('.react-flow__minimap');
+      await expect(minimap).toBeHidden();
+      await page.getByTestId('mobile-overview').click();
+      await expect(minimap).toBeVisible();
+      expect(insideViewport(await boxOf(minimap), viewport)).toBe(true);
+    });
   });
 }
 
@@ -608,6 +666,31 @@ test.describe('Hilfe-Menü bei knapp 910 px', () => {
     const box = await boxOf(item);
     expect(box.y).toBeGreaterThanOrEqual(32);
     expect(insideViewport(box, { width: 910, height: 700 })).toBe(true);
+  });
+});
+
+test.describe('Hilfe-Menü bei 1440', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  test.beforeEach(({ browserName: _browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'einmal, im Projekt desktop-1440');
+  });
+
+  test('Hilfe & Fachwissen liegt unter der Werkzeugleiste', async ({ page }) => {
+    await openFreshExample(page);
+    const toolbar = page.getByTestId('planner-toolbar');
+    await page.getByTestId('menubar-hilfe').click();
+    const item = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
+    await expect(item).toBeVisible();
+    const itemBox = await boxOf(item);
+    const toolbarBox = await boxOf(toolbar);
+    expect(itemBox.y).toBeGreaterThanOrEqual(toolbarBox.y + toolbarBox.height - 1);
+    expect(insideViewport(itemBox, { width: 1440, height: 900 })).toBe(true);
+    const hit = await item.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const top = document.elementFromPoint(rect.left + 16, rect.top + Math.min(12, rect.height / 2));
+      return element.contains(top);
+    });
+    expect(hit).toBe(true);
   });
 });
 

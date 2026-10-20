@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useId, useState } from 'react';
-import { BadgeCheck, ChevronDown, Info, ShieldAlert, ShieldQuestion } from 'lucide-react';
+import React, { useEffect, useId, useState } from 'react';
+import { BadgeCheck, ChevronDown, Info, ShieldAlert, ShieldQuestion, X } from 'lucide-react';
 import type { VerificationSummary } from '../utils/verificationWarnings';
 
 /**
@@ -50,7 +50,7 @@ const PASS_STATUS_LABEL = { PASS: 'erfüllt', FAIL: 'nicht erfüllt', UNPROVABLE
 function Stat({ value, label, hint }: { value: number; label: string; hint: string }) {
   return (
     <div className="rounded border border-border bg-card px-2 py-1.5" title={hint}>
-      <div className="font-mono text-sm font-bold text-foreground">{value}</div>
+      <div className="text-sm font-bold text-foreground">{value}</div>
       <div className="text-[11px] leading-tight text-muted-foreground">{label}</div>
     </div>
   );
@@ -61,6 +61,17 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
   const panelId = useId();
   const tone = TONE[summary.tone];
   const percent = Math.round(summary.decisionRatio * 100);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setOpen(false);
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [open]);
 
   return (
     <div className="relative">
@@ -107,24 +118,45 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
       </button>
 
       {open && (
+        <button
+          type="button"
+          className="planner-sheet-backdrop"
+          aria-label="Prüfbericht schließen"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      {open && (
         <div
           id={panelId}
           data-testid="verification-seal-panel"
-          role="region"
-          aria-label="Prüfbericht der Verifikations-Engine"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Prüfbericht"
           /* `fixed` statt `absolute`: Der Bericht ist bis zu 30 rem breit und
              läge im `absolute`-Fall innerhalb der 44 px hohen Werkzeugleiste,
              die wegen der scrollbaren Aktionsgruppe `overflow: hidden` trägt —
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
-          <p className="planner-sheet-header mb-2 font-semibold text-foreground">{summary.headline}</p>
+          <div className="planner-layer-header">
+            <h3 className="text-sm font-bold text-foreground">Prüfbericht</h3>
+            <button
+              type="button"
+              data-testid="verification-seal-close"
+              onClick={() => setOpen(false)}
+              className="planner-layer-close"
+              aria-label="Prüfbericht schließen"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+          <p className="planner-sheet-header px-3 pt-2 font-semibold text-foreground">{summary.headline}</p>
 
           <div
             data-testid="verification-sheet-body"
-            className="planner-sheet-body min-h-0 flex-1 overflow-y-auto"
+            className="planner-sheet-body min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3"
           >
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               <Stat
@@ -153,11 +185,14 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
               <div className="mb-1 font-semibold text-foreground">Prüfungen (5 Durchgänge)</div>
               <ul className="space-y-0.5">
                 {summary.passes.map((pass) => (
-                  <li key={pass.pass} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">
+                  <li
+                    key={pass.pass}
+                    className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
+                  >
+                    <span className="min-w-0 text-muted-foreground">
                       {pass.pass}. {pass.name}
                     </span>
-                    <span className="font-mono text-[11px]">
+                    <span className="text-[11px] text-foreground">
                       {PASS_STATUS_LABEL[pass.status]} · {pass.ruleCount} Regeln
                     </span>
                   </li>
@@ -194,13 +229,13 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
               <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
                 Technische Details
               </summary>
-              <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+              <p className="break-words text-[10px] leading-relaxed text-muted-foreground">
                 Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
                 <br />
                 Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
               </p>
               {summary.notAppliedRules.length > 0 && (
-                <p className="mt-1 break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                <p className="mt-1 break-words text-[10px] leading-relaxed text-muted-foreground">
                   Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
                 </p>
               )}

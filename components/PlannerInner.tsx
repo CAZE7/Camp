@@ -483,9 +483,10 @@ function PlannerShell() {
             <button
               type="button"
               data-testid="mobile-overview"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }))
-              }
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
+                window.dispatchEvent(new CustomEvent('planner-toggle-minimap'));
+              }}
               className="cad-btn cad-btn--line flex h-12 items-center gap-2 px-3"
               aria-label="Planübersicht anzeigen"
               title="Planübersicht anzeigen"
