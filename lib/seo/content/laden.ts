@@ -160,6 +160,11 @@ export const LADEN_CONTENT: SeoPageContent = {
   related: [
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
     { href: '/camper-elektrik/ladebooster/', label: 'Ladebooster: Größe, Anschluss, Absicherung' },
+    {
+      href: '/camper-elektrik/ladebooster-vergleich/',
+      label: 'Ladebooster im Praxisvergleich: Victron, Votronic und andere',
+      description: 'Erfahrungsbericht zum Wechsel des Boosters — mit ehrlichen Vor- und Nachteilen.',
+    },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage und Landstrom' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
