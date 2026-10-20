@@ -144,13 +144,19 @@ export async function edgeCount(page: Page): Promise<number> {
 }
 
 /**
- * Startet Auto-Wire über den sichtbaren Expertenknopf oder — im geführten
- * Modus — über das Mehr-Menü, und wartet auf die entstandenen Kanten.
+ * Startet Auto-Wire über den sichtbaren Werkzeugleisten-Knopf oder — im
+ * geführten Modus ab 480 px — über das Mehr-Menü, und wartet auf die
+ * entstandenen Kanten.
+ *
+ * Unter 480 px hängt der geführte Modus denselben Knopf als Symbol in die
+ * Leiste (`cad-autowire-phone`). Darüber bleibt er im DOM, ist aber per CSS
+ * unsichtbar. `count()` allein würde den Klick auf dieses versteckte Symbol
+ * legen und bis zum Timeout warten.
  */
 export async function autoWire(page: Page): Promise<void> {
   await showCanvas(page);
-  const toolbarButton = page.getByTestId('action-autowire');
-  if ((await toolbarButton.count()) > 0) {
+  const toolbarButton = page.getByTestId('action-autowire').first();
+  if ((await toolbarButton.count()) > 0 && (await toolbarButton.isVisible())) {
     await expect(toolbarButton).toBeEnabled();
     await toolbarButton.click();
   } else {
