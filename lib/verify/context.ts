@@ -179,7 +179,11 @@ export function installConditionsError(conditions: RunConditions): string | null
     verificationOptions({ ampacity: conditions });
     return null;
   } catch (error) {
-    return error instanceof RangeError ? error.message : String(error);
+    if (!(error instanceof RangeError)) return String(error);
+    // Der Text kommt aus der Engine und trägt dort den Funktionsnamen als
+    // Absender („verificationOptions: …") — für einen Log richtig, in einer
+    // Oberfläche nicht. Die Aussage selbst bleibt unverändert.
+    return error.message.replace(/^verificationOptions:\s*/, '');
   }
 }
 

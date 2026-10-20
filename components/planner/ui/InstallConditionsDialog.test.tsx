@@ -60,6 +60,9 @@ describe('InstallConditionsDialog', () => {
     const status = screen.getByRole('status').textContent ?? '';
     expect(status).toContain('Noch nicht übernommen');
     expect(status).toContain('unzulässig');
+    // Der Absender der Engine-Meldung („verificationOptions: …") gehört in einen
+    // Log, nicht in den primären Nutzertext.
+    expect(status).not.toContain('verificationOptions');
   });
 
   it('lässt 80 °C bei XLPE gelten', () => {

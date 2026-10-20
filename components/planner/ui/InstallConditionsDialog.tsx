@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
 
 import { VDE_GROUP_FACTORS_MAX_N } from '../../../lib/electrical';
 import { installConditionsError, type RunConditions } from '../../../lib/verify';
@@ -79,20 +78,12 @@ export function InstallConditionsDialog() {
       onClose={() => setOpen(false)}
       title="Verlegebedingungen der Prüfung"
       description="Diese Angaben benutzt die Prüfung. Was hier nicht steht, wird nicht angenommen."
-      showClose={false}
+      className="min-h-0 min-w-0 max-w-lg"
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="panel-title">Bedingungen dieses Plans</p>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="cad-btn h-11 w-11 shrink-0 justify-center"
-            aria-label="Verlegebedingungen schließen"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+      {/* `AccessibleDialog` polstert nur seinen Kopf; der Inhaltsträger trägt die
+          Innenpolster selbst (dasselbe Muster wie `BOMModal`). */}
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <p className="panel-title">Bedingungen dieses Plans</p>
 
         <div className="flex flex-col gap-1">
           <label
@@ -184,7 +175,11 @@ export function InstallConditionsDialog() {
           <button type="button" onClick={zurueckAufReferenz} className="cad-btn cad-btn--line min-h-11 px-3">
             Zurück auf Tabellenreferenz
           </button>
-          <button type="button" onClick={() => setOpen(false)} className="cad-btn min-h-11 px-4">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="cad-btn cad-btn--primary min-h-11 px-4"
+          >
             Fertig
           </button>
         </div>
