@@ -20,7 +20,7 @@ export default function DesignSystemPage() {
           Surface-Layering mit 1px Border statt Schatten, farbenblind-taugliche Elektro-Semantik, WCAG AAA/AA.
           Quelle: app/dark-engineering.css + lib/design-system/tokens.ts
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">
             GRID 4px/8px
           </span>

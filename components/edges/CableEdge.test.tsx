@@ -125,6 +125,15 @@ describe('CableEdge', () => {
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
   });
 
+  it('gibt der transparenten Kabel-Trefferschicht einen 44-px-Zoom-Ausgangswert', () => {
+    const { container } = renderEdge(<CableEdge {...defaultProps} />);
+    const target = container.querySelector('path.planner-edge-hit-target');
+
+    expect(target).toHaveAttribute('stroke', 'transparent');
+    expect(target).toHaveAttribute('stroke-width', '44');
+    expect(target).toHaveStyle({ pointerEvents: 'stroke' });
+  });
+
   it('erklärt eine enge Bauteil-Reserve konsistent in ARIA und Tooltip', () => {
     act(() => {
       publishCableRoutes(new Map([[defaultProps.id, makePublishedRoute({ tightMarginUsed: true })]]));

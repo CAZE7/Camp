@@ -327,7 +327,7 @@ export default function AusbauFahrplanPage() {
       <SiteHeader />
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
         <aside
-          className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-b-0 md:border-r"
+          className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-r md:border-b-0"
           aria-label="Kapitel"
         >
           <div className="sticky top-0 p-5">

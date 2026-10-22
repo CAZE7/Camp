@@ -8,9 +8,11 @@ import {
   MiniMap,
   Panel,
   useReactFlow,
+  useStore,
   type Connection,
   type Viewport,
   type Node,
+  type AriaLabelConfig,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
@@ -67,7 +69,33 @@ import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/
 import { withNodeInteractionState } from './utils/nodeInteractionState';
 import { BackboneGroupNode } from './ui/BackboneGroupNode';
 import { withNodePresentations } from './ui/NodePresentation';
+import { HANDLE_HIT_TARGET_SCREEN_PX, separateHandleHitTargets } from './utils/handleHitTargets';
 import dynamic from 'next/dynamic';
+
+const FLOW_ARIA_LABEL_CONFIG = {
+  'node.a11yDescription.default':
+    'Eingabe oder Leertaste wählt ein Bauteil aus. Entf öffnet die Löschbestätigung; Escape hebt die Auswahl auf.',
+  'node.a11yDescription.keyboardDisabled':
+    'Eingabe oder Leertaste wählt ein Bauteil aus. Danach verschieben Pfeiltasten das ausgewählte Bauteil. Entf öffnet die Löschbestätigung; Escape hebt die Auswahl auf.',
+  'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }) => {
+    const directionName: Record<string, string> = {
+      up: 'nach oben',
+      down: 'nach unten',
+      left: 'nach links',
+      right: 'nach rechts',
+    };
+    return `Bauteil ${directionName[direction] ?? direction} verschoben. Neue Position: x ${x}, y ${y}.`;
+  },
+  'edge.a11yDescription.default':
+    'Eingabe oder Leertaste wählt eine Leitung aus. Entf öffnet die Löschbestätigung; Escape hebt die Auswahl auf.',
+  'controls.ariaLabel': 'Steuerung der Planansicht',
+  'controls.zoomIn.ariaLabel': 'Ansicht vergrößern',
+  'controls.zoomOut.ariaLabel': 'Ansicht verkleinern',
+  'controls.fitView.ariaLabel': 'Ganzen Plan einpassen',
+  'controls.interactive.ariaLabel': 'Interaktion umschalten',
+  'minimap.ariaLabel': 'Planübersicht',
+  'handle.ariaLabel': 'Anschluss',
+} satisfies Partial<AriaLabelConfig>;
 
 // Die Stückliste öffnet nur auf Knopfdruck (planner-show-bom-Event) und zieht
 // AccessibleDialog + Registry nach. Als separater lazy Chunk landet sie nicht
@@ -85,14 +113,20 @@ const DynamicAutoWireReviewModal = dynamic(
 );
 
 /**
- * Unterkante von Moduszeile und Ansicht, wenn sie die obere Zeichenfläche
- * belegen. `null`, wenn dort nichts liegt — dann bleibt die Mitte.
+ * Unterkante von Moduszeile, Ansicht und Einstiegsmeldung, wenn sie die obere
+ * Zeichenfläche belegen. Neue Bauteile landen dadurch nicht unter einem
+ * Hinweis oder einer Steuerleiste. `null`, wenn dort nichts liegt — dann
+ * bleibt die Mitte.
  */
 function canvasOverlayBottom(bounds: DOMRect): number | null {
   let bottom = bounds.top;
   let found = false;
   const midX = bounds.left + bounds.width / 2;
-  for (const selector of ['.planner-mode-switch-panel', '.planner-display-options-panel']) {
+  for (const selector of [
+    '.planner-mode-switch-panel',
+    '.planner-display-options-panel',
+    '.planner-entry-notice',
+  ]) {
     const node = document.querySelector(selector);
     if (!(node instanceof HTMLElement)) continue;
     const style = getComputedStyle(node);
@@ -107,7 +141,62 @@ function canvasOverlayBottom(bounds: DOMRect): number | null {
   return found ? bottom : null;
 }
 
-function useAccessibleHandles() {
+const HANDLE_SIDES = ['left', 'right', 'top', 'bottom'] as const;
+type HandleSide = (typeof HANDLE_SIDES)[number];
+
+/**
+ * Legt den Bildschirmraum-Trefferbereich außerhalb der unveränderten
+ * React-Flow-Port-Geometrie ab. Mehrere Ports derselben Kartenseite werden
+ * entlang ihrer Kante auseinandergeschoben, wenn sie bei kleinem Zoom näher
+ * als ein Zielmaß zusammenrücken.
+ */
+function updateHandleHitTargetOffsets(root: ParentNode, viewportZoom: number) {
+  const zoom = Number.isFinite(viewportZoom) && viewportZoom > 0 ? viewportZoom : 1;
+  const groups = new Map<
+    string,
+    { side: HandleSide; handles: Array<{ element: HTMLElement; center: number }> }
+  >();
+
+  root.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
+    handle.style.removeProperty('--planner-hit-offset-x');
+    handle.style.removeProperty('--planner-hit-offset-y');
+    if (!handle.classList.contains('connectable')) return;
+
+    const side = HANDLE_SIDES.find((candidate) =>
+      handle.classList.contains(`react-flow__handle-${candidate}`)
+    );
+    const nodeId = handle.dataset.nodeid;
+    if (!side || !nodeId) return;
+
+    const rect = handle.getBoundingClientRect();
+    const center =
+      side === 'left' || side === 'right' ? rect.top + rect.height / 2 : rect.left + rect.width / 2;
+    const key = `${nodeId}\u0000${side}`;
+    const group = groups.get(key) ?? { side, handles: [] };
+    group.handles.push({ element: handle, center });
+    groups.set(key, group);
+  });
+
+  groups.forEach(({ side, handles }) => {
+    const offsets = separateHandleHitTargets(
+      handles.map(({ center }) => center),
+      HANDLE_HIT_TARGET_SCREEN_PX
+    );
+    const offsetProperty =
+      side === 'left' || side === 'right' ? '--planner-hit-offset-y' : '--planner-hit-offset-x';
+    offsets.forEach((offset, index) => {
+      const handle = handles[index]?.element;
+      if (!handle || Math.abs(offset) < 0.5) return;
+      // CSS dimensions and offsets live inside React Flow's scaled viewport;
+      // divide by zoom so the visible displacement remains screen-space px.
+      handle.style.setProperty(offsetProperty, `${offset / zoom}px`);
+    });
+  });
+}
+
+function useAccessibleHandles(viewportZoom: number) {
+  const viewportZoomRef = useRef(viewportZoom);
+
   React.useEffect(() => {
     let frame = 0;
     // Scope: der ReactFlow-Root, sofern vorhanden — Tests rendern gemockte
@@ -117,6 +206,16 @@ function useAccessibleHandles() {
       frame = 0;
       const root = scope();
       root.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
+        // Invisible, non-connectable geometry handles (e.g. conduit anchors)
+        // are implementation details, not buttons or tab stops.
+        if (!handle.classList.contains('connectable')) {
+          handle.tabIndex = -1;
+          handle.removeAttribute('role');
+          handle.removeAttribute('aria-label');
+          handle.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        handle.removeAttribute('aria-hidden');
         handle.tabIndex = 0;
         handle.setAttribute('role', 'button');
         const id = handle.dataset.handleid || '';
@@ -134,11 +233,12 @@ function useAccessibleHandles() {
                   : id;
         handle.setAttribute(
           'aria-label',
-          `${direction}: ${name}. Enter drücken, um die Verbindung zu beginnen oder abzuschließen.`
+          `${direction}: ${name}. Eingabetaste oder Leertaste drücken, um eine Verbindung zu beginnen oder abzuschließen.`
         );
       });
-      // React Flow 11 does not yet expose localized labels for Controls. Keep
-      // the visible controls understandable for German screen-reader users.
+      updateHandleHitTargetOffsets(root, viewportZoomRef.current);
+      // React Flow exposes these control labels through ariaLabelConfig, but
+      // keep the DOM labels explicit for German screen-reader users as well.
       const controlLabels = [
         ['.react-flow__controls-zoomin', 'Ansicht vergrößern'],
         ['.react-flow__controls-zoomout', 'Ansicht verkleinern'],
@@ -174,6 +274,16 @@ function useAccessibleHandles() {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
+
+  // Nur die Zoomänderung muss neu berechnet werden: Translation/Panning
+  // verschiebt alle Handles gleich und ändert ihre gegenseitige Distanz nicht.
+  React.useEffect(() => {
+    viewportZoomRef.current = viewportZoom;
+    const root = document.querySelector('.react-flow');
+    if (!root) return;
+    const frame = window.requestAnimationFrame(() => updateHandleHitTargetOffsets(root, viewportZoom));
+    return () => window.cancelAnimationFrame(frame);
+  }, [viewportZoom]);
 }
 
 /**
@@ -226,6 +336,11 @@ function TouchZoomFix() {
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport } = useReactFlow();
+  const viewportZoom = useStore((state) => state.transform[2]);
+  const reactFlowStyle: React.CSSProperties & { '--planner-viewport-zoom': number } = {
+    backgroundColor: 'var(--canvas-bg)',
+    '--planner-viewport-zoom': viewportZoom,
+  };
   const cableRoutes = useCableRoutes();
   const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
   const previousViewMode = useRef<'electric' | 'water' | null>(null);
@@ -495,18 +610,21 @@ export function FlowCanvas() {
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
 
       // `findNearestFreePosition` weicht belegten Flächen aus und darf den
-      // Knoten dafür über die sichtbare Pane-Ränder hinaus schieben. Dann ist
-      // das Bauteil — und vor allem sein 44-px-Touch-Anschluss — unerreichbar,
-      // weil die Leiste darüber liegt. Gefitt wird nur in diesem Fall: ein
-      // Zusatz, der ohnehin sichtbar ist, springt weiterhin nicht (Kommentar
-      // oben).
+      // Knoten dafür über die sichtbaren Pane-Ränder hinaus schieben. Dann
+      // läge der Anschluss unter der Kopf- bzw. Schrittleiste. Der Rand ist in
+      // Plan-Pixeln definiert und wird mit dem aktuellen Zoom in Bildschirm-
+      // Pixel umgerechnet. Das ist der Abstand zur Viewport-Kante, nicht die
+      // separate 44-Bildschirm-px-Anschluss-Trefferschicht. Gefitt wird nur in
+      // diesem Fall: Ein bereits sichtbarer Zusatz springt
+      // weiterhin nicht (Kommentar oben).
+      const hitAreaScreenMargin = NODE_TOUCH_MARGIN * getViewport().zoom;
       const visibleTopLeft = screenToFlowPosition({
-        x: bounds.left + NODE_TOUCH_MARGIN,
-        y: (overlayBottom ?? bounds.top) + NODE_TOUCH_MARGIN,
+        x: bounds.left + hitAreaScreenMargin,
+        y: (overlayBottom ?? bounds.top) + hitAreaScreenMargin,
       });
       const visibleBottomRight = screenToFlowPosition({
-        x: bounds.right - NODE_TOUCH_MARGIN,
-        y: bounds.bottom - NODE_TOUCH_MARGIN,
+        x: bounds.right - hitAreaScreenMargin,
+        y: bounds.bottom - hitAreaScreenMargin,
       });
       const outsideVisibleArea =
         position.x < visibleTopLeft.x ||
@@ -528,12 +646,12 @@ export function FlowCanvas() {
       window.cancelAnimationFrame(rafId);
       window.removeEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
     };
-  }, [screenToFlowPosition, showConnectionFeedback, fitView]);
+  }, [screenToFlowPosition, showConnectionFeedback, fitView, getViewport]);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
   const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
   useSequentialTapConnect(showConnectionFeedback);
-  useAccessibleHandles();
+  useAccessibleHandles(viewportZoom);
 
   React.useEffect(() => {
     document
@@ -855,7 +973,7 @@ export function FlowCanvas() {
       {saveFailure && (
         <div
           role="alert"
-          className="absolute left-1/2 top-8 z-50 w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
+          className="absolute top-8 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
         >
           Plan konnte nicht gespeichert werden ({saveFailure.message}). Änderungen gehen beim Neuladen
           verloren — Browser-Speicher freigeben und den Plan erneut öffnen.
@@ -866,7 +984,7 @@ export function FlowCanvas() {
         <div
           role="status"
           aria-live="polite"
-          className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
+          className="absolute top-24 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
         >
           {waterWarning}
         </div>
@@ -976,7 +1094,8 @@ export function FlowCanvas() {
               setSelectedEdges([]);
             }}
             aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
-            style={{ backgroundColor: 'var(--canvas-bg)' }}
+            ariaLabelConfig={FLOW_ARIA_LABEL_CONFIG}
+            style={reactFlowStyle}
             /* Detailgrad als Container-Klasse: Die Karten bleiben dieselben
              Komponenten (M8-1: eine Darstellung je Zoomstufe), nur die
              CSS-Ebene entscheidet, ob Messwerte sichtbar sind. */

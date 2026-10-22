@@ -203,11 +203,13 @@ function InfoHint({ title, children }: { title: string; children: React.ReactNod
   return (
     <details className="group inline-block align-middle">
       <summary
-        className="inline-flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-full border border-rule bg-bone text-ink-soft hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink [&::-webkit-details-marker]:hidden"
+        className="group/info-trigger inline-flex h-11 w-11 cursor-pointer list-none items-center justify-center focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none [&::-webkit-details-marker]:hidden"
         aria-label="Erklärung einblenden"
         title={title}
       >
-        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-rule bg-bone text-ink-soft group-hover/info-trigger:bg-paper">
+          <Info className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
       </summary>
       <div className="mt-2 max-w-xs border border-rule bg-bone p-3 text-xs leading-relaxed text-ink-soft shadow-lg">
         <p className="mb-1 font-semibold text-ink">{title}</p>
@@ -222,7 +224,7 @@ function SectionAnchor({ id, label, icon }: { id: string; label: string; icon: R
   return (
     <a
       href={`#${id}`}
-      className="flex min-h-11 items-center gap-2 border border-rule bg-bone px-3 py-2 text-xs font-medium text-ink hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+      className="flex min-h-11 items-center gap-2 border border-rule bg-bone px-3 py-2 text-xs font-medium text-ink hover:bg-paper focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
     >
       <span aria-hidden="true" className="text-copper">
         {icon}
@@ -330,7 +332,7 @@ function HeaterSelection({
                   <span className="font-medium text-ink">
                     {h.name}
                     {h.id === recommendedHeaterId && (
-                      <span className="caption-xs ml-2 inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-oxide">
+                      <span className="caption-xs ml-2 inline-flex items-center gap-1 font-semibold tracking-wider text-oxide uppercase">
                         <Check className="h-3 w-3" aria-hidden="true" /> Empfohlen
                       </span>
                     )}
@@ -404,7 +406,7 @@ function TemperatureInputs({
               />
               <span
                 id="temp-inside-unit"
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm font-semibold text-ink-soft"
               >
                 °C
               </span>
@@ -449,7 +451,7 @@ function TemperatureInputs({
               />
               <span
                 id="temp-outside-unit"
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm font-semibold text-ink-soft"
               >
                 °C
               </span>
@@ -506,8 +508,8 @@ function InsulationInputs({
                   active && 'bg-ink text-paper hover:bg-soot'
                 )}
               >
-                <span className="text-lg font-semibold leading-none">{val}</span>
-                <span className="caption-xs font-semibold uppercase tracking-widest opacity-80">mm</span>
+                <span className="text-lg leading-none font-semibold">{val}</span>
+                <span className="caption-xs font-semibold tracking-widest uppercase opacity-80">mm</span>
               </Button>
             );
           })}
@@ -576,7 +578,7 @@ function AdvancedParameters({
               />
               <span
                 id="window-area-unit"
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm font-semibold text-ink-soft"
               >
                 m²
               </span>
@@ -620,7 +622,7 @@ function AdvancedParameters({
               />
               <span
                 id="insulation-coverage-unit"
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm font-semibold text-ink-soft"
               >
                 %
               </span>
@@ -867,7 +869,7 @@ function ResultsView({
                   {Q_total.toFixed(0)}
                 </p>
                 <div className="flex flex-col">
-                  <p className="text-lg font-semibold leading-none text-ink">Watt</p>
+                  <p className="text-lg leading-none font-semibold text-ink">Watt</p>
                   <p className="caption-xs font-semibold text-ink-soft">Max. Last</p>
                 </div>
               </div>
@@ -900,7 +902,7 @@ function ResultsView({
       </CardContent>
 
       <CardFooter className="justify-center border-t border-rule bg-paper py-3">
-        <p className="caption-xs font-semibold uppercase tracking-widest text-ink-soft">
+        <p className="caption-xs font-semibold tracking-widest text-ink-soft uppercase">
           Thermodynamik-Berechnung nach Camper-Standard
         </p>
       </CardFooter>

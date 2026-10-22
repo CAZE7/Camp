@@ -40,7 +40,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
         <label className="text-[12px] font-medium text-[var(--de-text-med)]">{spec.label}</label>
         {spec.computed && <span className="de-label-eyebrow text-[11px]">berechnet</span>}
       </div>
-      <div className="relative flex items-center">
+      <div className="relative min-w-0">
         <input
           type="text"
           inputMode="decimal"
@@ -51,9 +51,9 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
             if (!Number.isNaN(n)) onChange?.(n);
           }}
           className={[
-            'h-8 w-full rounded-[2px] border bg-[var(--de-surface-2)] px-2 pr-12',
+            'h-11 w-full rounded-[2px] border bg-[var(--de-surface-2)] px-2 pr-12',
             'text-right font-mono text-[13px] tabular-nums',
-            'focus:outline-none focus:ring-1',
+            'focus:ring-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--de-accent)]',
             invalid
               ? 'border-[var(--de-error)] focus:ring-[var(--de-error)]'
               : 'border-[var(--de-rule-strong)] focus:border-[var(--de-accent)] focus:ring-[var(--de-accent)]',
@@ -62,33 +62,37 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
           aria-invalid={invalid}
         />
         {spec.unit && (
-          <span className="pointer-events-none absolute right-2 font-mono text-[11px] text-[var(--de-text-low)]">
+          <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 font-mono text-[11px] text-[var(--de-text-low)]">
             {spec.unit}
           </span>
         )}
-        {/* Stepper */}
-        <div className="absolute right-8 flex flex-col">
-          <button
-            className="h-4 w-4 text-[11px] leading-none hover:bg-[var(--de-surface-1)]"
-            onClick={() => {
-              const next = (Number(val) || 0) + (spec.step ?? 1);
-              setVal(String(next));
-              onChange?.(next);
-            }}
-          >
-            ▲
-          </button>
-          <button
-            className="h-4 w-4 text-[11px] leading-none hover:bg-[var(--de-surface-1)]"
-            onClick={() => {
-              const next = (Number(val) || 0) - (spec.step ?? 1);
-              setVal(String(next));
-              onChange?.(next);
-            }}
-          >
-            ▼
-          </button>
-        </div>
+      </div>
+      {/* Stepper buttons sit below the field so each keeps a distinct 44 px target. */}
+      <div className="flex justify-end gap-1">
+        <button
+          type="button"
+          aria-label={`${spec.label} erhöhen`}
+          className="flex h-11 min-h-11 w-11 min-w-11 cursor-pointer items-center justify-center rounded-[2px] border border-[var(--de-rule-strong)] text-[11px] leading-none hover:bg-[var(--de-surface-1)] focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none"
+          onClick={() => {
+            const next = (Number(val) || 0) + (spec.step ?? 1);
+            setVal(String(next));
+            onChange?.(next);
+          }}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          aria-label={`${spec.label} verringern`}
+          className="flex h-11 min-h-11 w-11 min-w-11 cursor-pointer items-center justify-center rounded-[2px] border border-[var(--de-rule-strong)] text-[11px] leading-none hover:bg-[var(--de-surface-1)] focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none"
+          onClick={() => {
+            const next = (Number(val) || 0) - (spec.step ?? 1);
+            setVal(String(next));
+            onChange?.(next);
+          }}
+        >
+          ▼
+        </button>
       </div>
       {spec.hint && <span className="font-mono text-[11px] text-[var(--de-text-low)]">{spec.hint}</span>}
       {spec.status && (
@@ -147,7 +151,7 @@ function KVRow({
 
 export function InspectorBlueprint() {
   return (
-    <div className="de-inspector flex w-[320px] flex-col">
+    <div className="de-inspector flex w-full max-w-[320px] min-w-0 flex-col">
       {/* Header */}
       <div className="de-inspector__header">
         <h2 className="de-label-eyebrow">Details — BAT-01</h2>
@@ -156,7 +160,7 @@ export function InspectorBlueprint() {
 
       {/* Section: Nutzer-Inputs */}
       <div className="de-inspector__section">
-        <h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-widest text-[var(--de-text-med)]">
+        <h3 className="mb-3 font-mono text-[11px] font-semibold tracking-widest text-[var(--de-text-med)] uppercase">
           Konfiguration (Eingabe)
         </h3>
         <div className="grid grid-cols-2 gap-3">
@@ -193,7 +197,7 @@ export function InspectorBlueprint() {
 
       {/* Section: Berechnete Werte — visuell getrennt */}
       <div className="de-inspector__section bg-[color-mix(in_srgb,var(--de-surface-0)_60%,var(--de-surface-1))]">
-        <h3 className="mb-3 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-widest text-[var(--de-text-med)]">
+        <h3 className="mb-3 flex items-center gap-2 font-mono text-[11px] font-semibold tracking-widest text-[var(--de-text-med)] uppercase">
           <span className="inline-block h-px w-4 bg-[var(--de-rule)]" />
           Physik (berechnet)
           <span className="inline-block h-px w-4 bg-[var(--de-rule)]" />
@@ -215,10 +219,10 @@ export function InspectorBlueprint() {
 
       {/* Section: Aktionen */}
       <div className="de-inspector__section flex gap-2">
-        <button className="h-8 flex-1 rounded-[2px] border border-[var(--de-rule-strong)] bg-[var(--de-surface-2)] font-mono text-[12px] font-medium hover:border-[var(--de-rule-highlight)]">
+        <button className="flex h-11 min-w-11 flex-1 cursor-pointer items-center justify-center rounded-[2px] border border-[var(--de-rule-strong)] bg-[var(--de-surface-2)] font-mono text-[12px] font-medium hover:border-[var(--de-rule-highlight)] focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none">
           Duplizieren
         </button>
-        <button className="hover:bg-[var(--de-error)]/90 h-8 flex-1 rounded-[2px] bg-[var(--de-error)] font-mono text-[12px] font-medium text-[var(--on-signal)]">
+        <button className="flex h-11 min-w-11 flex-1 cursor-pointer items-center justify-center rounded-[2px] bg-[var(--de-error)] font-mono text-[12px] font-medium text-[var(--on-signal)] hover:bg-[var(--de-error)]/90 focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none">
           Löschen
         </button>
       </div>
@@ -235,9 +239,9 @@ export function InspectorBlueprint() {
 
 export function InspectorBlueprintCompact() {
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap gap-4">
       <InspectorBlueprint />
-      <div className="w-[280px] rounded-[4px] border border-dashed border-[var(--de-rule)] p-4">
+      <div className="w-full max-w-[280px] min-w-0 rounded-[4px] border border-dashed border-[var(--de-rule)] p-4">
         <h4 className="de-label-eyebrow mb-2">Do&apos;s &amp; Don&apos;ts Inspektor</h4>
         <ul className="space-y-2 font-mono text-[11px] leading-snug">
           <li className="flex items-start gap-1.5 text-[var(--de-ok)]">

@@ -277,7 +277,7 @@ function Section({ section }: { section: ContentSection }) {
             role="group"
             aria-label={`Tabelle: ${section.heading}`}
             tabIndex={0}
-            className="overflow-x-auto border border-rule bg-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-oxide"
+            className="overflow-x-auto border border-rule bg-bone focus-visible:ring-2 focus-visible:ring-oxide focus-visible:outline-none focus-visible:ring-inset"
           >
             <table className="w-full text-base">
               <thead>

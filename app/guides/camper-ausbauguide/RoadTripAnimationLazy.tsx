@@ -18,7 +18,7 @@ const RoadTripAnimation = dynamic(() => import('./RoadTripAnimation'), {
   loading: () => (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed left-0 top-0 z-10 h-screen w-24 md:w-32 lg:w-48"
+      className="pointer-events-none fixed top-0 left-0 z-10 h-screen w-24 md:w-32 lg:w-48"
     />
   ),
 });

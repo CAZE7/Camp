@@ -203,7 +203,17 @@ function PlannerShell() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const handleMobileAdd = () => setActiveTab('canvas');
+  const handleMobileAdd = () => {
+    // Der Einstiegsstatus ist nur bis zur ersten Bearbeitung nützlich. Er liegt
+    // über der Zeichenfläche und könnte sonst einen Anschluss verdecken, der
+    // direkt nach dem Hinzufügen per Touch gewählt werden soll. Fehlermeldungen
+    // bleiben dagegen stehen, bis sie ausdrücklich geschlossen werden.
+    if (entryNotice && entryNotice.type !== 'error') {
+      setExpandedNotice(null);
+      dismissEntryNotice();
+    }
+    setActiveTab('canvas');
+  };
 
   /**
    * Blatt-Umschaltung der Fußleiste (Handy).
@@ -301,7 +311,6 @@ function PlannerShell() {
       {!hasOnboarded && <OnboardingWizard />}
       <ConfirmDialogHost />
       <ShortcutOverlay />
-      <ConfirmDialogHost />
       {focusMode && (
         <button
           type="button"
@@ -582,7 +591,7 @@ function PlannerShell() {
           <span>Details</span>
           {selectionCount > 0 && (
             <span
-              className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center border border-border bg-surface-panel px-0.5 text-xs leading-none text-foreground"
+              className="absolute top-1 right-1 flex min-h-4 min-w-4 items-center justify-center border border-border bg-surface-panel px-0.5 text-xs leading-none text-foreground"
               aria-hidden="true"
             >
               {selectionCount > 9 ? '9+' : selectionCount}

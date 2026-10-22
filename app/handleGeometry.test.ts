@@ -3,14 +3,11 @@
  *
  * Hintergrund — ein Fehler, den nur die Touch-E2E gefunden hat:
  * React Flow 11 positionierte Handles mit einem festen Pixel-Offset
- * (`right: -4px`) und ohne Achsen-Transform. Weil unsere Trefferfläche
- * 44 px statt 6 px groß ist, korrigierte `app/globals.css` das mit
- * `right: -22px`. React Flow 12 setzt stattdessen `right: 0` PLUS
- * `transform: translate(50%, -50%)` und zentriert den Kasten damit selbst
- * auf der Kante — die alte Korrektur addierte sich und schob Trefferfläche
- * und sichtbaren Punkt 22 px nach außen. Folge: Ein Tap auf den Anschluss
- * landete auf der leeren Fläche daneben (`react-flow__pane intercepts
- * pointer events`), Tap-to-Connect war auf Touch-Geräten unbedienbar.
+ * (`right: -4px`) und ohne Achsen-Transform. React Flow 12 setzt stattdessen
+ * `right: 0` plus `transform: translate(50%, -50%)`. Der Planer hält diese
+ * Seiten-Offsets bei null und setzt nur die gemessene 60-plan-px-Portbox nach
+ * außen. Eine separate, inverse Zoom-Trefferschicht liefert 44 Bildschirm-px,
+ * ohne die Router-Geometrie oder den sichtbaren Polpunkt zu verschieben.
  *
  * Die Pixel-Baselines haben das nicht gemeldet: die einzige Planer-Route im
  * visuellen Gate startet mit leerem Graph, dort gibt es keine Anschlüsse.
@@ -21,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
+import { HANDLE_HIT_TARGET_SCREEN_PX } from '../components/planner/utils/handleHitTargets';
 
 const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
 const ast = postcss.parse(css, { from: 'app/globals.css' });
@@ -38,10 +36,11 @@ const OFFSET_PROP: Record<(typeof HANDLE_SIDES)[number], string> = {
 const isZero = (value: string): boolean => /^0(px|%|rem|em)?$/.test(value.trim());
 
 describe('React-Flow-Handles (S-1 / RF 12)', () => {
-  it('überschreibt den Seiten-Offset nicht — RF 12 zentriert per transform', () => {
+  it('lässt Seiten-Offsets bei null — die Trefferfläche wird nur per transform verlegt', () => {
     const offenders: string[] = [];
     for (const side of HANDLE_SIDES) {
-      ast.walkRules(new RegExp(`\\.react-flow__handle-${side}\\b`), (rule) => {
+      ast.walkRules((rule) => {
+        if (rule.selector.trim() !== `.react-flow__handle-${side}`) return;
         rule.walkDecls(OFFSET_PROP[side], (decl) => {
           if (!isZero(decl.value)) {
             offenders.push(`${rule.selector} { ${decl.prop}: ${decl.value} }`);
@@ -52,16 +51,22 @@ describe('React-Flow-Handles (S-1 / RF 12)', () => {
     expect(
       offenders,
       `Handle-Offsets gefunden:\n${offenders.join('\n')}\n\n` +
-        'React Flow 12 setzt bereits transform: translate(±50%, ±50%) und zentriert ' +
-        'den Handle-Kasten unabhängig von seiner Größe auf der Kartenkante. Ein ' +
-        'zusätzlicher Offset addiert sich, schiebt die Trefferfläche neben die Karte ' +
-        'und macht Tap-to-Connect auf Touch-Geräten unbedienbar.'
+        'React Flow 12 setzt die Seitenkante und zentriert per transform. Der Planer ' +
+        'darf den Transform für die außenliegende Trefferfläche überschreiben, aber ' +
+        'keinen zusätzlichen left/right/top/bottom-Offset addieren.'
     ).toEqual([]);
   });
 
-  it('hält die Trefferfläche bei mindestens 44 px (Touch-Ziel, AGENTS.md)', () => {
+  it('hält die 60-plan-px-Portbox und legt eine zoomfeste 44-px-Trefferschicht darüber', () => {
     let width: string | undefined;
     let height: string | undefined;
+    let portSize: string | undefined;
+    let screenSize: string | undefined;
+    let targetWidth: string | undefined;
+    let targetHeight: string | undefined;
+    let targetPointerEvents: string | undefined;
+    let handlePointerEvents: string | undefined;
+
     ast.walkRules(/^\.react-flow__handle$/, (rule) => {
       rule.walkDecls('width', (decl) => {
         width = decl.value;
@@ -69,11 +74,129 @@ describe('React-Flow-Handles (S-1 / RF 12)', () => {
       rule.walkDecls('height', (decl) => {
         height = decl.value;
       });
+      rule.walkDecls('--planner-handle-hit-size', (decl) => {
+        portSize = decl.value;
+      });
     });
-    // Der Wert ist der Grund für die frühere Offset-Korrektur — er gehört
-    // deshalb in denselben Test wie die Offset-Regel.
-    expect(width).toMatch(/^44px/);
-    expect(height).toMatch(/^44px/);
+    ast.walkRules(/^\.planner-shell \.react-flow$/, (rule) => {
+      rule.walkDecls('--planner-hit-target-screen-size', (decl) => {
+        screenSize = decl.value;
+      });
+    });
+    ast.walkRules(/^\.planner-shell \.react-flow__handle\.connectable::before$/, (rule) => {
+      rule.walkDecls('width', (decl) => {
+        targetWidth = decl.value;
+      });
+      rule.walkDecls('height', (decl) => {
+        targetHeight = decl.value;
+      });
+      rule.walkDecls('pointer-events', (decl) => {
+        targetPointerEvents = decl.value;
+      });
+    });
+    ast.walkRules(/^\.planner-shell \.react-flow__handle\.connectable$/, (rule) => {
+      rule.walkDecls('pointer-events', (decl) => {
+        handlePointerEvents = decl.value;
+      });
+    });
+
+    expect(width).toBe('var(--planner-handle-hit-size)');
+    expect(height).toBe('var(--planner-handle-hit-size)');
+    expect(portSize).toBe('60px');
+    expect(screenSize).toBe(`${HANDLE_HIT_TARGET_SCREEN_PX}px`);
+    expect(targetWidth).toBe('calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1))');
+    expect(targetHeight).toBe(
+      'calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1))'
+    );
+    expect(targetPointerEvents).toBe('auto');
+    expect(handlePointerEvents).toBe('none');
+  });
+
+  it('hält auch den transparenten SVG-Kanten-Trefferstrich bei jedem Zoom 44 px breit', () => {
+    let targetWidth: string | undefined;
+    let targetStroke: string | undefined;
+    let pointerEvents: string | undefined;
+    ast.walkRules(/^\.planner-shell \.planner-edge-hit-target$/, (rule) => {
+      rule.walkDecls('stroke', (decl) => {
+        targetStroke = decl.value;
+      });
+      rule.walkDecls('stroke-width', (decl) => {
+        targetWidth = decl.value;
+      });
+      rule.walkDecls('pointer-events', (decl) => {
+        pointerEvents = decl.value;
+      });
+    });
+    expect(targetStroke).toBe('transparent');
+    expect(targetWidth).toBe('calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1))');
+    expect(pointerEvents).toBe('stroke');
+  });
+
+  it('lässt die zoomfeste Trefferschicht an der sichtbaren Portkante um 1 Bildschirm-px überlappen', () => {
+    const expectedInsets: Record<(typeof HANDLE_SIDES)[number], string> = {
+      left: 'calc(-1px / var(--planner-viewport-zoom, 1))',
+      right: 'calc(-1px / var(--planner-viewport-zoom, 1))',
+      top: 'calc(-1px / var(--planner-viewport-zoom, 1))',
+      bottom: 'calc(-1px / var(--planner-viewport-zoom, 1))',
+    };
+    const insets: Partial<Record<(typeof HANDLE_SIDES)[number], string>> = {};
+    for (const side of HANDLE_SIDES) {
+      const property =
+        side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top';
+      ast.walkRules(
+        new RegExp(`^\\.planner-shell \\.react-flow__handle-${side}\\.connectable::before$`),
+        (rule) => {
+          rule.walkDecls(property, (decl) => {
+            insets[side] = decl.value;
+          });
+        }
+      );
+    }
+    expect(insets).toEqual(expectedInsets);
+  });
+
+  it('legt den transparenten Trefferbereich außerhalb ab und lässt Plus/Minus getrennt', () => {
+    const expectedTransforms: Record<(typeof HANDLE_SIDES)[number], string> = {
+      left: 'translate(-100%, -50%)',
+      right: 'translate(100%, -50%)',
+      top: 'translate(-50%, -100%)',
+      bottom: 'translate(-50%, 100%)',
+    };
+    const transforms: Partial<Record<(typeof HANDLE_SIDES)[number], string>> = {};
+    for (const side of HANDLE_SIDES) {
+      ast.walkRules(new RegExp(`^\\.react-flow__handle-${side}$`), (rule) => {
+        rule.walkDecls('transform', (decl) => {
+          transforms[side] = decl.value;
+        });
+      });
+    }
+    expect(transforms).toEqual(expectedTransforms);
+
+    const portPositions = new Map<string, string>();
+    ast.walkRules((rule) => {
+      if (rule.selector === ".react-flow__handle[data-handleid*='plus']") {
+        rule.walkDecls('top', (decl) => {
+          portPositions.set('plus', decl.value);
+        });
+      }
+      if (rule.selector === ".react-flow__handle[data-handleid*='minus']") {
+        rule.walkDecls('top', (decl) => {
+          portPositions.set('minus', decl.value);
+        });
+      }
+    });
+    expect(portPositions.get('plus')).toBe('20%');
+    expect(portPositions.get('minus')).toBe('80%');
+  });
+
+  it('gibt dem React-Flow-Attributionslink auf kleinen Displays 44 px Zielhöhe', () => {
+    let minHeight: string | undefined;
+    ast.walkRules(/^\.react-flow__attribution a$/, (rule) => {
+      rule.walkDecls('min-height', (decl) => {
+        minHeight = decl.value;
+      });
+    });
+    expect(minHeight).toBe('44px');
   });
 });
 

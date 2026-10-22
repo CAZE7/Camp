@@ -1,28 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { PLANNER_SHORTCUTS } from '../hooks/usePlannerActions';
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
- * D-6 (baut M11-3 optisch weiter): Shortcut-Overlay per `?`.
+ * D-6: Shortcut-Overlay per `?` (Shift+/).
  *
- * Öffnet sich mit `?` (Shift+/) und listet die Canvas-Kürzel im Elektroplaner-Stil.
- * Schließbar mit Escape, Klick auf den Schleier oder den Schließen-Button.
- * Der Fokus kehrt bei Schließen zur Auslöse-Taste zurück (WCAG 2.4.3).
+ * Verwendet dieselbe Bedienung per Tastatur wie der Canvas: Tab bleibt im
+ * Dialog, Escape schließt ihn und der Fokus kehrt zur Auslöser-Taste zurück.
+ * Das Hilfe-Menü öffnet dieselbe Ansicht über `open-shortcut-overlay`.
  */
 export function ShortcutOverlay() {
   const [open, setOpen] = useState(false);
-
-  // B-19 (QA-Bericht): Das Menü „Hilfe → Tastaturkürzel“ sendet das Ereignis
-  // `open-shortcut-overlay`, und niemand hat es empfangen. Jetzt öffnet es das Overlay.
-  useEffect(() => {
-    const onOpen = () => setOpen(true);
-    window.addEventListener('open-shortcut-overlay', onOpen);
-    return () => window.removeEventListener('open-shortcut-overlay', onOpen);
-  }, []);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const openRef = useRef(open);
 
   useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    const rememberFocus = () => {
+      const active = document.activeElement;
+      returnFocusRef.current = active instanceof HTMLElement ? active : null;
+    };
+    const openFromMenu = () => {
+      rememberFocus();
+      setOpen(true);
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing =
@@ -30,24 +41,64 @@ export function ShortcutOverlay() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         target?.isContentEditable;
-      if (typing) return;
-      if (event.key === '?') {
-        event.preventDefault();
-        setOpen((v) => !v);
-      } else if (event.key === 'Escape') {
+      if (event.key !== '?' || typing) return;
+      event.preventDefault();
+      if (openRef.current) {
         setOpen(false);
+      } else {
+        rememberFocus();
+        setOpen(true);
       }
     };
+
     window.addEventListener('keydown', onKeyDown);
-    // Nachtest Bug 15: Der Hilfe-Menüeintrag „Tastaturkürzel“ meldete das
-    // Ereignis, aber niemand hörte zu — der Eintrag wirkte tot.
-    const openFromMenu = () => setOpen(true);
     window.addEventListener('open-shortcut-overlay', openFromMenu);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('open-shortcut-overlay', openFromMenu);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown);
+      const returnFocus = returnFocusRef.current;
+      if (returnFocus?.isConnected) returnFocus.focus();
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -56,15 +107,18 @@ export function ShortcutOverlay() {
   return (
     <div className="shortcut-overlay" role="presentation" onClick={close}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Tastaturkürzel"
+        tabIndex={-1}
         className="shortcut-overlay__card"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="panel-header">
           <h2 className="panel-title">Tastaturkürzel</h2>
           <button
+            ref={closeButtonRef}
             type="button"
             aria-label="Tastaturkürzel schließen"
             onClick={close}
@@ -95,6 +149,3 @@ export function ShortcutOverlay() {
     </div>
   );
 }
-
-// Eine kanonische Kürzel-Liste (PLANNER_SHORTCUTS) — Menü und Overlay
-// dürfen nicht auseinanderlaufen.

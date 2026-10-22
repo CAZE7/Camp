@@ -131,13 +131,13 @@ export function AccessibleDialog({
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="break-words text-xl font-bold text-foreground">
+            <h2 id={titleId} className="text-xl font-bold break-words text-foreground">
               {title}
             </h2>
             {description && (
               <p
                 id={descriptionId}
-                className="planner-dialog__description mt-1 break-words text-sm text-muted-foreground"
+                className="planner-dialog__description mt-1 text-sm break-words text-muted-foreground"
               >
                 {description}
               </p>
@@ -147,7 +147,7 @@ export function AccessibleDialog({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               aria-label="Dialog schließen"
             >
               <X className="h-5 w-5" />

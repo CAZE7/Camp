@@ -37,7 +37,7 @@ export function CategorySection({
           aria-hidden="true"
         />
         <span className="flex-1 truncate text-left">{title}</span>
-        <span className="tabular-nums text-muted-foreground">{items.length}</span>
+        <span className="text-muted-foreground tabular-nums">{items.length}</span>
       </button>
       {open && (
         <div role="listbox" aria-label={title} className="pb-1">

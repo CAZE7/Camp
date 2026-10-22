@@ -149,9 +149,9 @@ export function AutoWireReviewModal() {
       onClose={handleCancel}
       title="Automatisch verbinden — Vorschlag prüfen"
       description="Auto-Wire hat einen Vorschlag berechnet. Prüfe die Änderungen vor der Übernahme."
-      className="min-h-0 min-w-0 max-w-2xl"
+      className="min-h-0 max-w-2xl min-w-0"
     >
-      <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4 pt-2 text-sm">
+      <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto p-4 pt-2 text-sm">
         {/* Kennzahlen */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat icon={Zap} tone={{ color: 'var(--ok)' }} label="Neue Leitungen" value={summary.safeNew} />

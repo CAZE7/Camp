@@ -124,7 +124,11 @@ export const PLANNER_SHORTCUTS: ReadonlyArray<{ keys: string; label: string }> =
   { keys: 'Strg + Z', label: 'Rückgängig' },
   { keys: 'Strg + Y', label: 'Wiederholen' },
   { keys: 'Strg + S', label: 'Speichern bestätigen (automatisch lokal)' },
-  { keys: 'Entf', label: 'Auswahl löschen' },
+  { keys: 'Eingabe / Leertaste', label: 'Bauteil oder Leitung auswählen' },
+  { keys: 'Eingabe am Anschluss', label: 'Verbindung beginnen oder abschließen' },
+  { keys: 'Pfeiltasten', label: 'Ausgewähltes Bauteil verschieben' },
+  { keys: 'Shift + Pfeiltasten', label: 'Bauteil in größeren Schritten verschieben' },
+  { keys: 'Entf', label: 'Löschbestätigung öffnen' },
   { keys: 'Esc', label: 'Auswahl aufheben / Dialog schließen' },
   { keys: '?', label: 'Tastaturkürzel-Übersicht' },
 ];

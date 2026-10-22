@@ -148,11 +148,13 @@ const WaterPipeEdge = function ({
       </EdgeLabelRenderer>
       <path
         id={`${id}_interaction`}
+        className="planner-edge-hit-target"
         d={edgePath}
         fill="none"
+        stroke="transparent"
         strokeOpacity={0}
-        strokeWidth={24}
-        style={{ cursor: 'pointer' }}
+        strokeWidth={44}
+        style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
         role="button"
         tabIndex={0}
         aria-label={`${label.replace(' →', '')}-Rohr${data?.length ? `, ${data.length.toFixed(1)} Meter` : ''}`}

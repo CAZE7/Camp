@@ -105,9 +105,12 @@ const ConfiguredChat = ({ endpoint, defaultOpen }: { endpoint: string; defaultOp
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={msg.id}
+              className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               <div
-                className={`max-w-xs rounded-lg px-4 py-2 ${
+                className={`max-w-full min-w-0 rounded-lg px-4 py-2 [overflow-wrap:anywhere] break-words sm:max-w-xs ${
                   msg.role === 'user' ? 'bg-oxide text-on-signal' : 'bg-surface-raised text-ink'
                 }`}
               >

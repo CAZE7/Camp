@@ -90,7 +90,7 @@ const ConduitNode = function ({
       </div>
 
       {overfilled && (
-        <div className="mt-2 rounded bg-warn-critical p-2 text-xs font-bold leading-tight text-on-signal">
+        <div className="mt-2 rounded bg-warn-critical p-2 text-xs leading-tight font-bold text-on-signal">
           Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
           {fill.kind === 'known' && fill.recommendedType ? (
             <span className="mt-1 block">Bitte mindestens {fill.recommendedType} Rohr verwenden.</span>

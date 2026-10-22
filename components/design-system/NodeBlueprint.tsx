@@ -127,10 +127,10 @@ export function NodeBlueprint({
         <div className="flex items-center gap-2">
           <DINSymbol code={typeCode} />
           <div className="flex flex-col">
-            <span className="font-mono text-[11px] font-bold leading-none tracking-[0.12em] text-[var(--de-text-med)]">
+            <span className="font-mono text-[11px] leading-none font-bold tracking-[0.12em] text-[var(--de-text-med)]">
               {typeCode}
             </span>
-            <span className="max-w-[100px] truncate text-[13px] font-semibold leading-tight">{label}</span>
+            <span className="max-w-[100px] truncate text-[13px] leading-tight font-semibold">{label}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -166,9 +166,9 @@ export function NodeBlueprint({
       ))}
 
       {/* === VISUELLE HILFEN (nur Blueprint) === */}
-      <div className="pointer-events-none absolute -bottom-6 left-0 right-0 flex justify-between px-1">
+      <div className="pointer-events-none absolute right-0 -bottom-6 left-0 flex justify-between px-1">
         <span className="font-mono text-[11px] text-[var(--de-text-dim)]">8px GRID</span>
-        <span className="font-mono text-[11px] text-[var(--de-text-dim)]">HIT ≥24×24</span>
+        <span className="font-mono text-[11px] text-[var(--de-text-dim)]">HIT ≥44×44</span>
       </div>
     </div>
   );

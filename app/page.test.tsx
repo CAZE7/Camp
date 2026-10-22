@@ -12,7 +12,21 @@ describe('Home Page', () => {
     render(<Home />);
 
     expect(screen.getByRole('heading', { name: /Camper planen/i, level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Guides/i, level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Fokus-Themen/i, level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Wissen für den Ausbau/i, level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(/Dach, Elektrik, Heizung und Sicherheit an einem Ort\./)).toBeInTheDocument();
+  });
+
+  it('uses a text-led, image-free hero with page index and mobile quick navigation', () => {
+    render(<Home />);
+
+    expect(document.querySelector('img')).not.toBeInTheDocument();
+    const index = screen.getByRole('navigation', { name: /Inhaltsverzeichnis der Startseite/i });
+    expect(within(index).getByRole('link', { name: /Werkzeuge/ })).toHaveAttribute(
+      'href',
+      '#werkzeuge-heading'
+    );
+    expect(screen.getByRole('navigation', { name: /Schnellnavigation/i })).toBeInTheDocument();
   });
 
   it('renders the tool links', () => {

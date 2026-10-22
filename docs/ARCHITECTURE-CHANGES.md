@@ -1,5 +1,24 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-22 — Trefferziele im Planer und redaktionelle Startseite
+
+**Umfang:** Visuelle/UI-Anpassung; keine Änderungen an Routing, API-Aufrufen,
+State-Management oder Backend.
+
+**Verhalten:** Die Anschluss-Trefferschicht bleibt bei 44 Bildschirm-px und
+wird über den aktuellen React-Flow-Zoom kompensiert. Nahe Anschlüsse derselben
+Kartenkante werden in der Trefferlage getrennt; Port-/Ankerpositionen und
+Kabel-/Rohrpfade bleiben unverändert. Transparente SVG-Kantenziele erhalten
+ebenfalls einen zoomkompensierten Trefferstrich. Die Startseite ist bildfrei;
+Typografie, nummerierte Inhaltsnavigation, ein klarer Werkzeugraster und
+redaktionelle Leitfadenliste tragen den Aufbau. Warmes Papier, Serifenschlagzeilen,
+Signalakzente und die mobile Schnellnavigation bleiben erhalten. Rechnerwerte
+sind als Vorbereitung eingeordnet und ersetzen keine fachliche Prüfung.
+
+**Validierung:** `npm run check` (Lint, Format, TypeScript, Tests mit Coverage)
+und `npm run build` einschließlich Export-Audit (40 Seiten) erfolgreich.
+Manuelle Prüfung auf realen Geräten wurde nicht durchgeführt.
+
 ## LEDGER 2026-10-20 (7) — Einstiegsmeldung unter dem Modus
 
 **Anlass:** Die Aufklappzeile von „Beispiel geladen“ lag auf 1440 px über

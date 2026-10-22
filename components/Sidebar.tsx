@@ -89,7 +89,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
         <h2 className="panel-title">Komponenten</h2>
         <span className="flex items-center gap-2">
           <span
-            className="text-xs tabular-nums text-muted-foreground"
+            className="text-xs text-muted-foreground tabular-nums"
             title="So viele Bauteile stehen im Katalog zur Auswahl — nicht die Anzahl im Plan"
           >
             {isSearching ? `${resultCount} Treffer` : `${activeComponents.length} im Katalog`}

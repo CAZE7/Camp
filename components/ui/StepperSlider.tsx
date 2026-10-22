@@ -65,9 +65,9 @@ export function StepperSlider({
           value={value}
           onChange={handleSliderChange}
           aria-label={ariaLabel}
-          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-rule/40 accent-moss focus:outline-none focus:ring-1 focus:ring-moss/40"
+          className="stepper-slider__range h-11 w-full cursor-pointer appearance-none bg-transparent accent-moss focus:ring-1 focus:ring-moss/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-moss"
         />
-        <span className="mt-1 select-none rounded-lg border border-border/50 bg-bone px-2.5 py-0.5 font-mono text-xs font-bold text-ink-soft shadow-sm">
+        <span className="mt-1 rounded-lg border border-border/50 bg-bone px-2.5 py-0.5 font-mono text-xs font-bold text-ink-soft shadow-sm select-none">
           {value.toFixed(step < 1 ? 1 : 0)}
           {unit}
         </span>

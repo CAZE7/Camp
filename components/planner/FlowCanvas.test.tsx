@@ -24,6 +24,7 @@ type MockReactFlowProps = {
   onDrop?: React.DragEventHandler;
   className?: string;
   connectOnClick?: boolean;
+  style?: React.CSSProperties;
 };
 type MockControlsProps = { showInteractive?: boolean };
 /** Nodes, die der Canvas zuletzt an React Flow übergeben hat (Identität). */
@@ -58,6 +59,7 @@ vi.mock('next/dynamic', async () => {
 
 // Mock React Flow
 const mockFitView = vi.fn();
+let mockViewportZoom = 1;
 const mockScreenToFlowPosition = vi
   .fn()
   .mockImplementation((pos: { x?: number; y?: number; clientX?: number; clientY?: number }) => ({
@@ -77,7 +79,7 @@ vi.mock('@xyflow/react', async () => {
       setCenter: vi.fn(),
     }),
     useStore: (selector: (state: { transform: [number, number, number] }) => unknown) =>
-      selector({ transform: [0, 0, 1] }),
+      selector({ transform: [0, 0, mockViewportZoom] }),
     Background: () => <div data-testid="rf-background" />,
     Controls: ({ showInteractive }: MockControlsProps) => (
       <div data-testid="rf-controls" data-show-interactive={String(showInteractive)}>
@@ -101,6 +103,7 @@ vi.mock('@xyflow/react', async () => {
       onDrop,
       className,
       connectOnClick,
+      style,
     }: MockReactFlowProps) => {
       lastNodesProp = (nodes ?? []) as CapturedNode[];
       return (
@@ -110,6 +113,7 @@ vi.mock('@xyflow/react', async () => {
           data-edges={JSON.stringify(edges)}
           data-connect-on-click={String(connectOnClick)}
           className={className}
+          style={style}
           onDragOver={onDragOver}
           onDrop={onDrop}
         >
@@ -221,6 +225,7 @@ vi.mock('../../lib/store', () => ({
 describe('FlowCanvas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockViewportZoom = 1;
 
     // Reset store mocks to default before each test
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
@@ -308,6 +313,16 @@ describe('FlowCanvas', () => {
     expect(canvas).not.toHaveClass('planner-zoom-overview');
     expect(canvas).not.toHaveClass('planner-zoom-standard');
     expect(canvas).not.toHaveClass('planner-zoom-full');
+  });
+
+  it('publishes the live viewport zoom for screen-space hit targets', () => {
+    const { rerender } = render(<FlowCanvas />);
+    const canvas = screen.getByTestId('react-flow-mock');
+    expect(canvas.style.getPropertyValue('--planner-viewport-zoom')).toBe('1');
+
+    mockViewportZoom = 0.25;
+    rerender(<FlowCanvas />);
+    expect(canvas.style.getPropertyValue('--planner-viewport-zoom')).toBe('0.25');
   });
 
   it('uses one custom tap-to-connect path instead of a duplicate React Flow click connection', () => {
@@ -903,6 +918,28 @@ describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
 
     expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
     expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+  });
+
+  it('platziert neue Bauteile unter der Einstiegsmeldung statt ihre Anschlüsse zu verdecken', () => {
+    const { addNode, flush } = setup();
+    const entryNotice = document.createElement('div');
+    entryNotice.className = 'planner-entry-notice';
+    document.body.appendChild(entryNotice);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('react-flow__pane')) return rect(100, 80, 600, 400);
+      if (this.classList.contains('planner-entry-notice')) return rect(80, 150, 640, 60);
+      return rect(0, 0, 0, 0);
+    });
+
+    const view = render(<FlowCanvas />);
+    dispatchAdd();
+    flush(3);
+
+    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 294 });
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 240 }, 120);
+
+    view.unmount();
+    entryNotice.remove();
   });
 
   it('fällt nach dem Frame-Budget auf das deterministische Raster zurück', () => {

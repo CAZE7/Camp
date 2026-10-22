@@ -150,14 +150,15 @@ describe('WaterPipeEdge', () => {
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = #c2410c
   });
 
-  it('renders interaction path correctly', () => {
+  it('renders a 44-px screen-space interaction path', () => {
     const { container } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
-    // Check for interaction path (transparent, thicker path for easier clicking)
     const interactionPath = container.querySelector('#e1-2_interaction');
     expect(interactionPath).toBeInTheDocument();
+    expect(interactionPath).toHaveClass('planner-edge-hit-target');
+    expect(interactionPath).toHaveAttribute('stroke', 'transparent');
     expect(interactionPath).toHaveAttribute('d', 'smooth-step-path');
-    expect(interactionPath).toHaveAttribute('stroke-width', '24');
-    expect(interactionPath).toHaveStyle({ cursor: 'pointer' });
+    expect(interactionPath).toHaveAttribute('stroke-width', '44');
+    expect(interactionPath).toHaveStyle({ cursor: 'pointer', pointerEvents: 'stroke' });
   });
 });

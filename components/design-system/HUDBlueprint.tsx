@@ -18,7 +18,7 @@ interface Metric {
 
 function KPICard({ metrics, title }: { metrics: Metric[]; title: string }) {
   return (
-    <div className="de-hud-card w-[280px]">
+    <div className="de-hud-card w-full max-w-[280px] min-w-0">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="de-label-eyebrow">{title}</h3>
         <span className="h-2 w-2 rounded-full bg-[var(--de-ok)]" />
@@ -65,10 +65,10 @@ function WarningCenter({ warnings }: { warnings: WarningItem[] }) {
   const warning = warnings.filter((w) => w.severity === 'warning').length;
 
   return (
-    <div className="de-warning-center w-[360px] overflow-hidden">
+    <div className="de-warning-center w-full max-w-[360px] min-w-0 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex h-10 w-full items-center justify-between px-4 hover:bg-[var(--de-surface-2)]"
+        className="flex h-11 w-full items-center justify-between px-4 hover:bg-[var(--de-surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none"
       >
         <div className="flex items-center gap-3">
           <span className="de-label-eyebrow">Warnings</span>
@@ -117,13 +117,13 @@ function WarningCenter({ warnings }: { warnings: WarningItem[] }) {
                         : 'bg-[var(--de-text-low)]',
                   ].join(' ')}
                 />
-                <div className="flex flex-1 flex-col gap-1">
-                  <span className="font-medium leading-tight">{w.message}</span>
-                  <span className="font-mono text-[11px] text-[var(--de-text-low)]">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="leading-tight font-medium">{w.message}</span>
+                  <span className="font-mono text-[11px] break-words text-[var(--de-text-low)]">
                     {w.ruleId} {w.nodeId ? `· ${w.nodeId}` : ''} {w.edgeId ? `· ${w.edgeId}` : ''}
                   </span>
                 </div>
-                <button className="shrink-0 font-mono text-[11px] text-[var(--de-accent)] hover:underline">
+                <button className="flex min-h-11 min-w-11 shrink-0 items-center justify-center font-mono text-[11px] text-[var(--de-accent)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--de-accent)] focus-visible:outline-none">
                   Fokus →
                 </button>
               </div>
@@ -175,7 +175,7 @@ export function HUDBlueprint() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-0)] p-6">
+    <div className="flex w-full min-w-0 flex-col gap-6 rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-0)] p-6">
       <h3 className="de-label-eyebrow">HUD — Floating Metrics & Warning Center</h3>
 
       <div className="flex flex-wrap gap-6">
@@ -210,7 +210,7 @@ export function HUDBlueprint() {
           </ul>
         </div>
         <div className="rounded-[2px] border border-[var(--de-error-border)] bg-[var(--de-error-bg)] p-3">
-          <h4 className="mb-2 font-mono text-[11px] font-bold uppercase text-[var(--de-error)]">
+          <h4 className="mb-2 font-mono text-[11px] font-bold text-[var(--de-error)] uppercase">
             HUD Don&apos;ts
           </h4>
           <ul className="space-y-1 font-mono text-[11px]">

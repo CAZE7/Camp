@@ -212,7 +212,7 @@ function DachPlanerInner() {
               </div>
               <Link
                 href="/planer"
-                className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 sm:inline-flex"
+                className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
               >
                 Im Schaltplan öffnen
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -245,7 +245,7 @@ function DachPlanerInner() {
               <button
                 type="button"
                 onClick={() => setOnboardingOpen(false)}
-                className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
+                className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-surface-raised/60 focus-visible:ring-2 focus-visible:ring-warn-info focus-visible:outline-none"
                 aria-label="Anleitung schließen"
               >
                 <XIcon className="h-5 w-5" aria-hidden="true" />
@@ -258,7 +258,7 @@ function DachPlanerInner() {
           {/* Sidebar */}
           <aside
             tabIndex={0}
-            className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r"
+            className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-r lg:border-b-0"
           >
             <div className="space-y-3">
               <Label htmlFor="dach-vehicle-select" className="label-eyebrow text-ink-soft">

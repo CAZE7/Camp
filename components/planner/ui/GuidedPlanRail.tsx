@@ -170,7 +170,7 @@ export function GuidedPlanRail({
         <span
           data-testid="guided-plan-status"
           role="status"
-          className={`cad-rail__status pointer-events-auto hidden min-h-9 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs xl:flex ${status.tone}`}
+          className={`cad-rail__status pointer-events-auto hidden min-h-11 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs xl:flex ${status.tone}`}
         >
           {status.label}
         </span>
@@ -179,7 +179,7 @@ export function GuidedPlanRail({
           type="button"
           data-testid="guided-plan-status"
           onClick={onOpenWarnings}
-          className={`cad-rail__status pointer-events-auto hidden min-h-9 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:flex ${status.tone}`}
+          className={`cad-rail__status pointer-events-auto hidden min-h-11 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none xl:flex ${status.tone}`}
           title="Planstatus anzeigen"
         >
           {status.label}

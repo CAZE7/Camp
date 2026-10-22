@@ -35,14 +35,14 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
           right: marginRight,
         }}
       >
-        <div className="label-eyebrow rotate-90 select-none text-oxide md:rotate-0">Safe Zone</div>
+        <div className="label-eyebrow rotate-90 text-oxide select-none md:rotate-0">Safe Zone</div>
       </div>
 
       {/* Dot grid */}
       <div className="roof-dot-grid absolute inset-0 opacity-10" aria-hidden="true" />
 
       {/* Dimensions Info */}
-      <div className="caption-xs absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-ink">
+      <div className="caption-xs absolute -bottom-10 left-1/2 -translate-x-1/2 font-semibold whitespace-nowrap text-ink">
         Nutzbare Dachfläche: {width}cm x {height}cm
       </div>
     </div>

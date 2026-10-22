@@ -40,7 +40,7 @@ export default function NotFound() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="flex min-h-14 items-center justify-between px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+                className="flex min-h-14 items-center justify-between px-5 py-3 text-sm hover:bg-paper focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset"
               >
                 <span className="font-medium text-ink">{link.label}</span>
                 <span aria-hidden="true" className="text-copper">

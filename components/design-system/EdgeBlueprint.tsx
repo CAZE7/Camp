@@ -205,7 +205,7 @@ export function EdgeBlueprint() {
       </div>
 
       <div className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-3">
-        <h4 className="mb-2 font-mono text-[11px] font-bold uppercase tracking-widest">Regeln</h4>
+        <h4 className="mb-2 font-mono text-[11px] font-bold tracking-widest uppercase">Regeln</h4>
         <ul className="space-y-1 font-mono text-[11px] leading-relaxed">
           <li>• Hauptstromschienen (DC MAIN / AC MAIN): 3px, Glow bei Selektion (drop-shadow 4px)</li>
           <li>• Zweigleitungen: 2px solid</li>

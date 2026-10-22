@@ -55,10 +55,8 @@ export const PANE_WAIT_FRAMES = 30;
 export const NODE_FOOTPRINT = { width: 192, height: 120 } as const;
 
 /**
- * Sichtbarer Rand, den ein Bauteil im Pane halten muss. `app/globals.css` setzt
- * `.react-flow__handle` auf 44 × 44 px Touch-Trefferfläche, die zur Hälfte
- * außerhalb des Node-Rechtecks sitzt — 22 px überstehen also. Wird der Rand
- * unterschritten, liegt der Anschluss unter der Kopf- bzw. Schrittleiste und
- * ist per Finger nicht mehr erreichbar.
+ * Halbe Trefferfläche in Plan-Koordinaten: `app/globals.css` setzt den Handle
+ * auf 60 × 60 Plan-Pixel. Die Prüfung unten multipliziert diesen Rand mit dem
+ * aktuellen Zoom, bevor sie ihn in Bildschirm-Koordinaten umrechnet.
  */
-export const NODE_TOUCH_MARGIN = 22;
+export const NODE_TOUCH_MARGIN = 30;

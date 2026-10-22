@@ -37,7 +37,7 @@ export function TopicIndex({ topicId }: { topicId: string }) {
                 <li key={page.path}>
                   <Link
                     href={page.path}
-                    className="flex min-h-11 flex-col justify-center px-4 py-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-oxide"
+                    className="flex min-h-11 flex-col justify-center px-4 py-2 transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-oxide focus-visible:outline-none focus-visible:ring-inset"
                   >
                     <span className="font-medium text-ink">{page.h1}</span>
                     <span className="caption-xs mt-0.5 text-ink-soft">{topicOf(page.topicId).summary}</span>
