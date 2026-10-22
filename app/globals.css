@@ -3076,6 +3076,12 @@ html.planner-root-active body {
     display: none;
   }
 
+  /* Tighten the decorative separator so the 44 px primary action clears the
+     saved-state icon when it changes from a 10 px to a 14 px SVG. */
+  .cad-toolbar__actions > .cad-toolbar__sep {
+    margin-inline: 2px;
+  }
+
   .cad-toolbar .cad-status-optimize,
   .cad-toolbar [data-testid^='routing-status'] {
     display: none;
@@ -4018,6 +4024,23 @@ html.planner-root-active body {
   }
 }
 
+/* The overflow menu can contain more than a viewport of actions. Anchor it
+   under the app bars and scroll inside the menu rather than letting the
+   dropdown escape the screen. */
+@media (min-width: 768px) and (min-height: 501px) {
+  .planner-shell .cad-toolbar .cad-menu.planner-toolbar-sheet {
+    position: fixed;
+    top: calc(var(--cad-menubar-h, 45px) + var(--cad-toolbar-h, 45px) + 0.25rem);
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: auto;
+    left: auto;
+    max-height: calc(100dvh - var(--cad-menubar-h, 45px) - var(--cad-toolbar-h, 45px) - 1rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 @media (max-width: 767px), (max-height: 700px) {
   .planner-dialog-backdrop {
     align-items: stretch;
@@ -4587,6 +4610,12 @@ html.planner-root-active body {
 }
 
 .editorial-signal-ink {
+  /* Signal lime stays on fills and rules; small text uses the accessible copper
+     accent on paper. */
+  color: var(--oxide);
+}
+
+.editorial-dark-panel .editorial-signal-ink {
   color: var(--editorial-signal);
 }
 

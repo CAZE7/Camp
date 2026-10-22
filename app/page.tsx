@@ -118,8 +118,8 @@ export default function Home() {
                 Camper planen — erst der Plan, dann das Blech.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-ink-soft md:text-lg">
-                Werkzeuge und Guides für den Camper-Ausbau: Elektrik planen, Bauteile auf dem Dach anordnen
-                und Heizlast einordnen.
+                Dach, Elektrik, Heizung und Sicherheit an einem Ort. Werkzeuge und Guides helfen dir, den
+                Camper-Ausbau strukturiert vorzubereiten.
               </p>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
                 Rechnerwerte unterstützen die Vorbereitung; fachliche Prüfung und Abnahme bleiben separat.

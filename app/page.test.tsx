@@ -14,6 +14,7 @@ describe('Home Page', () => {
     expect(screen.getByRole('heading', { name: /Camper planen/i, level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Fokus-Themen/i, level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Wissen für den Ausbau/i, level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(/Dach, Elektrik, Heizung und Sicherheit an einem Ort\./)).toBeInTheDocument();
   });
 
   it('uses a text-led, image-free hero with page index and mobile quick navigation', () => {
