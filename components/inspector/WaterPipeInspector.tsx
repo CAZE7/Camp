@@ -40,7 +40,7 @@ export function WaterPipeInspector({
               )
             )
           }
-          className="min-h-11 w-full rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="min-h-11 w-full rounded border border-border bg-card px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
         >
           <option value="fresh">Frischwasser</option>
           <option value="gray">Abwasser</option>
@@ -58,7 +58,7 @@ export function WaterPipeInspector({
           value={edge.data?.length ?? 2}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(value) => onChangeLength(edge.id, value)}
-          className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
         />
       </div>
       <p className="rounded-lg bg-accent p-3 text-sm text-foreground">

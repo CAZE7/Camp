@@ -26,7 +26,7 @@ export function FloatingMetricsCard() {
       // Keine Glass-Fläche: Die Kennzahlen liegen auf einer deckenden Fläche,
       // die Kante trennt sie vom Raster — dahinter durchscheinende Leitungen
       // würden die Zahlen lesen lassen wie ein HUD aus einem Spiel.
-      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
+      className={`pointer-events-none absolute top-28 right-3 z-40 hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">
@@ -34,10 +34,10 @@ export function FloatingMetricsCard() {
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="mb-2 flex min-h-11 w-full items-center justify-between rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-2 flex min-h-11 w-full items-center justify-between rounded-lg text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <span>
-            <span className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
+            <span className="block text-xs font-bold tracking-wider text-ink-soft uppercase">
               Aktueller Status
             </span>
             <span className="text-muted-ink text-xs">

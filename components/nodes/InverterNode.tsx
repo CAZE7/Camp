@@ -67,7 +67,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       </div>
 
       {overloadStats.isOverloaded && (
-        <div className="mt-2 rounded bg-destructive p-1 text-center text-xs font-bold leading-tight text-on-signal">
+        <div className="mt-2 rounded bg-destructive p-1 text-center text-xs leading-tight font-bold text-on-signal">
           Überlastung! Wechselrichter zu schwach für angeschlossene AC-Geräte.
         </div>
       )}

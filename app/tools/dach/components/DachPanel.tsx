@@ -65,7 +65,7 @@ export function DachPanel({
                   />
                   <span
                     id="watts-unit"
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-soft"
+                    className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-ink-soft"
                   >
                     W
                   </span>
@@ -93,7 +93,7 @@ export function DachPanel({
                   />
                   <span
                     id="width-unit"
-                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
+                    className="caption-xs pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-semibold text-ink-soft"
                   >
                     cm
                   </span>
@@ -119,7 +119,7 @@ export function DachPanel({
                   />
                   <span
                     id="height-unit"
-                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
+                    className="caption-xs pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-semibold text-ink-soft"
                   >
                     cm
                   </span>

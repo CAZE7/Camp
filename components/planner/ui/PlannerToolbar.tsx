@@ -131,7 +131,7 @@ function OverflowMenu({
          ihrem Auslöser (sie würde bei 320 px rechts aus dem Bild laufen),
          sondern liegt als Blatt über der Fußleiste — vollständig im Bild.
          Ab 768 px bleibt sie das gewohnte Dropdown unter dem Knopf. */
-      className="cad-menu planner-toolbar-sheet left-auto right-0"
+      className="cad-menu planner-toolbar-sheet right-0 left-auto"
       role="menu"
       aria-label="Weitere Aktionen"
       onKeyDown={(event) => handleMenuKeyDown(event, onClose)}
@@ -156,7 +156,7 @@ function OverflowMenu({
                 className={`cad-menu__item ${item.danger ? 'text-destructive' : ''}`}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1 whitespace-normal text-left">{item.label}</span>
+                <span className="min-w-0 flex-1 text-left whitespace-normal">{item.label}</span>
                 {item.checked && (
                   <span className="cad-menu__check" aria-hidden="true">
                     ◆
@@ -207,7 +207,7 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         <ChevronDown className="cad-template-chevron h-3.5 w-3.5" aria-hidden="true" />
       </button>
       {open && (
-        <div className="cad-menu left-0 right-auto" role="menu" aria-label="Vorlage laden">
+        <div className="cad-menu right-auto left-0" role="menu" aria-label="Vorlage laden">
           <p className="cad-menu__label">Fertiges Setup als Startpunkt</p>
           {PLANNER_TEMPLATES.map((template) => (
             <button

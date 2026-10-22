@@ -1,8 +1,6 @@
 @import './dark-engineering.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config '../tailwind.config.ts';
 
 /* Outfit (lokal über @fontsource-variable/outfit gebündelt) */
 .font-outfit {
@@ -39,6 +37,12 @@
     --surface-canvas: #eceef0; /* Seiten- und Zeichenflächengrund */
     --surface-panel: #f9fafb; /* Panels, Karten, Bauteile */
     --surface-raised: #ffffff; /* raised: Popover, Inputs, Hover-Karten */
+    /* Editorial-Startseite: warmes Papier + der Signalton der gelieferten
+       Magazinreferenz. Die Ingenieurs-App behält --oxide als Hauptakzent. */
+    --editorial-paper: #faf9f5;
+    --editorial-panel: #f4f3ef;
+    --editorial-signal: #d8ff00;
+    --editorial-inverse-text: #f4f3ef;
     --surface-hover: #e7eaed; /* Hover/Active auf Panel */
 
     /* Linien — das 1-px-Raster */
@@ -235,6 +239,10 @@
     --surface-panel: #191c1f;
     --surface-raised: #212529;
     --surface-hover: #23282d;
+    --editorial-paper: #141412;
+    --editorial-panel: #1c1c1a;
+    --editorial-signal: #d8ff00;
+    --editorial-inverse-text: #f4f3ef;
 
     /* Linien */
     --rule: #2c3136;
@@ -352,10 +360,18 @@
 
   button:not(:disabled),
   a,
-  [role='button']:not(:disabled) {
+  [role='button']:not(:disabled),
+  summary {
     transition-property: color, background-color, border-color, box-shadow, opacity, filter;
     transition-duration: 150ms;
     transition-timing-function: ease;
+  }
+
+  button:not(:disabled):active,
+  a:active,
+  [role='button']:not(:disabled):not([aria-disabled='true']):active,
+  summary:active {
+    filter: brightness(0.94);
   }
 
   /* D-8: Skeleton-Grundelement — flackert dezent, respektiert reduced motion. */
@@ -501,7 +517,7 @@
 
   /* --- D-5: Panel-System ------------------------------------------------
      Einheitlicher Aufbau für Sidebar/Inspector/ExpertPanel/Dashboard:
-     Panel-Kopf 40 px hoch mit 11-px-Uppercase-Label (Mono), Sektionen mit
+     Panel-Kopf mindestens 44 px hoch mit 11-px-Uppercase-Label (Mono), Sektionen mit
      Divider, Innenabstände 12/16. Buttons bleiben im Toolbar-Stil
      (Button variant="outline": 1-px-Linie, flache Fläche). */
   .panel {
@@ -509,7 +525,7 @@
   }
   .panel-header {
     display: flex;
-    height: 2.5rem; /* 40 px */
+    min-height: 2.75rem; /* 44 px; wächst bei mehrzeiligem Inhalt */
     flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
@@ -910,12 +926,126 @@
     }
   }
 
-  /* Große, sichtbare Anschlussflächen für Touch und Tastatur. */
+  /* Screen-space hit targets are wider than the visible CAD port but leave
+     the router's measured handle box at its existing 60 plan-px footprint. */
+  .planner-shell .react-flow {
+    --planner-hit-target-screen-size: 44px;
+  }
   .react-flow__handle {
-    width: 44px !important;
-    height: 44px !important;
+    --planner-handle-hit-size: 60px;
+    width: var(--planner-handle-hit-size) !important;
+    height: var(--planner-handle-hit-size) !important;
     border: 0 !important;
     background: transparent !important;
+  }
+  .react-flow__handle-left {
+    transform: translate(-100%, -50%) !important;
+  }
+  .react-flow__handle-right {
+    transform: translate(100%, -50%) !important;
+  }
+  .react-flow__handle-top {
+    transform: translate(-50%, -100%) !important;
+  }
+  .react-flow__handle-bottom {
+    transform: translate(-50%, 100%) !important;
+  }
+
+  /* Keep React Flow's real port box/anchor untouched. Its pseudo-element is a
+     separate 44 × 44 screen-px target: inverse viewport zoom cancels the
+     canvas scale, while the target starts at the node edge and extends out.
+     This avoids placing a 176-plan-px box over neighboring components at z=.25. */
+  .planner-shell .react-flow__handle.connectable {
+    pointer-events: none !important;
+  }
+  .planner-shell .react-flow__handle.connectable::before {
+    position: absolute;
+    z-index: 2;
+    display: block;
+    width: calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1));
+    height: calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1));
+    background: transparent;
+    content: '';
+    pointer-events: auto;
+  }
+  .planner-shell .react-flow__handle-left.connectable::before {
+    top: 50%;
+    right: calc(-1px / var(--planner-viewport-zoom, 1));
+    transform: translateY(calc(-50% + var(--planner-hit-offset-y, 0px)));
+  }
+  .planner-shell .react-flow__handle-right.connectable::before {
+    top: 50%;
+    left: calc(-1px / var(--planner-viewport-zoom, 1));
+    transform: translateY(calc(-50% + var(--planner-hit-offset-y, 0px)));
+  }
+  .planner-shell .react-flow__handle-top.connectable::before {
+    bottom: calc(-1px / var(--planner-viewport-zoom, 1));
+    left: 50%;
+    transform: translateX(calc(-50% + var(--planner-hit-offset-x, 0px)));
+  }
+  .planner-shell .react-flow__handle-bottom.connectable::before {
+    top: calc(-1px / var(--planner-viewport-zoom, 1));
+    left: 50%;
+    transform: translateX(calc(-50% + var(--planner-hit-offset-x, 0px)));
+  }
+
+  /* Place the visible port marker on the real routing anchor. */
+  .react-flow__handle-left > div {
+    position: relative;
+    left: calc(var(--planner-handle-hit-size) / 2);
+    pointer-events: none;
+  }
+  .react-flow__handle-right > div {
+    position: relative;
+    left: calc(var(--planner-handle-hit-size) / -2);
+    pointer-events: none;
+  }
+  .react-flow__handle-top > div {
+    position: relative;
+    top: calc(var(--planner-handle-hit-size) / 2);
+    pointer-events: none;
+  }
+  .react-flow__handle-bottom > div {
+    position: relative;
+    top: calc(var(--planner-handle-hit-size) / -2);
+    pointer-events: none;
+  }
+
+  /* The invisible SVG stroke follows the same screen-space target size as a
+     port. Its path/route geometry stays identical at every viewport zoom. */
+  .planner-shell .planner-edge-hit-target {
+    stroke: transparent !important;
+    stroke-width: calc(var(--planner-hit-target-screen-size) / var(--planner-viewport-zoom, 1)) !important;
+    pointer-events: stroke;
+  }
+
+  /* Plus und Minus sitzen auf 20/80 % der Kartenhöhe. Bei niedrigem Zoom
+     hält die separate Trefferlage die Bildschirmabstände zusätzlich ein,
+     ohne die CAD-Anschlusspositionen zu verschieben. */
+  .react-flow__handle[data-handleid*='plus'] {
+    top: 20% !important;
+  }
+  .react-flow__handle[data-handleid*='minus'] {
+    top: 80% !important;
+  }
+
+  /* Das Bibliotheks-Attributionsziel bleibt sichtbar und erhält auf schmalen
+     Geräten die WCAG-Mindesthöhe, statt als 13-px-Link nicht treffbar zu sein. */
+  .react-flow__attribution a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+  @media (max-width: 767px) {
+    /* History-Leiste links und Zoomleiste rechts belegen beide Ecken unten.
+       Die Bibliotheks-Attribution sitzt deshalb im freien oberen rechten
+       Canvas-Bereich, ohne die Modus-/Ansichtstasten zu überlagern. */
+    .react-flow__attribution {
+      top: 4rem !important;
+      right: 0 !important;
+      bottom: auto !important;
+      left: auto !important;
+    }
   }
 
   /* D-4: 12-px-Anschluss, Hover vergrößert auf 14 px und färbt akzentuiert. */
@@ -1255,9 +1385,9 @@
    ========================================================================== */
 
 .planner-shell {
-  /* Chrome-Höhen: die Statuszeile ist flach, die Werkzeugleiste kompakt. */
-  --cad-menubar-h: 32px;
-  --cad-toolbar-h: 40px;
+  /* Interaktive Leisten haben mindestens 44 px; die Statuszeile bleibt flach. */
+  --cad-menubar-h: 45px;
+  --cad-toolbar-h: 45px;
   --cad-statusbar-h: 26px;
   --cad-palette-w: 232px;
   /* Zeichenfläche des Canvas: feines Raster (10 px) — siehe FlowCanvas. */
@@ -1341,6 +1471,7 @@
   display: flex;
   flex-shrink: 0;
   align-items: stretch;
+  min-height: 45px;
   height: var(--cad-menubar-h);
   border-bottom: 1px solid var(--rule);
   background: var(--surface-panel);
@@ -1349,6 +1480,7 @@
 }
 .cad-menubar__brand {
   display: flex;
+  min-height: 44px;
   align-items: center;
   gap: 0.5rem;
   padding-inline: 0.75rem;
@@ -1401,13 +1533,15 @@
 }
 .cad-menubar__item {
   display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
   align-items: center;
   padding-inline: 0.625rem;
   border: 0;
   background: transparent;
   color: var(--text-med);
   font-size: 0.8125rem;
-  cursor: default;
+  cursor: pointer;
 }
 .cad-menubar__item:hover {
   background: var(--surface-hover);
@@ -1465,7 +1599,7 @@
 .cad-menu__item {
   display: flex;
   width: 100%;
-  min-height: 1.75rem;
+  min-height: 44px;
   align-items: center;
   gap: 0.75rem;
   padding: 0.25rem 0.75rem;
@@ -1474,12 +1608,16 @@
   color: var(--text-high);
   font-size: 0.8125rem;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
 }
 .cad-menu__item:hover:not(:disabled),
 .cad-menu__item:focus-visible:not(:disabled) {
   background: var(--surface-hover);
   outline: none;
+}
+.cad-menu__item:focus-visible:not(:disabled) {
+  outline: 2px solid var(--accent-line);
+  outline-offset: -2px;
 }
 .cad-menu__item:disabled {
   color: var(--text-low);
@@ -1560,9 +1698,8 @@
   align-items: center;
   gap: 0.25rem;
 }
-/* Touch-Ziele in der Werkzeugleiste: 44 px Kante auf Finger-Bedienung.
-   `min-height` in einer Utility-freien Regel, damit `min-h-11` im JSX nicht
-   von einer spaeteren Utility ueberschrieben wird. */
+/* Die Werkzeugleiste bekommt auf groben Zeigern etwas mehr Zeilenhöhe;
+   die 44-px-Mindestgröße der einzelnen Knöpfe gilt bereits für alle Geräte. */
 @media (pointer: coarse) {
   .cad-toolbar {
     --cad-toolbar-h: 48px;
@@ -1581,13 +1718,17 @@
 }
 
 /* Werkzeugknopf: flach, 1-px-Linie, kein Dauer-Farbton. */
+@layer components {
+  .cad-btn {
+    display: inline-flex;
+  }
+}
 .cad-btn {
-  display: inline-flex;
   align-items: center;
-  /* Keine feste min-height: Die Knopfhöhe kommt aus Innenabstand + Zeile,
-     damit Touch-Ziele über Tailwind-Utilities (min-h-11 = 44 px) vergrößert
-     werden können. Eine unlayered `min-height` hier würde jede Utility
-     schlagen (Utilities liegen in einem @layer). */
+  /* Harte Untergrenze auf allen Zeigertypen; die Werkzeugleiste darf
+     Schaltflächen nicht nur auf Touch-Geräten auf 44 px vergrößern. */
+  min-width: 44px;
+  min-height: 44px;
   padding-block: 0.1875rem;
   gap: 0.375rem;
   padding-inline: 0.5rem;
@@ -1597,11 +1738,14 @@
   color: var(--text-med);
   font-size: 0.8125rem;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
 }
 .cad-btn:hover:not(:disabled) {
   background: var(--surface-hover);
   color: var(--text-high);
+}
+.cad-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .cad-btn:disabled {
   opacity: 0.4;
@@ -1609,6 +1753,133 @@
 .cad-btn:focus-visible {
   outline: 2px solid var(--accent-line);
   outline-offset: 1px;
+}
+
+/* Chat panel: fill the safe mobile viewport without fixed 384×600 px
+   dimensions; keep a compact anchored window when there is desktop space. */
+.chat-window {
+  position: fixed;
+  z-index: 50;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  display: flex;
+  width: min(24rem, calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  min-width: 0;
+  flex-direction: column;
+  margin-inline: auto;
+}
+@media (min-width: 640px) {
+  .chat-window {
+    top: auto;
+    right: max(1.5rem, env(safe-area-inset-right));
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    left: auto;
+    width: 24rem;
+    height: min(37.5rem, calc(100dvh - 3rem));
+    margin-inline: 0;
+  }
+}
+
+/* Floating assistant controls stay clear of display cutouts and the home
+   indicator; the error callout keeps a 16 px gap above the 56 px launcher. */
+.assistant-launcher-button,
+.chat-window-launcher {
+  right: max(1.5rem, env(safe-area-inset-right));
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+.assistant-load-error {
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(max(1.5rem, env(safe-area-inset-bottom)) + 4.5rem);
+  left: max(1rem, env(safe-area-inset-left));
+}
+@media (min-width: 640px) {
+  .assistant-load-error {
+    right: max(1.5rem, env(safe-area-inset-right));
+    left: auto;
+  }
+}
+
+/* The range thumb keeps its thin engineering track, while the input box itself
+   supplies a full 44 px vertical drag target on touchscreens. */
+.stepper-slider__range {
+  height: 44px;
+  appearance: none;
+  background: transparent;
+  touch-action: pan-y;
+}
+.stepper-slider__range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--rule) 40%, transparent);
+}
+.stepper-slider__range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--rule) 40%, transparent);
+}
+.stepper-slider__range::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  appearance: none;
+  border: 2px solid var(--surface-panel);
+  border-radius: 9999px;
+  background: var(--moss);
+  box-shadow: 0 0 0 1px var(--rule-strong);
+}
+.stepper-slider__range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--surface-panel);
+  border-radius: 9999px;
+  background: var(--moss);
+  box-shadow: 0 0 0 1px var(--rule-strong);
+}
+.stepper-slider__range:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+.stepper-slider__range:active::-webkit-slider-thumb,
+.stepper-slider__range:active::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+/* Hard 44 × 44 px floor for native controls. Checkbox/radio visuals stay
+   compact inside their larger labels; the switch track is exempt because its
+   transparent pseudo-element supplies a separate hit area of at least 44 px. */
+button:not([data-slot='switch']),
+select,
+textarea,
+input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+summary {
+  min-width: 44px;
+  min-height: 44px;
+}
+button:not(:disabled):not(.cad-item),
+select:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+summary {
+  cursor: pointer;
+}
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+button:not(:disabled):hover,
+select:not(:disabled):hover,
+[role='button']:not([aria-disabled='true']):hover,
+a:hover,
+summary:hover {
+  filter: brightness(0.98);
+}
+button:not(:disabled):active,
+select:not(:disabled):active,
+a:active,
+[role='button']:not([aria-disabled='true']):active,
+summary:active {
+  filter: brightness(0.94);
 }
 .cad-btn--line {
   border-color: var(--rule-strong);
@@ -1641,11 +1912,12 @@
 }
 .cad-panel__head {
   display: flex;
+  min-height: 44px;
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  height: 2rem;
+  height: auto;
   padding-inline: 0.75rem;
   border-bottom: 1px solid var(--rule);
 }
@@ -1677,7 +1949,7 @@
 .de-inspector__group-toggle {
   display: flex;
   width: 100%;
-  min-height: 1.5rem;
+  min-height: 44px;
   align-items: center;
   gap: 0.375rem;
   padding: 0.125rem 0;
@@ -1688,7 +1960,7 @@
   font-size: 0.6875rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  cursor: default;
+  cursor: pointer;
 }
 .de-inspector__group-toggle:hover {
   color: var(--text-high);
@@ -1701,14 +1973,22 @@
   padding-top: 0.375rem;
 }
 
-/* Sektion im Panel: klappbar, Titelzeile 28 px, sonst nichts. */
+/* Eingabefelder im Inspector bleiben auch in dichten Bauteil-Formularen
+   mindestens 44 px hoch; Mehrzeiler dürfen bei Inhalt weiter wachsen. */
+.de-inspector input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']),
+.de-inspector select,
+.de-inspector textarea {
+  min-height: 44px;
+}
+
+/* Sektion im Panel: klappbar, Titelzeile mindestens 44 px. */
 .cad-section {
   border-bottom: 1px solid var(--rule);
 }
 .cad-section__head {
   display: flex;
   width: 100%;
-  min-height: 1.75rem;
+  min-height: 44px;
   align-items: center;
   gap: 0.5rem;
   padding-inline: 0.75rem;
@@ -1719,7 +1999,7 @@
   font-size: 0.6875rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  cursor: default;
+  cursor: pointer;
 }
 .cad-section__head:hover {
   background: var(--surface-hover);
@@ -1737,7 +2017,7 @@
 .cad-item {
   display: flex;
   width: 100%;
-  min-height: 2.25rem;
+  min-height: 44px;
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.5rem;
@@ -1948,8 +2228,8 @@
    port coordinates, waypoint positions or routing costs. */
 
 .planner-shell {
-  --cad-menubar-h: 36px;
-  --cad-toolbar-h: 44px;
+  --cad-menubar-h: 45px;
+  --cad-toolbar-h: 45px;
   --cad-statusbar-h: 28px;
 }
 
@@ -2051,7 +2331,7 @@
 }
 
 .cad-rail__status {
-  min-height: 36px;
+  min-height: 44px;
   flex: 0 0 auto;
   border-color: var(--rule-strong);
   background: var(--surface-raised);
@@ -2425,8 +2705,8 @@
 }
 
 /* Electrical polarity is encoded by colour, shape AND a tiny glyph. The
-   glyph lives inside the existing 12 px visual port; the 44 px hit target and
-   every measured node bound remain untouched. */
+   glyph lives inside the existing 12 px visual port; the 44-screen-px hit
+   target and the unchanged 60-plan-px React Flow box stay separate. */
 .planner-shell .react-flow__handle > div {
   display: grid !important;
   place-items: center;
@@ -2600,37 +2880,22 @@ html.planner-root-active body {
 }
 
 /* --- 4. Flaches Querformat ------------------------------------------------
-   Ein Handy im Querformat ist 320–360 px hoch. Gemessen 2026-10-14 bei
-   640×320: Menüleiste 28 + Werkzeugleiste 40 + Schrittleiste 40 +
-   Statuszeile 26 + Fußleiste 44 = 178 px Chrome — es blieben 121 px
-   Zeichenfläche (38 % der Höhe). Deshalb:
-     · die Statuszeile bleibt eine flache Zeile (22 px): Zoom und Prüfstand
-       müssen im Querformat sichtbar sein, nicht nur in der Werkzeugleiste,
-     · die Werkzeugleiste wird 36 px flach (Knöpfe 34 px — über der
-       WCAG-2.5.8-Mindestkante von 24 px, unter dem 44-px-Zielwert: eine
-       bewusste, dokumentierte Abweichung für Fenster unter 480 px Höhe),
-     · die Schrittleiste bleibt bei 32 px und zeigt nur Fortschritt + Aktion,
-     · die Fußleiste bleibt bei 44 px (sie ist der einzige Weg zu den
-       Blättern, dort gilt der Zielwert).
-   Ergebnis: ~178 → 189 px Zeichenfläche bei 320 px Fensterhöhe. */
+   Bei niedrigen Fensterhöhen werden Statusanzeige und schwebende Hinweise
+   reduziert. Menü-, Werkzeug- und Aktionsleisten behalten jedoch ihre
+   44-px-Trefferflächen; die Zeichenfläche wird dafür entsprechend kleiner. */
 @media (orientation: landscape) and (max-height: 480px) {
   .planner-shell {
-    /* Menüleiste bleibt 44 px: Datei/Hilfe sind die geprüften Tippziele.
-       Die Werkzeugleiste darf hier flacher werden — sonst bleibt bei 320 px
-       Fensterhöhe keine 150 px Zeichenfläche (Nachtest-Querformat vs. M12-Budget). */
-    --cad-menubar-h: 44px;
+    --cad-menubar-h: 45px;
     --cad-nav-h: 44px;
   }
   .cad-toolbar {
-    --cad-toolbar-h: 36px;
-    min-height: 36px;
+    --cad-toolbar-h: 45px;
+    min-height: 45px;
   }
-  /* Dokumentierte Ausnahme nur unter 480 px Höhe: Werkzeugknöpfe 34 px
-     (über der WCAG-2.5.8-Kante von 24 px). Menü und Fußleiste bleiben 44 px. */
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn {
-    min-height: 34px;
-    min-width: 34px;
+    min-height: 44px;
+    min-width: 44px;
   }
   /* 22 px Statuszeile würden die Zeichenfläche bei 320 px Höhe unter 150 px
      drücken. Sichtbar wird sie erst ab 360 px Fensterhöhe (unten). */
@@ -2638,7 +2903,7 @@ html.planner-root-active body {
     display: none;
   }
   .cad-rail {
-    min-height: 32px;
+    min-height: 44px;
     padding-block: 0;
   }
   .planner-bottom-nav button {
@@ -2667,9 +2932,8 @@ html.planner-root-active body {
     border-right: 1px solid var(--rule);
     border-bottom: 0;
   }
-  /* Undo/Redo wandern in die Werkzeugleiste (dort ist bei 640 px Breite
-     Platz, sie ist nur 36 px hoch): Der schwebende Griff lag im flachen
-     Fenster immer auf einem der anderen Griffe. */
+  /* Undo/Redo wandern in die Werkzeugleiste: Der schwebende Griff lag im
+     flachen Fenster immer auf einem der anderen Griffe. */
   .planner-shell .planner-mobile-history {
     display: none;
   }
@@ -2979,9 +3243,8 @@ html.planner-root-active body {
 }
 
 /* --- 8. Menüeinträge in den Blättern (Handy) ------------------------------
-   Ein Menüeintrag ist dort ein Touch-Ziel: 44 px Kante statt der 28 px der
-   Desktop-Dichte. Das Blatt scrollt dann in sich (13 Einträge × 44 px), was
-   ausdrücklich erlaubt ist — es ist EIN Scrollbereich mit sichtbarem Rand. */
+   Die Einträge bleiben auch im mobilen Blatt mindestens 44 px hoch. Das Blatt
+   scrollt bei vielen Optionen in sich — ein klar abgegrenzter Scrollbereich. */
 @media (max-width: 767px) {
   .planner-menubar-sheet .cad-menu__item,
   .planner-toolbar-sheet .cad-menu__item {
@@ -3211,7 +3474,7 @@ html.planner-root-active body {
    sobald das Fenster Handy-Breite hat. Breite entscheidet mit. */
 @media (max-width: 900px) {
   .planner-shell {
-    --cad-menubar-h: 44px;
+    --cad-menubar-h: 45px;
   }
 
   .cad-menubar__item {
@@ -3222,7 +3485,7 @@ html.planner-root-active body {
 
 @media (pointer: coarse) {
   .planner-shell {
-    --cad-menubar-h: 44px;
+    --cad-menubar-h: 45px;
   }
 
   .cad-menubar__item {
@@ -3282,36 +3545,31 @@ html.planner-root-active body {
   }
 }
 
-/* Letzte Instanz fürs flache Querformat.
-   Dieselbe Media-Query setzt weiter oben Werkzeugknöpfe auf 44 px
-   (Tippziel-Regel). Das gewinnt gegen die dokumentierte 34-px-Ausnahme
-   und drückt die Zeichenfläche bei 640×320 unter die 150-px-Untergrenze
-   (Menüleiste 44 + Werkzeugleiste 44 + Schrittleiste mit 44-px-Knöpfen
-   + Fußleiste). Menüleiste und Fußleiste bleiben 44 px; Werkzeug- und
-   Schrittleiste werden hier wieder flach. */
+/* Letzte Querformat-Regel: schmale Fenster dürfen Chrome ausblenden,
+   aber interaktive Flächen nicht unter 44 px verkleinern oder abschneiden. */
 @media (orientation: landscape) and (max-height: 480px) {
   .cad-toolbar {
-    --cad-toolbar-h: 36px;
-    min-height: 36px;
-    max-height: 36px;
+    --cad-toolbar-h: 45px;
+    min-height: 45px;
+    max-height: 45px;
   }
 
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn {
-    min-height: 34px;
-    max-height: 34px;
-    min-width: 34px;
+    min-height: 44px;
+    max-height: 44px;
+    min-width: 44px;
   }
 
   .cad-rail {
-    min-height: 32px;
-    max-height: 32px;
+    min-height: 44px;
+    max-height: none;
     padding-block: 0;
   }
 
   .cad-rail .cad-btn {
-    min-height: 30px;
-    max-height: 30px;
+    min-height: 44px;
+    max-height: 44px;
     padding-block: 0;
   }
 
@@ -3746,9 +4004,9 @@ html.planner-root-active body {
   }
 
   .cad-menubar .cad-menu.planner-menubar-sheet {
-    top: calc(100% + var(--cad-toolbar-h, 40px) + 4px);
+    top: calc(100% + var(--cad-toolbar-h, 45px) + 4px);
     z-index: 80;
-    max-height: calc(100dvh - var(--cad-menubar-h, 32px) - var(--cad-toolbar-h, 40px) - 1rem);
+    max-height: calc(100dvh - var(--cad-menubar-h, 45px) - var(--cad-toolbar-h, 45px) - 1rem);
     min-width: min(16rem, calc(100vw - 1.5rem));
     overflow-x: hidden;
     overflow-y: auto;
@@ -4025,7 +4283,7 @@ html.planner-root-active body {
     flex-direction: column;
     left: max(0.5rem, env(safe-area-inset-left));
     right: max(0.5rem, env(safe-area-inset-right));
-    top: calc(var(--cad-toolbar-h, 44px) + 0.35rem);
+    top: calc(var(--cad-toolbar-h, 45px) + 0.35rem);
     bottom: calc(var(--cad-nav-h, 56px) + env(safe-area-inset-bottom) + 0.35rem);
     max-height: none;
     overflow: hidden;
@@ -4200,7 +4458,7 @@ html.planner-root-active body {
 
 .planner-sheet-backdrop {
   position: fixed;
-  top: calc(var(--cad-menubar-h, 0px) + var(--cad-toolbar-h, 44px));
+  top: calc(var(--cad-menubar-h, 0px) + var(--cad-toolbar-h, 45px));
   right: 0;
   bottom: 0;
   left: 0;
@@ -4273,15 +4531,15 @@ html.planner-root-active body {
   }
 }
 
-/* Flaches Querformat behält die niedrige Werkzeugleiste (Zeichenfläche). */
+/* Auch bei kurzer Viewport-Höhe bleiben Werkzeugaktionen 44 px groß. */
 @media (max-height: 480px) {
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn,
   .cad-phone-menu__button,
   .cad-rail .cad-btn {
-    height: 34px;
-    min-height: 34px;
-    max-height: 34px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
   }
 }
 
@@ -4292,4 +4550,161 @@ html.planner-root-active body {
   .cad-toolbar [data-testid='action-templates'] .cad-template-chevron {
     display: none;
   }
+}
+
+/* Editorial start-page layer: typography, information hierarchy, warm paper,
+   and a restrained lime signal borrowed from the supplied magazine reference. */
+.editorial-home {
+  background-color: var(--editorial-paper);
+  color: var(--text-high);
+}
+
+.editorial-home > header,
+.editorial-home > footer {
+  border-color: var(--rule);
+  background-color: var(--editorial-paper);
+}
+
+.editorial-headline {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.16;
+}
+
+.editorial-kicker {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  line-height: 1rem;
+  text-transform: uppercase;
+}
+
+.editorial-signal-badge {
+  background-color: var(--editorial-signal);
+  color: var(--soot);
+}
+
+.editorial-signal-ink {
+  color: var(--editorial-signal);
+}
+
+.editorial-icon-tile {
+  border: 1px solid var(--rule);
+  background-color: var(--editorial-paper);
+  color: var(--text-high);
+}
+
+.editorial-icon-tile--signal {
+  border-color: var(--editorial-signal);
+  background-color: var(--editorial-signal);
+  color: var(--soot);
+}
+
+.editorial-paper-panel {
+  background-color: var(--editorial-panel);
+  border: 1px solid var(--rule);
+}
+
+.editorial-hero-index {
+  background-color: var(--editorial-paper);
+}
+
+.editorial-index-number {
+  border: 1px solid var(--rule-strong);
+  background-color: var(--editorial-panel);
+  color: var(--text-high);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.editorial-index-link:hover .editorial-index-number {
+  border-color: var(--editorial-signal);
+  background-color: var(--editorial-signal);
+  color: var(--soot);
+}
+
+.editorial-quote {
+  border-left: 3px solid var(--editorial-signal);
+  background-color: var(--editorial-panel);
+}
+
+.editorial-rechner-panel {
+  border: 1px solid var(--rule);
+  background-color: var(--editorial-panel);
+}
+
+.editorial-rechner-panel > div {
+  border: 0;
+  background-color: transparent;
+}
+
+.editorial-guide-list > li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.editorial-guide-row {
+  transition: background-color 150ms ease;
+}
+
+.editorial-guide-row:hover {
+  background-color: var(--editorial-panel);
+}
+
+.editorial-guide-number {
+  color: var(--text-low);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.editorial-story-card {
+  border: 1px solid var(--rule);
+  background-color: var(--editorial-panel);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.editorial-story-card:hover {
+  border-color: var(--rule-strong);
+  background-color: var(--editorial-paper);
+}
+
+.editorial-dark-panel {
+  background-color: var(--soot);
+  color: var(--editorial-inverse-text);
+}
+
+.editorial-dark-panel__copy {
+  color: var(--editorial-inverse-text);
+}
+
+.editorial-bottom-nav {
+  border-top: 1px solid var(--rule);
+  background-color: color-mix(in srgb, var(--editorial-paper) 95%, transparent);
+  box-shadow: 0 -2px 12px color-mix(in srgb, var(--text-high) 5%, transparent);
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+}
+
+.editorial-bottom-nav a {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--text-med);
+}
+
+.editorial-bottom-nav a[aria-current='page'] {
+  color: var(--text-high);
+  font-weight: 600;
+}
+
+.editorial-bottom-nav a[aria-current='page']::after {
+  position: absolute;
+  bottom: 0.25rem;
+  left: calc(50% - 0.625rem);
+  width: 1.25rem;
+  height: 2px;
+  background-color: var(--editorial-signal);
+  content: '';
 }

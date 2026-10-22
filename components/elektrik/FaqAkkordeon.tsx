@@ -17,7 +17,7 @@ export function FaqAkkordeon({ entries }: { entries: readonly FaqEntry[] }) {
     <div className="divide-y divide-rule border border-rule bg-bone">
       {entries.map((entry) => (
         <details key={entry.question} className="group">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-md font-medium text-ink transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-md font-medium text-ink transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
             <span>{entry.question}</span>
             <ChevronDown
               className="h-5 w-5 shrink-0 text-ink-soft transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"

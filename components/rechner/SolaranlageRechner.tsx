@@ -142,7 +142,9 @@ export function SolaranlageRechner() {
             onChange={(event) => setWinter(event.target.checked)}
             className="h-5 w-5 border border-rule"
           />
-          <Label htmlFor="solar-winter">Winterfall auslegen (35 % des Sommerertrags)</Label>
+          <Label htmlFor="solar-winter" className="min-h-11 cursor-pointer">
+            Winterfall auslegen (35 % des Sommerertrags)
+          </Label>
         </div>
       </div>
 

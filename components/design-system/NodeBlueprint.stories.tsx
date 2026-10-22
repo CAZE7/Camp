@@ -61,7 +61,7 @@ export const AllStates: Story = {
     <div className="grid grid-cols-3 gap-4">
       {NODE_STATES.map((state) => (
         <div key={state} className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-widest">{state}</span>
+          <span className="font-mono text-[11px] tracking-widest uppercase">{state}</span>
           <div className={NODE_STATE_CLASSES[state]}>
             <div className="p-3 font-mono text-[12px]">{state}</div>
           </div>
@@ -82,7 +82,7 @@ export const AllStates: Story = {
 export const PortHitTargets: Story = {
   render: () => (
     <div className="relative h-[200px] w-[300px] border border-dashed border-[var(--de-rule)]">
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <BatteryNodeExample />
       </div>
       <div className="absolute bottom-2 left-2 font-mono text-[10px] text-[var(--de-text-dim)]">

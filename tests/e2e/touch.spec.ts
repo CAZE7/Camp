@@ -1,5 +1,32 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { addComponent, autoWire, edgeCount, nodeCount, openPlanner, showCanvas } from './helpers';
+
+/**
+ * React Flow platziert das 60-px-Touchziel außerhalb der Karte, damit es nicht
+ * von ihr verdeckt wird. Am Viewportrand liegt der Mittelpunkt dieses Ziels
+ * manchmal außerhalb des Bildschirms; reale Finger treffen den sichtbaren
+ * Teil. Der Helper tippt deshalb in die sichtbare Schnittmenge statt Playwrights
+ * Standard-Mittelpunkt zu verwenden, der die Zeichenfläche erst wegschwenkt.
+ */
+async function tapVisibleHandle(page: Page, handle: Locator) {
+  const box = await handle.boundingBox();
+  expect(box).not.toBeNull();
+  const bounds = box!;
+  const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+  const left = Math.max(0, bounds.x);
+  const right = Math.min(viewport.width, bounds.x + bounds.width);
+  const top = Math.max(0, bounds.y);
+  const bottom = Math.min(viewport.height, bounds.y + bounds.height);
+
+  expect(right).toBeGreaterThan(left);
+  expect(bottom).toBeGreaterThan(top);
+  await handle.tap({
+    position: {
+      x: (left + right) / 2 - bounds.x,
+      y: (top + bottom) / 2 - bounds.y,
+    },
+  });
+}
 
 /**
  * Pflichtszenario 4 (AGENTS.md K5):
@@ -51,7 +78,7 @@ test.describe('Touch-Bedienung', () => {
     await expect(batteryPlus).toBeVisible();
     await expect(busbarPlus).toBeVisible();
 
-    await batteryPlus.tap();
+    await tapVisibleHandle(page, batteryPlus);
     // Nach dem ersten Tap meldet der Planer den gewählten Anschluss.
     await expect(
       page
@@ -60,7 +87,7 @@ test.describe('Touch-Bedienung', () => {
         .first()
     ).toBeVisible();
 
-    await busbarPlus.tap();
+    await tapVisibleHandle(page, busbarPlus);
     await expect.poll(async () => edgeCount(page)).toBeGreaterThan(before);
   });
 
@@ -74,8 +101,8 @@ test.describe('Touch-Bedienung', () => {
       .locator('.react-flow__node-battery .react-flow__handle[data-handleid="plus"]')
       .first();
 
-    await handle.tap();
-    await handle.tap();
+    await tapVisibleHandle(page, handle);
+    await tapVisibleHandle(page, handle);
 
     await expect(
       page

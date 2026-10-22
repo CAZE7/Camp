@@ -135,7 +135,7 @@ export function EdgeInspector({
           zu erklären — jeder Auto-Wire-Lauf konnte sie einsammeln. */}
           {onChangeIntent && (
             <fieldset className="flex flex-col">
-              <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <legend className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                 Verbindlichkeit
               </legend>
               <div role="radiogroup" aria-label="Verbindlichkeit" className="flex gap-1">
@@ -148,7 +148,7 @@ export function EdgeInspector({
                     aria-checked={selectedIntent === choice.value}
                     title={choice.hint}
                     onClick={() => onChangeIntent(edge.id, choice.value)}
-                    className="min-h-11 flex-1 rounded border border-border px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-accent aria-checked:bg-accent aria-checked:text-foreground"
+                    className="min-h-11 flex-1 rounded border border-border px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-checked:border-accent aria-checked:bg-accent aria-checked:text-foreground"
                   >
                     {choice.label}
                   </button>
@@ -161,7 +161,7 @@ export function EdgeInspector({
           )}
           <div className="flex flex-col">
             <label
-              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
               htmlFor="length-input"
             >
               Länge (m)
@@ -174,7 +174,7 @@ export function EdgeInspector({
               value={edge.data?.length ?? lengthEstimateM ?? 3}
               rules={[COMMON_RULES.strictlyPositive]}
               onValidChange={(val) => onChangeLength(edge.id, val)}
-              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
             {typeof edge.data?.length !== 'number' && (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -196,7 +196,7 @@ export function EdgeInspector({
           {!isAc && onChangeFuseSize && (
             <div className="flex flex-col">
               <label
-                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                 htmlFor="fuse-input"
               >
                 Sicherung (A)
@@ -208,7 +208,7 @@ export function EdgeInspector({
                 value={edge.data?.fuseSize ?? 0}
                 rules={[COMMON_RULES.positive]}
                 onValidChange={(val) => onChangeFuseSize(edge.id, val)}
-                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               />
               {maxFuse > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -223,7 +223,7 @@ export function EdgeInspector({
           {!isAc && onChangeFuseOffset && edge.data?.fuseSize !== undefined && (
             <div className="flex flex-col">
               <label
-                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                 htmlFor="fuse-offset-input"
               >
                 Abstand Sicherung → Batteriepol (m)
@@ -237,7 +237,7 @@ export function EdgeInspector({
                 value={edge.data?.fuseOffset ?? 0}
                 rules={[COMMON_RULES.positive]}
                 onValidChange={(val) => onChangeFuseOffset(edge.id, val)}
-                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen — ungeschützte Strecke ≤ 0,2 m
@@ -251,7 +251,7 @@ export function EdgeInspector({
           {!isAc && onChangeFuseType && edge.data?.fuseSize !== undefined && (
             <div className="flex flex-col">
               <label
-                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                 htmlFor="fuse-type-select"
               >
                 Sicherungs-Bauform
@@ -262,7 +262,7 @@ export function EdgeInspector({
                 onChange={(e) =>
                   onChangeFuseType(edge.id, e.target.value === '' ? undefined : e.target.value)
                 }
-                className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               >
                 <option value="">— nicht angegeben —</option>
                 {FUSE_TYPES.map((ft) => (
@@ -288,14 +288,14 @@ export function EdgeInspector({
           Abschaltbedingungs-Schätzung (IEC 60364-4-41, 2/3-Regel). */}
           {isAc && onChangeAcProtection && (
             <div className="flex flex-col gap-3 rounded border border-border p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Schutzorgan (230 V)
               </h4>
 
               {onChangeFuseSize && (
                 <div className="flex flex-col">
                   <label
-                    className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                    className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                     htmlFor="ac-fuse-input"
                   >
                     Bemessungsstrom In (A)
@@ -307,7 +307,7 @@ export function EdgeInspector({
                     value={edge.data?.fuseSize ?? 0}
                     rules={[COMMON_RULES.positive]}
                     onValidChange={(val) => onChangeFuseSize(edge.id, val)}
-                    className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                   />
                   {maxFuse > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -320,7 +320,7 @@ export function EdgeInspector({
 
               <div className="flex flex-col">
                 <label
-                  className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                   htmlFor="ac-kind-select"
                 >
                   Bauform
@@ -340,7 +340,7 @@ export function EdgeInspector({
                       breakingCapacityKA: acBic === '' ? 6 : acBic,
                     });
                   }}
-                  className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                 >
                   <option value="">— nicht angegeben —</option>
                   <option value="mcb">LS-Schalter (MCB)</option>
@@ -352,7 +352,7 @@ export function EdgeInspector({
                 <>
                   <div className="flex flex-col">
                     <label
-                      className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                      className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                       htmlFor="ac-char-select"
                     >
                       Charakteristik (IEC 60898-1)
@@ -367,7 +367,7 @@ export function EdgeInspector({
                           breakingCapacityKA: acBic === '' ? 6 : acBic,
                         })
                       }
-                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                     >
                       <option value="B">B (3–5×In, Standard)</option>
                       <option value="C">C (5–10×In, induktive Lasten)</option>
@@ -376,7 +376,7 @@ export function EdgeInspector({
 
                   <div className="flex flex-col">
                     <label
-                      className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                      className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                       htmlFor="ac-bic-select"
                     >
                       Abschaltvermögen Icn
@@ -391,7 +391,7 @@ export function EdgeInspector({
                           breakingCapacityKA: Number(event.target.value),
                         })
                       }
-                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                     >
                       {MCB_BREAKING_CAPACITY_KA_OPTIONS.map((ka) => (
                         <option key={ka} value={ka}>

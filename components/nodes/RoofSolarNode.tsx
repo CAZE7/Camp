@@ -73,7 +73,7 @@ const RoofSolarNode = function ({
         {(isInvalid || isOverlapping) && (
           <div
             className={cn(
-              'caption-xs absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 font-bold text-paper',
+              'caption-xs absolute top-1 left-1 z-10 rounded-full px-2 py-0.5 font-bold text-paper',
               isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
             )}
             aria-hidden="true"

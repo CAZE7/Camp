@@ -7,7 +7,7 @@ export type BackboneGroupNodeType = Node<{ label?: string }, 'backboneGroup'>;
 export function BackboneGroupNode({ data }: NodeProps<BackboneGroupNodeType>) {
   return (
     <div className="pointer-events-none h-full w-full rounded border border-dashed border-copper/45 bg-copper/5">
-      <span className="absolute left-4 top-3 rounded-full border border-copper/40 bg-card px-3 py-1 text-xs font-semibold uppercase tracking-wider text-copper">
+      <span className="absolute top-3 left-4 rounded-full border border-copper/40 bg-card px-3 py-1 text-xs font-semibold tracking-wider text-copper uppercase">
         {data.label || 'Hauptstromkreis'}
       </span>
     </div>

@@ -85,7 +85,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         // beim Speicher-Indikator); die Bewertung selbst steht im Bericht.
         aria-label={`Prüfbericht: ${summary.label}. ${summary.exercised} Regeln angewandt, ${percent} % entschieden.`}
         onClick={() => setOpen((value) => !value)}
-        className={`inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
+        className={`inline-flex min-h-11 max-w-full min-w-0 shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
         title="Bericht der Verifikations-Engine: Verdikt, Abdeckung, Modellgrenzen und Zertifikat"
       >
         {/* Siegel in drei Stufen (M12, gemessen in der Werkzeugleiste):
@@ -138,7 +138,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <div className="planner-layer-header">
             <h3 className="text-sm font-bold text-foreground">Prüfbericht</h3>
@@ -156,7 +156,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
           <div
             data-testid="verification-sheet-body"
-            className="planner-sheet-body min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3"
+            className="planner-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3"
           >
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               <Stat
@@ -229,13 +229,13 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
               <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-foreground">
                 Technische Details
               </summary>
-              <p className="break-words text-[10px] leading-relaxed text-muted-foreground">
+              <p className="text-[10px] leading-relaxed break-words text-muted-foreground">
                 Zertifikat {summary.certificateHash} · Plan {summary.planFingerprintHash}
                 <br />
                 Engine {summary.engineVersion} · Profil {summary.profile} · Kontext {summary.context}
               </p>
               {summary.notAppliedRules.length > 0 && (
-                <p className="mt-1 break-words text-[10px] leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-[10px] leading-relaxed break-words text-muted-foreground">
                   Nicht angewandte Regeln: {summary.notAppliedRules.join(', ')}
                 </p>
               )}

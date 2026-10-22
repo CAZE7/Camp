@@ -370,7 +370,7 @@ describe('DiagnosticViewer', () => {
     render(<DiagnosticViewer export={mockExport} onClose={onClose} />);
 
     // Finde den Close-Button (SVG mit X-Icon)
-    const closeButton = screen.getByRole('button', { name: '' });
+    const closeButton = screen.getByRole('button', { name: 'Diagnose schließen' });
     fireEvent.click(closeButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);

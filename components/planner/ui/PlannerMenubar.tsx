@@ -71,7 +71,7 @@ function MenuGroupList({
                 className={`cad-menu__item ${item.danger ? 'text-destructive' : ''}`}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1 whitespace-normal text-left">{item.label}</span>
+                <span className="min-w-0 flex-1 text-left whitespace-normal">{item.label}</span>
                 {item.checked && (
                   <span className="cad-menu__check" aria-hidden="true">
                     ◆

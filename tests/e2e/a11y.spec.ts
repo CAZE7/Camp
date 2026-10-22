@@ -49,7 +49,9 @@ for (const { path, name } of PAGES) {
       // Fließtext: axe-Regeln für Dokumentstruktur (z. B. 'region' pro
       // verschachteltem Node-Element) sind dort nicht das Bedienmodell.
       // Chrome installiert axe nur im Seiten-Kontext — der Ausschluss gilt
-      // ausschließlich dem Editor-Canvas, nicht der restlichen Shell.
+      // ausschließlich dem Editor-Canvas, nicht der restlichen Shell. Der
+      // Canvas erhält einen eigenen Axe-Scan inkl. WCAG 2.2 Target Size in
+      // `planner-canvas-a11y.spec.ts`.
       builder.exclude('.react-flow');
     }
 

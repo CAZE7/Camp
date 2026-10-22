@@ -184,7 +184,7 @@ function FindingCard({
       <div className="flex items-start gap-2">
         {style.icon}
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-bold text-foreground">{warning.title || style.label}</p>
+          <p className="text-sm font-bold break-words text-foreground">{warning.title || style.label}</p>
 
           {/* Kompakte Wertzeile (AMP-001): Betriebsstrom / Zulässig / Differenz. */}
           {values && (
@@ -219,7 +219,7 @@ function FindingCard({
             </p>
           )}
 
-          <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">{nextStep(warning)}</p>
+          <p className="mt-1 text-sm leading-relaxed font-semibold text-foreground">{nextStep(warning)}</p>
 
           {/* „Warum?" — maschinenlesbare Begründung aus dem Strom-/Iz-Modell. */}
           {hasWhy && (
@@ -228,7 +228,7 @@ function FindingCard({
                 type="button"
                 onClick={() => setWhyOpen((value) => !value)}
                 aria-expanded={whyOpen}
-                className="flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
                 Warum? Technische Details
@@ -552,7 +552,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
         // (WCAG 2.5.3 „Label in Name").
         aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:px-3 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
+        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none md:px-3 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
       >
         {topType === 'critical' ? (
           <OctagonAlert className="h-4 w-4" aria-hidden="true" />
@@ -602,7 +602,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           // schwebenden Undo-Leiste), ab `md` als Bericht unter der
           // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
           // sichtbaren Bereich.
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
           aria-label="Planungsprüfung"
         >
@@ -629,7 +629,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               aria-label="Prüfhinweise schließen"
             >
               <X className="h-5 w-5" />

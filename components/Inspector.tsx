@@ -270,7 +270,7 @@ const NodeInspector = ({
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
           }}
-          className="min-h-11 w-full rounded border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="min-h-11 w-full rounded border border-border px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
           placeholder="Bezeichnung"
         />
       </div>

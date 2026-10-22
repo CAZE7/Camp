@@ -128,18 +128,18 @@ export function BOMModal() {
       onClose={() => setOpen(false)}
       title="Stückliste"
       description="Das brauchst du für den aktuellen Plan. Verwendet wird deine eingetragene Länge; nur wo keine eingetragen ist, zählt der geroutete Weg (100 px im Plan = 1 m) oder eine ausdrücklich benannte Annahme. Abweichungen und fehlende Längen stehen unten – rechne für die Montage trotzdem eine Reserve hinzu."
-      className="min-h-0 min-w-0 max-w-2xl"
+      className="min-h-0 max-w-2xl min-w-0"
     >
       <div
         data-testid="bom-scroll-body"
-        className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
+        className="min-h-0 min-w-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto p-4 sm:p-5"
       >
         {assessment && (
           <section
             aria-labelledby="bom-status"
             data-testid="bom-release-status"
             data-status={assessment.status}
-            className={`min-w-0 break-words rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical flex-col' : 'border-border'}`}
+            className={`min-w-0 rounded-lg border p-3 break-words ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical flex-col' : 'border-border'}`}
           >
             <h3 id="bom-status" className="font-semibold">
               Dokumentstatus: {assessment.label}
@@ -255,7 +255,7 @@ export function BOMModal() {
                     Länge (bei reinen Planungsannahmen die größere, damit nichts zu knapp wird).
                   </p>
                 )}
-                <ul className="mt-2 min-w-0 space-y-1 break-words text-sm">
+                <ul className="mt-2 min-w-0 space-y-1 text-sm break-words">
                   {lengthAssumptions.slice(0, 8).map((entry) => (
                     <li key={`${entry.label}-${entry.source}`} className="min-w-0 break-words">
                       <span className="font-medium">{entry.label}</span>:{' '}

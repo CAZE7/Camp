@@ -143,7 +143,7 @@ export default function RoadTripAnimation() {
     <div
       ref={containerRef}
       aria-hidden="true"
-      className="road-trip-animation gpu-accelerated pointer-events-none fixed left-0 top-0 z-10 h-screen w-24 opacity-0 md:w-32 lg:w-48 lg:opacity-100"
+      className="road-trip-animation gpu-accelerated pointer-events-none fixed top-0 left-0 z-10 h-screen w-24 opacity-0 md:w-32 lg:w-48 lg:opacity-100"
       style={{ isolation: 'isolate', willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + GPU
     >
       <svg

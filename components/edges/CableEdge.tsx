@@ -8,7 +8,7 @@ import { fanOutLanesForEdge } from './utils/routeAll';
 import { useCableRoute } from './utils/cableRouteStore';
 import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
-import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
+import { useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
 import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError, resolveCableLength } from './utils/voltageDrop';
@@ -422,7 +422,6 @@ const CableEdge = function ({
   // überdecken bei 375 px mehr Fläche als der Plan selbst. Deshalb dort
   // ausgeblendet und erst bei Tap auf das Kabel als Tooltip eingeblendet.
   const isCompact = useMediaQuery(MOBILE_QUERY);
-  const coarsePointer = useCoarsePointer();
   const [tapRevealed, setTapRevealed] = useState(false);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -788,8 +787,6 @@ const CableEdge = function ({
   // nicht von „Planung“.
   const physicalMode = usePlannerStore((state) => state.plannerMode) === 'physisch';
   const labelVisible = !isCompact || selected || tapRevealed || physicalMode;
-  // Fingerbreite Trefferzone auf Touch, schlanke Zone für die Maus.
-  const interactionStrokeWidth = coarsePointer ? 36 : 20;
 
   return (
     <>
@@ -947,11 +944,13 @@ const CableEdge = function ({
 
       <path
         id={id + '_interaction'}
+        className="planner-edge-hit-target"
         d={edgePath}
         fill="none"
+        stroke="transparent"
         strokeOpacity={0}
-        strokeWidth={interactionStrokeWidth}
-        style={{ cursor: 'pointer' }}
+        strokeWidth={44}
+        style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
         role="button"
         tabIndex={0}
         aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeStatusSuffix}`}

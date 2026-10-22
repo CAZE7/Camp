@@ -20,7 +20,7 @@ describe('ShortcutOverlay', () => {
     fireEvent.keyDown(window, { key: '?' });
     expect(screen.getByRole('dialog', { name: 'Tastaturkürzel' })).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: 'Tastaturkürzel' })).not.toBeInTheDocument();
   });
 });

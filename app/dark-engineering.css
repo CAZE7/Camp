@@ -15,9 +15,9 @@
    ========================================================================== */
 
 /*
- * This file is imported as a separate stylesheet. Tailwind v3 treats
- * @layer base as a directive that needs a matching @tailwind base in this
- * same file, so keep these source styles unwrapped here.
+ * This file is imported as a separate stylesheet. Tailwind v4 merges named
+ * cascade layers across imports; keep the design-system tokens unwrapped so
+ * they remain global and explicit.
  */
 :root {
   /* ---- 1. GRID & SPACING ------------------------------------------------
