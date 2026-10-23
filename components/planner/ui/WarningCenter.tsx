@@ -247,7 +247,10 @@ function FindingCard({
                 Warum? Technische Details
               </button>
               {whyOpen && (
-                <div id={whyPanelId} className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                <div
+                  id={whyPanelId}
+                  className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft"
+                >
                   {warning.source && <p>Grundlage: {warning.source}</p>}
                   {details?.calculationMethod && (
                     <p>

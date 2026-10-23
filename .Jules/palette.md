@@ -1,3 +1,4 @@
 ## 2023-10-23 - Stable IDs for conditionally rendered ARIA targets
+
 **Learning:** In React, when `aria-controls` targets an element that is conditionally rendered (e.g., `open && <div id={id}>`), the target element disappears from the DOM when closed. This can cause screen readers or accessibility audits to flag a "broken ARIA reference" because the referenced ID no longer exists.
 **Action:** When linking a toggle button to a conditionally rendered panel, always pass `undefined` to `aria-controls` when the panel is closed (`aria-controls={open ? panelId : undefined}`). Generate the ID consistently outside the conditional block using `useId()`.
