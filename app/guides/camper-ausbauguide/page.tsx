@@ -79,7 +79,7 @@ export default function CamperAusbauguide() {
 
               {/* Dezenter Platzhalter statt externem Unsplash-Bild (offline-fähiger Export). */}
               <div className="my-10 flex aspect-video w-full items-center justify-center border border-rule bg-paper">
-                <span className="label-eyebrow text-copper">Ausbau-Impressionen</span>
+                <span className="kicker text-copper">Ausbau-Impressionen</span>
               </div>
 
               <hr className="my-12 border-rule" />

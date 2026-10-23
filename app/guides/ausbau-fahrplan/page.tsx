@@ -34,17 +34,17 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
       <div>
-        <h3 className="label-eyebrow mb-2 text-copper">Ziel</h3>
+        <h3 className="kicker mb-2 text-copper">Ziel</h3>
         <p className="leading-relaxed text-ink-soft">{step.ziel}</p>
       </div>
       <div>
-        <h3 className="label-eyebrow mb-2 text-moss">Warum jetzt?</h3>
+        <h3 className="kicker mb-2 text-moss">Warum jetzt?</h3>
         <p className="leading-relaxed text-ink-soft">{step.warumJetzt}</p>
       </div>
     </div>
 
     <div className="mb-8">
-      <h3 className="label-eyebrow mb-3 text-ink">Werkzeug & Material</h3>
+      <h3 className="kicker mb-3 text-ink">Werkzeug & Material</h3>
       <ul className="list-disc space-y-1 pl-5 text-ink-soft">
         {step.werkzeugMaterial.map((item, index) => (
           <li key={index}>{item}</li>
@@ -53,7 +53,7 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     <div className="mb-8">
-      <h3 className="label-eyebrow mb-3 text-ink">Schritt für Schritt</h3>
+      <h3 className="kicker mb-3 text-ink">Schritt für Schritt</h3>
       <ol className="list-decimal space-y-2 pl-5 text-ink-soft marker:font-medium marker:text-ink">
         {step.schrittFuerSchritt.map((item, index) => (
           <li key={index} className="pl-1">
@@ -65,14 +65,14 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     {step.zusatzInfo && (
       <div className="mb-8 border-l-2 border-copper bg-bone p-4">
-        <h3 className="label-eyebrow mb-1 text-copper">Zusatzinfo</h3>
+        <h3 className="kicker mb-1 text-copper">Zusatzinfo</h3>
         <p className="text-sm leading-relaxed text-ink-soft">{step.zusatzInfo}</p>
       </div>
     )}
 
     {step.comparison && (
       <div className="mb-8">
-        <h3 className="label-eyebrow mb-4 text-ink">{step.comparison.title}</h3>
+        <h3 className="kicker mb-4 text-ink">{step.comparison.title}</h3>
         <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
           {step.comparison.items.map((item, index) => (
             <div key={index} className="bg-paper p-5">
@@ -100,7 +100,7 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     {step.kaufhilfe && (
       <div className="border border-rule bg-bone p-5">
-        <h3 className="label-eyebrow mb-2 text-ink">Kaufhilfe</h3>
+        <h3 className="kicker mb-2 text-ink">Kaufhilfe</h3>
         <p className="text-sm text-ink-soft">{step.kaufhilfe}</p>
       </div>
     )}

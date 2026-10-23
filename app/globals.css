@@ -529,13 +529,6 @@
     outline-offset: 2px;
   }
 
-  .label-eyebrow {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.75rem; /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
   .wordmark {
     font-size: 1rem; /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
     font-weight: 600;

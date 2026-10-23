@@ -1209,7 +1209,7 @@ export function FlowCanvas() {
                   role="status"
                   className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
                 >
-                  <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
+                  <span className="kicker mr-2 text-oxide">Strompfad</span>
                   {traceLabel}
                 </div>
               </Panel>

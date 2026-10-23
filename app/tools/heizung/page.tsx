@@ -248,7 +248,7 @@ function VehicleConfiguration({
       id="section-fahrzeug"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Home className="h-4 w-4" aria-hidden="true" />
           Fahrzeug-Konfiguration
         </CardTitle>
@@ -298,7 +298,7 @@ function HeaterSelection({
       id="section-heizgeraet"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Flame className="h-4 w-4" aria-hidden="true" />
           Heizgeräte-Katalog
         </CardTitle>
@@ -380,7 +380,7 @@ function TemperatureInputs({
     <div className="grid scroll-mt-24 grid-cols-1 gap-6 md:grid-cols-2" id="section-temperatur">
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+          <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
             <Thermometer className="h-4 w-4 text-copper" aria-hidden="true" />
             Wunsch-Temperatur
           </CardTitle>
@@ -425,7 +425,7 @@ function TemperatureInputs({
 
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+          <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
             <Snowflake className="h-4 w-4 text-warn-info" aria-hidden="true" />
             Außen-Temperatur
           </CardTitle>
@@ -484,7 +484,7 @@ function InsulationInputs({
       id="section-daemmung"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Ruler className="h-4 w-4" aria-hidden="true" />
           Isolierung (Armaflex-Stärke)
         </CardTitle>
@@ -543,7 +543,7 @@ function AdvancedParameters({
       id="section-erweitert"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Wind className="h-4 w-4" aria-hidden="true" />
           Erweiterte Parameter
         </CardTitle>
@@ -678,7 +678,7 @@ function Metric({
     <div className="flex flex-col items-start gap-1 border border-rule bg-bone p-3">
       <div className="flex items-center gap-2 text-copper">
         <span aria-hidden="true">{icon}</span>
-        <span className="label-eyebrow text-ink-soft">{label}</span>
+        <span className="kicker text-ink-soft">{label}</span>
         {hint}
       </div>
       <p className="measure text-xl font-semibold text-ink">
@@ -768,7 +768,7 @@ function ResultsView({
       id="section-ergebnis"
     >
       <CardHeader className="border-b border-rule bg-paper">
-        <CardTitle className="label-eyebrow text-ink-soft">Ergebnisse & Sicherheitsanalyse</CardTitle>
+        <CardTitle className="kicker text-ink-soft">Ergebnisse & Sicherheitsanalyse</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
         {error ? (
@@ -838,7 +838,7 @@ function ResultsView({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="flex flex-col items-start gap-1 border border-rule bg-paper p-3">
                 <div className="flex items-center gap-2">
-                  <span className="label-eyebrow text-ink-soft">Transmission</span>
+                  <span className="kicker text-ink-soft">Transmission</span>
                   <InfoHint title="Transmissionswärmeverlust">
                     Wärme, die durch Wände, Fenster und Dach verloren geht. Sinkt mit besserer Dämmung.
                   </InfoHint>
@@ -849,7 +849,7 @@ function ResultsView({
               </div>
               <div className="flex flex-col items-start gap-1 border border-rule bg-paper p-3">
                 <div className="flex items-center gap-2">
-                  <span className="label-eyebrow text-ink-soft">Lüftungsverlust</span>
+                  <span className="kicker text-ink-soft">Lüftungsverlust</span>
                   <InfoHint title="Lüftungswärmeverlust">
                     Wärme, die durch Frischluft-Zufuhr und Ritzen entweicht. Steigt mit mehr Fensterfläche.
                   </InfoHint>
@@ -862,7 +862,7 @@ function ResultsView({
 
             {/* Main Result */}
             <div className="border-2 border-oxide/30 bg-paper p-6">
-              <p className="label-eyebrow text-oxide">Benötigte Heizleistung (Q_total)</p>
+              <p className="kicker text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <p className="measure text-2xl font-semibold tracking-tight text-ink md:text-6xl">
                   {Q_total.toFixed(0)}
@@ -881,7 +881,7 @@ function ResultsView({
 
             {/* Sizing Reference */}
             <div className="border border-rule bg-paper p-4">
-              <p className="label-eyebrow text-ink-soft">Referenzwerte</p>
+              <p className="kicker text-ink-soft">Referenzwerte</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                 <li>
                   <strong className="text-ink">≤ 2 200 W:</strong> Ideal für kompakte 2 kW-Standheizungen.
@@ -1024,7 +1024,7 @@ export default function HeatingCalculatorPage() {
         </Link>
         {/* Header */}
         <div>
-          <p className="label-eyebrow text-copper">Werkzeug</p>
+          <p className="kicker text-copper">Werkzeug</p>
           <h1
             className={cn(
               'mt-2 font-display text-2xl font-semibold tracking-tight text-ink md:text-2xl',

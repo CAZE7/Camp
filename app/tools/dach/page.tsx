@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -199,14 +199,14 @@ function DachPlanerInner() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="label-eyebrow text-ink-soft">Solarleistung gesamt</p>
+              <p className="kicker text-ink-soft">Solarleistung gesamt</p>
               <p className="measure text-xl font-semibold text-ink">
                 {totalRoofSolarWatts} <span className="caption-xs font-semibold text-ink-soft">W</span>
               </p>
             </div>
             <Link
               href="/planer"
-              className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className={cn(buttonVariants({ variant: 'default' }), 'hidden sm:inline-flex')}
             >
               Im Schaltplan öffnen
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -254,7 +254,7 @@ function DachPlanerInner() {
           className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-r lg:border-b-0"
         >
           <div className="space-y-3">
-            <Label htmlFor="dach-vehicle-select" className="label-eyebrow text-ink-soft">
+            <Label htmlFor="dach-vehicle-select" className="kicker text-ink-soft">
               Fahrzeug Modell
             </Label>
             <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
@@ -282,7 +282,7 @@ function DachPlanerInner() {
           </div>
 
           <div className="mt-6 space-y-3">
-            <Label className="label-eyebrow text-ink-soft">Komponenten</Label>
+            <Label className="kicker text-ink-soft">Komponenten</Label>
 
             {/* Solarpanel-Karte: Drag + Tap-to-place-Button */}
             <div
@@ -341,7 +341,7 @@ function DachPlanerInner() {
           {/* Validierungsliste */}
           {invalidNodes.length > 0 && (
             <div className="mt-6 space-y-2">
-              <Label className="label-eyebrow text-warn-critical">Hinweise</Label>
+              <Label className="kicker text-warn-critical">Hinweise</Label>
               <ul className="space-y-2" role="alert">
                 {invalidNodes.map((n) => {
                   const text = describeOverrun(n, roofWidthCm, roofHeightCm);
@@ -360,7 +360,7 @@ function DachPlanerInner() {
           {/* Überlappungswarnung */}
           {overlappingNodes.length > 0 && (
             <div className="mt-4 space-y-2">
-              <Label className="label-eyebrow text-warn-warning">Überlappung</Label>
+              <Label className="kicker text-warn-warning">Überlappung</Label>
               <ul className="space-y-2" role="alert">
                 {overlappingNodes.map((n) => (
                   <li key={n.id} className="warn-card warn-card-warning text-sm">
@@ -385,10 +385,7 @@ function DachPlanerInner() {
           )}
 
           {/* Mobile CTA */}
-          <Link
-            href="/planer"
-            className="mt-6 flex min-h-12 items-center justify-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper sm:hidden"
-          >
+          <Link href="/planer" className={cn(buttonVariants({ variant: 'default' }), 'mt-6 flex sm:hidden')}>
             Im Schaltplan öffnen
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
