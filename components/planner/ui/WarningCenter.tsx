@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useId } from 'react';
 import {
   AlertTriangle,
   AlertCircle,
@@ -176,6 +176,8 @@ function FindingCard({
     (rootCause?.affectedEdges.length ?? 0) > 1 ||
     details?.rcdsElsewhere !== undefined;
 
+  const whyPanelId = useId();
+
   return (
     <li className={`rounded-lg border-l-4 p-3 ${style.card}`}>
       <div className="flex items-start gap-2">
@@ -238,13 +240,17 @@ function FindingCard({
                 type="button"
                 onClick={() => setWhyOpen((value) => !value)}
                 aria-expanded={whyOpen}
+                aria-controls={whyOpen ? whyPanelId : undefined}
                 className="flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
                 Warum? Technische Details
               </button>
               {whyOpen && (
-                <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                <div
+                  id={whyPanelId}
+                  className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft"
+                >
                   {warning.source && <p>Grundlage: {warning.source}</p>}
                   {details?.calculationMethod && (
                     <p>
@@ -429,6 +435,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   const sorted = useMemo(
     () => [...warnings].sort((a, b) => SEVERITY_ORDER[a.type] - SEVERITY_ORDER[b.type]),
     [warnings]
@@ -552,6 +559,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         aria-haspopup="dialog"
         // Der Name war ein Satz mit drei Zahlen („24 Prüfhinweise anzeigen,
         // davon 0 kritisch") — Vorlesewerkzeuge lasen ihn vor jedem Wechsel
@@ -591,6 +599,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
       {open && (
         <div
+          id={panelId}
           ref={panelRef}
           tabIndex={-1}
           // Am Abzeichen verankert läge die Prüfliste außerhalb des Fensters:
