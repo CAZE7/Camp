@@ -46,6 +46,11 @@ const config: Config = {
           hover: 'rgb(var(--surface-hover-rgb) / <alpha-value>)',
         },
         'rule-strong': 'rgb(var(--rule-strong-rgb) / <alpha-value>)',
+        // Kante von Feldern und Sekundärknöpfen: ≥ 3:1 zur Fläche (WCAG
+        // 1.4.11). --rule bleibt reiner Trenner und wird nie Bedienkante.
+        control: {
+          border: 'rgb(var(--control-border-rgb) / <alpha-value>)',
+        },
         'on-signal': 'rgb(var(--on-signal-rgb) / <alpha-value>)',
         scrim: 'var(--scrim)',
         paper: 'rgb(var(--surface-canvas-rgb) / <alpha-value>)',
@@ -173,6 +178,15 @@ const config: Config = {
         // der Modifier stillschweigend verworfen.
         15: '0.15',
         45: '0.45',
+      },
+      zIndex: {
+        // Fünf Ebenen statt 18 Einzelwerte (Designkonzept 2026-10).
+        canvas: 'var(--z-canvas)',
+        overlay: 'var(--z-overlay)',
+        chrome: 'var(--z-chrome)',
+        popover: 'var(--z-popover)',
+        sheet: 'var(--z-sheet)',
+        toast: 'var(--z-toast)',
       },
       borderRadius: {
         lg: 'var(--radius)',

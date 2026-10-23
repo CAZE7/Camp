@@ -21,7 +21,7 @@ export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boo
   }
 
   return (
-    <div className="chat-window rounded-lg border border-border bg-bone shadow-2xl">
+    <div className="chat-window z-toast rounded-lg border border-border bg-bone shadow-2xl">
       <div className="flex items-center justify-between rounded-t-lg border-b border-border bg-oxide p-4 text-on-signal">
         <h2 className="font-semibold">Camper AI Assistent</h2>
         <button

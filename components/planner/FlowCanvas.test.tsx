@@ -751,7 +751,7 @@ describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
 
   it('behält bei iPhone-Querformat trotz Breite über md mobile Tabs und Panels', () => {
     const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
-    expect(css).toContain('@media (orientation: landscape) and (max-height: 480px)');
+    expect(css).toContain('@media (orientation: landscape) and (max-height: 500px)');
     expect(css).toContain(
       '.planner-shell:not(.planner-shell--focus) .planner-bottom-nav {\n    display: flex !important;'
     );

@@ -16,7 +16,7 @@ describe('Button component', () => {
   it.each([
     ['default', 'bg-primary text-primary-foreground hover:bg-primary/90'],
     ['destructive', 'bg-destructive text-destructive-foreground hover:bg-destructive/90'],
-    ['outline', 'border border-rule bg-bone text-ink hover:bg-accent hover:text-ink'],
+    ['outline', 'border border-control-border bg-surface-raised text-ink'],
     ['secondary', 'bg-secondary text-secondary-foreground hover:bg-secondary/80'],
     ['ghost', 'text-ink hover:bg-accent hover:text-ink'],
     ['link', 'text-primary underline-offset-4 hover:underline'],
@@ -31,8 +31,8 @@ describe('Button component', () => {
 
   it.each([
     ['default', 'h-11 px-4 py-2'],
-    ['sm', 'h-11 rounded-md px-3'],
-    ['lg', 'h-12 rounded-md px-8'],
+    ['sm', 'h-11 rounded px-3'],
+    ['lg', 'h-12 rounded px-8'],
     ['icon', 'h-11 w-11'],
   ] as const)("applies correct classes for size '%s'", (size, expectedClasses) => {
     render(<Button size={size}>Size {size}</Button>);

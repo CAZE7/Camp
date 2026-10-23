@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 
 /**
  * Die Fehlerseite ist kein Inhalt, sondern ein Hinweis: Sie bekommt einen
@@ -23,13 +22,10 @@ const LINKS = [
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <SiteHeader />
-      <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-16">
-        <p className="label-eyebrow text-copper">Fehler 404</p>
-        <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-2xl">
-          Diese Seite gibt es (noch) nicht.
-        </h1>
+    <PageShell variant="article" center mainClassName="mx-auto w-full max-w-2xl px-5 py-16">
+      <div>
+        <p className="kicker">Fehler 404</p>
+        <h1 className="h1 mt-3">Diese Seite gibt es (noch) nicht.</h1>
         <p className="mt-3 text-base text-ink-soft">
           Die aufgerufene Adresse führt ins Leere. Vielleicht war der Link veraltet oder du hast dich
           vertippt. Wähle unten, wo es weitergehen soll.
@@ -50,8 +46,7 @@ export default function NotFound() {
             </li>
           ))}
         </ul>
-      </main>
-      <SiteFooter />
-    </div>
+      </div>
+    </PageShell>
   );
 }

@@ -2,18 +2,16 @@ import type { Metadata } from 'next';
 
 import { metadataForPage } from '@/app/seoMetadata';
 
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
 export const metadata: Metadata = metadataForPage('/datenschutz/');
 
 export default function DatenschutzPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <>
       <PageStructuredData path="/datenschutz/" />
-      <SiteHeader />
-      <main id="main" className="container-page prose-measure flex-1">
+      <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
         <p className="caption-sm mt-2 text-ink-soft">
           Kurzfassung – bitte den finalen Text mit einer Rechtsberatung abgleichen.
@@ -31,8 +29,7 @@ export default function DatenschutzPage() {
           <h2 className="text-base font-semibold text-ink">Kontakt & Rechte</h2>
           <p>Auskunfts-, Korrektur- und Löschanfragen richtest du an die im Impressum genannte Adresse.</p>
         </section>
-      </main>
-      <SiteFooter />
-    </div>
+      </PageShell>
+    </>
   );
 }

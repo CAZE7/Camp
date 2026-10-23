@@ -322,7 +322,7 @@ const stepsData: StepData[] = [
 
 export default function AusbauFahrplanPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <div className="flex min-h-dvh flex-col bg-paper text-ink">
       <PageStructuredData path="/guides/ausbau-fahrplan/" />
       <SiteHeader />
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">

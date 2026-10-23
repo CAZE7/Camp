@@ -98,7 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" as="font" type="font/woff2" href={mono400LatinUrl} crossOrigin="anonymous" />
         <link rel="preload" as="font" type="font/woff2" href={mono500LatinUrl} crossOrigin="anonymous" />
       </head>
-      <body className="min-h-screen font-sans">
+      <body className="min-h-dvh font-sans">
         <SystemThemeSync />
         {/* Skip-Link für Tastatur- und Screen-Reader-Nutzer (WCAG 2.4.1) */}
         <a
