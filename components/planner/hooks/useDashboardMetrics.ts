@@ -5,11 +5,13 @@ import {
   type ConsumerNodeData,
   type SolarNodeData,
   type ChargerNodeData,
+  type InverterNodeData,
 } from '@/components/nodes/types';
 import { type Node, type Edge } from '@xyflow/react';
 import { getSystemVoltage } from '../utils/voltage';
 import { safeText } from '../../../lib/safeText'; // AUDIT T1
 import {
+  isStarterBatteryNode,
   VDE_INVERTER_EFFICIENCY,
   VDE_BATTERY_DOD,
   VDE_DOD_REFERENCE,
@@ -42,7 +44,17 @@ export function useDashboardMetrics(
           n.data?.watts !== prev.data?.watts ||
           n.data?.capacity !== prev.data?.capacity ||
           n.data?.amps !== prev.data?.amps ||
-          n.data?.hours !== prev.data?.hours
+          n.data?.hours !== prev.data?.hours ||
+          n.data?.nominalVoltage !== prev.data?.nominalVoltage ||
+          n.data?.chemistry !== prev.data?.chemistry ||
+          n.data?.role !== prev.data?.role ||
+          n.data?.label !== prev.data?.label ||
+          n.data?.peukertExponent !== prev.data?.peukertExponent ||
+          n.data?.efficiency !== prev.data?.efficiency ||
+          n.data?.voltage !== prev.data?.voltage ||
+          n.data?.continuousPower !== prev.data?.continuousPower ||
+          n.data?.idleWatts !== prev.data?.idleWatts ||
+          n.data?.idleW !== prev.data?.idleW
         );
       });
 
@@ -82,7 +94,7 @@ export function useDashboardMetrics(
     const dailyConsumptionAh = calculateDailyConsumption(
       categories.consumers,
       categories.consumers230v,
-      categories.hasInverter,
+      categories.inverters,
       season,
       sysVoltage
     );
@@ -91,7 +103,7 @@ export function useDashboardMetrics(
 
     const autarkyStr = calculateAutarky(usableCapacityAh, dailyConsumptionAh);
 
-    const { totalSolarAmps, totalSolarVoltage } = calculateSolarMetrics(
+    const { totalSolarAmps, totalSolarVoltage, seasonalSolarWatts } = calculateSolarMetrics(
       categories.solarNodes,
       debouncedEdges,
       categories.nodeTypeMap,
@@ -101,10 +113,12 @@ export function useDashboardMetrics(
     const chargingTimeStr = calculateChargingTime(
       categories.chargers,
       totalSolarAmps,
+      seasonalSolarWatts,
       calculatedSolarWatts,
       usableCapacityAh,
       categories.solarNodes.length,
-      season
+      season,
+      sysVoltage
     );
 
     const hasDirectBatteryToConsumer = checkDirectBatteryConnection(debouncedEdges, categories.nodeTypeMap);
@@ -124,50 +138,59 @@ export function useDashboardMetrics(
 // --- Helper Functions ---
 
 function categorizeNodes(nodes: Node[]) {
+  const allBatteries: Node[] = [];
   const result = {
     nodeTypeMap: {} as Record<string, string | undefined>,
     batteryNode: undefined as Node | undefined,
     batteries: [] as Node[],
     consumers: [] as Node[],
     consumers230v: [] as Node[],
-    hasInverter: false,
+    inverters: [] as Node[],
     solarNodes: [] as Node[],
     chargers: [] as Node[],
   };
 
   for (const n of nodes) {
     result.nodeTypeMap[n.id] = n.type;
-    const type = n.type;
-
-    if (type === 'battery') {
-      if (!result.batteryNode) result.batteryNode = n;
-      result.batteries.push(n);
-    } else if (type === 'consumer') {
-      result.consumers.push(n);
-    } else if (type === 'consumer230v') {
-      result.consumers230v.push(n);
-    } else if (type === 'inverter') {
-      result.hasInverter = true;
-    } else if (type === 'solar') {
-      result.solarNodes.push(n);
-    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(type as string)) {
-      result.chargers.push(n);
+    switch (n.type) {
+      case 'battery':
+        allBatteries.push(n);
+        break;
+      case 'consumer':
+        result.consumers.push(n);
+        break;
+      case 'consumer230v':
+        result.consumers230v.push(n);
+        break;
+      case 'inverter':
+        result.inverters.push(n);
+        break;
+      case 'solar':
+        result.solarNodes.push(n);
+        break;
+      case 'charger':
+      case 'mpptController':
+      case 'dcdcCharger':
+      case 'acBatteryCharger':
+        result.chargers.push(n);
+        break;
     }
   }
+
+  // K1: Die Fahrzeug-Starterbatterie dient dem Motorstart und darf NICHT in
+  // die nutzbare Aufbau-Kapazität, Autarkie oder Ladezeit eingerechnet werden.
+  result.batteries = allBatteries.filter((n) => !isStarterBatteryNode(n));
+  result.batteryNode = result.batteries[0];
 
   return result;
 }
 
 function calculateUsableCapacity(batteries: Node[], averageSystemCurrentA = 0): number {
-  // AUDIT DOM-002-Nachpflege (Peukert): Faustmodell lib/peukert.ts —
-  // Dauerstrom reduziert die nutzbare Kapazität (Blei deutlich, LiFePO4 kaum).
-  // Parallelblöcke teilen die Systemlast gleichmäßig; ohne Lastangabe
-  // (averageSystemCurrentA = 0) bleibt das bisherige Nennmodell aktiv.
   const count = batteries.length || 1;
   const shareA = averageSystemCurrentA > 0 ? averageSystemCurrentA / count : 0;
   return batteries.reduce((acc, batteryNode) => {
     const data = batteryNode?.data as BatteryNodeData | undefined;
-    const capacityAh = data?.capacity || 0;
+    const capacityAh = Math.max(0, Number(data?.capacity) || 0);
     const chemistry = data?.chemistry || 'LiFePO4';
     const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE;
     return acc + usableCapacityWithPeukertAh(capacityAh, dod, shareA, peukertExponentOf(data));
@@ -177,13 +200,13 @@ function calculateUsableCapacity(batteries: Node[], averageSystemCurrentA = 0): 
 function calculateDailyConsumption(
   consumers: Node[],
   consumers230v: Node[],
-  hasInverter: boolean,
+  inverters: Node[],
   season: 'summer' | 'winter',
   sysVoltage: number
 ): number {
   let dailyConsumptionAh = consumers.reduce((acc, n) => {
-    const w = (n.data as ConsumerNodeData)?.watts || 0;
-    const h = (n.data as ConsumerNodeData)?.hours || 0;
+    const w = Math.max(0, Number((n.data as ConsumerNodeData)?.watts) || 0);
+    const h = Math.max(0, Number((n.data as ConsumerNodeData)?.hours) || 0);
     let consumption = (w / sysVoltage) * h;
 
     // Seasonal adjustment only for heaters
@@ -198,13 +221,34 @@ function calculateDailyConsumption(
     return acc + consumption;
   }, 0);
 
+  let maxAcHours = 0;
   const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
-    const w = (n.data as ConsumerNodeData)?.watts || 0;
-    const h = (n.data as ConsumerNodeData)?.hours || 0;
+    const w = Math.max(0, Number((n.data as ConsumerNodeData)?.watts) || 0);
+    const h = Math.max(0, Number((n.data as ConsumerNodeData)?.hours) || 0);
+    if (w > 0 && h > maxAcHours) {
+      maxAcHours = h;
+    }
     // Inverter takes system voltage from battery, loses 15% (VDE_INVERTER_EFFICIENCY)
     return acc + ((w / sysVoltage) * h) / VDE_INVERTER_EFFICIENCY;
   }, 0);
   dailyConsumptionAh += inverterConsumptionAh;
+
+  // M3: Eigenverbrauch / Leerlaufaufnahme aktiver Wechselrichter einbeziehen.
+  if (inverters.length > 0) {
+    for (const inv of inverters) {
+      const data = inv.data as (InverterNodeData & { idleW?: number }) | undefined;
+      const idleWatts = Math.max(0, Number(data?.idleWatts ?? data?.idleW) || 0);
+      if (idleWatts <= 0) continue;
+      const explicitHours = data?.hours !== undefined ? Number(data.hours) : undefined;
+      const activeHours =
+        explicitHours !== undefined && Number.isFinite(explicitHours) && explicitHours >= 0
+          ? Math.min(24, explicitHours)
+          : maxAcHours > 0
+            ? Math.min(24, maxAcHours)
+            : 24;
+      dailyConsumptionAh += (idleWatts * activeHours) / sysVoltage;
+    }
+  }
 
   return dailyConsumptionAh;
 }
@@ -220,103 +264,147 @@ function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number):
 
 function calculateSolarMetrics(
   solarNodes: Node[],
-  significantEdges: Edge[],
+  edges: Edge[],
   nodeTypeMap: Record<string, string | undefined>,
   season: 'summer' | 'winter'
 ) {
   let totalSolarAmps = 0;
   let totalSolarVoltage = 0;
+  let rawSolarWatts = 0;
 
   if (solarNodes.length > 0) {
-    // Basic heuristic for the demo:
-    // If we find an edge between two solars from plus to minus, it's series.
-    const hasSeriesConnection = significantEdges.some((e) => {
-      const sType = nodeTypeMap[e.source];
-      const tType = nodeTypeMap[e.target];
-      return (
-        sType === 'solar' &&
-        tType === 'solar' &&
-        ((e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
-          (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus')))
-      );
-    });
-
-    if (hasSeriesConnection) {
-      // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
-      totalSolarVoltage = solarNodes.reduce((acc, n) => acc + ((n.data as SolarNodeData)?.voltage || 0), 0);
-      totalSolarAmps = (solarNodes[0]?.data as SolarNodeData)?.amps || 0;
-    } else {
-      // Parallel: Amps add up, Voltage stays the same
-      totalSolarAmps = solarNodes.reduce((acc, n) => acc + ((n.data as SolarNodeData)?.amps || 0), 0);
-      totalSolarVoltage = (solarNodes[0]?.data as SolarNodeData)?.voltage || 0;
+    let hasSeriesConnection = false;
+    for (const e of edges) {
+      if (nodeTypeMap[e.source] === 'solar' && nodeTypeMap[e.target] === 'solar') {
+        if (
+          (e.sourceHandle === 'plus' && e.targetHandle === 'minus') ||
+          (e.sourceHandle === 'minus' && e.targetHandle === 'plus')
+        ) {
+          hasSeriesConnection = true;
+          break;
+        }
+      }
     }
 
-    // Seasonal yield reduction for solar
-    if (season === 'winter') {
-      const winterReductionFactor = VDE_SOLAR_WINTER_REDUCTION;
-      totalSolarAmps *= winterReductionFactor;
+    for (const s of solarNodes) {
+      const sData = s.data as SolarNodeData | undefined;
+      const v = Math.max(0, Number(sData?.voltage) || 0);
+      const a = Math.max(0, Number(sData?.amps) || 0);
+      const w = Math.max(0, Number(sData?.watts) || 0);
+      rawSolarWatts += w > 0 ? w : v * a;
+    }
+
+    if (hasSeriesConnection) {
+      let minAmps = Infinity;
+      for (const s of solarNodes) {
+        const sData = s.data as SolarNodeData;
+        totalSolarVoltage += Math.max(0, Number(sData?.voltage) || 0);
+        const amps = Math.max(0, Number(sData?.amps) || 0);
+        if (amps < minAmps) minAmps = amps;
+      }
+      totalSolarAmps = minAmps === Infinity ? 0 : minAmps;
+    } else {
+      let maxV = 0;
+      for (const s of solarNodes) {
+        const sData = s.data as SolarNodeData;
+        totalSolarAmps += Math.max(0, Number(sData?.amps) || 0);
+        const v = Math.max(0, Number(sData?.voltage) || 0);
+        if (v > maxV) maxV = v;
+      }
+      totalSolarVoltage = maxV;
     }
   }
 
-  return { totalSolarAmps, totalSolarVoltage };
+  // Winterreduktion zentral aus VDE_SOLAR_WINTER_REDUCTION (0.35 = 35% Ertrag)
+  const winterFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
+  if (season === 'winter') {
+    totalSolarAmps *= winterFactor;
+  }
+
+  return {
+    totalSolarAmps,
+    totalSolarVoltage,
+    seasonalSolarWatts: rawSolarWatts * winterFactor,
+  };
 }
 
 function calculateChargingTime(
   chargers: Node[],
   totalSolarAmps: number,
+  seasonalSolarWatts: number,
   calculatedSolarWatts: number,
   usableCapacityAh: number,
   solarNodesCount: number,
-  season: 'summer' | 'winter'
+  season: 'summer' | 'winter',
+  sysVoltage: number
 ): string {
-  const hasCanvasSolar = solarNodesCount > 0;
-  const effectiveSolarWatts = hasCanvasSolar ? 0 : calculatedSolarWatts;
-  const effectiveSolarAmps = hasCanvasSolar ? totalSolarAmps : 0;
+  const mpptControllers = chargers.filter((c) => c.type === 'mpptController');
+  const otherChargers = chargers.filter((c) => c.type !== 'mpptController');
 
-  // The roof planner solar (effectiveSolarWatts) must apply a winter reduction to match canvas logic.
-  const seasonFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
+  let totalChargerAmps = 0;
+  for (const ch of otherChargers) {
+    const chData = ch.data as ChargerNodeData;
+    const rawAmps = Math.max(0, Number(chData?.amps) || 0);
+    const eff = (Math.max(0, Number(chData?.efficiency)) || 90) / 100;
+    totalChargerAmps += rawAmps * eff;
+  }
 
-  // Validated calculation step.
-  // Solar panels output at Vmp, not system voltage
-  const roofSolarAmps = (effectiveSolarWatts / VDE_SOLAR_VMP_VOLTAGE) * seasonFactor;
+  const winterFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
+  const fallbackPvWatts = calculatedSolarWatts > 0 ? calculatedSolarWatts * winterFactor : 0;
+  const availablePvWatts = solarNodesCount > 0 ? seasonalSolarWatts : fallbackPvWatts;
 
-  const totalChargerAmps =
-    chargers.reduce(
-      (acc, n) =>
-        acc +
-        ((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100),
-      0
-    ) +
-    effectiveSolarAmps +
-    roofSolarAmps;
+  // K2: MPPT-Laderegler und PV-Module bilden EINEN gemeinsamen Ladepfad.
+  // Vorher wurden Regler-Nennstrom (z. B. 20 A) UND Modulstrom (z. B. 10 A)
+  // addiert (= 30 A aus 200 W!). Korrekt ist min(MPPT-Ausgangsgrenze, PV-Leistung / Systemspannung).
+  if (mpptControllers.length > 0) {
+    let mpptMaxAmps = 0;
+    let weightedEffNumerator = 0;
+    let rawMpptSum = 0;
+    for (const mppt of mpptControllers) {
+      const mData = mppt.data as ChargerNodeData;
+      const rawAmps = Math.max(0, Number(mData?.amps) || 0);
+      const eff = (Math.max(0, Number(mData?.efficiency)) || 95) / 100;
+      mpptMaxAmps += rawAmps * eff;
+      weightedEffNumerator += rawAmps * eff;
+      rawMpptSum += rawAmps;
+    }
+    if (solarNodesCount > 0 || calculatedSolarWatts > 0) {
+      const avgEff = rawMpptSum > 0 ? weightedEffNumerator / rawMpptSum : 0.95;
+      const pvBatteryAmps =
+        availablePvWatts > 0 && sysVoltage > 0 ? (availablePvWatts * avgEff) / sysVoltage : totalSolarAmps;
+      totalChargerAmps += Math.min(mpptMaxAmps, pvBatteryAmps);
+    }
+  } else if (solarNodesCount > 0) {
+    totalChargerAmps += totalSolarAmps;
+  } else if (calculatedSolarWatts > 0) {
+    // Solar-Arbeitsspannung zentral aus VDE_SOLAR_VMP_VOLTAGE (18V typ. 12V-Modul)
+    totalChargerAmps += fallbackPvWatts / VDE_SOLAR_VMP_VOLTAGE;
+  }
 
-  let chargingTimeStr: string;
-  if (totalChargerAmps > 0) {
+  let chargingTimeStr = 'Kein Ladegerät';
+  if (totalChargerAmps > 0 && usableCapacityAh > 0) {
+    // Ladeverlustfaktor zentral aus VDE_CHARGE_DERATING_FACTOR (1.15 = +15% CC/CV)
     const chargingTime = (usableCapacityAh / totalChargerAmps) * VDE_CHARGE_DERATING_FACTOR;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
   } else if (chargers.length > 0 || solarNodesCount > 0 || calculatedSolarWatts > 0) {
     chargingTimeStr = '0 Ladeleistung';
-  } else {
-    chargingTimeStr = 'Kein Ladegerät';
   }
-
   return chargingTimeStr;
 }
 
 function checkDirectBatteryConnection(
-  significantEdges: Edge[],
+  edges: Edge[],
   nodeTypeMap: Record<string, string | undefined>
 ): boolean {
-  return significantEdges.some((e) => {
-    const sourceType = nodeTypeMap[e.source];
-    const targetType = nodeTypeMap[e.target];
-    if (!sourceType || !targetType) return false;
-
-    return (
-      (sourceType === 'battery' &&
-        (targetType === 'consumer' || targetType === 'consumer230v' || targetType === 'inverter')) ||
-      (targetType === 'battery' &&
-        (sourceType === 'consumer' || sourceType === 'consumer230v' || sourceType === 'inverter'))
-    );
-  });
+  for (const e of edges) {
+    const sType = nodeTypeMap[e.source];
+    const tType = nodeTypeMap[e.target];
+    if (
+      (sType === 'battery' && (tType === 'consumer' || tType === 'consumer230v' || tType === 'inverter')) ||
+      (tType === 'battery' && (sType === 'consumer' || sType === 'consumer230v' || sType === 'inverter'))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -428,3 +428,85 @@ describe('DOM-002-Nachpflege — Peukert in der Autarkie (Integration)', () => {
     expect(result.current.autarkyStr).toBe('2 Tage / 2 Stunden');
   });
 });
+
+describe('Audit K1, K2, M3, M9 — Starterbatterie, Solar+MPPT, WR-Leerlauf & 24-V-Reaktion', () => {
+  const emptyEdges: Edge[] = [];
+
+  it('K1: zählt Starterbatterien weder über role="starter" noch über Label in die Aufbau-Autarkie', () => {
+    const nodes: Node[] = [
+      {
+        id: 'house',
+        type: 'battery',
+        data: { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' },
+        position: { x: 0, y: 0 },
+      },
+      {
+        id: 'starter-label',
+        type: 'battery',
+        data: { label: 'Starterbatterie', capacity: 100, chemistry: 'AGM' },
+        position: { x: 0, y: 0 },
+      },
+      {
+        id: 'starter-role',
+        type: 'battery',
+        data: { label: 'Fahrzeugakku', role: 'starter', capacity: 95, chemistry: 'AGM' },
+        position: { x: 0, y: 0 },
+      },
+      { id: 'c1', type: 'consumer', data: { watts: 12.8, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // Nur die 100-Ah-LiFePO4-Aufbaubatterie (90 Ah nutzbar) zählt → 90 h = 3 Tage / 18 Stunden.
+    // Mit mitgezählter Starterbatterie wären es > 5 Tage gewesen.
+    expect(result.current.autarkyStr).toBe('3 Tage / 18 Stunden');
+  });
+
+  it('K2: rechnet MPPT-Regler und Solarpanel nicht doppelt in die Ladezeit ein', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
+      { id: 's1', type: 'solar', data: { watts: 200, voltage: 20, amps: 10 }, position: { x: 0, y: 0 } },
+      {
+        id: 'mppt',
+        type: 'mpptController',
+        data: { amps: 20, efficiency: 98 },
+        position: { x: 0, y: 0 },
+      },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // PV-Batteriestrom = (200 W * 0,98) / 12,8 V = 15,3125 A (gedeckelt durch 19,6 A MPPT)
+    // Ladezeit = (90 / 15,3125) * 1,15 = 6,759 h → „6.8 Stunden“ (vorher doppelt gezählt: ~3,5 Stunden).
+    expect(result.current.chargingTimeStr).toBe('6.8 Stunden');
+  });
+
+  it('M3: bezieht den Eigenverbrauch (idleWatts) aktiver Wechselrichter in den Tagesverbrauch ein', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
+      { id: 'i1', type: 'inverter', data: { idleWatts: 12.8, hours: 10 }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer230v', data: { watts: 120, hours: 1 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // 230V-Last: (120 / 12,8) / 0,85 = 11,0294 Ah + WR-Leerlauf: (12,8 * 10) / 12,8 = 10 Ah → 21,0294 Ah
+    expect(result.current.dailyConsumptionAh).toBeCloseTo(21.029, 3);
+  });
+
+  it('M9: aktualisiert den Tagesverbrauch nach Änderung von nominalVoltage (12,8 V → 25,6 V)', () => {
+    const nodes12: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, nominalVoltage: 12.8 }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 128, hours: 2 }, position: { x: 0, y: 0 } },
+    ];
+    const { result, rerender } = renderHook(
+      ({ nodes }) => useDashboardMetrics(nodes, emptyEdges, 'summer', 0),
+      { initialProps: { nodes: nodes12 } }
+    );
+    expect(result.current.dailyConsumptionAh).toBeCloseTo(20, 3);
+
+    const nodes24: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, nominalVoltage: 25.6 }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 128, hours: 2 }, position: { x: 0, y: 0 } },
+    ];
+    rerender({ nodes: nodes24 });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(result.current.dailyConsumptionAh).toBeCloseTo(10, 3);
+  });
+});

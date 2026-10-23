@@ -154,6 +154,49 @@ describe('WarningCenter — Wert/Einheit und Lösungshinweis (AUDIT UX-001)', ()
     expect(line).toHaveTextContent('Ist: maxPvVoltage fehlt');
     expect(line.textContent).not.toContain('fehlt V');
   });
+
+  it('H7: zeigt bei überlasteter Sicherung (I_b > I_n, aber I_b ≤ I_z) niemals „Leitung im grünen Bereich“', () => {
+    openPanel([
+      warning({
+        id: 'verify-AMP-001-ib-in-iz-edge-e-inv-0',
+        type: 'critical',
+        title: 'Überlastschutz & Leitungsbelastbarkeit',
+        message: 'Kritisch: Betriebsstrom 52,3 A übersteigt die 50-A-Sicherung.',
+        details: { ibA: 52.29, inA: 50, izA: 84 },
+      }),
+    ]);
+
+    expect(screen.getByText(/Sicherung überlastet/)).toBeInTheDocument();
+    expect(screen.queryByText(/Leitung im grünen Bereich/)).toBeNull();
+  });
+
+  it('B-04: bündelt wiederholte unprovable-Datenblatthinweise derselben Prüfregel aufklappbar', () => {
+    openPanel([
+      warning({
+        id: 'verify-AMP-002-1',
+        type: 'info',
+        status: 'incomplete',
+        ruleId: 'AMP-002-i2-coord',
+        title: 'Auslöseverhalten (I₂-Koordination)',
+        message: 'Herstellerkennlinie fehlt für Sicherung 1.',
+      }),
+      warning({
+        id: 'verify-AMP-002-2',
+        type: 'info',
+        status: 'incomplete',
+        ruleId: 'AMP-002-i2-coord',
+        title: 'Auslöseverhalten (I₂-Koordination)',
+        message: 'Herstellerkennlinie fehlt für Sicherung 2.',
+      }),
+    ]);
+
+    expect(screen.getByTestId('warning-group-AMP-002-i2-coord')).toHaveTextContent(
+      '2× gleichartiger Hinweis'
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Alle 2 betroffenen Stellen einzeln anzeigen/ }));
+    expect(screen.getByText(/Sicherung 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Sicherung 2/)).toBeInTheDocument();
+  });
 });
 
 describe('nextStep — der Lösungshinweis muss zum Befund passen', () => {

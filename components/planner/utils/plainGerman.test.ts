@@ -37,5 +37,12 @@ describe('toPlainGerman', () => {
     expect(hint).not.toMatch(/ul248|classT|i2A|AUTO-/);
     expect(hint).toContain('Class T');
     expect(hint).toContain('Prüfstrom');
+
+    const amp002 = toPlainGerman(
+      'Kabel Plus Busbar → Sicherungskasten: konventioneller Auslösestrom I_2 von Sicherung 40 A (bolt-down midi) ist nicht belegt (kein konventioneller Auslösestrom belegt (bolt-down)). Eine Annahme wäre eine erfundene Schutzwirkung.'
+    );
+    expect(amp002).not.toMatch(/bolt-down|I_2/i);
+    expect(amp002).toContain('MIDI-Sicherung');
+    expect(amp002).toContain('Hersteller-Datenblatt');
   });
 });

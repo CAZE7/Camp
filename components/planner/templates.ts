@@ -20,10 +20,15 @@ export const TEMPLATE_MINIMALIST = {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 160 },
-      data: { label: '12V Batterie', capacity: 100, chemistry: 'AGM' },
+      data: { label: '12V Batterie', role: 'house', capacity: 100, chemistry: 'AGM', internalResistance: 15 },
     },
     { id: 'ground-1', type: 'ground', position: { x: 80, y: 360 }, data: { label: 'Massepunkt' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 380, y: 160 }, data: { label: 'Sicherungskasten' } },
+    {
+      id: 'fusebox-1',
+      type: 'fuse',
+      position: { x: 380, y: 160 },
+      data: { label: 'Sicherungskasten', rating: 25, fuseType: 'ato' },
+    },
     {
       id: 'cons-light',
       type: 'consumer',
@@ -44,11 +49,9 @@ export const TEMPLATE_MINIMALIST = {
     },
   ] as Node[],
   edges: [
-    // Hauptsicherung sitzt direkt am Batteriepol (≤ 20 cm) und trägt den
-    // Gesamtstrom der drei Verbraucher (~8,4 A bei 12 V) → 10 A ATO.
-    // Die Minus-Rückleitungen ergänzt „Automatisch verbinden“ fachgerecht
-    // (Batterie → Shunt → Minusschiene → Verbraucher); doppelte Rückleiter
-    // im Template würden parallele Minuspfade erzeugen.
+    // Hauptsicherung sitzt direkt am Batteriepol (≤ 20 cm) als Class T (25 A)
+    // und ist selektiv zu den nachgelagerten 5-/10-A-ATO-Zweigsicherungen
+    // (25 : 10 = 2,5 ≥ 1,6). Masseanbindung 16 mm² erfüllt GND-001 (H6).
     {
       id: 'e-batt-fuse',
       source: 'battery-1',
@@ -56,7 +59,7 @@ export const TEMPLATE_MINIMALIST = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 0.2, crossSection: 10, fuseSize: 10 },
+      data: { length: 0.2, crossSection: 16, fuseSize: 25, fuseType: 'classT' },
     },
     {
       id: 'e-batt-gnd',
@@ -65,7 +68,7 @@ export const TEMPLATE_MINIMALIST = {
       target: 'ground-1',
       targetHandle: 'minus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 10 },
+      data: { length: 1, crossSection: 16 },
     },
     {
       id: 'e-fuse-light',
@@ -74,7 +77,7 @@ export const TEMPLATE_MINIMALIST = {
       target: 'cons-light',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 2.5 },
+      data: { length: 5, crossSection: 2.5, fuseSize: 5, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-usb',
@@ -83,7 +86,7 @@ export const TEMPLATE_MINIMALIST = {
       target: 'cons-usb',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 2.5 },
+      data: { length: 3, crossSection: 2.5, fuseSize: 10, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-cool',
@@ -92,7 +95,7 @@ export const TEMPLATE_MINIMALIST = {
       target: 'cons-cool',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 2, crossSection: 4 },
+      data: { length: 2, crossSection: 4, fuseSize: 10, fuseType: 'ato' },
     },
   ] as Edge<CableEdgeData>[],
 };
@@ -109,13 +112,20 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' },
+      data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
     },
     {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 440 },
-      data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4' },
+      data: {
+        label: '100Ah Lithium',
+        role: 'house',
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        hasInternalBms: true,
+        internalResistance: 15,
+      },
     },
     {
       id: 'charger-1',
@@ -131,12 +141,17 @@ export const TEMPLATE_ALLROUNDER = {
     },
     { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 440 }, data: { label: 'Plus Busbar' } },
     { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 620 }, data: { label: 'Minus Busbar' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
+    {
+      id: 'fusebox-1',
+      type: 'fuse',
+      position: { x: 680, y: 200 },
+      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi' },
+    },
     {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 440 },
-      data: { label: '500W Inverter', watts: 500, continuousPower: 500, hasRcd: true },
+      data: { label: '500W Inverter', watts: 500, continuousPower: 500, idleWatts: 6, hasRcd: true },
     },
     {
       id: 'cons-fridge',
@@ -171,7 +186,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 0.5, crossSection: 35, fuseSize: 63 },
+      data: { length: 0.5, crossSection: 70, fuseSize: 100, fuseType: 'classT' },
     },
     {
       id: 'e-batt-minus',
@@ -180,7 +195,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-minus',
       targetHandle: 'minus',
       type: 'cableEdge',
-      data: { length: 0.5, crossSection: 35 },
+      data: { length: 0.5, crossSection: 70 },
     },
     {
       id: 'e-solar-charger',
@@ -189,7 +204,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'charger-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 6, fuseSize: 20, edgeDomain: 'Solar' },
+      data: { length: 3, crossSection: 6, fuseSize: 20, fuseType: 'ato', edgeDomain: 'Solar' },
     },
     {
       id: 'e-charger-busbar',
@@ -198,7 +213,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 10, fuseSize: 32 },
+      data: { length: 1, crossSection: 10, fuseSize: 30, fuseType: 'ato' },
     },
     {
       id: 'e-starter-dcdc',
@@ -207,7 +222,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 40 },
+      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-dcdc-busbar',
@@ -216,7 +231,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40 },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-busbar-fuse',
@@ -225,7 +240,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 25, fuseSize: 63 },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-fuse-fridge',
@@ -234,7 +249,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'cons-fridge',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 4 },
+      data: { length: 3, crossSection: 4, fuseSize: 10, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-pump',
@@ -243,7 +258,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'cons-pump',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 4, crossSection: 2.5 },
+      data: { length: 4, crossSection: 2.5, fuseSize: 10, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-light',
@@ -252,7 +267,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'cons-light',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 1.5 },
+      data: { length: 5, crossSection: 1.5, fuseSize: 5, fuseType: 'ato' },
     },
     {
       id: 'e-busbar-inv-plus',
@@ -261,7 +276,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'inverter-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 25, fuseSize: 60 },
+      data: { length: 1, crossSection: 25, fuseSize: 60, fuseType: 'classT' },
     },
     {
       id: 'e-busbar-inv-minus',
@@ -279,7 +294,13 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'cons-230v',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 2, crossSection: 2.5, edgeDomain: 'AC_230V' },
+      data: {
+        length: 2,
+        crossSection: 2.5,
+        fuseSize: 10,
+        edgeDomain: 'AC_230V',
+        acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+      },
     },
   ] as Edge<CableEdgeData>[],
 };
@@ -296,25 +317,32 @@ export const TEMPLATE_AUTARK = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' },
+      data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
     },
     {
       id: 'shore-1',
       type: 'shorePower',
       position: { x: 80, y: 420 },
-      data: { label: 'Landstrom', hasRcd: true },
+      data: { label: 'Landstrom', hasRcd: true, rating: 16, systemForm: 'TN-S', prospectiveIkA: 1500 },
     },
     {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 600 },
-      data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' },
+      data: {
+        label: '200Ah Lithium',
+        role: 'house',
+        capacity: 200,
+        chemistry: 'LiFePO4',
+        hasInternalBms: true,
+        internalResistance: 15,
+      },
     },
     {
       id: 'charger-1',
       type: 'mpptController',
       position: { x: 380, y: 60 },
-      data: { label: 'MPPT Solarregler', amps: 30, maxPvVoltage: 75 },
+      data: { label: 'MPPT Solarregler', amps: 35, maxPvVoltage: 75 },
     },
     {
       id: 'charger-2',
@@ -324,20 +352,24 @@ export const TEMPLATE_AUTARK = {
     },
     { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 496 }, data: { label: 'Plus Busbar' } },
     { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 688 }, data: { label: 'Minus Busbar' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
+    {
+      id: 'fusebox-1',
+      type: 'fuse',
+      position: { x: 680, y: 200 },
+      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi' },
+    },
     // AUDIT ELE-001 (2026-10 korrigiert): Die absicherbare Grenze des
     // Modells ist 70 mm² mit max. 100 A (FUSE_MAP). Der Batterie-Hauptstrang
     // trägt im worst case EINGANGSSTROM DES WECHSELRICHTERS + DC-LASTEN +
     // BOOSTER-EINGANG (alles gleichzeitig am Bus). Damit der Template-Plan
     // ohne Sicherheitsbefund startet, muss die Summe ≤ 100 A bleiben:
     // 600 W WR ⇒ 58,8 A + DC-Lasten 11,7 A + 20-A-Booster-Eingang 22,2 A
-    // = 92,7 A. (Die frühere 900-W-Auslegung hatte den Booster-Eingang nicht
-    // gezählt und lag mit 133 A über der Grenze — zu Recht gemeldet.)
+    // = 92,7 A.
     {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 480 },
-      data: { label: '600W Inverter', watts: 600, continuousPower: 600, hasRcd: true },
+      data: { label: '600W Inverter', watts: 600, continuousPower: 600, idleWatts: 10, hasRcd: true },
     },
     {
       id: 'cons-fridge',
@@ -361,7 +393,7 @@ export const TEMPLATE_AUTARK = {
       id: 'cons-induct',
       type: 'consumer230v',
       position: { x: 980, y: 540 },
-      data: { label: 'Induktionskochfeld (1 Platte)', watts: 500, hours: 0.5 },
+      data: { label: 'E-Bike-Lader / Reisekocher (230 V)', watts: 500, hours: 0.5 },
     },
   ] as Node[],
   edges: [
@@ -372,7 +404,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 0.5, crossSection: 70, fuseSize: 100 },
+      data: { length: 0.5, crossSection: 70, fuseSize: 100, fuseType: 'classT' },
     },
     {
       id: 'e-batt-minus',
@@ -390,7 +422,7 @@ export const TEMPLATE_AUTARK = {
       target: 'charger-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 4, crossSection: 25, fuseSize: 50, edgeDomain: 'Solar' },
+      data: { length: 4, crossSection: 10, fuseSize: 25, fuseType: 'ato', edgeDomain: 'Solar' },
     },
     {
       id: 'e-charger-busbar',
@@ -399,7 +431,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 10, fuseSize: 32 },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-starter-dcdc',
@@ -408,7 +440,7 @@ export const TEMPLATE_AUTARK = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 40 },
+      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-dcdc-busbar',
@@ -417,7 +449,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40 },
+      data: { length: 1, crossSection: 10, fuseSize: 25, fuseType: 'ato' },
     },
     {
       id: 'e-busbar-fuse',
@@ -426,7 +458,7 @@ export const TEMPLATE_AUTARK = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 70, fuseSize: 100 },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
     },
     {
       id: 'e-fuse-fridge',
@@ -435,7 +467,7 @@ export const TEMPLATE_AUTARK = {
       target: 'cons-fridge',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 4 },
+      data: { length: 3, crossSection: 4, fuseSize: 10, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-heat',
@@ -444,7 +476,7 @@ export const TEMPLATE_AUTARK = {
       target: 'cons-heat',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 4, crossSection: 4 },
+      data: { length: 4, crossSection: 4, fuseSize: 15, fuseType: 'ato' },
     },
     {
       id: 'e-fuse-fan',
@@ -453,7 +485,7 @@ export const TEMPLATE_AUTARK = {
       target: 'cons-fan',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 2.5 },
+      data: { length: 3, crossSection: 2.5, fuseSize: 10, fuseType: 'ato' },
     },
     {
       id: 'e-busbar-inv-plus',
@@ -462,7 +494,7 @@ export const TEMPLATE_AUTARK = {
       target: 'inverter-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 70, fuseSize: 100 },
+      data: { length: 1, crossSection: 35, fuseSize: 60, fuseType: 'classT' },
     },
     {
       id: 'e-busbar-inv-minus',
@@ -471,7 +503,7 @@ export const TEMPLATE_AUTARK = {
       target: 'inverter-1',
       targetHandle: 'minus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 70 },
+      data: { length: 1, crossSection: 35 },
     },
     {
       id: 'e-inv-induct',
@@ -480,7 +512,13 @@ export const TEMPLATE_AUTARK = {
       target: 'cons-induct',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 2, crossSection: 2.5, edgeDomain: 'AC_230V' },
+      data: {
+        length: 2,
+        crossSection: 2.5,
+        fuseSize: 10,
+        edgeDomain: 'AC_230V',
+        acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+      },
     },
     {
       id: 'e-shore-inv',
@@ -489,7 +527,13 @@ export const TEMPLATE_AUTARK = {
       target: 'inverter-1',
       targetHandle: 'ac_in',
       type: 'cableEdge',
-      data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' },
+      data: {
+        length: 2,
+        crossSection: 2.5,
+        fuseSize: 16,
+        edgeDomain: 'AC_230V',
+        acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
+      },
     },
   ] as Edge<CableEdgeData>[],
 };
@@ -520,17 +564,17 @@ function cloneTemplateNodes(nodes: readonly Node[]): Node[] {
 }
 
 const KASTENWAGEN_EDGE_DATA: Record<string, CableEdgeData> = {
-  'e-batt-plus': { crossSection: 50, fuseSize: 80, fuseType: 'classT' },
-  'e-batt-minus': { crossSection: 50 },
-  'e-solar-charger': { fuseType: 'classT' },
-  'e-charger-busbar': { fuseType: 'classT' },
-  'e-starter-dcdc': { fuseType: 'classT' },
-  'e-dcdc-busbar': { fuseType: 'classT' },
-  'e-busbar-fuse': { fuseSize: 40, fuseType: 'classT' },
-  'e-fuse-fridge': { fuseSize: 10, fuseType: 'classT' },
-  'e-fuse-pump': { fuseSize: 10, fuseType: 'classT' },
-  'e-fuse-light': { fuseSize: 5, fuseType: 'classT' },
-  'e-busbar-inv-plus': { fuseSize: 50, fuseType: 'classT' },
+  'e-batt-plus': { crossSection: 70, fuseSize: 100, fuseType: 'classT' },
+  'e-batt-minus': { crossSection: 70 },
+  'e-solar-charger': { fuseSize: 20, fuseType: 'ato' },
+  'e-charger-busbar': { fuseSize: 30, fuseType: 'ato' },
+  'e-starter-dcdc': { fuseSize: 40, fuseType: 'midi' },
+  'e-dcdc-busbar': { fuseSize: 40, fuseType: 'midi' },
+  'e-busbar-fuse': { fuseSize: 40, fuseType: 'midi' },
+  'e-fuse-fridge': { fuseSize: 10, fuseType: 'ato' },
+  'e-fuse-pump': { fuseSize: 10, fuseType: 'ato' },
+  'e-fuse-light': { fuseSize: 5, fuseType: 'ato' },
+  'e-busbar-inv-plus': { fuseSize: 60, fuseType: 'classT' },
   'e-inv-230': {
     fuseSize: 10,
     acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6, residualType: 'B' },
@@ -616,7 +660,7 @@ export const PLANNER_TEMPLATES: readonly PlannerTemplate[] = [
     id: 'autark',
     label: 'Großes Autark-Setup',
     description:
-      'Für lange Standzeiten und Winter: 200 Ah LiFePO4, 400 W Solar, Ladebooster, Landstrom, Standheizung und Wechselrichter mit Induktionskochfeld.',
+      'Für lange Standzeiten und Winter: 200 Ah LiFePO4, 400 W Solar, Ladebooster, Landstrom, Standheizung und 600 W Wechselrichter für 230-V-Verbraucher.',
     aliases: ['winter-autark', 'grosses-autark-setup'],
     href: '/planer/?template=autark',
   },
@@ -663,17 +707,103 @@ export function shouldLoadStarterPlan(input: {
   );
 }
 
+function canonicalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeValue);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      const entry = (value as Record<string, unknown>)[key];
+      if (entry === undefined) continue;
+      out[key] = canonicalizeValue(entry);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Inhalts-Fingerprint eines Plans (H5): vergleicht nicht nur IDs, sondern
+ * Bauteil-Typen, Positionen und fachliche Datenwerte — ignoriert aber reine
+ * Laufzeit-/Messfelder von React Flow (`measured`, `selected`, `internals`, …).
+ */
+export function planFingerprint(
+  nodes: readonly {
+    id: string;
+    type?: string;
+    position?: { x: number; y: number };
+    data?: unknown;
+  }[],
+  edges: readonly {
+    id: string;
+    source?: string;
+    target?: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+    data?: unknown;
+  }[]
+): string {
+  const normNodes = [...nodes]
+    .map((node) => {
+      const rawData =
+        node.data && typeof node.data === 'object' ? { ...(node.data as Record<string, unknown>) } : {};
+      delete rawData.designator;
+      return {
+        id: node.id,
+        type: node.type ?? null,
+        x: Math.round((node.position?.x ?? 0) * 100) / 100,
+        y: Math.round((node.position?.y ?? 0) * 100) / 100,
+        data: canonicalizeValue(rawData),
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  const normEdges = [...edges]
+    .map((edge) => ({
+      id: edge.id,
+      source: edge.source ?? '',
+      target: edge.target ?? '',
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null,
+      data: canonicalizeValue(
+        edge.data && typeof edge.data === 'object' ? (edge.data as Record<string, unknown>) : {}
+      ),
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  return JSON.stringify({ nodes: normNodes, edges: normEdges });
+}
+
+let cachedStarterFingerprint: string | null = null;
+function starterPlanFingerprint(): string {
+  if (cachedStarterFingerprint === null) {
+    cachedStarterFingerprint = planFingerprint(TEMPLATE_KASTENWAGEN.nodes, TEMPLATE_KASTENWAGEN.edges);
+  }
+  return cachedStarterFingerprint;
+}
+
 /**
  * Ist der aktuelle Plan noch das unveränderte Beispiel-Setup? Dann ist er
- * kein eigener Plan: Ersetzen oder Leeren braucht keine Rückfrage, die sonst
- * jeden Erstbesucher im Onboarding mit einem Bestätigungsdialog begrüßt.
+ * kein eigener Plan: Ersetzen oder Leeren braucht keine Rückfrage. Sobald ein
+ * Wert, eine Position oder eine Leitung geändert wurde (z. B. Batterie auf
+ * 300 Ah, H5), gilt er als eigener Plan und wird geschützt.
  */
-export function isStarterPlan(nodes: readonly { id: string }[], edges: readonly { id: string }[]): boolean {
+export function isStarterPlan(
+  nodes: readonly {
+    id: string;
+    type?: string;
+    position?: { x: number; y: number };
+    data?: unknown;
+  }[],
+  edges: readonly {
+    id: string;
+    source?: string;
+    target?: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+    data?: unknown;
+  }[]
+): boolean {
   const starter = TEMPLATE_KASTENWAGEN;
   if (nodes.length !== starter.nodes.length || edges.length !== starter.edges.length) return false;
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const edgeIds = new Set(edges.map((edge) => edge.id));
-  return (
-    starter.nodes.every((node) => nodeIds.has(node.id)) && starter.edges.every((edge) => edgeIds.has(edge.id))
-  );
+  return planFingerprint(nodes, edges) === starterPlanFingerprint();
 }

@@ -11,6 +11,7 @@ import { getSystemVoltage } from '../utils/voltage';
 // V2: Bauteilgrenzen und Strombudget kommen aus der elektrischen Ebene —
 // eine Tabelle statt verstreuter `node.type ===`-Zweige.
 import {
+  classifySystemVoltage,
   componentCurrentLimit,
   computeCurrentBudget,
   deriveBatteryBanks,
@@ -20,7 +21,7 @@ import {
 // Topologieabhängige Stromberechnung (eine Rechnung pro Render, gecacht —
 // dieselbe Quelle wie Verifikations-Engine und Kanten-Labels).
 import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
-import { amps } from '../../../lib/units';
+import { amps, volts } from '../../../lib/units';
 import { verificationReportFor, verificationWarnings } from '../utils/verificationWarnings';
 import type { AutoWireConflict, AutoWireReport } from '../../../lib/autoWire/conflicts';
 // AUDIT T1: Diagnose-Texte (Typ statt `[object Object]`) kommen aus derselben
@@ -285,11 +286,18 @@ export function useLiveValidation(
     // echte Feld; der fehlende Wert ist ausdrücklich „unbekannt“ (nicht 12),
     // sonst entsteht dieselbe stille Gleichsetzung.
     if (batteries.length > 1) {
-      const declaredVoltages = batteries
-        .map((b) => Number((b.data as Record<string, unknown> | undefined)?.nominalVoltage))
-        .filter((v) => Number.isFinite(v) && v > 0);
-      const hasUnknownVoltage = declaredVoltages.length < batteries.length;
-      const voltages = new Set(declaredVoltages);
+      const voltageKeyOf = (v: number): string => {
+        const cls = classifySystemVoltage(volts(v));
+        return cls === 'unknown' ? `${v}V` : cls;
+      };
+      const declaredEntries = batteries
+        .map((b) => ({
+          node: b,
+          isHouse: isHouseBattery(b),
+          voltage: Number((b.data as Record<string, unknown> | undefined)?.nominalVoltage),
+        }))
+        .filter((entry) => Number.isFinite(entry.voltage) && entry.voltage > 0);
+      const hasUnknownVoltage = declaredEntries.length < batteries.length;
       if (hasUnknownVoltage) {
         warnings.push({
           id: 'mixed-voltage-unknown',
@@ -297,7 +305,7 @@ export function useLiveValidation(
           type: 'info',
           title: 'Batterie-Nennspannung fehlt',
           ruleId: 'ELE-008-voltage-unknown',
-          measuredValue: `${batteries.length - declaredVoltages.length} × ohne Angabe`,
+          measuredValue: `${batteries.length - declaredEntries.length} × ohne Angabe`,
           expectedValue: 'Nennspannung je Batterie eintragen',
           // Kein Einheitenfeld: Der Messwert ist eine ANZAHL ohne Angabe, keine
           // Spannung. Vorher stand hier „V“ und die Zeile las sich
@@ -308,17 +316,72 @@ export function useLiveValidation(
             'Hinweis: Bei mindestens einer Batterie ist die Nennspannung nicht eingetragen. Die Mischspannungs-Prüfung (12 V / 24 V) kann diese Batterie nicht einbeziehen — trage die Nennspannung im Batterie-Inspektor ein.',
         });
       }
-      if (voltages.size > 1) {
+
+      const houseEntries = declaredEntries.filter((entry) => entry.isHouse);
+      const starterEntries = declaredEntries.filter((entry) => !entry.isHouse);
+      const houseClasses = new Set(houseEntries.map((entry) => voltageKeyOf(entry.voltage)));
+      const starterClasses = new Set(starterEntries.map((entry) => voltageKeyOf(entry.voltage)));
+      const allClasses = new Set(declaredEntries.map((entry) => voltageKeyOf(entry.voltage)));
+
+      // M9: Eine 12-V-Starterbatterie und eine 24-V-Aufbaubatterie, die über
+      // einen DC-DC-Ladebooster (`dcdcCharger`) getrennt gekoppelt sind, sind
+      // ein regulärer Spannungswandler-Aufbau und KEIN gefährlicher Kurzschluss.
+      // Direkt auf dem Pluspfad verbundene Batterien unterschiedlicher Ebene
+      // oder gemischte Aufbaubatterien bleiben dagegen kritisch.
+      const hasDcdcCharger = nodes.some((n) => n.type === 'dcdcCharger');
+      const hasDirectPositiveCoupling = (): boolean => {
+        if (starterEntries.length === 0 || houseEntries.length === 0) return false;
+        const houseIds = new Set(houseEntries.map((entry) => entry.node.id));
+        const visited = new Set<string>(starterEntries.map((entry) => entry.node.id));
+        const queue = [...visited];
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          for (const edge of edges) {
+            if (edge.source !== currentId && edge.target !== currentId) continue;
+            const sHandle = (edge.sourceHandle ?? '').toLowerCase();
+            const tHandle = (edge.targetHandle ?? '').toLowerCase();
+            if (sHandle.includes('minus') || tHandle.includes('minus')) continue;
+            const otherId = edge.source === currentId ? edge.target : edge.source;
+            if (visited.has(otherId)) continue;
+            const otherNode = nodeMap.get(otherId);
+            if (!otherNode) continue;
+            if (
+              otherNode.type === 'dcdcCharger' ||
+              otherNode.type === 'ground' ||
+              otherNode.type === 'shunt' ||
+              (otherNode.type === 'busbar' &&
+                (otherNode.data as { role?: string } | undefined)?.role === 'negative')
+            ) {
+              continue;
+            }
+            if (houseIds.has(otherId)) return true;
+            visited.add(otherId);
+            queue.push(otherId);
+          }
+        }
+        return false;
+      };
+
+      const decoupledViaBooster =
+        houseClasses.size <= 1 &&
+        starterClasses.size <= 1 &&
+        houseEntries.length > 0 &&
+        starterEntries.length > 0 &&
+        hasDcdcCharger &&
+        !hasDirectPositiveCoupling();
+
+      if (allClasses.size > 1 && !decoupledViaBooster) {
+        const distinctVoltages = Array.from(new Set(declaredEntries.map((entry) => entry.voltage)));
         warnings.push({
           id: 'mixed-voltage-batteries',
           category: 'topology',
           type: 'critical',
           title: 'Mischspannung (12 V / 24 V)',
           message:
-            'Batterien mit unterschiedlichen Nennspannungen im Plan. Dies ist gefährlich und wird vom Berechnungsmodell nicht unterstützt.',
+            'Batterien mit unterschiedlichen Spannungsebenen ohne DC-DC-Trennung im Plan. Dies ist gefährlich und wird auf einem gemeinsamen Bus nicht unterstützt.',
           ruleId: 'ELE-008-mixed-voltage',
-          measuredValue: Array.from(voltages).join(' V, ') + ' V',
-          expectedValue: 'einheitliche Spannung',
+          measuredValue: distinctVoltages.join(' V, ') + ' V',
+          expectedValue: 'einheitliche Spannungsebene (oder Trennung per Ladebooster)',
           unit: 'V',
         });
       }

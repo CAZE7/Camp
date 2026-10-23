@@ -736,5 +736,35 @@ describe('useLiveValidation', () => {
       expect(warning!.measuredValue).toMatch(/12 V/);
       expect(warning!.measuredValue).toMatch(/24 V/);
     });
+
+    it('M9: meldet KEINE gefährliche Mischspannung, wenn 12-V-Starterbatterie und 24-V-Aufbaubatterie per Ladebooster getrennt sind', () => {
+      const nodes = [
+        node('starter', 'battery', { label: 'Starterbatterie', role: 'starter', nominalVoltage: 12 }),
+        node('booster', 'dcdcCharger', { label: 'Ladebooster 12→24', amps: 30 }),
+        node('house', 'battery', { label: 'Aufbaubatterie', role: 'house', nominalVoltage: 24 }),
+        node('gnd', 'ground', { label: 'Masse' }),
+      ];
+      const edges: Edge[] = [
+        { id: 'e1', source: 'starter', target: 'booster', sourceHandle: 'plus', targetHandle: 'in_plus' },
+        { id: 'e2', source: 'booster', target: 'house', sourceHandle: 'out_plus', targetHandle: 'plus' },
+        { id: 'e3', source: 'starter', target: 'gnd', sourceHandle: 'minus', targetHandle: 'minus' },
+        { id: 'e4', source: 'house', target: 'gnd', sourceHandle: 'minus', targetHandle: 'minus' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage')).toBeUndefined();
+    });
+
+    it('M9: meldet weiterhin kritische Mischspannung, wenn 12-V-Starter und 24-V-Aufbau direkt auf Plus verbunden sind', () => {
+      const nodes = [
+        node('starter', 'battery', { label: 'Starterbatterie', role: 'starter', nominalVoltage: 12 }),
+        node('booster', 'dcdcCharger', { label: 'Ladebooster', amps: 30 }),
+        node('house', 'battery', { label: 'Aufbaubatterie', role: 'house', nominalVoltage: 24 }),
+      ];
+      const edges: Edge[] = [
+        { id: 'e-short', source: 'starter', target: 'house', sourceHandle: 'plus', targetHandle: 'plus' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage')).toBeDefined();
+    });
   });
 });

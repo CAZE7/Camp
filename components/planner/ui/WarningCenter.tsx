@@ -132,17 +132,50 @@ function fmtA(value: number): string {
 }
 
 /**
- * Detailwerte einer AMP-001-Karte (Auftrag §16): „Leitung überlastet /
- * Betriebsstrom 158,7 A / Zulässig 120,4 A / Differenz +38,3 A". Gesetzt nur,
- * wenn das Detail echte Zahlen trägt (Ib UND Iz vorhanden).
+ * Detailwerte einer AMP-001-/AMP-002-Karte (Auftrag §16, H7): zeigt die echte
+ * Ursache („Leitung überlastet" vs. „Sicherung überlastet" vs. „Sicherung zu
+ * groß für Leitung" vs. „Prüfstrom offen"), niemals „Leitung im grünen Bereich"
+ * auf einer Fehler- oder Warnkarte.
  */
-function ampacityValues(warning: ValidationWarning): { ib: number; iz: number; diff: number } | null {
+function ampacityValues(warning: ValidationWarning): {
+  headline: string;
+  critical: boolean;
+  summary: string;
+} | null {
   const details = warning.details;
   if (!details) return null;
   const ib = details.ibA;
   const iz = details.izA;
+  const inA = typeof details.inA === 'number' && Number.isFinite(details.inA) ? details.inA : null;
   if (typeof ib !== 'number' || typeof iz !== 'number' || !Number.isFinite(iz) || iz <= 0) return null;
-  return { ib, iz, diff: ib - iz };
+
+  if (ib > iz) {
+    return {
+      headline: 'Leitung überlastet',
+      critical: true,
+      summary: `Betriebsstrom ${fmtA(ib)} A · Zulässig ${fmtA(iz)} A · Differenz +${fmtA(ib - iz)} A`,
+    };
+  }
+  if (inA !== null && ib > inA) {
+    return {
+      headline: 'Sicherung überlastet',
+      critical: true,
+      summary: `Betriebsstrom ${fmtA(ib)} A · Sicherung ${fmtA(inA)} A · Leitung zulässig ${fmtA(iz)} A · Differenz +${fmtA(ib - inA)} A`,
+    };
+  }
+  if (inA !== null && inA > iz) {
+    return {
+      headline: 'Sicherung zu groß für Leitung',
+      critical: true,
+      summary: `Sicherung ${fmtA(inA)} A · Leitung zulässig ${fmtA(iz)} A · Betriebsstrom ${fmtA(ib)} A · Differenz +${fmtA(inA - iz)} A`,
+    };
+  }
+  const isViolation = warning.type === 'critical' || warning.type === 'warning';
+  return {
+    headline: isViolation ? 'Auslöseschutz verletzt' : 'Prüfstrom offen',
+    critical: isViolation,
+    summary: `Betriebsstrom ${fmtA(ib)} A${inA !== null ? ` · Sicherung ${fmtA(inA)} A` : ''} · Leitung zulässig ${fmtA(iz)} A`,
+  };
 }
 
 /**
@@ -186,16 +219,14 @@ function FindingCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold break-words text-foreground">{warning.title || style.label}</p>
 
-          {/* Kompakte Wertzeile (AMP-001): Betriebsstrom / Zulässig / Differenz. */}
+          {/* Kompakte Wertzeile (AMP-001, H7): Betriebsstrom / Sicherung / Zulässig. */}
           {values && (
             <p
               className={`mt-1 font-mono text-xs font-semibold ${
-                values.ib > values.iz ? 'text-warn-critical' : 'text-ink-soft'
+                values.critical ? 'text-warn-critical' : 'text-ink-soft'
               }`}
             >
-              {values.ib > values.iz ? 'Leitung überlastet' : 'Leitung im grünen Bereich'} · Betriebsstrom{' '}
-              {fmtA(values.ib)} A · Zulässig {fmtA(values.iz)} A
-              {values.ib > values.iz ? ` · Differenz +${fmtA(values.diff)} A` : ''}
+              {values.headline} · {values.summary}
             </p>
           )}
 
@@ -283,10 +314,10 @@ function FindingCard({
                   {details?.izBreakdown && (
                     <p className="mt-1">
                       I_z = {fmtA(details.izBreakdown.baseIz)} A Basis × f₁{' '}
-                      {details.izBreakdown.ambientFactor.toFixed(2)} × f₂{' '}
-                      {details.izBreakdown.groupingFactor.toFixed(2)} × f₃{' '}
-                      {details.izBreakdown.installationFactor.toFixed(2)} × Planerpauschale{' '}
-                      {details.izBreakdown.plannerSafetyFactor.toFixed(2)} ={' '}
+                      {details.izBreakdown.ambientFactor.toFixed(2).replace('.', ',')} × f₂{' '}
+                      {details.izBreakdown.groupingFactor.toFixed(2).replace('.', ',')} × f₃{' '}
+                      {details.izBreakdown.installationFactor.toFixed(2).replace('.', ',')} × Planerpauschale{' '}
+                      {details.izBreakdown.plannerSafetyFactor.toFixed(2).replace('.', ',')} ={' '}
                       {fmtA(details.izBreakdown.correctedIz)} A
                     </p>
                   )}
@@ -417,12 +448,49 @@ function groupCounts(warnings: ValidationWarning[]) {
 
 export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   const [open, setOpen] = useState(false);
+  const [expandedRuleGroups, setExpandedRuleGroups] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const sorted = useMemo(
     () => [...warnings].sort((a, b) => SEVERITY_ORDER[a.type] - SEVERITY_ORDER[b.type]),
     [warnings]
   );
+  /**
+   * B-04: Gleichartige `unprovable`-Datenblatthinweise derselben Prüfregel
+   * (z. B. mehrere Class-T- oder Sonder-Sicherungen mit fehlender
+   * Hersteller-Auslösekennlinie) werden ab 2 Treffern als aufklappbare
+   * Sammelgruppe dargestellt, statt denselben Absatz 10× untereinander zu
+   * duplizieren. Kritische Befunde und Warnungen bleiben immer einzeln offen.
+   */
+  const displayEntries = useMemo(() => {
+    type DisplayEntry =
+      | { kind: 'single'; warning: ValidationWarning }
+      | { kind: 'group'; key: string; warnings: ValidationWarning[] };
+    const unprovableBuckets = new Map<string, ValidationWarning[]>();
+    for (const warning of sorted) {
+      if (warning.type === 'info' && warning.status === 'incomplete' && warning.ruleId) {
+        const list = unprovableBuckets.get(warning.ruleId) ?? [];
+        list.push(warning);
+        unprovableBuckets.set(warning.ruleId, list);
+      }
+    }
+    const emittedGroups = new Set<string>();
+    const entries: DisplayEntry[] = [];
+    for (const warning of sorted) {
+      if (warning.type === 'info' && warning.status === 'incomplete' && warning.ruleId) {
+        const bucket = unprovableBuckets.get(warning.ruleId);
+        if (bucket && bucket.length >= 2) {
+          if (!emittedGroups.has(warning.ruleId)) {
+            emittedGroups.add(warning.ruleId);
+            entries.push({ kind: 'group', key: warning.ruleId, warnings: bucket });
+          }
+          continue;
+        }
+      }
+      entries.push({ kind: 'single', warning });
+    }
+    return entries;
+  }, [sorted]);
   const counts = useMemo(() => {
     const value = { critical: 0, warning: 0, info: 0 };
     warnings.forEach((warning) => value[warning.type]++);
@@ -640,17 +708,75 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             data-testid="warning-sheet-body"
             className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
           >
-            {sorted.map((warning) => (
-              <FindingCard
-                key={warning.id}
-                warning={warning}
-                {...(warning.rootCauseId !== undefined && rootCauses.has(warning.rootCauseId)
-                  ? { rootCause: rootCauses.get(warning.rootCauseId)! }
-                  : {})}
-                onFix={onFix}
-                onClose={() => setOpen(false)}
-              />
-            ))}
+            {displayEntries.map((entry) => {
+              if (entry.kind === 'single') {
+                const { warning } = entry;
+                return (
+                  <FindingCard
+                    key={warning.id}
+                    warning={warning}
+                    {...(warning.rootCauseId !== undefined && rootCauses.has(warning.rootCauseId)
+                      ? { rootCause: rootCauses.get(warning.rootCauseId)! }
+                      : {})}
+                    onFix={onFix}
+                    onClose={() => setOpen(false)}
+                  />
+                );
+              }
+              const representative = entry.warnings[0]!;
+              const isExpanded = Boolean(expandedRuleGroups[entry.key]);
+              return (
+                <li
+                  key={`group-${entry.key}`}
+                  data-testid={`warning-group-${entry.key}`}
+                  className="rounded border border-l-4 border-border border-l-muted-foreground bg-accent p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="inline-block rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] font-bold text-foreground">
+                        {entry.warnings.length}× gleichartiger Hinweis
+                      </span>
+                      <p className="mt-1 font-bold text-foreground">
+                        {representative.title ? toPlainGerman(representative.title) : representative.message}
+                      </p>
+                      {!isExpanded && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {toPlainGerman(representative.message)}
+                        </p>
+                      )}
+                      <p className="mt-1.5 text-xs font-medium text-foreground">{nextStep(representative)}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedRuleGroups((prev) => ({ ...prev, [entry.key]: !prev[entry.key] }))
+                    }
+                    aria-expanded={isExpanded}
+                    className="mt-2 inline-flex min-h-11 items-center gap-1 rounded border border-border bg-card px-2.5 text-xs font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    {isExpanded
+                      ? 'Einzelne Leitungen einklappen'
+                      : `Alle ${entry.warnings.length} betroffenen Stellen einzeln anzeigen`}
+                  </button>
+                  {isExpanded && (
+                    <ul className="mt-2 flex flex-col gap-2 border-t border-border pt-2">
+                      {entry.warnings.map((warning) => (
+                        <FindingCard
+                          key={warning.id}
+                          warning={warning}
+                          {...(warning.rootCauseId !== undefined && rootCauses.has(warning.rootCauseId)
+                            ? { rootCause: rootCauses.get(warning.rootCauseId)! }
+                            : {})}
+                          onFix={onFix}
+                          onClose={() => setOpen(false)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

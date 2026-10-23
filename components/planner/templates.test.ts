@@ -63,6 +63,25 @@ describe('Starter-Plan', () => {
         TEMPLATE_KASTENWAGEN.edges
       )
     ).toBe(false);
+    // H5: Ein geänderter Datenwert (z. B. Batterie von 100 Ah auf 300 Ah) oder
+    // eine verschobene Position gilt NICHT mehr als unveränderter Starter-Plan.
+    const editedNodes = TEMPLATE_KASTENWAGEN.nodes.map((node) =>
+      node.id === 'battery-1' ? { ...node, data: { ...node.data, capacity: 300 } } : node
+    );
+    expect(isStarterPlan(editedNodes, TEMPLATE_KASTENWAGEN.edges)).toBe(false);
+
+    const movedNodes = TEMPLATE_KASTENWAGEN.nodes.map((node) =>
+      node.id === 'battery-1' ? { ...node, position: { x: node.position.x + 32, y: node.position.y } } : node
+    );
+    expect(isStarterPlan(movedNodes, TEMPLATE_KASTENWAGEN.edges)).toBe(false);
+
+    // Reine React-Flow-Laufzeitfelder (measured, selected) ändern den Status dagegen nicht.
+    const measuredNodes = TEMPLATE_KASTENWAGEN.nodes.map((node) => ({
+      ...node,
+      selected: node.id === 'battery-1',
+      measured: { width: 192, height: 140 },
+    }));
+    expect(isStarterPlan(measuredNodes, TEMPLATE_KASTENWAGEN.edges)).toBe(true);
   });
 
   it('lädt nur ohne gespeicherten Plan, ohne Deep-Link und bei leerer Fläche', () => {
@@ -153,14 +172,31 @@ describe('Beispielplan des Erststarts (Nachtest live)', () => {
     expect(starter).toEqual(expect.arrayContaining(['G1.2', 'G2.2', 'W1.2', 'E1.2', 'E1.3']));
   });
 
-  it('besteht den eigenen Prüfbericht ohne Fehlschlag und ohne Sicherung 0', () => {
-    const fuse = TEMPLATE_KASTENWAGEN.nodes.find((node) => node.id === 'fusebox-1');
-    expect((fuse?.data as { rating?: number }).rating).toBeGreaterThan(0);
-    const report = verifyPlan({
-      nodes: TEMPLATE_KASTENWAGEN.nodes,
+  it('besteht den eigenen Prüfbericht ohne Fehlschlag und ohne Sicherung 0 auf allen Vorlagen (H1/H6/H7/M13)', () => {
+    for (const name of ['minimalist', 'kastenwagen', 'autark', 'allrounder'] as const) {
+      const template = TEMPLATES_DICT[name]!;
+      const fuse = template.nodes.find((node) => node.id === 'fusebox-1');
+      expect((fuse?.data as { rating?: number }).rating, `${name} fusebox rating`).toBeGreaterThan(0);
+      const report = verifyPlan({
+        nodes: template.nodes,
+        edges: template.edges,
+        options: { profile: 'PRACTICE', context: 'VEHICLE' },
+      });
+      expect(report.verdict, `${name} verdict`).not.toBe('NON_COMPLIANT');
+      expect(report.coverage.failed, `${name} failed rules`).toBe(0);
+    }
+
+    // H7: Selbst bei eingetragener 12,0-V-Nennspannung auf der Aufbaubatterie
+    // (I_b = 52,29 A am 500-W-WR) bleibt der 60-A-Zweig im Kastenwagen normkonform.
+    const nodes12v = TEMPLATE_KASTENWAGEN.nodes.map((node) =>
+      node.id === 'battery-1' ? { ...node, data: { ...node.data, nominalVoltage: 12 } } : node
+    );
+    const report12v = verifyPlan({
+      nodes: nodes12v,
       edges: TEMPLATE_KASTENWAGEN.edges,
+      options: { profile: 'PRACTICE', context: 'VEHICLE' },
     });
-    expect(report.verdict).not.toBe('NON_COMPLIANT');
-    expect(report.coverage.failed).toBe(0);
+    expect(report12v.verdict).not.toBe('NON_COMPLIANT');
+    expect(report12v.coverage.failed).toBe(0);
   });
 });
