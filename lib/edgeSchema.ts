@@ -1,25 +1,9 @@
 /**
- * lib/edgeSchema.ts — deklaratives Runtime-Schema für `edge.data` (AUDIT DOM-004).
+ * lib/edgeSchema.ts — deklaratives Runtime-Schema für `edge.data` (AUDIT DOM-004, K3, N9).
  *
- * Symmetrisch zu `lib/nodeSchema.ts`: Die Persistenz-Migration prüfte für
- * Kanten bisher nur, dass `data` ein Objekt ist. Falsch getippte Felder
- * (`crossSection: '2,5'`, `fuseSize: 'ja'`, `autoWired: 1`) überlebten den
- * Rehydrate; die Leseschicht fängt vieles ab (`quantityOr`, Marker-Kurzschlüsse),
- * aber nicht alles und nicht an einer benannten Stelle.
- *
- * Regeln (bewusst konservativ, Daten-Integrität vor Komfort):
- * - BEKANNTES Feld mit falschem Laufzeit-Typ → wird ENTFERNT (kaputte Werte
- *   werden nicht „geheilt“: stilles Ersetzen würde falsche Pläne plausibel
- *   machen; Entfernen fällt auf den dokumentierten Default der Leseschicht).
- * - UNBEKANNTE Felder bleiben erhalten (Forward-Kompatibilität: neuere
- *   Versionen dürfen ältere Stände lesen, ohne Daten zu verlieren).
- * - Enum-Felder (`edgeDomain`) prüfen gegen die erlaubten Werte.
- * - `acProtection` ist ein Deskriptor-Objekt; geprüft wird seine OBJEKT-Form
- *   (kein Array, kein `null`). Seine Einzelfelder liest `lib/acProtection.ts`
- *   defensiv — eine zweite Typ-Ebene hier wäre eine zweite Wahrheit.
- *
- * Kein Zod/Extern-Deps: wie `nodeSchema.ts` ein handgerolltes, auditierbares
- * Schema; die Feldliste spiegelt `lib/domain/cableEdgeData.ts`.
+ * Symmetrisch zu `lib/nodeSchema.ts`: Bekannte Felder mit falschem Laufzeit-Typ
+ * oder außerhalb `[min, max]` werden ENTFERNT statt still geheilt; unbekannte
+ * Felder bleiben erhalten (Forward-Kompatibilität).
  */
 
 export type EdgeDataFieldType = 'number' | 'string' | 'boolean' | 'object' | 'array';
@@ -28,25 +12,27 @@ export interface EdgeDataFieldSpec {
   type: EdgeDataFieldType;
   /** Erlaubte Werte (nur für 'string'). */
   enumValues?: readonly string[];
+  /** Untere Schranke inklusive (nur für 'number'). */
+  min?: number;
+  /** Obere Schranke inklusive (nur für 'number'). */
+  max?: number;
+  /** false = 0 ist unzulässig (z. B. Kabelquerschnitt > 0 mm²). */
+  allowZero?: boolean;
 }
 
 /** Bekannte Felder einer elektrischen Kante (`CableEdgeData`). */
 export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
-  length: { type: 'number' },
-  crossSection: { type: 'number' },
-  fuseSize: { type: 'number' },
+  length: { type: 'number', min: 0, max: 1_000 },
+  crossSection: { type: 'number', min: 0, max: 500, allowZero: false },
+  fuseSize: { type: 'number', min: 0, max: 10_000 },
   edgeDomain: { type: 'string', enumValues: ['DC_12V', 'AC_230V', 'Solar'] },
   dropWarning: { type: 'boolean' },
   fuseWarning: { type: 'boolean' },
-  fuseOffset: { type: 'number' },
+  fuseOffset: { type: 'number', min: 0, max: 100 },
   fuseType: { type: 'string' },
   acProtection: { type: 'object' },
-  fuseBreakingCapacity: { type: 'number' },
+  fuseBreakingCapacity: { type: 'number', min: 0, max: 1_000_000 },
   autoWired: { type: 'boolean' },
-  // V2 (Intent-Modell, lib/electricalGraph/intent.ts): Verbindlichkeit einer
-  // Verbindung. Ein ungültiger Enum-Wert wird entfernt und fällt damit auf
-  // die dokumentierte Ableitung aus `autoWired` zurück — NICHT auf 'user'
-  // (das wäre eine stille Behauptung über die Absicht des Nutzers).
   intent: { type: 'string', enumValues: ['locked', 'user', 'required', 'auto', 'suggested'] },
   locked: { type: 'boolean' },
   // Die Punktstruktur wird im Router geprüft, nicht hier still „repariert".
@@ -56,8 +42,13 @@ export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
 
 function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {
   switch (spec.type) {
-    case 'number':
-      return typeof value === 'number' && Number.isFinite(value);
+    case 'number': {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return false;
+      if (spec.allowZero === false && value === 0) return false;
+      if (spec.min !== undefined && value < spec.min) return false;
+      if (spec.max !== undefined && value > spec.max) return false;
+      return true;
+    }
     case 'string':
       if (typeof value !== 'string') return false;
       if (spec.enumValues && !spec.enumValues.includes(value)) return false;
@@ -74,7 +65,7 @@ function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {
 }
 
 /**
- * Prüft/entfernt bekannte Felder mit falschem Typ aus `edge.data`.
+ * Prüft/entfernt bekannte Felder mit falschem Typ oder außerhalb `[min, max]` aus `edge.data`.
  * Rückgabe: bereinigte Datenkopie + Namen der entfernten Felder (für Logs/Tests).
  * Unbekannte Felder bleiben unangetastet.
  */

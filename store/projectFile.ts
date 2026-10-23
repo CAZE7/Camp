@@ -35,7 +35,7 @@
  */
 import type { Edge, Node } from '@xyflow/react';
 import { sanitizeEdgeDataBySchema } from '../lib/edgeSchema';
-import { sanitizeNodeDataBySchema } from '../lib/nodeSchema';
+import { isKnownNodeType, sanitizeNodeDataBySchema } from '../lib/nodeSchema';
 import { isEdgeShape, isNodeShape, stripNodeMeasurement } from './slices/persistence';
 
 export const PROJECT_FILE_FORMAT = 'camp-elektroplaner-projekt';
@@ -234,9 +234,33 @@ export function parsePlannerProject(text: string): ProjectParseResult {
   checkEdgeReferences(wEdges, new Set(wNodes.map((n) => (n as Node).id)), 'Wasserleitung', errors);
   if (errors.length > 0) return { ok: false, errors };
 
-  // Sanitisierung wie beim lokalen Laden: bekannte Felder mit falschem Typ
-  // werden entfernt und gemeldet, Messwerte der Darstellung verworfen.
+  // Sanitisierung wie beim lokalen Laden: bekannte Felder mit falschem Typ oder
+  // außerhalb des Wertebereichs werden entfernt und gemeldet, unbekannte
+  // Bauteiltypen (N9) gefiltert, Messwerte der Darstellung verworfen.
   const warnings: string[] = [];
+  const filterKnownNodes = (rawNodes: Node[], rawEdges: Edge[], domainLabel: string) => {
+    const keptIds = new Set<string>();
+    const keptNodes: Node[] = [];
+    for (const node of rawNodes) {
+      if (!isKnownNodeType(node.type)) {
+        warnings.push(
+          `${domainLabel} „${node.id}“: unbekannter Bauteiltyp „${String(node.type ?? '(fehlt)')}“ wurde ignoriert.`
+        );
+        continue;
+      }
+      keptIds.add(node.id);
+      keptNodes.push(node);
+    }
+    const keptEdges = rawEdges.filter((edge) => {
+      if (keptIds.has(edge.source) && keptIds.has(edge.target)) return true;
+      warnings.push(
+        `Leitung „${edge.id}“ zu ignoriertem Bauteil (${edge.source} → ${edge.target}) wurde entfernt.`
+      );
+      return false;
+    });
+    return { keptNodes, keptEdges };
+  };
+
   const sanitizeNode = (node: Node): Node => {
     const raw = (node.data ?? {}) as Record<string, unknown>;
     const { data, removedFields } = sanitizeNodeDataBySchema(node.type, raw);
@@ -254,16 +278,19 @@ export function parsePlannerProject(text: string): ProjectParseResult {
     return { ...edge, data } as Edge;
   };
 
+  const electricFiltered = filterKnownNodes(nodes as Node[], edges as Edge[], 'Knoten');
+  const waterFiltered = filterKnownNodes(wNodes as Node[], wEdges as Edge[], 'Wasser-Knoten');
+
   return {
     ok: true,
     warnings,
     plan: {
       viewMode: p.viewMode as PlannerViewMode,
       season: p.season as PlannerSeason,
-      nodes: (nodes as Node[]).map(sanitizeNode),
-      edges: (edges as Edge[]).map(sanitizeEdge),
-      waterNodes: (wNodes as Node[]).map(sanitizeNode),
-      waterEdges: (wEdges as Edge[]).map(sanitizeEdge),
+      nodes: electricFiltered.keptNodes.map(sanitizeNode),
+      edges: electricFiltered.keptEdges.map(sanitizeEdge),
+      waterNodes: waterFiltered.keptNodes.map(sanitizeNode),
+      waterEdges: waterFiltered.keptEdges.map(sanitizeEdge),
     },
   };
 }

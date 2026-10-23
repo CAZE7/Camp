@@ -340,24 +340,45 @@ export function usePlannerActions({
         },
         window.location.href
       );
-      window.history.replaceState(null, '', url);
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        onFeedback({
-          type: 'success',
-          message:
-            'Link zum Plan kopiert — im Forum oder in der Gruppe einfügen, Helfer öffnen genau diesen Plan.',
-        });
-      } else {
-        onFeedback({
-          type: 'info',
-          message: 'Link steht in der Adresszeile — dort kopieren und weitergeben.',
-        });
+        try {
+          await navigator.clipboard.writeText(url);
+          // H5: Den Share-Hash NICHT in die eigene Adresszeile schreiben, wenn
+          // die Zwischenablage geklappt hat — sonst überschreibt ein späteres
+          // F5 den weiterbearbeiteten Plan mit dem alten Link-Stand.
+          if (window.location.hash.includes('plan=')) {
+            const hashParams = new URLSearchParams(window.location.hash.slice(1));
+            hashParams.delete('plan');
+            const restHash = hashParams.toString();
+            window.history.replaceState(
+              null,
+              '',
+              `${window.location.pathname}${window.location.search}${restHash ? `#${restHash}` : ''}`
+            );
+          }
+          onFeedback({
+            type: 'success',
+            message:
+              'Link zum Plan kopiert — im Forum oder in der Gruppe einfügen, Helfer öffnen genau diesen Plan.',
+          });
+          return;
+        } catch {
+          // Fällt unten auf die Adresszeile zurück (z. B. ohne Clipboard-Recht).
+        }
       }
-    } catch {
+      window.history.replaceState(null, '', url);
+      onFeedback({
+        type: 'info',
+        message: 'Link steht in der Adresszeile — dort kopieren und weitergeben.',
+      });
+    } catch (error) {
+      const detail =
+        error instanceof Error && error.message.includes('zu groß')
+          ? error.message
+          : 'Link konnte nicht erstellt oder kopiert werden. Der Plan bleibt unverändert.';
       onFeedback({
         type: 'error',
-        message: 'Link konnte nicht erstellt oder kopiert werden. Der Plan bleibt unverändert.',
+        message: detail,
       });
     }
   }, [onFeedback]);
@@ -372,7 +393,7 @@ export function usePlannerActions({
       const state = usePlannerStore.getState();
       const template = PLANNER_TEMPLATES.find((entry) => entry.id === templateId);
       const hasOwnPlan =
-        (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
+        state.waterNodes.length > 0 || (state.nodes.length > 0 && !isStarterPlan(state.nodes, state.edges));
       if (
         hasOwnPlan &&
         !window.confirm(
@@ -730,6 +751,34 @@ export function usePlannerActions({
               label: 'Einführung erneut öffnen',
               icon: Info,
               run: () => setHasOnboarded(false),
+            },
+            {
+              label: 'Anleitung & FAQ unter dem Plan',
+              icon: Info,
+              run: () => {
+                document
+                  .getElementById('planer-anleitung-titel')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              },
+            },
+          ],
+        },
+        {
+          label: 'Rechtliches',
+          items: [
+            {
+              label: 'Impressum',
+              icon: Info,
+              run: () => {
+                if (typeof window !== 'undefined') window.location.assign('/impressum/');
+              },
+            },
+            {
+              label: 'Datenschutz',
+              icon: Info,
+              run: () => {
+                if (typeof window !== 'undefined') window.location.assign('/datenschutz/');
+              },
             },
             // Nachtest N6: „Plan leeren …“ stand im Hilfe-Menü und wurde
             // leicht versehentlich angeklickt. Löschen gibt es nur noch

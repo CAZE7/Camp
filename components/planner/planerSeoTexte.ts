@@ -1,5 +1,5 @@
 /**
- * components/planner/planerSeoContent.ts — die Texte unterhalb des Planers
+ * components/planner/planerSeoTexte.ts — die Texte unterhalb des Planers
  * auf `/planer/` an genau einer Stelle.
  *
  * Warum es diese Texte gibt: Die Zeichenanwendung lädt erst im Browser.

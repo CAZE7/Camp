@@ -243,4 +243,46 @@ describe('Projektdatei — Bereinigung bekannter Felder', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.plan.waterNodes).toEqual([]);
   });
+
+  it('N9: filtert unbekannte Bauteiltypen samt hängender Leitungen mit Warnhinweis', () => {
+    const result = parsePlannerProject(
+      docWith((doc) => {
+        const plan = doc.plan as {
+          nodes: Array<Record<string, unknown>>;
+          edges: Array<Record<string, unknown>>;
+        };
+        plan.nodes.push({
+          id: 'evil-1',
+          type: 'warpDrive',
+          position: { x: 200, y: 200 },
+          data: { watts: 500 },
+        });
+        plan.edges.push({
+          id: 'e-evil',
+          source: 'battery-1',
+          target: 'evil-1',
+          data: {},
+        });
+      })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.nodes.map((n) => n.id)).toEqual(['battery-1', 'cons-1']);
+    expect(result.plan.edges.map((e) => e.id)).toEqual(['e1']);
+    expect(result.warnings.join(' ')).toMatch(/warpDrive/);
+    expect(result.warnings.join(' ')).toMatch(/e-evil/);
+  });
+
+  it('K3: verwirft negative Leistungswerte (z. B. watts = -5) beim Import mit Hinweis', () => {
+    const result = parsePlannerProject(
+      docWith((doc) => {
+        const plan = doc.plan as { nodes: Array<{ data: Record<string, unknown> }> };
+        plan.nodes[1]!.data.watts = -5;
+      })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.nodes[1]?.data).not.toHaveProperty('watts');
+    expect(result.warnings.join(' ')).toMatch(/watts/);
+  });
 });

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { TEMPLATE_KASTENWAGEN } from '../components/planner/templates';
+import { verifyPlan } from '../lib/verify/pipeline';
 import type { PlannerProjectContent } from './projectFile';
-import { buildShareUrl, decodeSharePlan, encodeSharePlan, shareValueFromHash } from './sharePlan';
+import {
+  buildShareUrl,
+  decodeSharePlan,
+  encodeSharePlan,
+  SHARE_HASH_MAX_LENGTH,
+  shareValueFromHash,
+} from './sharePlan';
 
 const PLAN: PlannerProjectContent = {
   viewMode: 'electric',
@@ -46,5 +53,49 @@ describe('Plan-Link teilen (#plan=)', () => {
 
     const truncated = `#${(await encodeSharePlan(PLAN)).slice(0, 40)}`;
     await expect(decodeSharePlan(truncated)).resolves.toMatchObject({ ok: false });
+  });
+
+  it('K3: ein manipulierter Link mit solar-1.data.watts = -5 crasht weder Decoder noch Prüf-Engine', async () => {
+    const poisoned: PlannerProjectContent = {
+      ...PLAN,
+      nodes: PLAN.nodes.map((node) =>
+        node.id === 'solar-1' ? { ...node, data: { ...node.data, watts: -5 } } : node
+      ),
+    };
+    const hash = `#${await encodeSharePlan(poisoned)}`;
+    const decoded = await decodeSharePlan(hash);
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) return;
+    const solar = decoded.plan.nodes.find((n) => n.id === 'solar-1');
+    expect(solar?.data).not.toHaveProperty('watts');
+    expect(decoded.warnings.join(' ')).toMatch(/solar-1/);
+    expect(() => verifyPlan({ nodes: decoded.plan.nodes, edges: decoded.plan.edges })).not.toThrow();
+    expect(() => verifyPlan({ nodes: poisoned.nodes, edges: poisoned.edges })).not.toThrow();
+  });
+
+  it('N9: prüft SHARE_HASH_MAX_LENGTH bereits beim Erzeugen des Links', async () => {
+    const oversizedLabel = Array.from({ length: SHARE_HASH_MAX_LENGTH + 5000 }, (_, i) =>
+      String.fromCharCode(65 + ((i * 7 + ((i >> 3) ^ (i * 13))) % 26))
+    ).join('');
+    const hugePlan: PlannerProjectContent = {
+      ...PLAN,
+      nodes: Array.from({ length: 40 }, (_, idx) => ({
+        id: `n-${idx}`,
+        type: 'consumer',
+        position: { x: idx * 10, y: idx * 10 },
+        data: { label: `${idx}-${oversizedLabel.slice(idx * 1500, (idx + 1) * 1500)}` },
+      })) as PlannerProjectContent['nodes'],
+      edges: [],
+    };
+    // Mit unkomprimiertem Pfad garantiert über der Grenze; auch falls CompressionStream aktiv ist,
+    // testen wir zusätzlich mit temporär deaktiviertem CompressionStream.
+    const originalCompression = globalThis.CompressionStream;
+    try {
+      // @ts-expect-error Simulation einer Umgebung ohne CompressionStream bzw. nicht weiter komprimierbarer Nutzlast
+      delete globalThis.CompressionStream;
+      await expect(encodeSharePlan(hugePlan)).rejects.toThrow(/zu groß/);
+    } finally {
+      if (originalCompression) globalThis.CompressionStream = originalCompression;
+    }
   });
 });

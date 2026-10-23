@@ -266,4 +266,12 @@ describe('lib/verify/powerPath — Datenlücken und Randfälle', () => {
     expect(check.status).toBe('PASS');
     expect(check.evaluatedEntities).toBe(1);
   });
+
+  it('K3: wirft keinen RangeError, wenn rohe Knotendaten negative Leistung enthalten', () => {
+    const plan = healthyDcPlan();
+    plan.nodes = plan.nodes.map((node) =>
+      node.id === 'load1' ? { ...node, data: { ...node.data, watts: -5 } } : node
+    );
+    expect(() => runPass4(contextOf(plan))).not.toThrow();
+  });
 });
