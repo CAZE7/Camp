@@ -330,7 +330,10 @@ export default function AusbauFahrplanPage() {
           className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-r md:border-b-0"
           aria-label="Kapitel"
         >
-          <div className="sticky top-0 p-5">
+          {/* 48 px = Höhe des klebenden Website-Kopfs. Mit `top-0` verschwand
+              die Überschrift „Inhalt“ beim Scrollen hinter dem Kopf
+              (Designkonzept 2026-10, Befund Ausbau-Fahrplan). */}
+          <div className="sticky top-12 p-5">
             <h2 className="text-sm font-medium">Inhalt</h2>
             <nav className="mt-3 space-y-1" aria-label="Sprungmarken">
               {stepsData.map((step) => (
