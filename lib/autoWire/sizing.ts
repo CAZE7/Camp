@@ -347,6 +347,61 @@ export function applyFuseSizes(
     }
     edge.data.fuseSize = selectFuseSize(fuseCurrent, cs);
   }
+
+  // Selektivitäts-Koordination über passive Verteiler (AMP-005: I_n,upstream ≥ 1,6 × I_n,downstream):
+  // Ohne diesen Lauf drückte AutoWire z. B. den 70-mm²-Batteriehauptstrang von
+  // 100 A auf 60/80 A herunter und erzeugte gegen den nachgelagerten 50-/60-A-
+  // Wechselrichterzweig erst selbst einen Selektivitätsverstoß (NON_COMPLIANT).
+  // Nur machbare Anhebungen innerhalb der 70-mm²-/100-A-Modellgrenze werden
+  // ausgeführt; Ladezweige (MPPT, Booster, AC-Lader → Sammelschiene) sind keine
+  // vorgelagerte Hauptsicherung und bleiben unberührt.
+  for (let pass = 0; pass < 4; pass++) {
+    let raised = false;
+    for (const node of nodes) {
+      if (node.type !== 'busbar' && node.type !== 'fuse') continue;
+      let maxDownstreamFuse = 0;
+      for (const edge of dcEdges) {
+        if (edge.source !== node.id || !edge.sourceHandle?.includes('plus')) continue;
+        const fuse = Number(edge.data?.fuseSize ?? 0);
+        if (Number.isFinite(fuse) && fuse > maxDownstreamFuse) maxDownstreamFuse = fuse;
+      }
+      if (maxDownstreamFuse <= 0) continue;
+      const selectivityFloor = amps(maxDownstreamFuse * 1.6);
+      if (!isFuseFeasible(selectivityFloor, MAX_CROSS_SECTION)) continue;
+
+      for (const upstream of dcEdges) {
+        if (upstream.target !== node.id || !upstream.sourceHandle?.includes('plus')) continue;
+        const srcNode = nodeMap.get(upstream.source);
+        if (srcNode?.type !== 'battery' && srcNode?.type !== 'busbar' && srcNode?.type !== 'fuse') {
+          continue;
+        }
+        if (!upstream.data) upstream.data = {};
+        const currentFuse = Number(upstream.data.fuseSize ?? 0);
+        // AMP-005 prüft das Verhältnis 1,6:1 erst ab 16 A vorgelagertem Nennstrom
+        // (darunter ist nur upstream < downstream ein harter Fehler).
+        const failsSelectivity =
+          (currentFuse >= 16 && currentFuse < selectivityFloor) ||
+          (currentFuse > 0 && currentFuse < maxDownstreamFuse);
+        if (!failsSelectivity) continue;
+        const requiredFloor =
+          currentFuse >= 16 || maxDownstreamFuse >= 10 ? selectivityFloor : amps(maxDownstreamFuse);
+        let cs = edgeCrossSection(upstream, MIN_CROSS_SECTION);
+        if (cs > MAX_CROSS_SECTION) continue;
+        if (!isFuseFeasible(requiredFloor, cs)) {
+          const larger = VDE_SIZES.find((s) => s > cs && isFuseFeasible(requiredFloor, s));
+          if (larger === undefined) continue;
+          cs = mm2(larger);
+          upstream.data.crossSection = cs;
+        }
+        const nextFuse = selectFuseSize(requiredFloor, cs);
+        if (nextFuse > currentFuse) {
+          upstream.data.fuseSize = nextFuse;
+          raised = true;
+        }
+      }
+    }
+    if (!raised) break;
+  }
 }
 
 /** Standardlänge einer AC-Leitung ohne gespeicherte Länge. */

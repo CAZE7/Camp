@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_DATA_SCHEMA, sanitizeNodeDataBySchema } from './nodeSchema';
+import { isKnownNodeType, NODE_DATA_SCHEMA, sanitizeNodeDataBySchema } from './nodeSchema';
 import type { NodeDataRegistry } from '../components/nodes/types';
 
 describe('DOM-003 — deklaratives node.data-Schema (lib/nodeSchema.ts)', () => {
@@ -78,5 +78,57 @@ describe('DOM-003 — deklaratives node.data-Schema (lib/nodeSchema.ts)', () => 
     for (const type of Object.keys(NODE_DATA_SCHEMA)) {
       expect(type in ({} as NodeDataRegistry) || true).toBe(true); // Typ-Level-Sync via tsc
     }
+  });
+
+  it('K3 + N9: verwirft negative Werte und Werte oberhalb von max (z. B. solar.watts = -5)', () => {
+    const solar = sanitizeNodeDataBySchema('solar', {
+      label: 'Manipuliertes Modul',
+      watts: -5,
+      amps: -1,
+      voc: 2000,
+    });
+    expect(solar.removedFields.sort()).toEqual(['amps', 'voc', 'watts']);
+    expect(solar.data).toEqual({ label: 'Manipuliertes Modul' });
+
+    const consumer = sanitizeNodeDataBySchema('consumer', {
+      watts: 99_999_999,
+      hours: 30,
+    });
+    expect(consumer.removedFields.sort()).toEqual(['hours', 'watts']);
+  });
+
+  it('N9: kennt sämtliche registrierten Bauteiltypen (Elektrik, Dach, Wasser)', () => {
+    const allRegistryKeys: Array<keyof NodeDataRegistry> = [
+      'battery',
+      'busbar',
+      'charger',
+      'conduit',
+      'consumer',
+      'consumer230v',
+      'dcdcCharger',
+      'acBatteryCharger',
+      'mpptController',
+      'fuse',
+      'ground',
+      'inverter',
+      'shorePower',
+      'shunt',
+      'solar',
+      'roofSolar',
+      'roofWindow',
+      'roofBackground',
+      'freshWaterTank',
+      'grayWaterTank',
+      'pump',
+      'accumulator',
+      'preFilter',
+      'sink',
+      'shower',
+    ];
+    for (const key of allRegistryKeys) {
+      expect(isKnownNodeType(key)).toBe(true);
+    }
+    expect(isKnownNodeType('warpDrive')).toBe(false);
+    expect(isKnownNodeType(undefined)).toBe(false);
   });
 });

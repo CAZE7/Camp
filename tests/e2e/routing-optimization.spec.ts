@@ -53,7 +53,7 @@ test('explicit optimization leaves device positions unchanged', async ({ page })
   if (!statusHiddenByLayout) {
     await expect(
       page.locator(
-        '[data-testid="routing-status-partial"], [data-testid="routing-status-optimized"], [data-testid="routing-status-retained"], [data-testid="routing-status-stale"]'
+        '[data-testid="routing-status-partial"], [data-testid="routing-status-optimized"], [data-testid="routing-status-retained"], [data-testid="routing-status-stale"], [data-testid="routing-status-invalid"]'
       )
     ).toBeVisible();
   }

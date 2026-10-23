@@ -212,14 +212,6 @@ export function PlannerDashboard() {
     // Leerrohr-Füllgrad wird hier NICHT zweitgeprüft: Die Regel AMP-006 der
     // Verifikations-Engine rechnet ihn und meldet fehlende Angaben als „nicht
     // entscheidbar“ statt mit einem unterstellten Kabel (Regel M).
-    if (waterWarning)
-      supplemental.push({
-        id: 'water-flow-hint',
-        category: 'topology',
-        type: 'info',
-        title: 'Wasserfluss verbessern',
-        message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
-      });
     // QA B-04: Kopfzeile, Fußzeile und Warnzentrale müssen dieselbe Zahl
     // zeigen. Dieselbe Meldung (gleicher Code, gleiche Stufe, gleicher Fokus)
     // zählt genau einmal — der Store dedupliziert genauso.

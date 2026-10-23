@@ -5,7 +5,7 @@ import React from 'react';
 type ErrorBoundaryProps = {
   children: React.ReactNode;
   /** Wird statt der kaputten Teilansicht gerendert. */
-  fallback: React.ReactNode;
+  fallback: React.ReactNode | ((reset: () => void, error: Error) => React.ReactNode);
   /** Optionaler Fehler-Hook für Logging/Telemetrie. */
   onError?: (error: Error, info: React.ErrorInfo) => void;
 };
@@ -17,11 +17,8 @@ type ErrorBoundaryState = {
 /**
  * Generische Fehlergrenze (React Error Boundary).
  *
- * Fängt Render-Fehler einer Teilansicht, statt die ganze Seite fallen zu
- * lassen. Bewusst eine Klassenkomponente: `getDerivedStateFromError` /
- * `componentDidCatch` gibt es nur dort. Im Fehlerfall bleibt der Zustand im
- * Store (und damit in localStorage) unberührt — die Nicht-Canvas-Bereiche
- * (Katalog, Dashboard, Export) funktionieren weiter.
+ * Fängt Render-Fehler einer Teilansicht oder der gesamten Anwendungsshell,
+ * statt die Seite komplett abstürzen zu lassen.
  */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
@@ -34,8 +31,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     this.props.onError?.(error, info);
   }
 
+  resetError = (): void => {
+    this.setState({ error: null });
+  };
+
   render(): React.ReactNode {
-    if (this.state.error) return this.props.fallback;
+    if (this.state.error) {
+      const { fallback } = this.props;
+      return typeof fallback === 'function' ? fallback(this.resetError, this.state.error) : fallback;
+    }
     return this.props.children;
   }
 }

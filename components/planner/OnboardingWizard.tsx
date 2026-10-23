@@ -76,9 +76,8 @@ export function OnboardingWizard() {
   // Es zu ersetzen braucht keine Rückfrage.
   const hasOwnPlan = () => {
     const state = usePlannerStore.getState();
-    return (
-      (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges)
-    );
+    if (state.waterNodes.length > 0) return true;
+    return state.nodes.length > 0 && !isStarterPlan(state.nodes, state.edges);
   };
 
   const startEmpty = async () => {
@@ -213,9 +212,12 @@ export function OnboardingWizard() {
                     <span className="font-semibold text-foreground">
                       {template.label}
                       {template.id === recommendedId && (
-                        <span className="ml-2 rounded-full bg-moss px-2 py-1 text-xs font-bold text-on-signal uppercase">
-                          Empfohlen
-                        </span>
+                        <>
+                          {' '}
+                          <span className="ml-2 rounded-full bg-moss px-2 py-1 text-xs font-bold text-on-signal uppercase">
+                            Empfohlen
+                          </span>
+                        </>
                       )}
                     </span>
                     <span className="text-sm text-muted-foreground">{template.desc}</span>

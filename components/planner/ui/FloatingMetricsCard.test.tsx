@@ -85,8 +85,8 @@ describe('FloatingMetricsCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Aktueller Status/ }));
 
     expect(screen.getByText('Solarleistung')).toBeInTheDocument();
-    // It should render "24V / 15.5A" and NOT literal "${metrics.totalSolarVoltage}V..."
-    expect(screen.getByText('24 V / 15.5 A')).toBeInTheDocument();
+    // It should render German decimal comma "24 V / 15,5 A" (N1)
+    expect(screen.getByText('24 V / 15,5 A')).toBeInTheDocument();
   });
 
   it('renders correct solar output when only roof planner solar wattage exists', () => {

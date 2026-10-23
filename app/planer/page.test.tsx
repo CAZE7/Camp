@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PLANER_FAQ } from '@/components/planner/planerSeoContent';
+import { PLANER_FAQ } from '@/components/planner/planerSeoTexte';
 import { pageByPath } from '@/lib/seo/inventory';
 
 import PlanerSeite from './page';

@@ -240,7 +240,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
     'Derating: 0,7 für geschlossene Einbauräume.',
   ],
   limits: [
-    'Keine Ersatz für eine Prüfung durch eine Elektrofachkraft.',
+    'Kein Ersatz für eine Prüfung durch eine Elektrofachkraft.',
     'Gilt für 12-V-DC-Anlagen; 230-V-Anlagen erfordern gesonderte Dokumentation und Abnahme.',
     'Keine Garantie auf Übertragbarkeit auf andere Fahrzeugtypen.',
   ],

@@ -166,7 +166,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 80,
+          "fuseSize": 100,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 0.5
@@ -180,11 +180,11 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 70,
+          "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 15,
-          "fuseType": "classT",
+          "fuseType": "midi",
           "fuseWarning": false,
           "length": 1
         },
@@ -197,7 +197,7 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 70,
+          "crossSection": 35,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -212,7 +212,7 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 70,
+          "crossSection": 35,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 60,
@@ -229,11 +229,11 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 10,
+          "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 25,
-          "fuseType": "classT",
+          "fuseType": "midi",
           "fuseWarning": false,
           "length": 1
         },
@@ -246,11 +246,11 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 16,
+          "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
-          "fuseType": "classT",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 1
         },
@@ -267,7 +267,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "classT",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 3
         },
@@ -284,7 +284,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "classT",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 3
         },
@@ -301,7 +301,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "classT",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 4
         },
@@ -313,6 +313,12 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "rcbo",
+            "residualType": "B"
+          },
           "autoWired": false,
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
@@ -327,10 +333,16 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "rcbo",
+            "residualType": "B"
+          },
           "autoWired": false,
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
-          "fuseSize": 5,
+          "fuseSize": 16,
           "length": 2
         },
         "id": "e-shore-inv",
@@ -342,11 +354,11 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 25,
+          "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "Solar",
           "fuseSize": 25,
-          "fuseType": "classT",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 4
         },
@@ -363,7 +375,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 25,
-          "fuseType": "classT",
+          "fuseType": "midi",
           "fuseWarning": false,
           "length": 5
         },
@@ -391,7 +403,10 @@
           "capacity": 200,
           "chemistry": "LiFePO4",
           "designator": "G1.2",
-          "label": "200Ah Lithium"
+          "hasInternalBms": true,
+          "internalResistance": 15,
+          "label": "200Ah Lithium",
+          "role": "house"
         },
         "id": "battery-1",
         "position": {
@@ -428,7 +443,7 @@
       },
       {
         "data": {
-          "amps": 32,
+          "amps": 35,
           "designator": "G2",
           "label": "MPPT Solarregler",
           "maxPvVoltage": 75
@@ -499,7 +514,7 @@
         "data": {
           "designator": "E2",
           "hours": 0.5,
-          "label": "Induktionskochfeld (1 Platte)",
+          "label": "E-Bike-Lader / Reisekocher (230 V)",
           "watts": 500
         },
         "id": "cons-induct",
@@ -512,8 +527,9 @@
       {
         "data": {
           "designator": "F1",
+          "fuseType": "midi",
           "label": "Sicherungskasten",
-          "rating": 15
+          "rating": 40
         },
         "id": "fusebox-1",
         "position": {
@@ -527,6 +543,7 @@
           "continuousPower": 600,
           "designator": "U1",
           "hasRcd": true,
+          "idleWatts": 10,
           "label": "600W Inverter",
           "watts": 600
         },
@@ -541,7 +558,10 @@
         "data": {
           "designator": "X1",
           "hasRcd": true,
-          "label": "Landstrom"
+          "label": "Landstrom",
+          "prospectiveIkA": 1500,
+          "rating": 16,
+          "systemForm": "TN-S"
         },
         "id": "shore-1",
         "position": {
@@ -572,7 +592,8 @@
           "capacity": 90,
           "chemistry": "AGM",
           "designator": "G1",
-          "label": "Starterbatterie"
+          "label": "Starterbatterie",
+          "role": "starter"
         },
         "id": "starter-1",
         "position": {
@@ -595,8 +616,8 @@
       "cons-fridge": 0.238,
       "cons-heat": 0.261,
       "cons-induct": 0,
-      "fusebox-1": 0.031,
-      "inverter-1": 0.06,
+      "fusebox-1": 0.043,
+      "inverter-1": 0.089,
       "shore-1": 0,
       "solar-1": 0,
       "starter-1": 0
@@ -646,6 +667,7 @@
         "data": {
           "crossSection": 70,
           "fuseSize": 100,
+          "fuseType": "classT",
           "length": 0.5
         },
         "id": "e-batt-plus",
@@ -656,8 +678,9 @@
       },
       {
         "data": {
-          "crossSection": 70,
-          "fuseSize": 100,
+          "crossSection": 16,
+          "fuseSize": 40,
+          "fuseType": "midi",
           "length": 1
         },
         "id": "e-busbar-fuse",
@@ -668,7 +691,7 @@
       },
       {
         "data": {
-          "crossSection": 70,
+          "crossSection": 35,
           "length": 1
         },
         "id": "e-busbar-inv-minus",
@@ -679,8 +702,9 @@
       },
       {
         "data": {
-          "crossSection": 70,
-          "fuseSize": 100,
+          "crossSection": 35,
+          "fuseSize": 60,
+          "fuseType": "classT",
           "length": 1
         },
         "id": "e-busbar-inv-plus",
@@ -691,8 +715,9 @@
       },
       {
         "data": {
-          "crossSection": 10,
-          "fuseSize": 32,
+          "crossSection": 16,
+          "fuseSize": 40,
+          "fuseType": "midi",
           "length": 1
         },
         "id": "e-charger-busbar",
@@ -703,8 +728,9 @@
       },
       {
         "data": {
-          "crossSection": 16,
-          "fuseSize": 40,
+          "crossSection": 10,
+          "fuseSize": 25,
+          "fuseType": "ato",
           "length": 1
         },
         "id": "e-dcdc-busbar",
@@ -716,6 +742,8 @@
       {
         "data": {
           "crossSection": 2.5,
+          "fuseSize": 10,
+          "fuseType": "ato",
           "length": 3
         },
         "id": "e-fuse-fan",
@@ -727,6 +755,8 @@
       {
         "data": {
           "crossSection": 4,
+          "fuseSize": 10,
+          "fuseType": "ato",
           "length": 3
         },
         "id": "e-fuse-fridge",
@@ -738,6 +768,8 @@
       {
         "data": {
           "crossSection": 4,
+          "fuseSize": 15,
+          "fuseType": "ato",
           "length": 4
         },
         "id": "e-fuse-heat",
@@ -748,8 +780,15 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "rcbo",
+            "residualType": "B"
+          },
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
+          "fuseSize": 10,
           "length": 2
         },
         "id": "e-inv-induct",
@@ -760,6 +799,12 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "rcbo",
+            "residualType": "B"
+          },
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 16,
@@ -773,9 +818,10 @@
       },
       {
         "data": {
-          "crossSection": 25,
+          "crossSection": 10,
           "edgeDomain": "Solar",
-          "fuseSize": 50,
+          "fuseSize": 25,
+          "fuseType": "ato",
           "length": 4
         },
         "id": "e-solar-charger",
@@ -788,6 +834,7 @@
         "data": {
           "crossSection": 16,
           "fuseSize": 40,
+          "fuseType": "midi",
           "length": 5
         },
         "id": "e-starter-dcdc",
@@ -803,7 +850,10 @@
           "capacity": 200,
           "chemistry": "LiFePO4",
           "designator": "G1.2",
-          "label": "200Ah Lithium"
+          "hasInternalBms": true,
+          "internalResistance": 15,
+          "label": "200Ah Lithium",
+          "role": "house"
         },
         "id": "battery-1",
         "position": {
@@ -838,7 +888,7 @@
       },
       {
         "data": {
-          "amps": 30,
+          "amps": 35,
           "designator": "G2",
           "label": "MPPT Solarregler",
           "maxPvVoltage": 75
@@ -909,7 +959,7 @@
         "data": {
           "designator": "E2",
           "hours": 0.5,
-          "label": "Induktionskochfeld (1 Platte)",
+          "label": "E-Bike-Lader / Reisekocher (230 V)",
           "watts": 500
         },
         "id": "cons-induct",
@@ -922,7 +972,9 @@
       {
         "data": {
           "designator": "F1",
-          "label": "Sicherungskasten"
+          "fuseType": "midi",
+          "label": "Sicherungskasten",
+          "rating": 40
         },
         "id": "fusebox-1",
         "position": {
@@ -936,6 +988,7 @@
           "continuousPower": 600,
           "designator": "U1",
           "hasRcd": true,
+          "idleWatts": 10,
           "label": "600W Inverter",
           "watts": 600
         },
@@ -950,7 +1003,10 @@
         "data": {
           "designator": "X1",
           "hasRcd": true,
-          "label": "Landstrom"
+          "label": "Landstrom",
+          "prospectiveIkA": 1500,
+          "rating": 16,
+          "systemForm": "TN-S"
         },
         "id": "shore-1",
         "position": {
@@ -981,7 +1037,8 @@
           "capacity": 90,
           "chemistry": "AGM",
           "designator": "G1",
-          "label": "Starterbatterie"
+          "label": "Starterbatterie",
+          "role": "starter"
         },
         "id": "starter-1",
         "position": {

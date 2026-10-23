@@ -417,10 +417,10 @@ export function EdgeInspector({
                   {tripAssessment.verdict !== 'not-modeled' && tripAssessment.iaA !== null && (
                     <p className="mt-1 text-muted-foreground">
                       Ia = {Math.round(tripAssessment.iaA)} A · Zs zulässig ≤{' '}
-                      {tripAssessment.zsMaxOhm?.toFixed(2)} Ω · Leitungsanteil ≈{' '}
-                      {tripAssessment.cableLoopOhm.toFixed(2)} Ω (Annahme vorgelagert ≈{' '}
-                      {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω ohne FI-Deckung — die Plan-Hinweise werten die
-                      tatsächliche Speisung mit FI-Feld aus).
+                      {tripAssessment.zsMaxOhm?.toFixed(2).replace('.', ',')} Ω · Leitungsanteil ≈{' '}
+                      {tripAssessment.cableLoopOhm.toFixed(2).replace('.', ',')} Ω (Annahme vorgelagert ≈{' '}
+                      {String(UPSTREAM_IMPEDANCE_ASSUMPTION_OHM).replace('.', ',')} Ω ohne FI-Deckung — die
+                      Plan-Hinweise werten die tatsächliche Speisung mit FI-Feld aus).
                     </p>
                   )}
                 </div>

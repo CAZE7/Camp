@@ -217,12 +217,15 @@ export function evaluateGuidedSteps({
     'Prüfung von Topologie, Polarität, Querschnitt und Sicherungen.',
     'Stückliste, Kabel und Berechnungen für Einkauf und Einbau.',
   ];
+  const resultBlocked = Boolean(complete[3] && !complete[4]);
   const actions: GuidedStep['action'][] = [
     { label: 'Batterie hinzufügen', kind: 'catalog' },
     { label: 'Schutz ergänzen', kind: 'catalog' },
     { label: 'Automatisch verbinden', kind: 'autowire' },
     { label: 'Prüfung öffnen', kind: 'warnings' },
-    { label: 'Stückliste öffnen', kind: 'bom' },
+    resultBlocked
+      ? { label: 'Prüfung klären', kind: 'warnings' }
+      : { label: 'Stückliste öffnen', kind: 'bom' },
   ];
 
   const firstOpenIndex = complete.findIndex((value) => !value);

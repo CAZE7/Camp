@@ -16,8 +16,87 @@
 
 import type { Edge, Node } from '@xyflow/react';
 import type { CableEdgeData } from '../domain/cableEdgeData'; // ARCH-001: Domänen-Datenform, nicht UI
-import type { LayoutRequest, LayoutResult } from './layout-engine/contract';
+import type { LayoutNodeResult, LayoutRequest, LayoutResult } from './layout-engine/contract';
 import { layoutPortForHandle, portsForNode } from './layout-engine/ports';
+import { ROUTING_TOKENS } from '../routing/tokens';
+
+/**
+ * Weitet in dichten LR-Layouts Spaltenkorridore auf, durch die viele Leitungen
+ * gleichzeitig geführt werden müssen (ab 5 kreuzenden/einmündenden Kanten).
+ *
+ * Hintergrund: `ROUTING_TOKENS.elkColumnSpacing` (100 px, ADR 0028) reicht für
+ * ≤ 4 parallele Trassen, kollabiert aber bei Sammelverteilern nach AutoWire
+ * (6–9 Leitungen im selben Spalt: beide 50-px-Stubs + Mittelachse treffen sich
+ * exakt bei `gap / 2`). Kleine Pläne und Unit-Mocks (< 5 Kanten im Spalt)
+ * bleiben unverändert.
+ */
+function expandCongestedLrCorridors(
+  nodeResults: readonly LayoutNodeResult[],
+  edges: readonly { source: string; target: string }[]
+): Map<string, { x: number; y: number }> {
+  const base = new Map(nodeResults.map((n) => [n.id, { x: n.x, y: n.y }]));
+  if (nodeResults.length < 2 || edges.length < 16) return base;
+
+  const sorted = [...nodeResults].sort((a, b) => a.x - b.x || a.id.localeCompare(b.id));
+  type Column = { members: LayoutNodeResult[]; minX: number; maxRight: number };
+  const columns: Column[] = [];
+  for (const node of sorted) {
+    const prev = columns[columns.length - 1];
+    if (prev && node.x < prev.maxRight) {
+      prev.members.push(node);
+      prev.minX = Math.min(prev.minX, node.x);
+      prev.maxRight = Math.max(prev.maxRight, node.x + node.width);
+    } else {
+      columns.push({
+        members: [node],
+        minX: node.x,
+        maxRight: node.x + node.width,
+      });
+    }
+  }
+  if (columns.length < 2) return base;
+
+  const colIndexById = new Map<string, number>();
+  columns.forEach((col, idx) => {
+    for (const m of col.members) colIndexById.set(m.id, idx);
+  });
+
+  const extraShift = new Array<number>(columns.length).fill(0);
+  let cumulative = 0;
+  for (let i = 0; i + 1 < columns.length; i++) {
+    const left = columns[i]!;
+    const right = columns[i + 1]!;
+    const gap = right.minX - left.maxRight;
+    if (gap <= 0) {
+      extraShift[i + 1] = cumulative;
+      continue;
+    }
+    let spanning = 0;
+    for (const edge of edges) {
+      const a = colIndexById.get(edge.source);
+      const b = colIndexById.get(edge.target);
+      if (a === undefined || b === undefined || a === b) continue;
+      if (Math.min(a, b) <= i && Math.max(a, b) >= i + 1) spanning += 1;
+    }
+    if (spanning >= 6) {
+      const requiredGap = ROUTING_TOKENS.portFacingClearance * 2 + (spanning - 1) * ROUTING_TOKENS.laneGrid;
+      if (requiredGap > gap) {
+        cumulative += requiredGap - gap;
+      }
+    }
+    extraShift[i + 1] = cumulative;
+  }
+
+  if (cumulative === 0) return base;
+  const shifted = new Map<string, { x: number; y: number }>();
+  columns.forEach((col, idx) => {
+    const dx = extraShift[idx] ?? 0;
+    for (const m of col.members) {
+      shifted.set(m.id, { x: m.x + dx, y: m.y });
+    }
+  });
+  return shifted;
+}
 
 export type V2Node = Node;
 export type V2CableEdge = Edge<CableEdgeData>;
@@ -104,7 +183,10 @@ export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
     layoutResult = await new DagreLayoutEngine().layout(request);
   }
 
-  const positionById = new Map(layoutResult.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+  const positionById =
+    direction === 'LR'
+      ? expandCongestedLrCorridors(layoutResult.nodes, request.edges)
+      : new Map(layoutResult.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
 
   const layoutedNodes = nodes.map((node) => {
     const position = positionById.get(node.id);

@@ -97,10 +97,10 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             verbinden“ hinter dem Rand lag — die Angaben selbst sind weiter
             vollständig im `aria-label`, im Tooltip und im Bericht. */}
         {tone.icon}
-        <span className="cad-tb-explain">{tone.label}:</span>
+        <span className="cad-tb-explain">{tone.label}:</span>{' '}
         <span className={`hidden truncate rounded px-1.5 py-0.5 text-xs font-bold xl:inline ${tone.badge}`}>
           {summary.label}
-        </span>
+        </span>{' '}
         {/* „{n} Regeln angewandt · {x} % entschieden“ bleibt im DOM (Teil des
             zugänglichen Textes und im `aria-label` des Knopfes), aber ohne
             eigene Breite: Die Zeile war 314 px breit und ließ in der
@@ -241,7 +241,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </details>
             <p className="mt-1 leading-relaxed text-muted-foreground">
               Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
-              Prüfhinweisen.
+              Prüfhinweisen. Planungshilfe — ersetzt keine Prüfung oder Abnahme durch eine Elektrofachkraft.
             </p>
           </div>
         </div>

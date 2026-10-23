@@ -44,7 +44,8 @@ export function RoutingStatusBadge() {
         title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Weitere Läufe wurden gestoppt. Der angezeigte Stand muss gegen die aktuellen Anschlüsse geprüft werden.`}
         className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
       >
-        <Repeat2 className="h-4 w-4" aria-hidden="true" />
+        <Repeat2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="cad-tb-short">Konvergenz</span>
         <span className="cad-tb-explain">Routing: Konvergenzfehler</span>
       </span>
     );
@@ -59,24 +60,55 @@ export function RoutingStatusBadge() {
     // nicht finden und schlug fehl, obwohl `tests/e2e/routing-optimization.spec.ts`
     // genau darauf wartet. Die Kennungen sind unverändert.
     const states = {
-      optimized: { label: 'Routing: Optimierung geprüft', testId: 'routing-status-optimized' },
-      partial: { label: 'Routing: teilweise optimiert', testId: 'routing-status-partial' },
-      pending: { label: 'Routing: neu zu berechnen', testId: 'routing-status-pending' },
-      routing: { label: 'Routing: in Bearbeitung', testId: 'routing-status-routing' },
-      retained: { label: 'Routing: vorheriger gültiger Stand', testId: 'routing-status-retained' },
-      stale: { label: 'Routing: veraltete Geometrie', testId: 'routing-status-stale' },
-      error: { label: 'Routing: Berechnung fehlgeschlagen', testId: 'routing-status-error' },
+      optimized: {
+        label: 'Routing: Optimierung geprüft',
+        shortLabel: 'Optimiert',
+        testId: 'routing-status-optimized',
+      },
+      partial: {
+        label: 'Routing: teilweise optimiert',
+        shortLabel: 'Teilweise',
+        testId: 'routing-status-partial',
+      },
+      pending: {
+        label: 'Routing: neu zu berechnen',
+        shortLabel: 'Ausstehend',
+        testId: 'routing-status-pending',
+      },
+      routing: {
+        label: 'Routing: in Bearbeitung',
+        shortLabel: 'Rechnet…',
+        testId: 'routing-status-routing',
+      },
+      retained: {
+        label: 'Routing: vorheriger gültiger Stand',
+        shortLabel: 'Vorstand ok',
+        testId: 'routing-status-retained',
+      },
+      stale: {
+        label: 'Routing: veraltete Geometrie',
+        shortLabel: 'Veraltet',
+        testId: 'routing-status-stale',
+      },
+      error: {
+        label: 'Routing: Berechnung fehlgeschlagen',
+        shortLabel: 'Fehler',
+        testId: 'routing-status-error',
+      },
     };
-    const label = states[generation.state].label;
+    const { label, shortLabel, testId } = states[generation.state];
     return (
       <span
-        data-testid={states[generation.state].testId}
+        data-testid={testId}
         role="status"
         aria-label={label}
         title={generation.reason ?? 'Die sichtbare Geometrie ist noch nicht für diese Eingabe bestätigt.'}
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
       >
-        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="hidden xl:inline" aria-hidden="true">
+          <span className="cad-tb-short">{shortLabel}</span>
+        </span>
         <span className="cad-tb-explain">{label}</span>
       </span>
     );
@@ -116,7 +148,10 @@ export function RoutingStatusBadge() {
         title={detail}
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-success/40 bg-success/10 px-2 text-xs font-semibold text-success"
       >
-        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="hidden xl:inline" aria-hidden="true">
+          <span className="cad-tb-short">Routing ok</span>
+        </span>
         <span className="cad-tb-explain">Routing verifiziert</span>
       </span>
     );
@@ -170,7 +205,11 @@ export function RoutingStatusBadge() {
       title={detail}
       className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
     >
-      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+      <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="cad-tb-short whitespace-nowrap tabular-nums" aria-hidden="true">
+        {total}
+        <span className="hidden xl:inline"> Regelverl.</span>
+      </span>
       <span className="cad-tb-explain">Routing prüfen · {countText}</span>
     </span>
   );

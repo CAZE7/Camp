@@ -210,10 +210,10 @@ const AC_VOLTAGE_V = 230;
 
 const numberField = (data: Record<string, unknown> | undefined, field: string): number | null => {
   const value = data?.[field];
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value >= 0 ? value : null;
   if (typeof value === 'string') {
     const parsed = Number.parseFloat(value.trim().replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
   }
   return null;
 };
@@ -371,9 +371,10 @@ function buildPlanIndex(nodes: readonly Node[], edges: readonly Edge<CableEdgeDa
     const targetNode = nodeById.get(edge.target);
     if (!sourceNode || !targetNode) continue; // fehlendes Ende: SYN-001-Territorium
     edgeDomain.set(edge.id, edgeDomainOf(edge, sourceNode.type, targetNode.type));
+    const rawCrossSection = numberField(edge.data as Record<string, unknown> | undefined, 'crossSection');
     cableData.set(edge.id, {
       lengthM: numberField(edge.data as Record<string, unknown> | undefined, 'length'),
-      crossSectionMm2: numberField(edge.data as Record<string, unknown> | undefined, 'crossSection'),
+      crossSectionMm2: rawCrossSection !== null && rawCrossSection > 0 ? rawCrossSection : null,
       lengthIsAssumption: edge.data?.lengthIsAssumption === true,
     });
     validEdges.push(edge);
@@ -1995,7 +1996,7 @@ function explicitTotalAmps(source: Node, target: Node): number | null {
         : typeof raw === 'string'
           ? Number.parseFloat(raw.trim().replace(',', '.'))
           : null;
-    if (parsed !== null && Number.isFinite(parsed)) return parsed;
+    if (parsed !== null && Number.isFinite(parsed) && parsed >= 0) return parsed;
   }
   return null;
 }

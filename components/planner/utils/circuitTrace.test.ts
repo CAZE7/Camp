@@ -79,8 +79,20 @@ describe('circuit tracing', () => {
     // führen `nominalVoltage`) mit Fallback 12 V. Jetzt kommt die Spannung
     // aus derselben Autorität wie überall (getSystemVoltage → 12,8 V).
     expect(circuitTraceLabel(nodes, trace, edges)).toBe(
-      'Batterie → Shunt → Sicherung → Kühlbox (12.8 V, 5 A, 2.5 mm²)'
+      'Batterie → Shunt → Sicherung → Kühlbox (12,8 V, 5 A, 2,5 mm²)'
     );
+  });
+
+  it('M1: wählt bei Knotenauswahl die unmittelbar speisende Zweigleitung statt des Batterie-Hauptstrangs', () => {
+    const trace = traceCircuit(nodes, edges, { nodeId: 'fridge' })!;
+    expect(trace.referenceEdge?.id).toBe('e3');
+    expect(circuitTraceLabel(nodes, trace, edges)).toBe(
+      'Batterie → Shunt → Sicherung → Kühlbox (12,8 V, 5 A, 2,5 mm²)'
+    );
+
+    const lampTrace = traceCircuit(nodes, edges, { nodeId: 'lamp' })!;
+    expect(lampTrace.referenceEdge?.id).toBe('e4');
+    expect(circuitTraceLabel(nodes, lampTrace, edges)).toContain('1,5 mm²');
   });
 
   it('supports AC topology and rejects missing seeds', () => {
@@ -97,7 +109,7 @@ describe('circuit tracing', () => {
       { id: 'ac', source: 'shore', target: 'socket', data: { edgeDomain: 'AC_230V', crossSection: 1.5 } },
     ];
     const trace = traceCircuit(acNodes, acEdges, { edgeId: 'ac' })!;
-    expect(circuitTraceLabel(acNodes, trace)).toContain('(230 V, 10 A, 1.5 mm²)');
+    expect(circuitTraceLabel(acNodes, trace)).toContain('(230 V, 10 A, 1,5 mm²)');
     expect(traceCircuit(nodes, edges, { nodeId: 'missing' })).toBeNull();
   });
 });

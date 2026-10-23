@@ -161,6 +161,10 @@ export type GroundNodeData = CommonNodeData;
 export interface InverterNodeData extends CommonNodeData {
   /** Dauerleistung in W (Basis der DC-Eingangsstrom-Berechnung, ELE-006). */
   continuousPower?: number;
+  /** Eigenverbrauch / Leerlaufaufnahme des Wechselrichters im Betrieb in W (M3). */
+  idleWatts?: number;
+  /** Tägliche Einschaltdauer des Wechselrichters in h/Tag (Standard: aktive 230-V-Zeit bzw. 24 h). */
+  hours?: number;
   /** Vorhandensein eines FI/LS (RCD ≤ 30 mA) im AC-Ausgangskreis. */
   hasRcd?: boolean;
   /** Speisende 230-V-Quelle am Landstrom-EINGANG (s. `Consumer230VNodeData.acSourceId`). */

@@ -148,7 +148,7 @@ describe('CableEdge', () => {
     expect(title).not.toContain('minimale Bauteil-Freigabe unterschritten');
   });
 
-  it('kennzeichnet eine Fallback-Route als Routing-Ausnahme statt als clearancefreie Route', () => {
+  it('kennzeichnet eine Fallback-Route verständlich als Abstandshinweis ohne Router-Fachjargon (N5)', () => {
     act(() => {
       publishCableRoutes(
         new Map([
@@ -160,8 +160,11 @@ describe('CableEdge', () => {
     const interaction = container.querySelector('path[role="button"]');
     const title = container.querySelector('title')?.textContent ?? '';
 
-    expect(interaction?.getAttribute('aria-label')).toContain('Fallback ohne volle Bauteil-Reserve');
-    expect(title).toContain('Fallback ohne volle Bauteil-Reserve');
+    expect(interaction?.getAttribute('aria-label')).toContain(
+      'Abstandshinweis: Leitung liegt zu nah an einem Bauteil'
+    );
+    expect(interaction?.getAttribute('aria-label')).not.toContain('Routing-Ausnahme: Fallback');
+    expect(title).toContain('Abstandshinweis: Leitung liegt zu nah an einem Bauteil');
   });
 
   // Dreißigste Fassung: Eine Planungsannahme darf nicht als „eingetragen"
@@ -233,8 +236,8 @@ describe('CableEdge', () => {
     const { getByText } = renderEdge(<CableEdge {...defaultProps} selected={true} />);
 
     // Das Label UND der SVG-`<title>`-Tooltip tragen den Querschnitt — geprüft
-    // wird das sichtbare Label (Format „6 mm² · 5.0 m").
-    expect(getByText(/6 mm² · 5\.0 m/)).toBeInTheDocument();
+    // wird das sichtbare Label (Format „6 mm² · 5,0 m", N1).
+    expect(getByText(/6 mm² · 5,0 m/)).toBeInTheDocument();
     expect(getByText('Max: 25A')).toBeInTheDocument();
   });
 
@@ -275,7 +278,7 @@ describe('CableEdge', () => {
     const { getByText } = renderEdge(<CableEdge {...defaultProps} selected={true} />);
 
     // dito: sichtbares Label statt `<title>`-Tooltip
-    expect(getByText(/16 mm² · 5\.0 m/)).toBeInTheDocument();
+    expect(getByText(/16 mm² · 5,0 m/)).toBeInTheDocument();
     expect(getByText('Max: 40A')).toBeInTheDocument();
   });
 
@@ -390,7 +393,7 @@ describe('CableEdge', () => {
     const { getByText } = renderEdge(
       <CableEdge {...defaultProps} selected={true} data={{ length: 50, edgeDomain: 'AC_230V' }} />
     );
-    expect(getByText(/4 mm² · 50\.0 m/)).toBeInTheDocument();
+    expect(getByText(/4 mm² · 50,0 m/)).toBeInTheDocument();
   });
 
   it('rendert Fehler-Kanten als EINEN animierten Dash-Pfad mit Label-Chip (Bug 4)', () => {

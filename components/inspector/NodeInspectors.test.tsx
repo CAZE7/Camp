@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChargerInspector, ShorePowerInspector, SolarInspector } from './NodeInspectors';
+import { ChargerInspector, InverterInspector, ShorePowerInspector, SolarInspector } from './NodeInspectors';
 import { type NodeDataPatch } from '../nodes/types'; // AUDIT T1: Mock-Signatur
 import { closeTo } from '../../test-helpers/matchers'; // AUDIT T1
 import type { InspectorNode } from './NodeInspectors';
@@ -270,5 +270,41 @@ describe('ShorePowerInspector — I_k der Einspeisung (AUDIT N1)', () => {
     expect(evaluateAcEdgeProtection({ ...edge, supplyProspectiveIkA: stored }).verdict).toBe(
       'breaking-capacity-fail'
     );
+  });
+});
+
+describe('InverterInspector — Leistungs-Label & 100-A-Modellgrenze (H2 / M7 / M3)', () => {
+  it('aktualisiert automatische Leistungslabels („500W Inverter“ → „2000W Inverter“), lässt eigene Namen aber stehen', () => {
+    const onUpdateNodeData = vi.fn<(id: string, patch: NodeDataPatch) => void>();
+    const invNode: InspectorNode<'inverter'> = {
+      id: 'inv-1',
+      type: 'inverter',
+      position: { x: 0, y: 0 },
+      data: { label: '500W Inverter', continuousPower: 500, watts: 500 },
+    };
+
+    const { rerender } = render(<InverterInspector node={invNode} onUpdateNodeData={onUpdateNodeData} />);
+    fireEvent.change(screen.getByLabelText(/Dauerleistung \(W\)/), { target: { value: '2000' } });
+
+    expect(onUpdateNodeData).toHaveBeenCalledWith('inv-1', {
+      continuousPower: 2000,
+      watts: 2000,
+      label: '2000W Inverter',
+    });
+
+    onUpdateNodeData.mockClear();
+    rerender(
+      <InverterInspector
+        node={{ ...invNode, data: { label: 'MultiPlus Sitzbank', continuousPower: 2000, watts: 2000 } }}
+        onUpdateNodeData={onUpdateNodeData}
+      />
+    );
+    expect(screen.getByText(/Modellgrenze Einzelader/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Dauerleistung \(W\)/), { target: { value: '1200' } });
+    expect(onUpdateNodeData).toHaveBeenCalledWith('inv-1', {
+      continuousPower: 1200,
+      watts: 1200,
+    });
   });
 });

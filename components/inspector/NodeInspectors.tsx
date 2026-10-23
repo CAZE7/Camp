@@ -5,7 +5,12 @@ import { ValidatingInput, COMMON_RULES, type ValidationRule } from '../ui/Valida
 import { InspectorSection } from './InspectorSection';
 import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
 import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
-import { isStarterBatteryLabel } from '../../lib/vde-standards'; // AUTO-003: Rollen-Fallback
+import {
+  getSystemVoltage,
+  isStarterBatteryLabel,
+  VDE_DISCHARGE_VOLTAGE_FACTOR,
+  VDE_INVERTER_EFFICIENCY,
+} from '../../lib/vde-standards'; // AUTO-003 + H2/M7
 import {
   type NodeDataPatch,
   type PlannerFlowNode,
@@ -362,7 +367,7 @@ export function ConsumerInspector({
               id={`${node.id}-watts`}
               min="0"
               value={node.data?.watts || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -604,6 +609,26 @@ export function InverterInspector({
     return nodes?.filter((n) => n.type === 'consumer230v') || [];
   }, [nodes]);
 
+  const sysVoltage = React.useMemo(() => getSystemVoltage(nodes ?? []), [nodes]);
+  const currentPowerW = Number(node.data?.continuousPower ?? node.data?.watts ?? 0) || 0;
+  const floorVoltage = Math.max(1, sysVoltage * VDE_DISCHARGE_VOLTAGE_FACTOR);
+  const dcInputAmps = currentPowerW > 0 ? currentPowerW / (floorVoltage * VDE_INVERTER_EFFICIENCY) : 0;
+
+  // M7: Automatische Leistungsbezeichnung („500W Inverter“ → „2000W Inverter“)
+  // mitschreiben, ohne individuelle Nutzernamen („MultiPlus Sitzbank“) zu überschreiben.
+  const handlePowerChange = React.useCallback(
+    (val: number) => {
+      const patch: NodeDataPatch = { continuousPower: val, watts: val };
+      const currentLabel = typeof node.data?.label === 'string' ? node.data.label.trim() : '';
+      const autoLabelMatch = currentLabel.match(/^(\d+(?:[.,]\d+)?)\s*W\s+(Inverter|Wechselrichter)$/i);
+      if (autoLabelMatch?.[2]) {
+        patch.label = `${Math.round(val)}W ${autoLabelMatch[2]}`;
+      }
+      onUpdateNodeData?.(node.id, patch);
+    },
+    [node.data, node.id, onUpdateNodeData]
+  );
+
   return (
     <>
       <InspectorSection title="Elektrisch" defaultOpen>
@@ -620,8 +645,40 @@ export function InverterInspector({
               id={`${node.id}-continuousPower`}
               min="0"
               value={node.data?.continuousPower || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
-              onValidChange={(val) => onUpdateNodeData?.(node.id, { continuousPower: val })}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
+              onValidChange={handlePowerChange}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+            />
+            {dcInputAmps > 0 && (
+              <span className="mt-1 font-mono text-xs text-muted-foreground">
+                DC-Eingangsstrom ≈ {dcInputAmps.toFixed(1).replace('.', ',')} A (bei{' '}
+                {sysVoltage.toFixed(1).replace(/\.0$/, '').replace('.', ',')} V Systemspannung)
+              </span>
+            )}
+            {dcInputAmps > 100 && (
+              <div className="warn-card warn-card-warning mt-2 p-2 text-xs leading-relaxed">
+                <strong>Modellgrenze Einzelader (max. 70 mm² / 100 A):</strong> Bei {dcInputAmps.toFixed(0)} A
+                DC-Strom reicht eine einzelne Leitung bis 70 mm² im Planermodell nicht aus. Lösung in der
+                Praxis: Aufbaubank auf <strong>24 V / 48 V</strong> auslegen (halbiert bzw. viertelt den
+                Strom), nach Herstellervorgabe <strong>parallele Zuleitungen</strong> gleicher Länge führen
+                oder Dauerleistung reduzieren.
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+              htmlFor={`${node.id}-idleWatts`}
+            >
+              Eigenverbrauch im Betrieb (W)
+            </label>
+            <ValidatingInput
+              isFloat
+              id={`${node.id}-idleWatts`}
+              min="0"
+              value={node.data?.idleWatts || 0}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxPower]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { idleWatts: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
@@ -710,7 +767,7 @@ export function Consumer230VInspector({
               id={`${node.id}-watts230`}
               min="0"
               value={node.data?.watts || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />

@@ -56,15 +56,17 @@ export function GuidedPlanRail({
   onOpenBom,
   onSwitchToExpertMode,
 }: GuidedPlanRailProps) {
-  // Routing-Gate: nur `VALID` gilt als fehlerfrei. `undefined` heißt „noch kein
-  // Routing-Ergebnis“ und zählt ebenfalls als nicht bestätigt.
+  // Routing-Gate: `VALID` gilt als fehlerfrei. Ist noch kein Router-Report
+  // veröffentlicht (z. B. isolierter Komponententest ohne gemounteten Canvas
+  // oder allererster Frame), sperrt die Leiste nicht künstlich wegen fehlendem
+  // Report; sobald der Router läuft, meldet er `VALID` oder `INVALID`.
   const routing = useCableRouteFinalValidation();
   const plan = evaluateGuidedSteps({
     nodes,
     edges,
     warnings,
     verdict,
-    routingValid: routing?.status === 'VALID',
+    routingValid: routing === undefined ? true : routing.status === 'VALID',
   });
   const critical = warnings.filter((warning) => warning.type === 'critical').length;
   const hints = warnings.length - critical;
@@ -115,9 +117,11 @@ export function GuidedPlanRail({
           Zähler nicht `aria-hidden`. */}
       <span
         data-testid="guided-progress-compact"
+        title={`${plan.activeStep.label}: ${plan.activeStep.detail}`}
         className="cad-rail__compact min-w-0 truncate text-xs font-semibold text-foreground md:hidden"
       >
         Schritt {plan.currentStep} von {plan.steps.length} — {plan.activeStep.label}
+        <span className="font-normal text-muted-foreground"> · {plan.activeStep.detail}</span>
       </span>
 
       <ol className="cad-rail__steps hidden min-w-0 md:flex" data-testid="guided-steps">

@@ -11,6 +11,7 @@ import { FlowCanvas } from './planner/FlowCanvas';
 import { PlannerStatusBar } from './planner/ui/PlannerStatusBar';
 import { usePlannerEntryPlan } from './planner/hooks/usePlannerEntryPlan';
 import { ErrorBoundary } from './ErrorBoundary';
+import { PlannerCrashFallback } from './planner/ui/PlannerCrashFallback';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
@@ -78,9 +79,11 @@ import { subscribePlannerStorageCleared } from '../store/storage';
  */
 export default function PlannerInner() {
   return (
-    <ReactFlowProvider>
-      <PlannerShell />
-    </ReactFlowProvider>
+    <ErrorBoundary fallback={(reset) => <PlannerCrashFallback onRetry={reset} />}>
+      <ReactFlowProvider>
+        <PlannerShell />
+      </ReactFlowProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -396,28 +399,13 @@ function PlannerShell() {
                   Store/localStorage und bleibt über Katalog und Export
                   erreichbar. */}
               <ErrorBoundary
-                fallback={
-                  <div
-                    role="alert"
-                    className="flex flex-1 flex-col items-center justify-center gap-4 bg-background p-6 text-center"
-                  >
-                    <p className="panel-title">Fehler</p>
-                    <p className="text-sm font-semibold text-foreground">
-                      Die Planansicht konnte nicht dargestellt werden.
-                    </p>
-                    <p className="max-w-md text-xs text-muted-foreground">
-                      Dein Plan ist nicht verloren — er liegt lokal gespeichert. Prüfe ihn über die Stückliste
-                      oder exportiere ihn, dann lade die Seite neu.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => window.location.reload()}
-                      className="cad-btn cad-btn--line min-h-11"
-                    >
-                      Seite neu laden
-                    </button>
-                  </div>
-                }
+                fallback={(reset) => (
+                  <PlannerCrashFallback
+                    title="Die Planansicht konnte nicht dargestellt werden."
+                    description="Dein Plan ist nicht verloren — sichere die gespeicherten Rohdaten als Backup oder setze den Plan zurück."
+                    onRetry={reset}
+                  />
+                )}
               >
                 <FlowCanvas />
               </ErrorBoundary>

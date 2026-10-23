@@ -67,7 +67,8 @@ export type WirePolarity = '+' | '-' | 'L' | 'N' | 'PE' | 'CAN_H' | 'CAN_L' | 'D
 /** Resolve a CSS custom property for canvas APIs that cannot use `var(...)`. */
 export function cssToken(name: string, fallback: string): string {
   if (typeof window === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const scope = document.querySelector('.planner-shell') ?? document.documentElement;
+  const value = getComputedStyle(scope).getPropertyValue(name).trim();
   return value || fallback;
 }
 

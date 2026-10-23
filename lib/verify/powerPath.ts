@@ -75,8 +75,21 @@ function dropOfCable(
   context: PassContext,
   cable: CableModel
 ): { dropV: number; percent: number; nominalV: number } | null {
-  if (cable.lengthM === null || cable.crossSectionMm2 === null || cable.currentA === null) return null;
+  if (
+    cable.lengthM === null ||
+    cable.crossSectionMm2 === null ||
+    cable.currentA === null ||
+    !Number.isFinite(cable.lengthM) ||
+    cable.lengthM < 0 ||
+    !Number.isFinite(cable.crossSectionMm2) ||
+    cable.crossSectionMm2 <= 0 ||
+    !Number.isFinite(cable.currentA) ||
+    cable.currentA < 0
+  ) {
+    return null;
+  }
   const nominalV = nominalVoltageOfCable(cable, context.graph.systemVoltageV);
+  if (!Number.isFinite(nominalV) || nominalV <= 0) return null;
   const dropV = voltageDropVolts({
     lengthM: cable.lengthM,
     crossSectionMm2: cable.crossSectionMm2,

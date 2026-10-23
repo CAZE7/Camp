@@ -8,7 +8,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
-          "fuseType": "anl",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 0.2,
           "lengthIsAssumption": true
@@ -118,11 +118,11 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 10,
+          "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
-          "fuseType": "anl",
+          "fuseType": "classT",
           "fuseWarning": false,
           "length": 0.2
         },
@@ -154,7 +154,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "anl",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 2
         },
@@ -171,7 +171,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "anl",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 5
         },
@@ -188,7 +188,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "anl",
+          "fuseType": "ato",
           "fuseWarning": false,
           "length": 3
         },
@@ -240,7 +240,9 @@
           "capacity": 100,
           "chemistry": "AGM",
           "designator": "G1",
-          "label": "12V Batterie"
+          "internalResistance": 15,
+          "label": "12V Batterie",
+          "role": "house"
         },
         "id": "battery-1",
         "position": {
@@ -294,8 +296,9 @@
       {
         "data": {
           "designator": "F1",
+          "fuseType": "ato",
           "label": "Sicherungskasten",
-          "rating": 10
+          "rating": 25
         },
         "id": "fusebox-1",
         "position": {
@@ -351,8 +354,9 @@
     "edges": [
       {
         "data": {
-          "crossSection": 10,
-          "fuseSize": 10,
+          "crossSection": 16,
+          "fuseSize": 25,
+          "fuseType": "classT",
           "length": 0.2
         },
         "id": "e-batt-fuse",
@@ -363,7 +367,7 @@
       },
       {
         "data": {
-          "crossSection": 10,
+          "crossSection": 16,
           "length": 1
         },
         "id": "e-batt-gnd",
@@ -375,6 +379,8 @@
       {
         "data": {
           "crossSection": 4,
+          "fuseSize": 10,
+          "fuseType": "ato",
           "length": 2
         },
         "id": "e-fuse-cool",
@@ -386,6 +392,8 @@
       {
         "data": {
           "crossSection": 2.5,
+          "fuseSize": 5,
+          "fuseType": "ato",
           "length": 5
         },
         "id": "e-fuse-light",
@@ -397,6 +405,8 @@
       {
         "data": {
           "crossSection": 2.5,
+          "fuseSize": 10,
+          "fuseType": "ato",
           "length": 3
         },
         "id": "e-fuse-usb",
@@ -412,7 +422,9 @@
           "capacity": 100,
           "chemistry": "AGM",
           "designator": "G1",
-          "label": "12V Batterie"
+          "internalResistance": 15,
+          "label": "12V Batterie",
+          "role": "house"
         },
         "id": "battery-1",
         "position": {
@@ -466,7 +478,9 @@
       {
         "data": {
           "designator": "F1",
-          "label": "Sicherungskasten"
+          "fuseType": "ato",
+          "label": "Sicherungskasten",
+          "rating": 25
         },
         "id": "fusebox-1",
         "position": {

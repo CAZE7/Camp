@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 import { pageByPath } from '@/lib/seo/inventory';
 
-import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_SCHRITTE } from './planerSeoContent';
+import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_SCHRITTE } from './planerSeoTexte';
 import { PLANNER_TEMPLATES } from './templates';
 
 /**
@@ -49,7 +49,7 @@ const PLANER_WISSENSLINKS: readonly { href: string; label: string; description?:
 
 /**
  * Statischer Inhalt unterhalb des Planers auf `/planer/` (siehe
- * `planerSeoContent.ts` für das Warum).
+ * `planerSeoTexte.ts` für das Warum).
  *
  * Bewusst eine Server-Komponente ohne Zustand: Der Text steht im
  * ausgelieferten HTML, bevor irgendein JavaScript läuft — für Crawler,
@@ -195,6 +195,37 @@ export function PlanerSeoContent() {
             ))}
           </div>
         </section>
+
+        <div
+          role="region"
+          aria-label="Rechtliche Hinweise und Seitennavigation"
+          className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-sm text-muted-foreground"
+        >
+          <p className="max-w-xl text-xs leading-relaxed">
+            Planungshilfe nach technischen Richtwerten — ersetzt vor Inbetriebnahme (insbesondere bei 230 V
+            und Lithium-Hochstromkreisen) keine Prüfung durch eine Elektrofachkraft.
+          </p>
+          <nav aria-label="Rechtliches" className="flex flex-wrap items-center gap-4">
+            <Link
+              href="/impressum/"
+              className="inline-flex min-h-11 items-center underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Impressum
+            </Link>
+            <Link
+              href="/datenschutz/"
+              className="inline-flex min-h-11 items-center underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Datenschutz
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Startseite
+            </Link>
+          </nav>
+        </div>
       </div>
     </div>
   );

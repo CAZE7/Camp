@@ -247,4 +247,29 @@ describe('ValidatingInput', () => {
     expect(onValidChange).toHaveBeenCalledWith(12.5);
     expect(onValidChange).not.toHaveBeenCalledWith(125);
   });
+
+  it('H4: verwirft Zwischenstände bei nachträglich ungültiger Eingabe („1e3“, „2,5,5“) und stellt den Fokus-Ausgangswert wieder her', () => {
+    const onValidChange = vi.fn();
+    render(
+      <ValidatingInput
+        value={500}
+        isFloat
+        onValidChange={onValidChange}
+        rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
+        aria-label="test-input"
+      />
+    );
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '1' } });
+    expect(onValidChange).toHaveBeenLastCalledWith(1);
+    fireEvent.change(input, { target: { value: '1e3' } });
+    // Rollback auf den Ausgangswert vor Fokusbeginn statt „1“ stehenzulassen:
+    expect(onValidChange).toHaveBeenLastCalledWith(500);
+    expect(screen.getByText(INPUT_ERROR_MESSAGES.invalidNumber)).toBeInTheDocument();
+
+    fireEvent.blur(input);
+    expect(input.value).toBe('500');
+  });
 });

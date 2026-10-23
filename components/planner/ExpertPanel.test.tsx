@@ -120,7 +120,7 @@ describe('ExpertPanel', () => {
     expect(screen.getByText('Sicherung')).toBeInTheDocument();
     // I = 1000 / 12.0 / 0.85 = 98.04 A — ELE-005: Entladeschlussspannung
     // (12,8 V nominal × 0,9375) statt Nennspannung.
-    expect(screen.getByText(/98\.0 A/)).toBeInTheDocument();
+    expect(screen.getByText(/98,0 A/)).toBeInTheDocument();
   });
 
   it('calculates live recommendations for solar', () => {
@@ -137,7 +137,7 @@ describe('ExpertPanel', () => {
     fireEvent.click(toggleBtn);
 
     // I = 200 / 18 = 11.11A
-    expect(screen.getByText(/11\.1 A/)).toBeInTheDocument();
+    expect(screen.getByText(/11,1 A/)).toBeInTheDocument();
   });
 
   it('toggles tip sections', () => {

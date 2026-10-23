@@ -857,6 +857,12 @@
     visibility: hidden;
   }
 
+  .planner-detail-overview .de-node-card > .node-symbol,
+  .planner-detail-overview .de-node-card > .node-symbol + div {
+    transform: translateY(14px);
+    transition: transform 150ms ease;
+  }
+
   /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
      Damit kennen auch absolut positionierte Bedienelemente (die Ein-/
      Ausklapp-Pfeile) die exakte Spaltenbreite, ohne dass Zahlen doppelt
@@ -2984,15 +2990,17 @@ summary:active {
   overscroll-behavior: none;
 }
 
-/* Solange der Planer montiert ist, ist das Dokument kein Scroll-Container.
-   Die Klasse setzt `components/PlannerInner.tsx` beim Mount und nimmt sie beim
-   Unmount zurück — andere Routen der Website bleiben unberührt. */
+/* Solange der Planer montiert ist, bleibt der erste Bildschirm (100dvh) eine
+   in sich geschlossene Arbeitsfläche (`overscroll-behavior: contain` am
+   `.planner-shell`), während der statische Ratgeberteil (`PlanerSeoContent`)
+   darunter weiterhin per Seiten-Scroll erreichbar bleibt (M6). */
+.planner-shell {
+  overscroll-behavior: contain;
+}
+
 html.planner-root-active,
 html.planner-root-active body {
-  height: 100%;
-  min-height: 0;
   max-width: 100%;
-  overflow: hidden;
   overflow-x: clip;
   overscroll-behavior: none;
 }
@@ -3169,6 +3177,13 @@ html.planner-root-active body {
   .cad-statusbar__short {
     display: inline;
   }
+  .planner-mode-switch-panel .planner-mode-icon {
+    display: none !important;
+  }
+  .planner-mode-switch-panel .cad-btn {
+    padding-inline: 0.3rem;
+    font-size: 0.75rem;
+  }
 }
 
 /* --- 5. Panel-Körper: Scroll endet im Panel ------------------------------- */
@@ -3252,7 +3267,10 @@ html.planner-root-active body {
   }
 
   .cad-toolbar .cad-status-optimize,
-  .cad-toolbar [data-testid^='routing-status'] {
+  .cad-toolbar
+    [data-testid^='routing-status']:not([data-testid='routing-status-invalid']):not(
+      [data-testid='routing-status-not-converged']
+    ):not([data-testid='routing-status-error']) {
     display: none;
   }
 
@@ -3704,7 +3722,10 @@ html.planner-root-active body {
 /* Auf kleinen Screens bleiben die drei Prüf-Zugänge im sichtbaren Statusfeld:
    Warnungszahl, Prüfbericht und das Menü mit „Plan prüfen“/Stückliste. */
 @media (max-width: 767px) {
-  .cad-toolbar__status > [data-testid^='routing-status-'],
+  .cad-toolbar__status
+    > [data-testid^='routing-status-']:not([data-testid='routing-status-invalid']):not(
+      [data-testid='routing-status-not-converged']
+    ):not([data-testid='routing-status-error']),
   .cad-toolbar__status > .cad-status-optimize {
     display: none !important;
   }
@@ -4640,8 +4661,13 @@ html.planner-root-active body {
     top: 8rem;
     right: 0.5rem;
     left: 0.5rem;
+    z-index: 45;
     max-height: 4.5rem;
     overflow: auto;
+  }
+
+  .planner-canvas-column:has(.planner-entry-notice) .de-hud-card {
+    margin-top: 8.5rem;
   }
 }
 

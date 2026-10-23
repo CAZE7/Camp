@@ -11,9 +11,11 @@ import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { LEGACY_PLANNER_STORAGE_KEY, PLANNER_STORAGE_KEY } from '@/lib/storageKeys';
 import {
   isStarterPlan,
+  planFingerprint,
   shouldLoadStarterPlan,
   STARTER_TEMPLATE_ID,
   templateIdFromSearch,
+  TEMPLATES_DICT,
 } from '../templates';
 
 /**
@@ -30,24 +32,42 @@ import {
  *
  * Ein eigener, gespeicherter Plan wird von keiner Stufe still überschrieben:
  * Stufen 1–2 fragen nach, wenn auf der Fläche schon ein eigener Plan liegt
- * (das unveränderte Beispiel-Setup zählt nicht als eigener Plan).
+ * (das unveränderte Beispiel-Setup zählt nicht als eigener Plan; ein
+ * bearbeitetes Beispiel-Setup — z. B. Batterie auf 300 Ah, H5 — dagegen schon).
  */
 
 export type EntryPlanNotice = { type: 'success' | 'error' | 'info'; message: string } | null;
 
 function hasPersistedPlan(): boolean {
   try {
-    // Beide Schlüssel: Der Plan kann noch unter dem früheren Namen liegen,
-    // wenn der Store in diesem Seitenaufruf noch nicht rehydriert wurde.
     return (
       window.localStorage.getItem(PLANNER_STORAGE_KEY) !== null ||
       window.localStorage.getItem(LEGACY_PLANNER_STORAGE_KEY) !== null
     );
   } catch {
-    // Blockierter Speicher (z. B. Privatmodus): Dann gibt es keinen
-    // gespeicherten Plan, den man schützen müsste — das Beispiel darf laden.
     return false;
   }
+}
+
+/**
+ * Entfernt nur die Einstiegs-Parameter (`?template=…` und `#plan=…`) aus der
+ * Adresszeile, lässt aber Kampagnen-/Tracking-Parameter (`utm_*` usw.) und
+ * fremde Anker unangetastet (N7).
+ */
+export function buildCleanEntryUrl(location: Pick<Location, 'pathname' | 'search' | 'hash'>): string {
+  const searchParams = new URLSearchParams(location.search);
+  searchParams.delete('template');
+  const nextSearch = searchParams.toString();
+
+  let nextHash = location.hash;
+  if (nextHash.includes('plan=')) {
+    const hashParams = new URLSearchParams(nextHash.startsWith('#') ? nextHash.slice(1) : nextHash);
+    hashParams.delete('plan');
+    const rest = hashParams.toString();
+    nextHash = rest ? `#${rest}` : '';
+  }
+
+  return `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${nextHash}`;
 }
 
 let fitViewTimer: ReturnType<typeof setTimeout> | undefined;
@@ -81,11 +101,53 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       if (alive) fitViewSoon();
     };
 
-    const state = usePlannerStore.getState();
-    if (typeof state.applyTemplate !== 'function' || typeof state.importProject !== 'function') return;
+    const initialState = usePlannerStore.getState();
+    if (typeof initialState.applyTemplate !== 'function' || typeof initialState.importProject !== 'function')
+      return;
 
-    const hasOwnPlan = () =>
-      (state.nodes.length > 0 || state.waterNodes.length > 0) && !isStarterPlan(state.nodes, state.edges);
+    const hasOwnPlan = () => {
+      const current = usePlannerStore.getState();
+      if (current.waterNodes.length > 0) return true;
+      return current.nodes.length > 0 && !isStarterPlan(current.nodes, current.edges);
+    };
+
+    const isSameAsCurrentPlan = (
+      nextNodes: readonly {
+        id: string;
+        type?: string;
+        position?: { x: number; y: number };
+        data?: unknown;
+      }[],
+      nextEdges: readonly {
+        id: string;
+        source?: string;
+        target?: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
+        data?: unknown;
+      }[],
+      nextWaterNodes: readonly {
+        id: string;
+        type?: string;
+        position?: { x: number; y: number };
+        data?: unknown;
+      }[] = [],
+      nextWaterEdges: readonly {
+        id: string;
+        source?: string;
+        target?: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
+        data?: unknown;
+      }[] = []
+    ): boolean => {
+      const current = usePlannerStore.getState();
+      return (
+        planFingerprint(current.nodes, current.edges) === planFingerprint(nextNodes, nextEdges) &&
+        planFingerprint(current.waterNodes, current.waterEdges) ===
+          planFingerprint(nextWaterNodes, nextWaterEdges)
+      );
+    };
 
     const confirmReplace = (was: string) =>
       !hasOwnPlan() ||
@@ -94,7 +156,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       );
 
     const clearEntryFromUrl = () => {
-      window.history.replaceState(null, '', `${window.location.pathname}`);
+      window.history.replaceState(null, '', buildCleanEntryUrl(window.location));
     };
 
     const loadSharedPlan = async (): Promise<boolean> => {
@@ -108,7 +170,15 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         clearEntryFromUrl();
         return true;
       }
-      if (!confirmReplace('Der geteilte Plan')) {
+      if (
+        !isSameAsCurrentPlan(
+          result.plan.nodes,
+          result.plan.edges,
+          result.plan.waterNodes,
+          result.plan.waterEdges
+        ) &&
+        !confirmReplace('Der geteilte Plan')
+      ) {
         clearEntryFromUrl();
         return true;
       }
@@ -143,9 +213,13 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
     void (async () => {
       if (await loadSharedPlan()) return;
 
+      const rawTemplateParam = new URLSearchParams(window.location.search).get('template');
       const templateId = templateIdFromSearch(window.location.search);
       if (templateId) {
-        if (confirmReplace('Die Vorlage')) {
+        const targetTemplate = TEMPLATES_DICT[templateId];
+        const alreadyLoaded =
+          targetTemplate !== undefined && isSameAsCurrentPlan(targetTemplate.nodes, targetTemplate.edges);
+        if (alreadyLoaded || confirmReplace('Die Vorlage')) {
           usePlannerStore.getState().applyTemplate(templateId);
           setHasOnboarded(true);
           scheduleFit();
@@ -158,15 +232,42 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         return;
       }
 
+      if (rawTemplateParam !== null && rawTemplateParam.trim() !== '') {
+        clearEntryFromUrl();
+        const current = usePlannerStore.getState();
+        if (
+          shouldLoadStarterPlan({
+            hasPersistedPlan: hasPersistedPlan(),
+            nodeCount: current.nodes.length,
+            waterNodeCount: current.waterNodes.length,
+            hasEntryPlan: false,
+          })
+        ) {
+          current.applyTemplate(STARTER_TEMPLATE_ID);
+          scheduleFit();
+          setNotice({
+            type: 'info',
+            message: `Unbekannte Vorlage „${rawTemplateParam.trim()}“ — stattdessen wurde das Standard-Beispiel geladen. Über „Vorlage laden“ kannst du wählen.`,
+          });
+        } else {
+          setNotice({
+            type: 'error',
+            message: `Vorlage „${rawTemplateParam.trim()}“ wurde nicht gefunden. Dein aktueller Plan bleibt unverändert.`,
+          });
+        }
+        return;
+      }
+
+      const current = usePlannerStore.getState();
       if (
         shouldLoadStarterPlan({
           hasPersistedPlan: hasPersistedPlan(),
-          nodeCount: state.nodes.length,
-          waterNodeCount: state.waterNodes.length,
+          nodeCount: current.nodes.length,
+          waterNodeCount: current.waterNodes.length,
           hasEntryPlan: false,
         })
       ) {
-        usePlannerStore.getState().applyTemplate(STARTER_TEMPLATE_ID);
+        current.applyTemplate(STARTER_TEMPLATE_ID);
         scheduleFit();
         setNotice({
           type: 'info',

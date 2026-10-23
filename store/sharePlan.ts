@@ -104,10 +104,16 @@ export async function encodeSharePlan(content: PlannerProjectContent): Promise<s
   // Download darf weiter lesbar formatiert bleiben.
   const text = JSON.stringify(JSON.parse(serializePlannerProject(content)) as unknown);
   const bytes = new TextEncoder().encode(text);
-  if (typeof CompressionStream !== 'undefined') {
-    return `plan=${COMPRESSED_PREFIX}${bytesToBase64Url(await compress(bytes))}`;
+  const value =
+    typeof CompressionStream !== 'undefined'
+      ? `${COMPRESSED_PREFIX}${bytesToBase64Url(await compress(bytes))}`
+      : `${RAW_PREFIX}${bytesToBase64Url(bytes)}`;
+  if (value.length > SHARE_HASH_MAX_LENGTH) {
+    throw new Error(
+      'Der Plan ist zu groß für einen Teilen-Link. Bitte stattdessen „Projekt speichern“ (.json) verwenden.'
+    );
   }
-  return `plan=${RAW_PREFIX}${bytesToBase64Url(bytes)}`;
+  return `plan=${value}`;
 }
 
 /** Baut die vollständige teilbare Adresse aus Basis-Adresse und Plan. */

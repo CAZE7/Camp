@@ -113,6 +113,7 @@ const WaterPipeEdge = function ({
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
+        interactionWidth={44}
         style={{
           ...style,
           strokeWidth,
@@ -143,7 +144,7 @@ const WaterPipeEdge = function ({
           }}
         >
           {label}
-          {data?.length ? ` · ${data.length.toFixed(1)} m` : ''}
+          {data?.length ? ` · ${data.length.toFixed(1).replace('.', ',')} m` : ''}
         </div>
       </EdgeLabelRenderer>
       <path
@@ -157,7 +158,7 @@ const WaterPipeEdge = function ({
         style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
         role="button"
         tabIndex={0}
-        aria-label={`${label.replace(' →', '')}-Rohr${data?.length ? `, ${data.length.toFixed(1)} Meter` : ''}`}
+        aria-label={`${label.replace(' →', '')}-Rohr${data?.length ? `, ${data.length.toFixed(1).replace('.', ',')} Meter` : ''}`}
         onClick={() => usePlannerStore.getState().focusElement(id, 'edge')}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {

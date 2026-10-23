@@ -138,6 +138,9 @@ describe('lib/units — Grenzen zur Außenwelt', () => {
       expect(parseDecimalString('1.234,56')).toBeCloseTo(1234.56, 10);
       expect(parseDecimalString('1,234.56')).toBeCloseTo(1234.56, 10);
       expect(parseDecimalString('1.000.000')).toBe(1000000);
+      expect(parseDecimalString('1.000')).toBe(1000);
+      expect(parseDecimalString('2.500')).toBe(2500);
+      expect(parseDecimalString('0.350')).toBeCloseTo(0.35, 10);
       expect(parseDecimalString('12 345,6')).toBeCloseTo(12345.6, 10);
     });
 

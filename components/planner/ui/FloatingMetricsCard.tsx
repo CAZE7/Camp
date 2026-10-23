@@ -26,7 +26,7 @@ export function FloatingMetricsCard() {
       // Keine Glass-Fläche: Die Kennzahlen liegen auf einer deckenden Fläche,
       // die Kante trennt sie vom Raster — dahinter durchscheinende Leitungen
       // würden die Zahlen lesen lassen wie ein HUD aus einem Spiel.
-      className={`pointer-events-none absolute top-28 right-3 z-popover hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
+      className={`de-hud-card pointer-events-none relative z-10 hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'}`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">
@@ -58,7 +58,7 @@ export function FloatingMetricsCard() {
             <div className="flex items-center justify-between gap-3">
               <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
               <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
-                {metrics.autarkyStr}
+                {(metrics.autarkyStr ?? '').replace('.', ',')}
                 {metrics.autarkyStr === AUTARKY_NOT_CALCULATED && (
                   <span className="text-muted-ink block text-xs font-normal">
                     Bei Verbrauchern die Nutzung in h/Tag eintragen.
@@ -69,21 +69,23 @@ export function FloatingMetricsCard() {
             <div className="flex items-center justify-between gap-3">
               <dt className="text-sm font-medium text-ink-soft">Tagesverbrauch</dt>
               <dd className="text-right text-sm font-bold text-ink">
-                ≈ {metrics.dailyConsumptionAh.toFixed(1)} Ah
+                ≈ {(metrics.dailyConsumptionAh ?? 0).toFixed(1).replace('.', ',')} Ah
                 <span className="text-muted-ink block text-xs font-normal">geschätzt</span>
               </dd>
             </div>
             <div className="border-t border-rule/50 pt-2" />
             <div className="flex items-center justify-between gap-3">
               <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
-              <dd className="text-right text-sm font-bold text-oxide">{metrics.chargingTimeStr}</dd>
+              <dd className="text-right text-sm font-bold text-oxide">
+                {(metrics.chargingTimeStr ?? '').replace('.', ',')}
+              </dd>
             </div>
             {(calculatedSolarWatts > 0 || metrics.solarNodesCount > 0) && (
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-sm text-ink-soft">Solarleistung</dt>
                 <dd className="text-right text-sm font-bold text-warn-warning">
                   {metrics.solarNodesCount > 0
-                    ? `${metrics.totalSolarVoltage} V / ${metrics.totalSolarAmps.toFixed(1)} A`
+                    ? `${String(metrics.totalSolarVoltage ?? 0).replace('.', ',')} V / ${(metrics.totalSolarAmps ?? 0).toFixed(1).replace('.', ',')} A`
                     : `${calculatedSolarWatts} W`}
                 </dd>
               </div>

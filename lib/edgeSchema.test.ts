@@ -101,4 +101,14 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
       expect(sanitizeEdgeDataBySchema({ [key]: invalid }).removedFields).toEqual([key]);
     }
   });
+
+  it('K3 + N9: verwirft unphysikalische Kantenzahlen (<= 0 Querschnitt, negative Länge/Sicherung)', () => {
+    const bad = sanitizeEdgeDataBySchema({
+      length: -2,
+      crossSection: 0,
+      fuseSize: -10,
+      fuseOffset: 250,
+    });
+    expect(bad.removedFields.sort()).toEqual(['crossSection', 'fuseOffset', 'fuseSize', 'length']);
+  });
 });

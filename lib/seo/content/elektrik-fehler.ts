@@ -223,7 +223,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
     'Normwerte beziehen sich auf das elektroplaner-camper.de-Modell und sind keine Rechtsauskunft.',
   ],
   limits: [
-    'Keine Ersatz für eine Prüfung durch eine Elektrofachkraft.',
+    'Kein Ersatz für eine Prüfung durch eine Elektrofachkraft.',
     'Keine Aussagen zu 230-V-Installationen ohne Fachkraft.',
   ],
 };

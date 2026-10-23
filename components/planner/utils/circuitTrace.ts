@@ -148,11 +148,36 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   for (const id of Array.from(nodeIds)) if (!validNodeIds.has(id)) nodeIds.delete(id);
   pathNodeIds = pathNodeIds.filter((id, index) => validNodeIds.has(id) && pathNodeIds.indexOf(id) === index);
 
+  // M1: Bei Knotenauswahl die unmittelbar am ausgewählten Bauteil anliegende
+  // Zweigleitung wählen (vorrangig Zuleitung, sonst Abgang, Plus/AC/Solar vor
+  // Minus), statt `edges[0]` (oft Batterie-Hauptstrang mit 59 A / 50 mm²).
+  const pickNodeBranchEdge = (nodeId: string): Edge | undefined => {
+    const rankEdge = (edge: Edge): number => {
+      const sh = (edge.sourceHandle ?? '').toLowerCase();
+      const th = (edge.targetHandle ?? '').toLowerCase();
+      if (sh.includes('minus') || th.includes('minus')) return 1;
+      return 0;
+    };
+    const sortCandidates = (list: Edge[]) =>
+      list
+        .filter((edge) => edgeIds.has(edge.id))
+        .slice()
+        .sort((a, b) => rankEdge(a) - rankEdge(b) || compareIds(a.id, b.id));
+    const incoming = sortCandidates(incomingEdgesMap.get(nodeId) ?? []);
+    if (incoming.length > 0) return incoming[0];
+    const outgoing = sortCandidates(outgoingEdgesMap.get(nodeId) ?? []);
+    if (outgoing.length > 0) return outgoing[0];
+    return undefined;
+  };
+
   return {
     nodeIds,
     edgeIds,
     pathNodeIds,
-    referenceEdge: selectedEdge ?? edges.find((edge) => edgeIds.has(edge.id)),
+    referenceEdge:
+      selectedEdge ??
+      (selectedNodeId ? pickNodeBranchEdge(selectedNodeId) : undefined) ??
+      edges.find((edge) => edgeIds.has(edge.id)),
   };
 }
 
@@ -178,7 +203,8 @@ export function applyCircuitTrace<N extends Node, E extends Edge>(
   };
 }
 
-const format = (value: number): string => (Number.isInteger(value) ? String(value) : value.toFixed(1));
+const format = (value: number): string =>
+  Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 
 /**
  * AUDIT ELE-009: Der Kurzinfo-Text leitete Spannung und Strom INLINE ab —

@@ -485,7 +485,7 @@ describe('FlowCanvas', () => {
       // Fenster, statt es synchron zu erwarten.
       expect(await screen.findByText('Stückliste')).toBeInTheDocument();
       expect(screen.getByText('Batterie')).toBeInTheDocument();
-      expect(screen.getByText('5.0 m Kabel mit 4 mm²')).toBeInTheDocument();
+      expect(screen.getByText('5,0 m Kabel mit 4 mm²')).toBeInTheDocument();
 
       // Close modal
       act(() => {
@@ -654,11 +654,11 @@ describe('FlowCanvas', () => {
        * UX-Reset 2026-09: Kennzahlen sind tertiär. Eingeklappt ist der Default —
        * die Werte kosten einen Klick und stehen nicht dauerhaft über dem Plan.
        */
-      expect(screen.queryByText(/100\.5 Ah/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/100,5 Ah/)).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Aktueller Status'));
 
-      expect(screen.getByText(/100\.5 Ah/)).toBeInTheDocument();
+      expect(screen.getByText(/100,5 Ah/)).toBeInTheDocument();
       expect(screen.getByText('2 Tage')).toBeInTheDocument();
     });
 

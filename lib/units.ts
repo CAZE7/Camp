@@ -253,13 +253,19 @@ function splitDecimalBody(body: string): { intPart: string; fracPart: string | n
     return intPart === null ? null : { intPart, fracPart: null };
   }
 
-  // Fall 2: ein Trenner genau einmal — Dezimalzeichen.
+  // Fall 2: ein Trenner genau einmal — Dezimalzeichen, außer bei eindeutiger
+  // deutscher Tausendergruppierung („1.000“, „2.500“, „12.000“: 1–3 Ziffern
+  // ohne führende Null + Punkt + exakt 3 Ziffern). „0.350“ (führende 0),
+  // „2.5“ (1 Nachkommastelle) und „12.34“ (2 Nachkommastellen) bleiben Dezimalzahlen.
   if (commas === 1 || dots === 1) {
     const pair = splitOnce(body, commas === 1 ? ',' : '.');
     if (!pair) return null;
     const [intPart, fracPart] = pair;
     if (!isDigits(fracPart)) return null;
     if (intPart !== '' && !isDigits(intPart)) return null;
+    if (dots === 1 && commas === 0 && /^[1-9]\d{0,2}$/.test(intPart) && /^\d{3}$/.test(fracPart)) {
+      return { intPart: `${intPart}${fracPart}`, fracPart: null };
+    }
     return { intPart, fracPart };
   }
 

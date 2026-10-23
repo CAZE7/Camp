@@ -5,6 +5,8 @@ import { useReactFlow } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { PLANNER_SNAP_GRID } from '../constants';
+import { getSystemVoltage } from '../utils/voltage';
+import { classifySystemVoltage } from '../../../lib/electricalGraph/powerSystem';
 
 export interface PlannerStatusBarProps {
   /** Aktueller Canvas-Zoomfaktor (1 = 100 %). */
@@ -27,19 +29,24 @@ export interface PlannerStatusBarProps {
 export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
   const coordsRef = useRef<HTMLSpanElement>(null);
   const { screenToFlowPosition } = useReactFlow();
-  const { nodeCount, edgeCount, viewMode, criticalCount, warningCount } = usePlannerStore(
-    useShallow((state) => ({
-      nodeCount: state.viewMode === 'water' ? state.waterNodes.length : state.nodes.length,
-      edgeCount: state.viewMode === 'water' ? state.waterEdges.length : state.edges.length,
-      viewMode: state.viewMode,
-      // „kritisch“ umfasst beide harten Stufen der Domäne (`error`, `critical`).
-      criticalCount: state.plannerErrors.filter(
-        (error) => error.severity === 'error' || error.severity === 'critical'
-      ).length,
-      warningCount: state.plannerErrors.filter(
-        (error) => error.severity !== 'error' && error.severity !== 'critical'
-      ).length,
-    }))
+  const { nodeCount, edgeCount, viewMode, dcLabel, criticalCount, warningCount } = usePlannerStore(
+    useShallow((state) => {
+      const vClass = classifySystemVoltage(getSystemVoltage(state.nodes));
+      const resolvedDcLabel = vClass === '24V' ? '24 V' : vClass === '48V' ? '48 V' : '12 V';
+      return {
+        nodeCount: state.viewMode === 'water' ? state.waterNodes.length : state.nodes.length,
+        edgeCount: state.viewMode === 'water' ? state.waterEdges.length : state.edges.length,
+        viewMode: state.viewMode,
+        dcLabel: `${resolvedDcLabel} / 230 V`,
+        // „kritisch“ umfasst beide harten Stufen der Domäne (`error`, `critical`).
+        criticalCount: state.plannerErrors.filter(
+          (error) => error.severity === 'error' || error.severity === 'critical'
+        ).length,
+        warningCount: state.plannerErrors.filter(
+          (error) => error.severity !== 'error' && error.severity !== 'critical'
+        ).length,
+      };
+    })
   );
 
   useEffect(() => {
@@ -85,7 +92,7 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
             ausgeblendete Elemente), die kurze ist eine Anzeige-Variante. */}
         <span className="cad-statusbar__long">
           {nodeCount} Bauteile · {edgeCount} Leitungen
-        </span>
+        </span>{' '}
         <span className="cad-statusbar__short">
           {nodeCount} Bt · {edgeCount} Lt
         </span>
@@ -97,7 +104,7 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
           (gemessen), darunter bliebe der Prüfstand unsichtbar. */}
       <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
       <span className="cad-statusbar__opt cad-statusbar__opt--facts">
-        {viewMode === 'water' ? 'Brauch-/Grauwasser' : '12 V / 230 V'}
+        {viewMode === 'water' ? 'Brauch-/Grauwasser' : dcLabel}
       </span>
       <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
       <span className="cad-statusbar__opt cad-statusbar__opt--facts">Raster {gridMm} mm</span>

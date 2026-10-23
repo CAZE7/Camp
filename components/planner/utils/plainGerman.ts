@@ -69,6 +69,15 @@ export function toPlainGerman(text: string): string {
   let result = humanizeIds(text);
   for (const [pattern, replacement] of PHRASES) result = result.replace(pattern, replacement);
   result = result
+    .replace(
+      /konventioneller Auslösestrom I_2 von Sicherung ([^()]+) \(([^()]+)\) ist nicht belegt \([^.]*\)\. Eine Annahme wäre eine erfundene Schutzwirkung\./g,
+      'Für die Sicherung $1 ($2) nennt keine allgemeine Norm einen festen Auslöse-Prüfstrom — der genaue Wert steht nur im Hersteller-Datenblatt.'
+    )
+    .replace(/\bbolt-down\s+midi\b/gi, 'MIDI-Sicherung')
+    .replace(/\bbolt-down\s+mega\b/gi, 'MEGA-Sicherung')
+    .replace(/\bbolt-down\s+mrbf\b/gi, 'MRBF-Polsicherung')
+    .replace(/\bbolt-down\s+anl\b/gi, 'ANL-Sicherung')
+    .replace(/\bbolt-down\b/gi, 'Bolzensicherung')
     .replace(/I²t/g, 'Durchlassenergie')
     .replace(/I_2/g, 'Prüfstrom')
     .replace(/I_z/g, 'zulässige Strombelastbarkeit')
