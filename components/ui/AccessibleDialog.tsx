@@ -140,12 +140,13 @@ export function AccessibleDialog({
               {title}
             </h2>
             {description && (
-              /* Höchstens zwei Zeilen im festen Kopf: Der Rest darf die Liste
-                 darunter nicht verdrängen (Planer-Regel 5.4). */
+              /* Die Erklärung bleibt vollständig lesbar. Ein Abschneiden auf
+                 zwei Zeilen hat im BOM-Dialog genau den Satz verschluckt, der
+                 die Freigabe begründet — Regel „Kopf kurz halten" gilt für
+                 selbst geschriebene Texte, nicht für Pflichtangaben. */
               <p
                 id={descriptionId}
-                className="planner-dialog__description mt-1 line-clamp-2 text-sm break-words text-muted-foreground"
-                title={description}
+                className="planner-dialog__description mt-1 text-sm break-words text-muted-foreground"
               >
                 {description}
               </p>

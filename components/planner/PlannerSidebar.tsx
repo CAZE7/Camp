@@ -34,7 +34,7 @@ export function PlannerSidebar({ onMobileAdd, onCloseMobile }: PlannerSidebarPro
     <>
       <div
         id="component-palette-panel"
-        className={`relative z-sheet h-full flex-shrink-0 overflow-hidden border-r border-border bg-surface-panel transition-[width] duration-150 ease-out motion-reduce:transition-none ${
+        className={`relative z-chrome h-full flex-shrink-0 overflow-hidden border-r border-border bg-surface-panel transition-[width] duration-150 ease-out motion-reduce:transition-none ${
           isSidebarOpen ? 'w-full md:w-[260px] xl:w-[248px]' : 'w-full md:invisible md:w-0'
         }`}
       >
@@ -48,7 +48,7 @@ export function PlannerSidebar({ onMobileAdd, onCloseMobile }: PlannerSidebarPro
         onClick={toggleSidebar}
         /* Griff auf halber Höhe der Panelkante: Oben verdeckte er die
            Kopfzeile des Katalogs (Suchfeldbereich), unten die Statuszeile. */
-        className={`planner-sidebar-toggle cad-btn cad-btn--line absolute top-1/2 z-chrome hidden h-11 w-11 -translate-y-1/2 items-center justify-center transition-[left] duration-150 motion-reduce:transition-none md:inline-flex ${
+        className={`planner-sidebar-toggle cad-btn cad-btn--line absolute top-1/2 z-popover hidden h-11 w-11 -translate-y-1/2 items-center justify-center transition-[left] duration-150 motion-reduce:transition-none md:inline-flex ${
           isSidebarOpen ? 'planner-sidebar-toggle--open' : 'left-0.5'
         }`}
         title={isSidebarOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'}

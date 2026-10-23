@@ -137,7 +137,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-sheet max-h-[60dvh] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-sheet flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <div className="planner-layer-header">
             <h3 className="text-sm font-bold text-foreground">Prüfbericht</h3>

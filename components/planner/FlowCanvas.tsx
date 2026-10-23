@@ -1169,7 +1169,7 @@ export function FlowCanvas() {
                         ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
                         : 'Planung: Was gehört elektrisch zusammen?'
                   }
-                  className="planner-mode-caption mx-auto mt-1 max-w-full border border-rule-strong bg-surface-panel px-2 py-1 text-center text-xs leading-snug text-ink-soft"
+                  className="planner-mode-caption mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-xs leading-snug text-ink-soft"
                 >
                   {plannerMode === 'physisch'
                     ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
