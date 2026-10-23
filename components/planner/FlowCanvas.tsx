@@ -350,11 +350,11 @@ export function FlowCanvas() {
   const coarsePointer = useCoarsePointer();
   const compactViewport = useMediaQuery('(max-width: 1023.98px)');
   const isDarkPlanner = usePlannerDarkMode();
-  const fitMinZoom = coarsePointer || compactViewport ? 0.55 : PLANNER_INITIAL_FIT_MIN_ZOOM;
-  // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht)
+  const fitMinZoom = coarsePointer || compactViewport ? 0.5 : PLANNER_INITIAL_FIT_MIN_ZOOM;
+  // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht/Attribution)
   // und untere Steuerelemente (Zoom/MiniMap) beim automatischen Einpassen frei.
   const fitPanelPadding = useMemo(
-    () => ({ top: '96px' as const, right: '24px' as const, bottom: '76px' as const, left: '24px' as const }),
+    () => ({ top: '128px' as const, right: '24px' as const, bottom: '84px' as const, left: '24px' as const }),
     []
   );
   const interaction = useMemo(

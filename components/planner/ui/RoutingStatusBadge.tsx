@@ -106,8 +106,8 @@ export function RoutingStatusBadge() {
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
       >
         <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="cad-tb-short hidden xl:inline" aria-hidden="true">
-          {shortLabel}
+        <span className="hidden xl:inline" aria-hidden="true">
+          <span className="cad-tb-short">{shortLabel}</span>
         </span>
         <span className="cad-tb-explain">{label}</span>
       </span>
@@ -149,8 +149,8 @@ export function RoutingStatusBadge() {
         className="inline-flex h-11 items-center justify-center gap-1 rounded border border-success/40 bg-success/10 px-2 text-xs font-semibold text-success"
       >
         <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="cad-tb-short hidden xl:inline" aria-hidden="true">
-          Routing ok
+        <span className="hidden xl:inline" aria-hidden="true">
+          <span className="cad-tb-short">Routing ok</span>
         </span>
         <span className="cad-tb-explain">Routing verifiziert</span>
       </span>
