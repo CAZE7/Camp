@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 import { ArrowRight, BookOpen, CalendarCheck, Calculator, Flame, Sun, Zap } from 'lucide-react';
 import { metadataForPage } from '@/app/seoMetadata';
 import { PageShell } from '@/components/brand/PageShell';
 import { buttonVariants } from '@/components/ui/button';
-import { PageStructuredData } from '@/components/seo/PageStructuredData';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 
 /**
@@ -143,6 +144,7 @@ export default function Home() {
         </nav>
       }
     >
+      <PageStructuredData path="/" />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 md:gap-10">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
           <span className="panel-title border border-rule px-2 py-1">CAMP // WERKSTATT</span>

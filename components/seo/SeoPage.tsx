@@ -15,7 +15,7 @@ import {
 import { topicOf } from '@/lib/seo/topics';
 import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
-import { Breadcrumbs, breadcrumbsFor } from './Breadcrumbs';
+import { breadcrumbsFor } from './Breadcrumbs';
 import { RichText } from './RichText';
 
 /**
