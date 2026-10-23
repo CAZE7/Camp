@@ -14,7 +14,7 @@
  *    Modellgrenzen und den Hinweis, dass dies keine normative Abnahme ist.
  */
 import type { BomData } from './bom';
-import { componentTypeInfo, formatCrossSectionDe, lengthsDiverge, sortedCableEntries } from './bom';
+import { formatCrossSectionDe, lengthsDiverge, resolvedComponentItems, sortedCableEntries } from './bom';
 import type { ReleaseAssessment } from './releaseStatus';
 import type { VerificationSummary } from './verificationWarnings';
 import { toPlainGerman } from './plainGerman';
@@ -75,10 +75,9 @@ function blockersBlock(assessment: ReleaseAssessment): string {
 }
 
 function bomBlock(bom: BomData): string {
-  const components = Object.entries(bom.counts)
+  const components = resolvedComponentItems(bom)
     .map(
-      ([type, count]) =>
-        `<tr><td>${escapeHtml(componentTypeInfo(type).label)}</td><td class="num">${count}</td><td>Stk</td></tr>`
+      (item) => `<tr><td>${escapeHtml(item.label)}</td><td class="num">${item.count}</td><td>Stk</td></tr>`
     )
     .join('');
   const fuses = (bom.fuses ?? [])
@@ -137,12 +136,19 @@ function bomBlock(bom: BomData): string {
   </section>`;
 }
 
+function formatLimitationForPrint(line: string): string {
+  return line
+    .replace(/\bEINLEITERIG\b/g, 'einpolig (Übersichtsschema)')
+    .replace(/\(UNVERIFIED\)/g, '(praxisüblicher Richtwert, kein Normzitat)')
+    .replace(/\bUNVERIFIED\b/g, 'praxisüblicher Richtwert');
+}
+
 function verificationBlock(summary: VerificationSummary | null): string {
   if (summary === null) return '<section><h2>Prüfbericht</h2><p>Keine Prüfung vorhanden.</p></section>';
   const findings = summary.findings
     .map(
       (finding) =>
-        `<li>${escapeHtml(toPlainGerman(finding.message))}${finding.source ? ` <em>(${escapeHtml(finding.source)})</em>` : ''}</li>`
+        `<li>${escapeHtml(toPlainGerman(finding.message))}${finding.source ? ` <em>(${escapeHtml(formatLimitationForPrint(finding.source))})</em>` : ''}</li>`
     )
     .join('');
   return `<section>
@@ -157,9 +163,9 @@ function verificationBlock(summary: VerificationSummary | null): string {
         <tr><th>nicht zutreffend (kein Gegenstand im Plan)</th><td class="num">${summary.notApplicable}</td></tr>
       </tbody>
     </table>
-    ${findings ? `<h3>Befunde</h3><ul>${findings}</ul>` : '<p>Keine offenen Befunde.</p>'}
+    ${findings ? `<h3>Offene Hinweise und Befunde</h3><ul>${findings}</ul>` : '<p>Keine offenen Hinweise.</p>'}
     <h3>Modellgrenzen und Annahmen</h3>
-    <ul>${summary.limitations.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    <ul>${summary.limitations.map((line) => `<li>${escapeHtml(formatLimitationForPrint(line))}</li>`).join('')}</ul>
   </section>`;
 }
 

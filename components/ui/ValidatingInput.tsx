@@ -1,5 +1,5 @@
 import React, { useState, useId, useRef } from 'react';
-import { parseDecimalString } from '../../lib/units';
+import { formatDecimalForInput, isAmbiguousDecimalString, parseDecimalString } from '../../lib/units';
 
 export type ValidationRule = {
   validate: (val: number) => boolean;
@@ -25,6 +25,58 @@ export const COMMON_RULES = {
   maxAmps: {
     validate: (v: number) => v <= 2_000,
     message: 'Strom darf höchstens 2.000 A betragen.',
+  },
+  nominalVoltage: {
+    validate: (v: number) => v >= 6 && v <= 60,
+    message: 'Nennspannung muss zwischen 6 und 60 V liegen.',
+  },
+  maxInternalResistance: {
+    validate: (v: number) => v <= 500,
+    message: 'Innenwiderstand darf höchstens 500 mΩ betragen.',
+  },
+  peukertRange: {
+    validate: (v: number) => v === 0 || (v >= 1 && v <= 2),
+    message: 'Peukert-Exponent muss zwischen 1,00 und 2,00 liegen (0 = Chemie-Standard).',
+  },
+  maxPvVoltage: {
+    validate: (v: number) => v <= 250,
+    message: 'PV-Spannung darf höchstens 250 V betragen.',
+  },
+  maxPvCurrent: {
+    validate: (v: number) => v <= 200,
+    message: 'Solarstrom darf höchstens 200 A betragen.',
+  },
+  maxChargerCurrent: {
+    validate: (v: number) => v <= 500,
+    message: 'Ladestrom darf höchstens 500 A betragen.',
+  },
+  maxFuseRating: {
+    validate: (v: number) => v <= 1_000,
+    message: 'Sicherungswert darf höchstens 1.000 A betragen.',
+  },
+  maxShoreCurrent: {
+    validate: (v: number) => v <= 125,
+    message: 'Absicherung darf höchstens 125 A betragen.',
+  },
+  maxProspectiveIk: {
+    validate: (v: number) => v <= 50_000,
+    message: 'Kurzschlussstrom Ik darf höchstens 50.000 A betragen.',
+  },
+  maxIdleWatts: {
+    validate: (v: number) => v <= 500,
+    message: 'Eigenverbrauch im Betrieb darf höchstens 500 W betragen.',
+  },
+  maxRoofDimensionCm: {
+    validate: (v: number) => v <= 1_000,
+    message: 'Abmessung darf höchstens 1.000 cm betragen.',
+  },
+  maxCableLengthM: {
+    validate: (v: number) => v <= 100,
+    message: 'Kabellänge darf höchstens 100 m betragen.',
+  },
+  maxFuseOffsetM: {
+    validate: (v: number) => v <= 10,
+    message: 'Abstand zur Batterie darf höchstens 10 m betragen.',
   },
 };
 
@@ -57,6 +109,8 @@ export const INPUT_ERROR_MESSAGES = {
   required: 'Wert erforderlich.',
   invalidNumber: 'Ungültige Zahl.',
   integerRequired: 'Bitte eine ganze Zahl eingeben.',
+  ambiguousDecimal:
+    'Mehrdeutige Punkt-Schreibweise: Bitte Komma für Nachkommastellen (z. B. 1,125) oder ohne Punkt für Tausender (z. B. 1125) verwenden.',
 } as const;
 
 /**
@@ -84,7 +138,7 @@ export function ValidatingInput({
   className,
   ...props
 }: ValidatingInputProps) {
-  const [localValue, setLocalValue] = useState(String(value));
+  const [localValue, setLocalValue] = useState(() => formatDecimalForInput(value));
   const [error, setError] = useState<string | null>(null);
   /**
    * Fokus-Marke gegen den „12520“-Effekt (Nachtest 2026-10-16): Solange der
@@ -129,7 +183,7 @@ export function ValidatingInput({
   ) {
     const valueChanged = syncState.value !== value;
     setSyncState({ value, localValue, error, allowEmpty, clearedOptional });
-    const valStr = String(value);
+    const valStr = formatDecimalForInput(value);
     // Beim Tippen (Fokus im Feld) gehört der Text dem Nutzer — der Abgleich
     // wartet bis zum Blur. Sonst ersetzt der Prop „12,5“/„12,50“ mitten im
     // Tippen durch seine eigene Schreibweise, und die nächste Ziffer landet
@@ -181,6 +235,12 @@ export function ValidatingInput({
       return;
     }
 
+    if (isAmbiguousDecimalString(strVal)) {
+      rollbackFocusIfDirty();
+      setError(INPUT_ERROR_MESSAGES.ambiguousDecimal);
+      return;
+    }
+
     // AUDIT S2/S4: ein strenger Parser statt parseFloat/parseInt. Beide lasen
     // nur einen Präfix — "2,5" wurde zu 2 (Dezimalkomma verschluckt),
     // "2.5mm" zu 2.5 (Rest verschluckt) und jeweils als gültig gemeldet.
@@ -218,9 +278,13 @@ export function ValidatingInput({
     if (error || isPendingDecimalText(localValue)) {
       // Revert to the pre-focus / last valid value on blur if invalid or unfinished.
       const revertTarget =
-        focusBaselineRef.current !== null ? String(focusBaselineRef.current) : String(value);
+        focusBaselineRef.current !== null
+          ? formatDecimalForInput(focusBaselineRef.current)
+          : formatDecimalForInput(value);
       setLocalValue(revertTarget);
       setError(null);
+    } else if (!(allowEmpty && clearedOptional) && typeof value === 'number' && Number.isFinite(value)) {
+      setLocalValue(formatDecimalForInput(value));
     }
     focusBaselineRef.current = null;
     dirtyInFocusRef.current = false;

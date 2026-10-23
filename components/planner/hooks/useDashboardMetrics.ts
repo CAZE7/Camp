@@ -110,7 +110,7 @@ export function useDashboardMetrics(
       season
     );
 
-    const chargingTimeStr = calculateChargingTime(
+    const { chargingTimeStr, solarChargeDaysStr, dailySolarYieldAh } = calculateChargingMetrics(
       categories.chargers,
       totalSolarAmps,
       seasonalSolarWatts,
@@ -127,6 +127,8 @@ export function useDashboardMetrics(
       dailyConsumptionAh,
       autarkyStr,
       chargingTimeStr,
+      solarChargeDaysStr,
+      dailySolarYieldAh,
       totalSolarVoltage,
       totalSolarAmps,
       hasDirectBatteryToConsumer,
@@ -328,7 +330,19 @@ function calculateSolarMetrics(
   };
 }
 
-function calculateChargingTime(
+function normalizeChargerEfficiency(raw: unknown, fallbackFraction: number): number {
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) return fallbackFraction;
+  return num <= 1 ? num : Math.min(1, num / 100);
+}
+
+/** Realistische Vollsonnenstunden pro Tag in Mitteleuropa (K2). */
+const REALISTIC_PEAK_SUN_HOURS: Record<'summer' | 'winter', number> = {
+  summer: 4.5,
+  winter: 1.5,
+};
+
+function calculateChargingMetrics(
   chargers: Node[],
   totalSolarAmps: number,
   seasonalSolarWatts: number,
@@ -337,7 +351,7 @@ function calculateChargingTime(
   solarNodesCount: number,
   season: 'summer' | 'winter',
   sysVoltage: number
-): string {
+): { chargingTimeStr: string; solarChargeDaysStr: string | null; dailySolarYieldAh: number } {
   const mpptControllers = chargers.filter((c) => c.type === 'mpptController');
   const otherChargers = chargers.filter((c) => c.type !== 'mpptController');
 
@@ -345,13 +359,14 @@ function calculateChargingTime(
   for (const ch of otherChargers) {
     const chData = ch.data as ChargerNodeData;
     const rawAmps = Math.max(0, Number(chData?.amps) || 0);
-    const eff = (Math.max(0, Number(chData?.efficiency)) || 90) / 100;
+    const eff = normalizeChargerEfficiency(chData?.efficiency, 0.9);
     totalChargerAmps += rawAmps * eff;
   }
 
   const winterFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
   const fallbackPvWatts = calculatedSolarWatts > 0 ? calculatedSolarWatts * winterFactor : 0;
   const availablePvWatts = solarNodesCount > 0 ? seasonalSolarWatts : fallbackPvWatts;
+  let effectiveSolarAmps = 0;
 
   // K2: MPPT-Laderegler und PV-Module bilden EINEN gemeinsamen Ladepfad.
   // Vorher wurden Regler-Nennstrom (z. B. 20 A) UND Modulstrom (z. B. 10 A)
@@ -363,7 +378,7 @@ function calculateChargingTime(
     for (const mppt of mpptControllers) {
       const mData = mppt.data as ChargerNodeData;
       const rawAmps = Math.max(0, Number(mData?.amps) || 0);
-      const eff = (Math.max(0, Number(mData?.efficiency)) || 95) / 100;
+      const eff = normalizeChargerEfficiency(mData?.efficiency, 0.95);
       mpptMaxAmps += rawAmps * eff;
       weightedEffNumerator += rawAmps * eff;
       rawMpptSum += rawAmps;
@@ -372,13 +387,16 @@ function calculateChargingTime(
       const avgEff = rawMpptSum > 0 ? weightedEffNumerator / rawMpptSum : 0.95;
       const pvBatteryAmps =
         availablePvWatts > 0 && sysVoltage > 0 ? (availablePvWatts * avgEff) / sysVoltage : totalSolarAmps;
-      totalChargerAmps += Math.min(mpptMaxAmps, pvBatteryAmps);
+      effectiveSolarAmps = Math.min(mpptMaxAmps, pvBatteryAmps);
+      totalChargerAmps += effectiveSolarAmps;
     }
   } else if (solarNodesCount > 0) {
-    totalChargerAmps += totalSolarAmps;
+    effectiveSolarAmps = totalSolarAmps;
+    totalChargerAmps += effectiveSolarAmps;
   } else if (calculatedSolarWatts > 0) {
     // Solar-Arbeitsspannung zentral aus VDE_SOLAR_VMP_VOLTAGE (18V typ. 12V-Modul)
-    totalChargerAmps += fallbackPvWatts / VDE_SOLAR_VMP_VOLTAGE;
+    effectiveSolarAmps = fallbackPvWatts / VDE_SOLAR_VMP_VOLTAGE;
+    totalChargerAmps += effectiveSolarAmps;
   }
 
   let chargingTimeStr = 'Kein Ladegerät';
@@ -389,7 +407,15 @@ function calculateChargingTime(
   } else if (chargers.length > 0 || solarNodesCount > 0 || calculatedSolarWatts > 0) {
     chargingTimeStr = '0 Ladeleistung';
   }
-  return chargingTimeStr;
+
+  const sunHours = REALISTIC_PEAK_SUN_HOURS[season];
+  const dailySolarYieldAh = effectiveSolarAmps > 0 ? effectiveSolarAmps * sunHours : 0;
+  const solarChargeDaysStr =
+    dailySolarYieldAh > 0 && usableCapacityAh > 0
+      ? `≈ ${((usableCapacityAh * VDE_CHARGE_DERATING_FACTOR) / dailySolarYieldAh).toFixed(1).replace('.', ',')} Sonnentage`
+      : null;
+
+  return { chargingTimeStr, solarChargeDaysStr, dailySolarYieldAh };
 }
 
 function checkDirectBatteryConnection(

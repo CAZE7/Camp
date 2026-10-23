@@ -84,11 +84,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* M11-7 / N11: Content-Security-Policy auf Dokumentebene für Static
             Hosting (GitHub Pages liefert keine benutzerdefinierten HTTP-Header;
-            ergänzende HTTP-Header inkl. frame-ancestors liegen in public/_headers,
+            Referenz-HTTP-Header inkl. frame-ancestors für CDN/Cloudflare liegen
+            in docs/deployment/_headers statt als öffentliches Artefakt unter /_headers,
             siehe ADR 0038). */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https: ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self'"
+          content={`default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https:${process.env.NODE_ENV !== 'production' ? ' ws: wss:' : ''}; object-src 'none'; base-uri 'self'; form-action 'self'`}
         />
         {/* Dark Mode vor dem ersten Paint setzen (kein Flash): Dieselbe
             System-Politik wie usePlannerDarkMode / SystemThemeSync. */}

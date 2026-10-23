@@ -63,12 +63,12 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
       },
       {
         heading: 'Kabelquerschnitt zur Batterie',
-        body: 'Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Bei 100 Ah LiFePO4 mit 1C (100 A) dimensioniert der Planer thermisch 70 mm² — liegt der Strom darüber, warnt die App (Leitungen parallel legen oder 24-V-System erwägen).',
+        body: 'Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Der Planer dimensioniert Einzelzuleitungen nach DIN VDE 0298-4 (mit 70-%-Pauschale) bis 120 mm² und 160 A — liegt der Summenstrom darüber, sind Parallelleitungen oder ein 24-V-System sinnvoll.',
         norm: 'DIN VDE 0298-4',
       },
       {
         heading: 'Absicherung',
-        body: 'Die Hauptsicherung (ANL/MIDI) muss so nah wie möglich am Plus-Pol sitzen (≤ 20 cm ungeschützt). Sie schützt das KABEL, nicht das Gerät! Maximale Sicherung je Querschnitt nach Planer-Regel (70 % Belastbarkeit): 25 mm² → 63 A, 70 mm² → 100 A.',
+        body: 'Die Hauptsicherung (Class T / MEGA / ANL) muss so nah wie möglich am Plus-Pol sitzen (≤ 20 cm ungeschützt). Sie schützt das KABEL, nicht das Gerät! Maximale Sicherung je Querschnitt nach Planer-Regel (70 % Belastbarkeit): 25 mm² → 63 A, 70 mm² → 100 A, 95 mm² → 125 A, 120 mm² → 160 A.',
         norm: 'DIN VDE 0100-721',
       },
       {
@@ -88,11 +88,11 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
       },
       {
         heading: 'Dimensionierung',
-        body: 'Der Solar-Laderegler mit Maximum-Power-Point-Tracking (MPPT) muss die Leerlaufspannung (Voc) aller Panels in Reihe verkraften. Bei 2× 100W Panels in Reihe: Leerlaufspannung (Voc) ≈ 2 × 22V = 44V → min. 50V Regler.',
+        body: 'Der MPPT-Solarladeregler muss die Kalt-Leerlaufspannung Voc(−20 °C) aller Panels in Reihe verkraften. Bei 2 × 100-W-Panels in Reihe: Voc(25 °C) ≈ 2 × 22 V = 44 V, bei −20 °C (+14 % Temperaturreserve) ≈ 50,2 V → mindestens einen 75-V-Regler wählen (ein 50-V-Regler wäre bei Frost überlastet).',
       },
       {
         heading: 'Batterie-zu-Batterie-Ladebooster (B2B)',
-        body: 'Moderner Euro 6d Lichtmaschinen liefern oft nur 14,0V. Ein Ladebooster (z.B. Victron Orion-Tr Smart 12/12-30) hebt die Spannung auf 14,4V für LiFePO4.',
+        body: 'Moderne Euro-6d-Lichtmaschinen regeln die Spannung dynamisch und liefern oft nur 12,4–14,0 V. Ein Ladebooster (z. B. Victron Orion-Tr Smart 12/12-30) hebt die Spannung zuverlässig auf 14,2–14,4 V für LiFePO4.',
       },
       {
         heading: 'Kabelquerschnitt',
@@ -151,11 +151,11 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
     tips: [
       {
         heading: 'Wechselrichter-Dimensionierung',
-        body: 'Induktionskochfeld (2000W) + Kaffeemaschine (1200W) = 3200W. Dein Wechselrichter muss min. 3500W Dauerleistung und >5000W Spitzenleistung haben.',
+        body: 'Kaffeemaschine (1200–1500 W) oder Induktionskochfeld (1800–2000 W): Für Einzelbetrieb genügt ein 2000-W-Wechselrichter. Sollen beide gleichzeitig laufen (~3300–3500 W), brauchst du mind. 3500 W Dauerleistung — sinnvoll als 24-V- oder 48-V-System.',
       },
       {
         heading: 'Batterie-Belastung',
-        body: '2000 W bei 12 V ≈ 185 A Entladestrom (inkl. ~15 % Verluste)! Das liegt über der 70-mm²-Belastbarkeit des Planers — die App warnt. Abhilfe: zwei parallel geführte Leitungen, einen 24-V-Aufbau oder einen kleineren/wechselrichternahen Verbraucher.',
+        body: '1500 W bei 12 V bedeuten bereits ~145 A Entladestrom (120 mm² / 160 A). Bei 2000 W (~195 A) liegt der Strom über der 120-mm²-Einzelleitung (160 A) — die App warnt. Abhilfe: zwei parallel geführte Leitungen (z. B. 2 × 70 mm²), ein 24-V-Aufbau oder kleinere 230-V-Verbraucher.',
       },
       {
         heading: 'Schutzmaßnahmen',
@@ -194,11 +194,11 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
       },
       {
         heading: 'Kabelführung',
-        body: 'Die DC-Kabel zum Wechselrichter so kurz wie möglich halten (<1,5m). Bei 3000W Wechselrichter und 1m Kabel: min. 50mm² Querschnitt!',
+        body: 'Die DC-Kabel zum Wechselrichter so kurz wie möglich halten (< 1,5 m). Nach Planer-Regel (70 % Belastbarkeit) braucht ein 1500-W-Wechselrichter an 12 V (~145 A) bereits 120 mm² mit 160-A-Sicherung; ab 2000–3000 W sind Parallelleitungen (z. B. 2 × 70 mm²) oder ein 24-V-System nötig.',
       },
       {
         heading: 'Eigenverbrauch',
-        body: 'Wechselrichter ziehen im Leerlauf 15-30W. Bei 24h: 360-720Wh ≈ 30-60Ah. Schalte ihn nur bei Bedarf ein oder nutze den Energiesparmodus.',
+        body: 'Dauerhaft eingeschaltet ziehen Wechselrichter im Leerlauf ca. 6–25 W (bei 24 h Dauerbetrieb: 144–600 Wh ≈ 11–47 Ah/Tag). Schalte ihn nur während der echten Nutzungszeit ein (im Inspektor als Einschaltdauer in h/Tag einstellbar) oder nutze den Eco-Suchmodus.',
       },
     ],
   },
@@ -212,8 +212,8 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
         body: 'Der Shunt kommt IMMER in die Minus-Leitung, direkt am Batterie-Minuspol. ALLE Minus-Leitungen müssen durch den Shunt laufen, sonst misst er falsch.',
       },
       {
-        heading: 'Kalibrierung',
-        body: 'Stelle die Batteriekapazität exakt ein (nicht den Nennwert!). Bei neuer LiFePO4 100Ah: trage 100Ah ein. Schweifstrom („Tail Current“) auf 4% und Ladeschlussspannung („Charged Voltage“) auf 14,2V.',
+        heading: 'Kalibrierung & Nennstrom',
+        body: 'Im Batteriemonitor die reale Nennkapazität der Aufbaubatterie eintragen (z. B. 100 Ah bei einer 100-Ah-LiFePO4; Schweifstrom ~4 %, Ladeschlussspannung ~14,2 V). Den Shunt-Messwiderstand selbst nach dem maximalen Gesamtstrom wählen (z. B. 300-A- oder 500-A-Shunt passend zur Hauptsicherung, nicht nach der Batterie-Ah-Zahl).',
       },
     ],
   },
@@ -317,7 +317,7 @@ const DEFAULT_TIP: ExpertTip = {
       // AUDIT DOM-001/002: Ehrliche Abgrenzung statt impliziter
       // Vollständigkeits-Anspruch — der Planer dimensioniert, er prüft nicht.
       heading: 'Was der Planer NICHT leistet (Modellgrenzen)',
-      body: 'Der Planer ist ein Dimensionierungs-Hilfsmittel und ersetzt keine Elektrofachkraft. 230-V-Mehrleiter: Kanten bleiben Single-Line-Schemata, aber die Aderung ist seit DOM-001 modelliert — PE-Mindestquerschnitt nach IEC 60364-5-54 Tabelle 54.2, LS-Daten (Bauform/Charakteristik/Icn) im Leitungs-Inspektor und eine geschätzte Abschaltbedingung (TN, Zs·Ia ≤ U0 nach IEC 60364-4-41 mit 2/3-Regel; vorgelagerte Netzimpedanz ≈ 0,8 Ω als Annahme — Schleifenimpedanz vor Ort messen lassen). Wechselrichter-Ausgänge bleiben Hersteller-Datenblatt (elektronische Strombegrenzung, kein TN-Schleifenmodell). Nicht modelliert bleiben: N-Leiterführung einzeln, Trenn-/Umschalteinrichtungen, Anlassströme, Selektivität/I²t-Koordination sowie die exakte Sicherungsposition (nur Abstand zur Quelle als Feld). Kurzschlussstrom und Abschaltvermögen (kA) sind seit DOM-002 als Schätzung modelliert (Batterie-Innenwiderstand oder Chemie-Faustformel + Bauform-Datenblattanker nach Littelfuse/Blue Sea — das konkrete Produkt kann abweichen; geprüft wird nur: kann die Sicherung den Bank-Kurzschlussstrom trennen?). Peukert-Lastkorrektur der Autarkie ist seit der Nachpflege als Faustformel aktiv (k = 1,05 LiFePO4 / 1,12 AGM / 1,15 Gel oder Datenblatt). Weiterhin nicht modelliert: Temperatur-/Alterseffekte (Kälte erhöht den Innenwiderstand und senkt den Kurzschlussstrom — wirkt hier entlastend, für die Verfügbarkeit aber relevant), Selbstentladung. Für die endgültige Auslegung gelten die einschlägigen Normen durch eine fachkundige Person.',
+      body: 'Der Planer ist ein Dimensionierungs-Hilfsmittel und ersetzt keine Elektrofachkraft. 230-V-Mehrleiter: Kanten sind einpolige Übersichtsschemata, aber die Schutzleiter- und Abschaltprüfung ist berücksichtigt — PE-Mindestquerschnitt nach IEC 60364-5-54 Tabelle 54.2, LS-Daten (Bauform/Charakteristik/Icn) im Leitungs-Inspektor und eine geschätzte Abschaltbedingung (TN, Zs·Ia ≤ U0 nach IEC 60364-4-41 mit 2/3-Regel; vorgelagerte Netzimpedanz ≈ 0,8 Ω als Annahme — Schleifenimpedanz vor Ort messen lassen). Wechselrichter-Ausgänge bleiben Hersteller-Datenblatt (elektronische Strombegrenzung, kein TN-Schleifenmodell). Nicht modelliert bleiben: N-Leiterführung einzeln, Trenn-/Umschalteinrichtungen, Anlassströme, Selektivität/I²t-Koordination sowie die exakte Sicherungsposition (nur Abstand zur Quelle als Feld). Kurzschlussstrom und Abschaltvermögen (kA) sind als Schätzung modelliert (Batterie-Innenwiderstand skaliert mit Systemspannung oder Chemie-Faustformel + Bauform-Datenblattanker nach Littelfuse/Blue Sea — das konkrete Produkt kann abweichen; geprüft wird nur: kann die Sicherung den Bank-Kurzschlussstrom trennen?). Peukert-Lastkorrektur der Autarkie ist als Faustformel aktiv (k = 1,05 LiFePO4 / 1,12 AGM / 1,15 Gel oder Datenblatt). Weiterhin nicht modelliert: Temperatur-/Alterseffekte (Kälte erhöht den Innenwiderstand und senkt den Kurzschlussstrom — wirkt hier entlastend, für die Verfügbarkeit aber relevant), Selbstentladung. Für die endgültige Auslegung gelten die einschlägigen Normen durch eine fachkundige Person.',
     },
   ],
 };

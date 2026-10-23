@@ -1,7 +1,12 @@
 'use client';
 import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { type Consumer230VNodeData, type PlannerNodeProps } from './types';
+import {
+  formatNodeNumberDe,
+  isSanitizedFieldMissing,
+  type Consumer230VNodeData,
+  type PlannerNodeProps,
+} from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
@@ -58,7 +63,9 @@ const Consumer230VNode = function ({
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('watts', data.watts || 0)}>
-            Leistung: {data.watts || 0} W
+            {isSanitizedFieldMissing(data, 'watts')
+              ? 'Leistung: – (bitte eintragen)'
+              : `Leistung: ${formatNodeNumberDe(data.watts, 0)} W`}
           </div>
         )}
         {editingField === 'hours' ? (
@@ -77,7 +84,9 @@ const Consumer230VNode = function ({
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('hours', data.hours || 0)}>
-            Nutzung: {data.hours || 0} h/Tag
+            {isSanitizedFieldMissing(data, 'hours')
+              ? 'Nutzung: – (bitte eintragen)'
+              : `Nutzung: ${formatNodeNumberDe(data.hours, 0)} h/Tag`}
           </div>
         )}
       </div>

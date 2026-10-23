@@ -22,6 +22,7 @@ import {
   thermalCrossSectionFor,
   FUSE_MAX_UNPROTECTED_LENGTH_M,
   FUSE_MAX_UNPROTECTED_SOURCE,
+  MAX_MODELED_CROSS_SECTION_MM2,
 } from '../../lib/electrical';
 import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
 import { getCableCurrents } from '../../lib/electricalGraph/currentFlow';
@@ -229,8 +230,7 @@ export const collectEdgeErrors = (input: {
         measuredValue: Number(I.toFixed(1)),
         expectedValue: Number(boundary.maximumModeledCurrentA.toFixed(1)),
         unit: 'A',
-        source:
-          'Modellgrenze: Belastbarkeitstabelle endet bei 70 mm² (VDE_AMPACITY); für höhere Ströme ist eine Leitungsteilung/-parallelführung oder eine andere Spannungsebene zu planen.',
+        source: `Modellgrenze: Belastbarkeitstabelle endet bei ${MAX_MODELED_CROSS_SECTION_MM2} mm² (VDE_AMPACITY); für höhere Ströme ist eine Leitungsteilung/-parallelführung oder eine andere Spannungsebene zu planen.`,
       });
     }
   }

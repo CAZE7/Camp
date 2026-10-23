@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatImportWarningsForUser,
   PROJECT_FILE_FORMAT,
   PROJECT_FILE_MAX_BYTES,
   PROJECT_FILE_VERSION,
@@ -273,7 +274,7 @@ describe('Projektdatei — Bereinigung bekannter Felder', () => {
     expect(result.warnings.join(' ')).toMatch(/e-evil/);
   });
 
-  it('K3: verwirft negative Leistungswerte (z. B. watts = -5) beim Import mit Hinweis', () => {
+  it('K3 + N15: verwirft negative Leistungswerte (z. B. watts = -5) mit deutschem Hinweis ohne rohe IDs', () => {
     const result = parsePlannerProject(
       docWith((doc) => {
         const plan = doc.plan as { nodes: Array<{ data: Record<string, unknown> }> };
@@ -283,6 +284,14 @@ describe('Projektdatei — Bereinigung bekannter Felder', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.nodes[1]?.data).not.toHaveProperty('watts');
+    expect(
+      (result.plan.nodes[1]?.data as { sanitizedMissingFields?: string[] })?.sanitizedMissingFields
+    ).toContain('watts');
     expect(result.warnings.join(' ')).toMatch(/watts/);
+    expect(result.warnings.join(' ')).toMatch(/Leistung \(W\)/);
+    const userFacing = formatImportWarningsForUser(result.warnings).join(' ');
+    expect(userFacing).not.toMatch(/\[watts\]/);
+    expect(userFacing).not.toMatch(/\[cons-1\]/);
+    expect(userFacing).toMatch(/Leistung \(W\)/);
   });
 });

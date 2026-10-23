@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isKnownNodeType, NODE_DATA_SCHEMA, sanitizeNodeDataBySchema } from './nodeSchema';
+import {
+  describeNodeFieldDe,
+  isKnownNodeType,
+  NODE_DATA_SCHEMA,
+  sanitizeNodeDataBySchema,
+  syncDefaultNodeLabel,
+} from './nodeSchema';
 import type { NodeDataRegistry } from '../components/nodes/types';
 
 describe('DOM-003 — deklaratives node.data-Schema (lib/nodeSchema.ts)', () => {
@@ -130,5 +136,50 @@ describe('DOM-003 — deklaratives node.data-Schema (lib/nodeSchema.ts)', () => 
     }
     expect(isKnownNodeType('warpDrive')).toBe(false);
     expect(isKnownNodeType(undefined)).toBe(false);
+  });
+
+  it('N13 + N15: synchronisiert führende und nachgestellte Standardbezeichnungen und deutsche Feldnamen', () => {
+    expect(describeNodeFieldDe('watts')).toBe('Leistung (W)');
+    expect(describeNodeFieldDe('unknownCustomField')).toBe('unknownCustomField');
+
+    expect(syncDefaultNodeLabel('inverter', { label: '500W Inverter' }, { continuousPower: 2000 })).toBe(
+      '2000W Inverter'
+    );
+    expect(syncDefaultNodeLabel('inverter', { label: 'Wechselrichter 500 W' }, { watts: 1500 })).toBe(
+      'Wechselrichter 1500 W'
+    );
+    expect(
+      syncDefaultNodeLabel('inverter', { label: 'MultiPlus Sitzbank' }, { continuousPower: 2000 })
+    ).toBeUndefined();
+    expect(syncDefaultNodeLabel('inverter', { label: '500W Inverter' }, { label: 'Eigener Name' })).toBe(
+      'Eigener Name'
+    );
+
+    expect(
+      syncDefaultNodeLabel('battery', { label: '100Ah Lithium', chemistry: 'LiFePO4' }, { capacity: 280 })
+    ).toBe('280Ah Lithium');
+    expect(
+      syncDefaultNodeLabel('battery', { label: '100Ah LiFePO4', chemistry: 'AGM' }, { capacity: 95 })
+    ).toBe('95Ah AGM');
+    expect(
+      syncDefaultNodeLabel('battery', { label: 'Batterie 100 Ah', chemistry: 'LiFePO4' }, { capacity: 200 })
+    ).toBe('Batterie 200 Ah');
+    expect(
+      syncDefaultNodeLabel('battery', { label: 'LiFePO4 100Ah', chemistry: 'LiFePO4' }, { capacity: 300 })
+    ).toBe('LiFePO4 300Ah');
+
+    expect(syncDefaultNodeLabel('solar', { label: '100Wp Solarmodul' }, { watts: 400 })).toBe(
+      '400Wp Solarmodul'
+    );
+    expect(syncDefaultNodeLabel('roofSolar', { label: 'Solarmodul 150 Wp' }, { watts: 220 })).toBe(
+      'Solarmodul 220 Wp'
+    );
+    expect(syncDefaultNodeLabel('consumer', { label: 'LED' }, { watts: 20 })).toBeUndefined();
+    expect(syncDefaultNodeLabel('battery', { label: '' }, { capacity: 200 })).toBeUndefined();
+
+    // M14: allowZero=false weist 0 zurück
+    expect(sanitizeNodeDataBySchema('battery', { nominalVoltage: 0 }).removedFields).toEqual([
+      'nominalVoltage',
+    ]);
   });
 });

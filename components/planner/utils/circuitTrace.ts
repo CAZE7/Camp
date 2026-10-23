@@ -1,6 +1,12 @@
 import type { Edge, Node } from '@xyflow/react';
 import type { CableEdgeData } from '../../edges/CableEdge';
-import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../../lib/vde-standards';
+import {
+  AC_SYSTEM_VOLTAGE,
+  VDE_SOLAR_VMP_VOLTAGE,
+  getSystemVoltage,
+  isStarterBatteryNode,
+} from '../../../lib/vde-standards';
+import { edgeDomainOf } from '../../../lib/domain/handleDomains';
 import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
 import { nodeLabelOf } from '../../../lib/safeText'; // AUDIT T1
 import { withClassFlag } from './classFlags';
@@ -16,6 +22,31 @@ export type CircuitTrace = {
   pathNodeIds: string[];
   referenceEdge?: Edge;
 };
+
+function isReturnHandle(handle: string | null | undefined): boolean {
+  const h = (handle ?? '').toLowerCase();
+  return h.includes('minus') || h === 'pe';
+}
+
+function isReturnEdge(edge: Edge): boolean {
+  return isReturnHandle(edge.sourceHandle) || isReturnHandle(edge.targetHandle);
+}
+
+function edgeSupplyPriority(edge: Edge): number {
+  if (isReturnEdge(edge)) return 2;
+  const th = (edge.targetHandle ?? '').toLowerCase();
+  if (th === 'ac_in') return 1;
+  return 0;
+}
+
+const CHARGER_SOURCE_TYPES = new Set([
+  'solar',
+  'solarPanel',
+  'mpptController',
+  'dcdcCharger',
+  'acBatteryCharger',
+  'charger',
+]);
 
 // BOLT OPTIMIZATION:
 // Pre-building adjacency maps (incoming/outgoing edge lookups) and a validNodeIds set
@@ -59,24 +90,51 @@ function primaryUpstream(
 ): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const incoming = (incomingEdgesMap.get(id) || []).slice().sort((a, b) => compareIds(a.id, b.id));
+  const incoming = (incomingEdgesMap.get(id) || [])
+    .slice()
+    .sort((a, b) => edgeSupplyPriority(a) - edgeSupplyPriority(b) || compareIds(a.id, b.id));
   const first = incoming.at(0);
   if (!first) return [id];
   return [...primaryUpstream(first.source, incomingEdgesMap, seen), id];
 }
 
-/** One deterministic seed → consumer path for the textual overlay. */
+/** One deterministic seed → consumer/storage path for the textual overlay. */
 function primaryDownstream(
   id: string,
   outgoingEdgesMap: Map<string, Edge[]>,
+  incomingEdgesMap: Map<string, Edge[]>,
+  nodeMap: Map<string, Node>,
+  preferStorageSink: boolean,
   seen = new Set<string>()
 ): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const outgoing = (outgoingEdgesMap.get(id) || []).slice().sort((a, b) => compareIds(a.id, b.id));
+
+  const currentNode = nodeMap.get(id);
+  // M1: Führt ein Ladepfad (Solar/MPPT/Booster/AC-Lader) auf eine Plus-Schiene,
+  // hängt die Aufbaubatterie oft als `battery -> busbar-plus` an derselben
+  // Schiene. Dann endet der Lade-Strompfad an der Aufbaubatterie statt quer
+  // in irgendeinen Verbraucherzweig weiterzulaufen.
+  if (preferStorageSink && currentNode?.type === 'busbar') {
+    const incomingFromHouseBattery = (incomingEdgesMap.get(id) || []).find((edge) => {
+      if (isReturnEdge(edge)) return false;
+      const src = nodeMap.get(edge.source);
+      return src?.type === 'battery' && !isStarterBatteryNode(src) && !seen.has(src.id);
+    });
+    if (incomingFromHouseBattery) {
+      return [id, incomingFromHouseBattery.source];
+    }
+  }
+
+  const outgoing = (outgoingEdgesMap.get(id) || [])
+    .slice()
+    .sort((a, b) => edgeSupplyPriority(a) - edgeSupplyPriority(b) || compareIds(a.id, b.id));
   const first = outgoing.at(0);
   if (!first) return [id];
-  return [id, ...primaryDownstream(first.target, outgoingEdgesMap, seen)];
+  return [
+    id,
+    ...primaryDownstream(first.target, outgoingEdgesMap, incomingEdgesMap, nodeMap, preferStorageSink, seen),
+  ];
 }
 
 /**
@@ -86,8 +144,10 @@ function primaryDownstream(
  */
 export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): CircuitTrace | null {
   const validNodeIds = new Set<string>();
+  const nodeMap = new Map<string, Node>();
   for (const node of nodes) {
     validNodeIds.add(node.id);
+    nodeMap.set(node.id, node);
   }
 
   const selectedEdge = 'edgeId' in seed ? edges.find((edge) => edge.id === seed.edgeId) : undefined;
@@ -95,11 +155,26 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   const selectedNodeId = requestedNodeId && validNodeIds.has(requestedNodeId) ? requestedNodeId : undefined;
   if (!selectedEdge && !selectedNodeId) return null;
 
+  // M1: Rückleiter (`minus`, `pe`) koppeln sonst sämtliche Verbraucher über
+  // Minus-Sammelschiene/Karosseriemasse zusammen oder gewinnen alphabetisch vor
+  // `plus` (`e-busbar-inv-minus` < `e-busbar-inv-plus`). Nur wenn explizit eine
+  // Rückleitung oder ein reines Masse-/Shunt-Bauteil gewählt ist, werden
+  // Rückleitungen verfolgt.
+  const selectedNode = selectedNodeId ? nodeMap.get(selectedNodeId) : undefined;
+  const nodeHasNonReturnEdge = selectedNodeId
+    ? edges.some((e) => (e.source === selectedNodeId || e.target === selectedNodeId) && !isReturnEdge(e))
+    : false;
+  const includeReturnEdges = selectedEdge
+    ? isReturnEdge(selectedEdge)
+    : selectedNode?.type === 'ground' || selectedNode?.type === 'shunt' || !nodeHasNonReturnEdge;
+
+  const activeEdges = includeReturnEdges ? edges : edges.filter((e) => !isReturnEdge(e));
+
   // Build adjacency maps once per trace execution
   const incomingEdgesMap = new Map<string, Edge[]>();
   const outgoingEdgesMap = new Map<string, Edge[]>();
 
-  for (const edge of edges) {
+  for (const edge of activeEdges) {
     let inc = incomingEdgesMap.get(edge.target);
     if (!inc) {
       inc = [];
@@ -120,6 +195,8 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   let pathNodeIds: string[];
 
   if (selectedEdge) {
+    const srcNode = nodeMap.get(selectedEdge.source);
+    const preferStorage = CHARGER_SOURCE_TYPES.has(srcNode?.type ?? '');
     const upstreamNodes = new Set<string>();
     const downstreamNodes = new Set<string>();
     collectUpstream(selectedEdge.source, incomingEdgesMap, upstreamNodes, edgeIds);
@@ -127,12 +204,23 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
     upstreamNodes.forEach((id) => nodeIds.add(id));
     downstreamNodes.forEach((id) => nodeIds.add(id));
     edgeIds.add(selectedEdge.id);
+    if (preferStorage && selectedEdge.target === 'busbar-plus') {
+      const houseFeed = activeEdges.find((e) => {
+        const s = nodeMap.get(e.source);
+        return e.target === selectedEdge.target && s?.type === 'battery' && !isStarterBatteryNode(s);
+      });
+      if (houseFeed) {
+        nodeIds.add(houseFeed.source);
+        edgeIds.add(houseFeed.id);
+      }
+    }
     pathNodeIds = [
       ...primaryUpstream(selectedEdge.source, incomingEdgesMap),
-      ...primaryDownstream(selectedEdge.target, outgoingEdgesMap),
+      ...primaryDownstream(selectedEdge.target, outgoingEdgesMap, incomingEdgesMap, nodeMap, preferStorage),
     ];
   } else {
     const id = selectedNodeId!;
+    const preferStorage = CHARGER_SOURCE_TYPES.has(selectedNode?.type ?? '');
     const upstreamNodes = new Set<string>();
     const downstreamNodes = new Set<string>();
     collectUpstream(id, incomingEdgesMap, upstreamNodes, edgeIds);
@@ -140,7 +228,15 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
     upstreamNodes.forEach((nodeId) => nodeIds.add(nodeId));
     downstreamNodes.forEach((nodeId) => nodeIds.add(nodeId));
     const upstreamPath = primaryUpstream(id, incomingEdgesMap);
-    const downstreamPath = primaryDownstream(id, outgoingEdgesMap);
+    const downstreamPath = primaryDownstream(id, outgoingEdgesMap, incomingEdgesMap, nodeMap, preferStorage);
+    for (const pid of downstreamPath) {
+      nodeIds.add(pid);
+      for (const e of activeEdges) {
+        if (nodeIds.has(e.source) && nodeIds.has(e.target) && (e.source === pid || e.target === pid)) {
+          if (preferStorage && nodeMap.get(pid)?.type === 'battery') edgeIds.add(e.id);
+        }
+      }
+    }
     pathNodeIds = [...upstreamPath, ...downstreamPath.slice(1)];
   }
 
@@ -152,17 +248,11 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   // Zweigleitung wählen (vorrangig Zuleitung, sonst Abgang, Plus/AC/Solar vor
   // Minus), statt `edges[0]` (oft Batterie-Hauptstrang mit 59 A / 50 mm²).
   const pickNodeBranchEdge = (nodeId: string): Edge | undefined => {
-    const rankEdge = (edge: Edge): number => {
-      const sh = (edge.sourceHandle ?? '').toLowerCase();
-      const th = (edge.targetHandle ?? '').toLowerCase();
-      if (sh.includes('minus') || th.includes('minus')) return 1;
-      return 0;
-    };
     const sortCandidates = (list: Edge[]) =>
       list
         .filter((edge) => edgeIds.has(edge.id))
         .slice()
-        .sort((a, b) => rankEdge(a) - rankEdge(b) || compareIds(a.id, b.id));
+        .sort((a, b) => edgeSupplyPriority(a) - edgeSupplyPriority(b) || compareIds(a.id, b.id));
     const incoming = sortCandidates(incomingEdgesMap.get(nodeId) ?? []);
     if (incoming.length > 0) return incoming[0];
     const outgoing = sortCandidates(outgoingEdgesMap.get(nodeId) ?? []);
@@ -228,9 +318,25 @@ export function circuitTraceLabel(
     return nodeLabelOf(node, 'Bauteil');
   });
   const edge = trace.referenceEdge;
-  const isAc = edge?.data?.edgeDomain === 'AC_230V';
+  const srcNode = edge ? nodeMap.get(edge.source) : undefined;
+  const tgtNode = edge ? nodeMap.get(edge.target) : undefined;
+  const resolvedDomain = edge
+    ? (edge.data?.edgeDomain as string | undefined) ||
+      edgeDomainOf(srcNode?.type, tgtNode?.type, edge.sourceHandle, edge.targetHandle)
+    : undefined;
   const sysVoltage = getSystemVoltage(nodes);
-  const voltage = isAc ? AC_SYSTEM_VOLTAGE : sysVoltage;
+  let voltage: number = sysVoltage;
+  if (resolvedDomain === 'AC_230V') {
+    voltage = AC_SYSTEM_VOLTAGE;
+  } else if (resolvedDomain === 'Solar' || srcNode?.type === 'solar' || tgtNode?.type === 'solar') {
+    const solarNode = srcNode?.type === 'solar' ? srcNode : tgtNode;
+    voltage = Number((solarNode?.data as { voltage?: number } | undefined)?.voltage) || VDE_SOLAR_VMP_VOLTAGE;
+  } else if (
+    (srcNode && isStarterBatteryNode(srcNode)) ||
+    (tgtNode?.type === 'dcdcCharger' && srcNode?.type === 'battery' && isStarterBatteryNode(srcNode))
+  ) {
+    voltage = Number((srcNode?.data as { nominalVoltage?: number } | undefined)?.nominalVoltage) || 12;
+  }
   // Dieselbe Quelle wie Anzeige/Dimensionierung/Validierung. `traceEdges`
   // enthält im Normalfall ALLE Kanten des Plans (der Aufrufer übergibt
   // `rawEdges`) — das Modell braucht sie für den Pfad; die Referenzkante

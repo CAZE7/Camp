@@ -198,5 +198,11 @@ describe('Beispielplan des Erststarts (Nachtest live)', () => {
     });
     expect(report12v.verdict).not.toBe('NON_COMPLIANT');
     expect(report12v.coverage.failed).toBe(0);
+
+    // H6: Autark-Vorlage enthält ein 230-V-AC-Ladegerät für Landstrom und realistische Wirkungsgrade (< 100 %).
+    const autark = TEMPLATES_DICT.autark!;
+    expect(autark.nodes.some((n) => n.type === 'acBatteryCharger')).toBe(true);
+    const mppt = autark.nodes.find((n) => n.type === 'mpptController');
+    expect(Number((mppt?.data as { efficiency?: number })?.efficiency)).toBeLessThan(1);
   });
 });

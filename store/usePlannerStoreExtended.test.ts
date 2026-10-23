@@ -844,7 +844,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
       makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000, hasRcd: true }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1600, hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
       makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),
       makeNode('c3', 'consumer', { label: 'LED', watts: 40, hours: 2 }),
@@ -910,7 +910,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
     expect(
       model.byEdgeId.get(boosterInput!.id)?.operatingCurrent ?? 0,
       'Booster-Eingang (Starterseite) darf nicht auf dem Hausstrang erscheinen'
-    ).toBeLessThan(1000 / 12 / 0.85 + 1);
+    ).toBeLessThan(1600 / 12 / 0.85 + 1);
 
     const ibInIz = result.current.filter((w) => w.ruleId === 'AMP-001-ib-in-iz' && w.type === 'critical');
     expect(ibInIz.length).toBeGreaterThan(0); // die echte Überlast bleibt sichtbar

@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MAX_MODELED_CROSS_SECTION_MM2 } from '../../../lib/electrical';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
 import { toPlainGerman } from '../utils/plainGerman';
 
@@ -397,17 +398,16 @@ export function nextStep(warning: ValidationWarning) {
     return 'So löst du es: Reduziere die Anzahl der Panels in Serie oder wähle einen Laderegler mit höherer maximaler PV-Eingangsspannung.';
   if (warning.id.startsWith('solar-voc-uncomputable'))
     return 'So löst du es: Korrigiere den Temperaturkoeffizienten Voc im Panel-Inspektor (für c-Si üblich: −0,20 bis −0,50 %/K).';
-  // Die Dimensionierungsgrenze des Modells ist 70 mm² (VDE_SIZES) mit 100 A.
-  // Der frühere Text („den nächsten Normquerschnitt über 70 mm² wählen“)
-  // verwies auf eine Stufe, die es hier nicht gibt — der Nutzer suchte sie.
+  // Die Dimensionierungsgrenze des Modells ist MAX_MODELED_CROSS_SECTION_MM2 (VDE_SIZES).
+  // Der frühere Text verwies auf eine Stufe oberhalb der hinterlegten Normreihe.
   if (warning.id.startsWith('thermal-overload'))
-    return 'So löst du es: Last reduzieren, die Leitung parallel verlegen (gleiche Länge, gleicher Querschnitt) oder die Systemspannung erhöhen — oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt.';
+    return `So löst du es: Last reduzieren, die Leitung parallel verlegen (gleiche Länge, gleicher Querschnitt) oder die Systemspannung erhöhen — oberhalb von ${MAX_MODELED_CROSS_SECTION_MM2} mm² kennt der Planer keinen Normquerschnitt.`;
   if (warning.id.startsWith('fuse-not-possible'))
     return 'So löst du es: Last aufteilen (eigene Leitung je Großverbraucher), Parallelverlegung oder Sammelschiene planen oder die Systemspannung erhöhen (12 V → 24/48 V).';
   if (warning.id.startsWith('cross-section-undersized'))
     return 'So löst du es: Querschnitt im Leitungs-Inspektor auf den geforderten Wert anheben oder die Leitung kürzen (der Spannungsfall hängt an der Länge).';
   if (warning.id.startsWith('drop-not-solvable'))
-    return 'So löst du es: Weg kürzen oder Last aufteilen — bei 12 V ist der Spannungsfall-Bedarf hier größer als die Normreihe bis 70 mm² hergibt (24/48 V planen).';
+    return `So löst du es: Weg kürzen oder Last aufteilen — bei 12 V ist der Spannungsfall-Bedarf hier größer als die Normreihe bis ${MAX_MODELED_CROSS_SECTION_MM2} mm² hergibt (24/48 V planen).`;
   if (warning.id.startsWith('ac-descriptor-assumed') || warning.id.startsWith('ac-protection-not-modeled'))
     return 'So löst du es: Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen des Schutzorgans im Leitungs-Inspektor eintragen — dann prüft der Plan gegen das echte Gerät statt gegen eine Annahme.';
   if (warning.id.startsWith('solar-voc-missing'))
@@ -497,7 +497,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     warnings.forEach((warning) => value[warning.type]++);
     return value;
   }, [warnings]);
-  const groups = useMemo(() => groupCounts(warnings), [warnings]);
+  const _groups = useMemo(() => groupCounts(warnings), [warnings]);
   /**
    * Ursachengruppen der Meldungen (Auftrag Phase 10/11): Die Anzeige ordnet
    * gleichartige Befunde zusammen, ohne sie zu verstecken — jeder Befund
@@ -599,9 +599,11 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         ? `${counts.critical} von ${warnings.length} kritisch`
         : `${counts.critical} kritisch`
       : topType === 'warning'
-        ? warnings.length === 1
-          ? '1 Warnung'
-          : `${warnings.length} Warnungen`
+        ? counts.info > 0
+          ? `${counts.warning === 1 ? '1 Warnung' : `${counts.warning} Warnungen`} · ${counts.info === 1 ? '1 Hinweis' : `${counts.info} Hinweise`}`
+          : counts.warning === 1
+            ? '1 Warnung'
+            : `${counts.warning} Warnungen`
         : warnings.length === 1
           ? '1 Hinweis'
           : `${warnings.length} Hinweise`;
@@ -694,7 +696,19 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                   als sie erklärten. Eine Zeile, Klartext, dieselben Zahlen
                   wie die Karten darunter. */}
               <p className="text-xs text-muted-foreground">
-                {groups.safety + groups.planning} Probleme · {groups.gaps}× Angaben fehlen
+                {[
+                  counts.critical > 0 ? `${counts.critical} kritisch` : null,
+                  counts.warning > 0
+                    ? counts.warning === 1
+                      ? '1 Warnung'
+                      : `${counts.warning} Warnungen`
+                    : null,
+                  counts.info > 0
+                    ? `${counts.info === 1 ? '1 Hinweis' : `${counts.info} Hinweise`} (Angaben ergänzen)`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
             </div>
             <button

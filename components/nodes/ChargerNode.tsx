@@ -1,7 +1,12 @@
 'use client';
 import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { type ChargerNodeData, type PlannerNodeProps } from './types';
+import {
+  formatNodeNumberDe,
+  isSanitizedFieldMissing,
+  type ChargerNodeData,
+  type PlannerNodeProps,
+} from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
@@ -53,10 +58,12 @@ const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNode
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('amps', data.amps || 0)}>
-            Ladeleistung: {data.amps || 0} A
+            {isSanitizedFieldMissing(data, 'amps')
+              ? 'Ladeleistung: – (bitte eintragen)'
+              : `Ladeleistung: ${formatNodeNumberDe(data.amps, 0)} A`}
           </div>
         )}
-        <div>Effizienz: {data.efficiency ?? 100}%</div>
+        <div>Effizienz: {formatNodeNumberDe(data.efficiency ?? 100, 100)}%</div>
       </div>
       <Handle
         type="source"

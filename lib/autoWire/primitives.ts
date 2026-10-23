@@ -104,7 +104,7 @@ export const DEFAULT_EDGE_CROSS_SECTION: Mm2 = mm2(2.5);
 export const MIN_CROSS_SECTION: Mm2 = mm2(1.5);
 /** Größter Querschnitt der Normreihe. */
 
-export const MAX_CROSS_SECTION: Mm2 = mm2(70);
+export const MAX_CROSS_SECTION: Mm2 = mm2(120);
 
 /** Persistenzgrenze: Querschnitt einer Kante aus `edge.data` lesen. */
 

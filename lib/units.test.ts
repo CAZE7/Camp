@@ -11,6 +11,8 @@ import {
   toFixedNumber,
   parseQuantity,
   parseDecimalString,
+  formatDecimalForInput,
+  isAmbiguousDecimalString,
   quantityOr,
   power,
   currentFromPower,
@@ -134,14 +136,25 @@ describe('lib/units — Grenzen zur Außenwelt', () => {
   // "1.234,56" wurde zu "1.234.56" = NaN = null = stiller Ersatzwert, obwohl
   // der Nutzer eine eindeutige deutsche Zahl getippt hatte.
   describe('parseDecimalString (AUDIT S2)', () => {
-    it('liest Tausender-Trenner in deutscher und englischer Schreibweise', () => {
+    it('liest eindeutige Tausender-Trenner und lehnt mehrdeutige Einzelpunkte (H8) ab', () => {
       expect(parseDecimalString('1.234,56')).toBeCloseTo(1234.56, 10);
       expect(parseDecimalString('1,234.56')).toBeCloseTo(1234.56, 10);
       expect(parseDecimalString('1.000.000')).toBe(1000000);
-      expect(parseDecimalString('1.000')).toBe(1000);
-      expect(parseDecimalString('2.500')).toBe(2500);
+      expect(parseDecimalString('1 000')).toBe(1000);
+      expect(parseDecimalString('1,125')).toBeCloseTo(1.125, 10);
       expect(parseDecimalString('0.350')).toBeCloseTo(0.35, 10);
       expect(parseDecimalString('12 345,6')).toBeCloseTo(12345.6, 10);
+      // AUDIT H8: Einzelpunkt mit 1–3 Ziffern davor und exakt 3 Ziffern danach
+      // ist zwischen 1,125 und 1125 mehrdeutig — kein stiller Faktor-1000-Sprung.
+      expect(isAmbiguousDecimalString('1.125')).toBe(true);
+      expect(isAmbiguousDecimalString('1.000')).toBe(true);
+      expect(isAmbiguousDecimalString('2.500')).toBe(true);
+      expect(isAmbiguousDecimalString('0.350')).toBe(false);
+      expect(isAmbiguousDecimalString('1,125')).toBe(false);
+      expect(parseDecimalString('1.125')).toBeNull();
+      expect(parseDecimalString('1.000')).toBeNull();
+      expect(parseDecimalString('2.500')).toBeNull();
+      expect(formatDecimalForInput(1.125)).toBe('1,125');
     });
 
     it('liest Vorzeichen, Unicode-Minus und führende Leerzeichen', () => {
@@ -320,5 +333,21 @@ describe('lib/units — Laufzeitverhalten der Marken', () => {
   it('erzeugt keine Wrapper-Objekte', () => {
     expect(Object.keys(amps(1) as unknown as object)).toHaveLength(0);
     expect(amps(3) === 3).toBe(true);
+  });
+
+  it('H8: formatDecimalForInput und isAmbiguousDecimalString decken Sonderfälle ab', () => {
+    expect(formatDecimalForInput(null)).toBe('');
+    expect(formatDecimalForInput(undefined)).toBe('');
+    expect(formatDecimalForInput('')).toBe('');
+    expect(formatDecimalForInput(Number.NaN)).toBe('');
+    expect(formatDecimalForInput(0)).toBe('0');
+    expect(formatDecimalForInput(1e13)).toBe('10000000000000');
+    expect(formatDecimalForInput('12,5')).toBe('12,5');
+
+    expect(isAmbiguousDecimalString('')).toBe(false);
+    expect(isAmbiguousDecimalString('   ')).toBe(false);
+    expect(isAmbiguousDecimalString('+1.125')).toBe(true);
+    expect(isAmbiguousDecimalString('−2.500')).toBe(true);
+    expect(isAmbiguousDecimalString('0.350')).toBe(false);
   });
 });

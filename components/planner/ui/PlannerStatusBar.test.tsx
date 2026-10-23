@@ -72,4 +72,33 @@ describe('PlannerStatusBar', () => {
       });
     }
   });
+
+  it('M17/N16: unterscheidet „1 Warnung“ vs. „1 Hinweis“ im Singular ohne falsches „1 Warnungen“', () => {
+    const prevErrors = usePlannerStore.getState().plannerErrors;
+    try {
+      act(() => {
+        usePlannerStore.setState({
+          viewMode: 'electric',
+          plannerErrors: [{ code: 'info-1', severity: 'info', message: 'Datenblatt offen' }] as never,
+        });
+      });
+      const { unmount, rerender } = render(<PlannerStatusBar zoom={1} />);
+      expect(screen.getByText(/1 Hinweis/)).toBeInTheDocument();
+      expect(screen.queryByText(/Warnungen/)).not.toBeInTheDocument();
+
+      act(() => {
+        usePlannerStore.setState({
+          plannerErrors: [{ code: 'warn-1', severity: 'warning', message: 'Spannungsfall hoch' }] as never,
+        });
+      });
+      rerender(<PlannerStatusBar zoom={1} />);
+      expect(screen.getByText(/1 Warnung\b/)).toBeInTheDocument();
+      expect(screen.queryByText(/1 Warnungen/)).not.toBeInTheDocument();
+      unmount();
+    } finally {
+      act(() => {
+        usePlannerStore.setState({ plannerErrors: prevErrors });
+      });
+    }
+  });
 });

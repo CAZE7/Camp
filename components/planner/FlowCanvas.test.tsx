@@ -956,4 +956,25 @@ describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
 
     expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 0, y: 0 }, 120);
   });
+
+  it('N5: übersetzt englische React-Flow-Kantenlabels im DOM in deutschen Klartext ohne interne IDs', () => {
+    const view = render(<FlowCanvas />);
+    const root = view.getByTestId('react-flow-mock');
+    root.classList.add('react-flow');
+    const edgeGroup = document.createElement('g');
+    edgeGroup.classList.add('react-flow__edge');
+    edgeGroup.setAttribute('aria-label', 'Edge from 1 to 2');
+    root.appendChild(edgeGroup);
+
+    // MutationObserver + rAF ausführen
+    return new Promise<void>((resolvePromise) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          expect(edgeGroup.getAttribute('aria-label')).toBe('Leitung von Batterie nach Bauteil');
+          view.unmount();
+          resolvePromise();
+        });
+      });
+    });
+  });
 });

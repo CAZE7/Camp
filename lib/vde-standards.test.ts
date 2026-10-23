@@ -27,7 +27,7 @@ import type { Node, Edge } from '@xyflow/react';
 describe('VDE Standards - Zentrale Konstanten', () => {
   describe('Kabelquerschnitte', () => {
     it('sollten die Standard-Normreihe aus electrical.ts enthalten', () => {
-      expect(VDE_SIZES).toEqual([1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0]);
+      expect(VDE_SIZES).toEqual([1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0]);
     });
 
     it('VDE_CROSS_SECTIONS ist ein Alias für VDE_SIZES', () => {

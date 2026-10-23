@@ -908,11 +908,11 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
   });
 
   describe('Missing coverage: >120-A-Sättigung, 24-V-Plan, Länge 0/negativ', () => {
-    it('liefert den maximalen Querschnitt (70 mm²) bei Strömen über der Sättigungsgrenze', () => {
+    it('liefert den maximalen Querschnitt (120 mm²) bei Strömen über der Sättigungsgrenze', () => {
       // Bei extremen Strömen darf die Funktion nicht abstürzen,
-      // sondern liefert den höchsten normierten Wert zurück.
+      // sondern liefert den höchsten normierten Wert zurück (H2: 120 mm²).
       const cs = calculateCrossSection(amps(500), meters(5), undefined, 'DC_12V');
-      expect(cs).toBe(70);
+      expect(cs).toBe(120);
     });
 
     it('berechnet Spannungsfall und Querschnitt korrekt im 24-V-Plan', () => {

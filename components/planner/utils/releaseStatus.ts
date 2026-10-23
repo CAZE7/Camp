@@ -78,10 +78,12 @@ export function assessRelease(
   const openPoints = summary.findings.length;
 
   if (blockers.length > 0) {
+    const blockerText =
+      blockers.length === 1 ? '1 kritischer Befund' : `${blockers.length} kritische Befunde`;
     return {
       status: 'gesperrt',
       label: DOCUMENT_STATUS_LABEL.gesperrt,
-      explanation: `${blockers.length} kritische Verletzung(en). Dokumente werden erst erzeugt, wenn sie behoben sind.`,
+      explanation: `${blockerText}. Dokumente werden erst erzeugt, wenn sie behoben sind.`,
       blockers,
       openPoints,
       canExportDocument: false,
@@ -102,10 +104,19 @@ export function assessRelease(
     };
   }
 
+  const rulePhrase =
+    summary.unprovable === 1
+      ? '1 Prüfregel ist mit den vorhandenen Angaben nicht entscheidbar'
+      : `${summary.unprovable} Prüfregeln sind mit den vorhandenen Angaben nicht entscheidbar`;
+  const hintPhrase =
+    openPoints === 1
+      ? '1 offener Hinweis an betroffenen Leitungen/Bauteilen'
+      : `${openPoints} offene Hinweise an betroffenen Leitungen/Bauteilen`;
+
   return {
     status: 'entwurf',
     label: DOCUMENT_STATUS_LABEL.entwurf,
-    explanation: `Der Plan gilt nicht als geprüft: ${summary.unprovable} Regel(n) sind mit den vorhandenen Angaben nicht entscheidbar. Offene Befunde: ${openPoints}.`,
+    explanation: `Der Plan gilt nicht als geprüft: ${rulePhrase} (${hintPhrase}).`,
     blockers: [],
     openPoints,
     canExportDocument: true,

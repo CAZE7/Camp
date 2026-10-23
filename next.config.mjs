@@ -75,6 +75,9 @@ const nextConfig = /** @type {import('next').NextConfig} */ ({
   images: {
     unoptimized: true,
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   env: {
     NEXT_PUBLIC_BUILD_ID: shortBuildId(),
   },

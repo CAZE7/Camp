@@ -1,6 +1,7 @@
 {
   "name": "app",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",

@@ -59,7 +59,7 @@ const PLANER_WISSENSLINKS: readonly { href: string; label: string; description?:
  */
 export function PlanerSeoContent() {
   return (
-    <div className="border-t border-border bg-background text-foreground">
+    <div id="planer-anleitung" className="scroll-mt-4 border-t border-border bg-background text-foreground">
       <div className="mx-auto w-full max-w-5xl space-y-14 px-4 py-12 sm:px-6">
         {/* Sichtbare Entsprechung der BreadcrumbList im JSON-LD — die
             Exportprüfung verlangt, dass Schema und Anzeige übereinstimmen. */}

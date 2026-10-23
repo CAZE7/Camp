@@ -848,7 +848,7 @@ describe('autoWire — sizeAcEdges', () => {
     // AutoWire-Lauf. Gefordert: nie werfen, symmetrisch zum DC-Pfad
     // normieren/absichern.
     const nodes = [n('sp', 'shorePower', { rating: 16 }), n('c1', 'consumer230v', { watts: 230 })];
-    for (const cs of [95, 0, NaN, 3]) {
+    for (const cs of [150, 0, NaN, 3]) {
       const edges: Edge<CableEdgeData>[] = [
         e({
           id: 'ac1',
@@ -862,12 +862,12 @@ describe('autoWire — sizeAcEdges', () => {
       expect(() => sizeAcEdges(edges, nodes), `cs=${cs} darf nie werfen`).not.toThrow();
       const out = edges[0]?.data;
       expect(out, `cs=${cs} muss crossSection setzen`).toBeDefined();
-      if (cs === 95) {
+      if (cs === 150) {
         // Nutzerquerschnitt bleibt (nie schwächen), Absicherung über die
-        // 70-mm²-Normbestung, da 95 nicht in FUSE_MAP liegt. fuseWarning
-        // wird gesetzt (hier false: 16 A ≤ 100 A Grenze der 70-mm²-Bestung).
-        expect(out?.crossSection).toBe(95);
-        expect(out?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[70] ?? 0);
+        // 120-mm²-Normbestung, da 150 nicht in FUSE_MAP liegt. fuseWarning
+        // wird gesetzt (hier false: 16 A ≤ 160 A Grenze der 120-mm²-Bestung).
+        expect(out?.crossSection).toBe(150);
+        expect(out?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[120] ?? 0);
         expect(out?.fuseWarning).toBe(false);
       } else {
         // 0/NaN → Minimum der Normreihe, 3 → nächstgrößere Normstufe.
@@ -1650,11 +1650,11 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
   it('markiert physikalisch unrealisierbare Pfade mit dropWarning (Issue 3)', () => {
     const nodes: Node[] = [
       n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
-      n('c', 'consumer', { watts: 2560 }), // 200 A — über 30 m ist selbst 70 mm² chancenlos
+      n('c', 'consumer', { watts: 2560 }), // 200 A — über 30 m ist selbst 120 mm² chancenlos
     ];
     const chain: Edge<CableEdgeData>[] = [e({ id: 'big', source: 'b', target: 'c', data: { length: 30 } })];
     sizeDcEdges(chain, nodes, chain, volts(12.8));
-    expect(chain[0]?.data!.crossSection).toBe(70);
+    expect(chain[0]?.data!.crossSection).toBe(120);
     expect(chain[0]?.data!.dropWarning).toBe(true);
   });
 

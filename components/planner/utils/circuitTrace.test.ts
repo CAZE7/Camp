@@ -112,6 +112,97 @@ describe('circuit tracing', () => {
     expect(circuitTraceLabel(acNodes, trace)).toContain('(230 V, 10 A, 1,5 mm²)');
     expect(traceCircuit(nodes, edges, { nodeId: 'missing' })).toBeNull();
   });
+
+  it('M1: trennt Plus-Pfad von Minus-Schiene, endet bei Solar an der Aufbaubatterie und nennt echte Domänenspannung', () => {
+    const planNodes: Node[] = [
+      {
+        id: 'solar',
+        type: 'solar',
+        position: { x: 0, y: 0 },
+        data: { label: '200W Solar', voltage: 18, watts: 200 },
+      },
+      { id: 'mppt', type: 'mpptController', position: { x: 0, y: 0 }, data: { label: 'MPPT', amps: 20 } },
+      {
+        id: 'bat',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: '100Ah Lithium', chemistry: 'LiFePO4' },
+      },
+      { id: 'busbar-plus', type: 'busbar', position: { x: 0, y: 0 }, data: { label: 'Plus Busbar' } },
+      { id: 'busbar-minus', type: 'busbar', position: { x: 0, y: 0 }, data: { label: 'Minus Busbar' } },
+      {
+        id: 'inv',
+        type: 'inverter',
+        position: { x: 0, y: 0 },
+        data: { label: '500W Inverter', continuousPower: 500 },
+      },
+      {
+        id: 'ac230',
+        type: 'consumer230v',
+        position: { x: 0, y: 0 },
+        data: { label: '230V Steckdose', watts: 230 },
+      },
+    ];
+    const planEdges: Edge[] = [
+      {
+        id: 'e-solar-mppt',
+        source: 'solar',
+        sourceHandle: 'plus',
+        target: 'mppt',
+        targetHandle: 'plus',
+        data: { crossSection: 6, edgeDomain: 'Solar' },
+      },
+      {
+        id: 'e-mppt-bus',
+        source: 'mppt',
+        sourceHandle: 'plus',
+        target: 'busbar-plus',
+        targetHandle: 'plus',
+        data: { crossSection: 10 },
+      },
+      {
+        id: 'e-bat-plus',
+        source: 'bat',
+        sourceHandle: 'plus',
+        target: 'busbar-plus',
+        targetHandle: 'plus',
+        data: { crossSection: 50 },
+      },
+      // Alphabetisch vor e-busbar-inv-plus: darf den Plus-Pfad zum WR nicht auf Minus umlenken!
+      {
+        id: 'e-busbar-inv-minus',
+        source: 'busbar-minus',
+        sourceHandle: 'minus',
+        target: 'inv',
+        targetHandle: 'minus',
+        data: { crossSection: 25 },
+      },
+      {
+        id: 'e-busbar-inv-plus',
+        source: 'busbar-plus',
+        sourceHandle: 'plus',
+        target: 'inv',
+        targetHandle: 'plus',
+        data: { crossSection: 25 },
+      },
+      {
+        id: 'e-inv-ac',
+        source: 'inv',
+        sourceHandle: 'plus',
+        target: 'ac230',
+        targetHandle: 'plus',
+        data: { crossSection: 2.5 },
+      },
+    ];
+
+    const solarTrace = traceCircuit(planNodes, planEdges, { nodeId: 'solar' })!;
+    expect(solarTrace.pathNodeIds).toEqual(['solar', 'mppt', 'busbar-plus', 'bat']);
+    expect(circuitTraceLabel(planNodes, solarTrace, planEdges)).toContain('(18 V,');
+
+    const acTrace = traceCircuit(planNodes, planEdges, { nodeId: 'ac230' })!;
+    expect(acTrace.pathNodeIds).toEqual(['bat', 'busbar-plus', 'inv', 'ac230']);
+    expect(circuitTraceLabel(planNodes, acTrace, planEdges)).toContain('(230 V, 1 A, 2,5 mm²)');
+  });
 });
 
 /**

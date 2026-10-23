@@ -168,4 +168,21 @@ describe('DOM-002 — Regelanker begründet die Bauformwahl', () => {
   it('Solar-Teilmenge dieses Tests: Vmp-Anker bleibt 18 V (ELE-007-Pin)', () => {
     expect(VDE_SOLAR_VMP_VOLTAGE).toBe(18);
   });
+
+  it('AUDIT H9: skaliert geschätztes Ri bei 24-V- und 48-V-Blöcken proportional zur Zellanzahl', () => {
+    // 40 Ah AGM: 12 V → 12,5 mΩ (~960 A Pol-Ik); 24 V → 25 mΩ (~960 A Pol-Ik); 48 V → 50 mΩ (~960 A Pol-Ik)
+    const agm12 = battery('b12', { capacity: 40, chemistry: 'AGM', nominalVoltage: 12 });
+    const agm24 = battery('b24', { capacity: 40, chemistry: 'AGM', nominalVoltage: 24 });
+    const agm48 = battery('b48', { capacity: 40, chemistry: 'AGM', nominalVoltage: 48 });
+
+    expect(internalResistanceMilliOhmOf(agm12)).toBeCloseTo(12.5, 6);
+    expect(internalResistanceMilliOhmOf(agm24)).toBeCloseTo(25.0, 6);
+    expect(internalResistanceMilliOhmOf(agm48)).toBeCloseTo(50.0, 6);
+
+    // Pol-Kurzschlussstrom bleibt unter dem 1000-A-ATO-Abschaltvermögen statt auf 1920/3840 A zu springen
+    expect(batteryShortCircuitCurrentA(agm24)!).toBeCloseTo(960, 2);
+    expect(batteryShortCircuitCurrentA(agm48)!).toBeCloseTo(960, 2);
+    expect(shortCircuitAtFuseA([agm24], 0.15, 6, 24)!).toBeLessThan(FUSE_BREAKING_CAPACITY_A.ato);
+    expect(shortCircuitAtFuseA([agm48], 0.15, 6, 48)!).toBeLessThan(FUSE_BREAKING_CAPACITY_A.ato);
+  });
 });

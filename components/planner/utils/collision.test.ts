@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Node } from '@xyflow/react';
-import { collidingNodeIds, findNearestFreePosition, nodeRect, rectsOverlap } from './collision';
+import {
+  collidingNodeIds,
+  findNearestFreePosition,
+  nodeRect,
+  PALETTE_PLACEMENT_PADDING,
+  rectsOverlap,
+  segmentIntersectsRect,
+} from './collision';
 
 const node = (id: string, x: number, y: number, width = 192, height = 120): Node => ({
   id,
@@ -40,5 +47,19 @@ describe('node collision resolution', () => {
     expect(Math.abs(free.y % 16)).toBe(0);
     expect(collidingNodeIds({ ...dragged, position: free }, blockers)).toEqual([]);
     expect(Math.hypot(free.x, free.y)).toBeLessThanOrEqual(48);
+  });
+
+  it('M16: avoids existing routed cable corridors and preserves clearance padding on palette drop', () => {
+    const candidate = node('new-component', 200, 100, 192, 120);
+    const existing = [node('fuse-1', 0, 100, 192, 120)];
+    // Horizontal cable running across y = 160 from x = 192 to x = 800
+    const cables = [{ x1: 192, y1: 160, x2: 800, y2: 160 }];
+    const placed = findNearestFreePosition(candidate, existing, [16, 16], 128, {
+      padding: PALETTE_PLACEMENT_PADDING,
+      routedSegments: cables,
+    });
+    expect(collidingNodeIds(candidate, existing, placed, PALETTE_PLACEMENT_PADDING)).toEqual([]);
+    const placedRect = nodeRect(candidate, placed);
+    expect(segmentIntersectsRect(cables[0]!, placedRect)).toBe(false);
   });
 });

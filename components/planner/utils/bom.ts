@@ -75,9 +75,20 @@ export interface BomRecommendedEntry {
   reason: string;
 }
 
+/** Einzelposition der Bauteil-Stückliste mit technischen Eckdaten (N17). */
+export interface BomComponentEntry {
+  key: string;
+  type: string;
+  label: string;
+  purpose: string;
+  count: number;
+}
+
 export interface BomData {
   /** Anzahl je Bauteiltyp. */
   counts: Record<string, number>;
+  /** Differenzierte Bauteil-Positionen (z. B. Starter- vs. Aufbaubatterie mit Ah/Chemie, N17). */
+  componentItems?: BomComponentEntry[];
   /** Summe der gezeichneten DC-Einzelader-Längen (m) je Querschnitt (mm²). */
   cableLengths: Record<string, number>;
   /** Summe der 230-V-Mantelleitungen (3-adrig L/N/PE, m) je Querschnitt (mm², M10). */
@@ -235,6 +246,16 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
   };
 
   const counts: Record<string, number> = {};
+  const componentBuckets = new Map<string, BomComponentEntry>();
+  const addComponentItem = (key: string, type: string, label: string, purpose: string) => {
+    const existing = componentBuckets.get(key);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    componentBuckets.set(key, { key, type, label, purpose, count: 1 });
+  };
+
   [...nodes, ...waterNodes].forEach((node) => {
     if (!node.type) return;
     if (node.type === 'fuse') {
@@ -242,6 +263,8 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
       if (!isDistributorFuseNode(node, plusOut)) {
         inlineFuseNodeIds.add(node.id);
         counts.inlineFuseHolder = (counts.inlineFuseHolder || 0) + 1;
+        const info = componentTypeInfo('inlineFuseHolder');
+        addComponentItem('inlineFuseHolder', 'inlineFuseHolder', info.label, info.purpose);
         const rating = Number(node.data?.rating);
         const fuseType =
           typeof node.data?.fuseType === 'string' && node.data.fuseType !== ''
@@ -254,6 +277,35 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
       }
     }
     counts[node.type] = (counts[node.type] || 0) + 1;
+
+    // N17: Batterien mit Rolle, Kapazität, Zellchemie und ggf. Systemspannung
+    // getrennt aufführen (keine Vermischung von 90 Ah AGM Starter + 100 Ah LiFePO4 Aufbau).
+    if (node.type === 'battery') {
+      const d = (node.data ?? {}) as Record<string, unknown>;
+      const isStarter = isStarterBatteryNode(node);
+      const cap = Number(d.capacity);
+      const chem = typeof d.chemistry === 'string' && d.chemistry !== '' ? d.chemistry : '';
+      const nomV = Number(d.nominalVoltage);
+      const hasSpecs =
+        (Number.isFinite(cap) && cap > 0) || chem !== '' || (Number.isFinite(nomV) && nomV > 0);
+      if (hasSpecs) {
+        const roleLabel = isStarter ? 'Starterbatterie' : 'Aufbaubatterie';
+        const parts: string[] = [];
+        if (Number.isFinite(cap) && cap > 0) parts.push(`${String(cap).replace('.', ',')} Ah`);
+        if (chem) parts.push(chem);
+        if (Number.isFinite(nomV) && nomV > 0) parts.push(`${String(nomV).replace('.', ',')} V`);
+        const specSuffix = parts.length > 0 ? ` (${parts.join(' ')})` : '';
+        const key = `battery:${isStarter ? 'starter' : 'house'}:${cap || 0}:${chem}:${nomV || 0}`;
+        const purpose = isStarter
+          ? 'Fahrzeug-Starterbatterie (Speisung des Ladeboosters während der Fahrt).'
+          : componentTypeInfo('battery').purpose;
+        addComponentItem(key, 'battery', `${roleLabel}${specSuffix}`, purpose);
+        return;
+      }
+    }
+
+    const info = componentTypeInfo(node.type);
+    addComponentItem(node.type, node.type, info.label, info.purpose);
   });
 
   // M10: Prüfen, ob das System eine eigene Minus-Sammelschiene / Shunt-Rückführung
@@ -405,8 +457,11 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
       ]
     : [];
 
+  const componentItems = [...componentBuckets.values()];
+
   return {
     counts,
+    ...(componentItems.length > 0 ? { componentItems } : {}),
     cableLengths,
     ...(Object.keys(acCableLengths).length > 0 ? { acCableLengths } : {}),
     ...(Object.keys(dcReturnLengths).length > 0 ? { dcReturnLengths } : {}),
@@ -504,8 +559,108 @@ export const BOM_CSV_HEADER = [
   'Dokumentstatus',
 ] as const;
 
+/** Liefert die differenzierten Bauteilpositionen (mit Fallback auf `counts`, N17). */
+export function resolvedComponentItems(bom: BomData): BomComponentEntry[] {
+  if (bom.componentItems && bom.componentItems.length > 0) return bom.componentItems;
+  return Object.entries(bom.counts).map(([type, count]) => {
+    const info = componentTypeInfo(type);
+    return { key: type, type, label: info.label, purpose: info.purpose, count };
+  });
+}
+
+function fmtMetersDe(meters: number): string {
+  return meters.toFixed(1).replace('.', ',');
+}
+
 /**
- * Stückliste als CSV (Semikolon-getrennt, UTF-8 mit BOM).
+ * Stückliste als sauber formatierter deutscher Einkaufstext für die
+ * Zwischenablage (N14 — statt rohem JSON mit englischen Schlüsseln).
+ */
+export function bomToPlainText(bom: BomData): string {
+  const sections: string[] = ['Stückliste aus dem Camper-Elektroplaner'];
+
+  const compItems = resolvedComponentItems(bom);
+  if (compItems.length > 0) {
+    sections.push(['Bauteile:', ...compItems.map((item) => `- ${item.count} × ${item.label}`)].join('\n'));
+  }
+
+  if (bom.fuses && bom.fuses.length > 0) {
+    sections.push(
+      ['Sicherungen & Schutzorgane:', ...bom.fuses.map((fuse) => `- ${fuse.count} × ${fuse.label}`)].join(
+        '\n'
+      )
+    );
+  }
+
+  const dcReturn = bom.dcReturnLengths ?? {};
+  const dcEntries = sortedCableEntries(bom.cableLengths);
+  if (dcEntries.length > 0) {
+    sections.push(
+      [
+        'DC-Leitungen:',
+        ...dcEntries.map(([cs, meters]) => {
+          const ret = dcReturn[cs] ?? 0;
+          const total = meters + ret;
+          const suffix = ret > 0 ? ` (inkl. ${fmtMetersDe(ret)} m Minus-Rückleitung)` : '';
+          return `- ${fmtMetersDe(total)} m Einzelader ${formatCrossSectionDe(cs)} mm²${suffix}`;
+        }),
+      ].join('\n')
+    );
+  }
+
+  const acEntries = bom.acCableLengths ? sortedCableEntries(bom.acCableLengths) : [];
+  if (acEntries.length > 0) {
+    sections.push(
+      [
+        '230-V-Leitungen:',
+        ...acEntries.map(
+          ([cs, meters]) => `- ${fmtMetersDe(meters)} m Mantelleitung 3G ${formatCrossSectionDe(cs)} mm²`
+        ),
+      ].join('\n')
+    );
+  }
+
+  if (bom.cableLugs && bom.cableLugs.length > 0) {
+    sections.push(
+      ['Anschlussmaterial:', ...bom.cableLugs.map((lug) => `- ${lug.count} × ${lug.label}`)].join('\n')
+    );
+  }
+
+  if (bom.recommendedItems && bom.recommendedItems.length > 0) {
+    sections.push(
+      ['Empfohlenes Zubehör:', ...bom.recommendedItems.map((item) => `- ${item.count} × ${item.label}`)].join(
+        '\n'
+      )
+    );
+  }
+
+  const pipeEntries = Object.entries(bom.pipeLengths);
+  if (pipeEntries.length > 0) {
+    sections.push(
+      [
+        'Wasserleitungen:',
+        ...pipeEntries.map(
+          ([type, meters]) =>
+            `- ${fmtMetersDe(meters)} m ${type === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr'}`
+        ),
+      ].join('\n')
+    );
+  }
+
+  if (bom.lengthAssumptions.length > 0) {
+    sections.push(
+      [
+        'Längenhinweise:',
+        ...bom.lengthAssumptions.map((entry) => `- ${entry.label}: ${fmtMetersDe(entry.meters)} m`),
+      ].join('\n')
+    );
+  }
+
+  return sections.join('\n\n');
+}
+
+/**
+ * Stückliste als CSV (Semikolon-getrennt, UTF-8 mit BOM, deutsches Dezimalkomma — M15).
  * Jede Zeile trägt `planFingerprint` und `documentStatus`, damit eine
  * weitergegebene Datei eindeutig zu dem Plan gehört, aus dem sie stammt.
  */
@@ -514,8 +669,8 @@ export function bomToCsv(bom: BomData, stamp: { planFingerprint: string; documen
   const tail = [stamp.planFingerprint, stamp.documentStatus];
   const push = (cells: Array<string | number>) => rows.push([...cells, ...tail].map(csvCell).join(';'));
 
-  Object.entries(bom.counts).forEach(([type, count]) => {
-    push(['Bauteil', componentTypeInfo(type).label, count, 'Stk', '', '', 'Planbestand']);
+  resolvedComponentItems(bom).forEach((item) => {
+    push(['Bauteil', item.label, item.count, 'Stk', '', '', 'Planbestand']);
   });
   (bom.fuses ?? []).forEach((fuse) => {
     push(['Sicherung', fuse.label, fuse.count, 'Stk', '', '', 'Schutzorgan im Plan']);
@@ -524,43 +679,54 @@ export function bomToCsv(bom: BomData, stamp: { planFingerprint: string; documen
   sortedCableEntries(bom.cableLengths).forEach(([crossSection, meters]) => {
     const returnMeters = dcReturn[crossSection] ?? 0;
     const totalMeters = meters + returnMeters;
+    const totalDe = fmtMetersDe(totalMeters);
     push([
       'Leitung',
       `DC-Einzelader ${formatCrossSectionDe(crossSection)} mm²`,
-      '',
+      totalDe,
       'm',
-      crossSection,
-      totalMeters.toFixed(1),
+      formatCrossSectionDe(crossSection),
+      totalDe,
       returnMeters > 0 ? 'Summe inkl. Minus-Rückleitung' : 'Summe der Strecken',
     ]);
   });
   if (bom.acCableLengths) {
     sortedCableEntries(bom.acCableLengths).forEach(([crossSection, meters]) => {
+      const metersDe = fmtMetersDe(meters);
       push([
         'Leitung_230V',
         `230-V-Mantelleitung 3G ${formatCrossSectionDe(crossSection)} mm²`,
-        '',
+        metersDe,
         'm',
-        crossSection,
-        meters.toFixed(1),
+        formatCrossSectionDe(crossSection),
+        metersDe,
         'Summe der 230-V-Strecken (3-adrig L/N/PE)',
       ]);
     });
   }
   (bom.cableLugs ?? []).forEach((lug) => {
-    push(['Anschlussmaterial', lug.label, lug.count, 'Stk', lug.crossSection, '', '2 je DC-Leitung']);
+    push([
+      'Anschlussmaterial',
+      lug.label,
+      lug.count,
+      'Stk',
+      formatCrossSectionDe(lug.crossSection),
+      '',
+      '2 je DC-Leitung',
+    ]);
   });
   (bom.recommendedItems ?? []).forEach((item) => {
     push(['Empfehlung', item.label, item.count, 'Stk', '', '', 'Praxisempfehlung']);
   });
   Object.entries(bom.pipeLengths).forEach(([pipeType, meters]) => {
+    const metersDe = fmtMetersDe(meters);
     push([
       'Wasserleitung',
       pipeType === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr',
-      '',
+      metersDe,
       'm',
       '',
-      meters.toFixed(1),
+      metersDe,
       'Summe der Strecken',
     ]);
   });
@@ -573,7 +739,8 @@ export function bomToCsv(bom: BomData, stamp: { planFingerprint: string; documen
           : entry.source === 'routed'
             ? 'geroutete Länge (weicht von Eintrag ab)'
             : 'eingetragen (weicht von Route ab)';
-    push(['Laengenhinweis', entry.label, '', 'm', '', entry.meters.toFixed(1), source]);
+    const metersDe = fmtMetersDe(entry.meters);
+    push(['Laengenhinweis', entry.label, metersDe, 'm', '', metersDe, source]);
   });
 
   return `\uFEFF${rows.join('\r\n')}\r\n`;

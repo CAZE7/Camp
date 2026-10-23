@@ -63,7 +63,8 @@ import { PlannerModeSwitch } from './ui/PlannerModeSwitch';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
-import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
+import { collidingNodeIds, findNearestFreePosition, PALETTE_PLACEMENT_PADDING } from './utils/collision';
+import { NODE_TYPE_LABELS_DE } from '../../lib/nodeSchema';
 import { DesignatorContext, designatorMapFor } from '../nodes/designators';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
@@ -251,6 +252,24 @@ function useAccessibleHandles(viewportZoom: number) {
           control.setAttribute('title', label);
         });
       });
+      // N5: React Flow vergibt am äußeren `<g class="react-flow__edge">`
+      // standardmäßig „Edge from battery-1 to fuse-1“. Hier wird das einmalig
+      // in klaren deutschen Klartext ohne interne IDs übersetzt.
+      root.querySelectorAll<Element>('.react-flow__edge[aria-label^="Edge from "]').forEach((edgeEl) => {
+        const raw = edgeEl.getAttribute('aria-label') ?? '';
+        const match = /^Edge from (.+) to (.+)$/.exec(raw);
+        if (!match) return;
+        const [, srcId, tgtId] = match;
+        const st = usePlannerStore.getState();
+        const pool = st.viewMode === 'water' ? st.waterNodes : st.nodes;
+        const resolveName = (nodeId: string) => {
+          const found = pool.find((n) => n.id === nodeId);
+          const custom = typeof found?.data?.label === 'string' ? found.data.label.trim() : '';
+          return custom || (NODE_TYPE_LABELS_DE[found?.type ?? ''] ?? 'Bauteil');
+        };
+        const prefix = st.viewMode === 'water' ? 'Wasserleitung' : 'Leitung';
+        edgeEl.setAttribute('aria-label', `${prefix} von ${resolveName(srcId!)} nach ${resolveName(tgtId!)}`);
+      });
     };
     enhance();
     // Der Observer befeuert enhance() während Node-Drags pro Frame mit allen
@@ -343,6 +362,10 @@ export function FlowCanvas() {
     '--planner-viewport-zoom': viewportZoom,
   };
   const cableRoutes = useCableRoutes();
+  const cableRoutesRef = useRef(cableRoutes);
+  useEffect(() => {
+    cableRoutesRef.current = cableRoutes;
+  }, [cableRoutes]);
   const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
   const previousViewMode = useRef<'electric' | 'water' | null>(null);
   // Zeigerklasse statt Fensterbreite: ein iPad quer ist 1024 px breit und
@@ -618,9 +641,27 @@ export function FlowCanvas() {
       });
       const initialPosition = { x: center.x - 96, y: center.y - 60 };
       const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
+      const routedSegments: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+      if (state.viewMode === 'electric' && cableRoutesRef.current) {
+        for (const route of cableRoutesRef.current.values()) {
+          const pts = route.waypoints;
+          if (!pts || pts.length < 2) continue;
+          for (let i = 0; i < pts.length - 1; i += 1) {
+            const a = pts[i]!;
+            const b = pts[i + 1]!;
+            routedSegments.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+          }
+        }
+      }
       const position = findNearestFreePosition(
         { id: 'new-component', type, data: {}, position: initialPosition },
-        domainNodes
+        domainNodes,
+        PLANNER_SNAP_GRID,
+        128,
+        {
+          padding: PALETTE_PLACEMENT_PADDING,
+          routedSegments,
+        }
       );
       state.addNode(type, label, position, watts);
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
@@ -913,7 +954,8 @@ export function FlowCanvas() {
       if (isPresentationOnlyNode(node)) return;
       const domainNodes =
         viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
-      setCollidingNodeId(collidingNodeIds(node, domainNodes).length > 0 ? node.id : null);
+      const nextColliding = collidingNodeIds(node, domainNodes).length > 0 ? node.id : null;
+      setCollidingNodeId((prev) => (prev === nextColliding ? prev : nextColliding));
     },
     [viewMode]
   );
@@ -1073,11 +1115,10 @@ export function FlowCanvas() {
             nodesFocusable
             edgesFocusable
             translateExtent={translateExtent}
-            // Nur sichtbare Elemente rendern (PERF-N3): Bei großen Plänen (100+
-            // Knoten) hält React Flow sonst alle Nodes/Kanten im DOM, obwohl nur
-            // ein Ausschnitt sichtbar ist. Das beschleunigt Rendering UND Dragging
-            // (während eines Drags re-routen nur noch die sichtbaren Kanten).
-            onlyRenderVisibleElements={rawNodes.length > 50}
+            // Nur sichtbare Elemente rendern (PERF-N3 / M12): Bei großen Plänen
+            // (> 35 Knoten, z. B. 43-Knoten-Stresstest) hält React Flow sonst alle
+            // Nodes/Kanten im DOM. Standard-Vorlagen (11–18 Knoten) bleiben voll gemountet.
+            onlyRenderVisibleElements={rawNodes.length > 35}
             /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
                  planner/utils/flowInteraction.ts --- */
             panOnDrag={interaction.panOnDrag}
@@ -1146,13 +1187,13 @@ export function FlowCanvas() {
               Kachel — sie wird nur mit Inhalt gerendert. */}
             <Controls
               showInteractive={false}
-              className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
+              className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-4"
             />
             <TouchZoomFix />
             {rawNodes.length > 0 && (
               <MiniMap
                 position="bottom-left"
-                className={`planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block ${minimapOpen ? 'planner-minimap--open' : ''}`}
+                className={`planner-minimap !bottom-32 !left-16 overflow-hidden rounded border border-border lg:!bottom-4 ${minimapOpen ? 'planner-minimap--open block' : 'hidden lg:block'}`}
                 ariaLabel="Miniaturübersicht des Plans"
                 nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
                 maskColor={minimapColors.mask}
@@ -1243,7 +1284,7 @@ export function FlowCanvas() {
                     type="button"
                     onClick={() => setSolarNoticeDismissed(true)}
                     aria-label="Hinweis schließen"
-                    className="-mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded text-ink-soft hover:bg-surface-hover hover:text-ink"
+                    className="-mt-1 -mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded text-ink-soft hover:bg-surface-hover hover:text-ink"
                   >
                     <span aria-hidden="true">×</span>
                   </button>

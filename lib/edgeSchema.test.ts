@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EDGE_DATA_SCHEMA, sanitizeEdgeDataBySchema } from './edgeSchema';
+import { describeEdgeFieldDe, EDGE_DATA_SCHEMA, sanitizeEdgeDataBySchema } from './edgeSchema';
 
 /**
  * Vertragstest für das deklarative Kanten-Schema (AUDIT DOM-004).
@@ -110,5 +110,7 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
       fuseOffset: 250,
     });
     expect(bad.removedFields.sort()).toEqual(['crossSection', 'fuseOffset', 'fuseSize', 'length']);
+    expect(describeEdgeFieldDe('crossSection')).toBe('Querschnitt (mm²)');
+    expect(describeEdgeFieldDe('customField')).toBe('customField');
   });
 });

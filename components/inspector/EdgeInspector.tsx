@@ -5,7 +5,7 @@ import { type CableEdgeData } from '../edges/CableEdge';
 import { useCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
-import { FUSE_MAP } from '../../lib/electrical';
+import { FUSE_MAP, VDE_SIZES } from '../../lib/electrical';
 import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
 import { edgeIntentOf } from '../../lib/electricalGraph/intent';
 import {
@@ -19,6 +19,7 @@ import {
 export interface EdgeInspectorProps {
   edge: Edge<CableEdgeData>;
   onChangeLength: (id: string, length: number) => void;
+  onChangeCrossSection?: (id: string, crossSection: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
   /** AUDIT ELE-004: Position der Sicherung ab Batteriepol (m). */
   onChangeFuseOffset?: (id: string, fuseOffset: number) => void;
@@ -58,6 +59,7 @@ const INTENT_CHOICES: { value: 'auto' | 'user' | 'locked'; label: string; hint: 
 export function EdgeInspector({
   edge,
   onChangeLength,
+  onChangeCrossSection,
   onChangeFuseSize,
   onChangeFuseOffset,
   onChangeFuseType,
@@ -159,6 +161,40 @@ export function EdgeInspector({
               </p>
             </fieldset>
           )}
+          {onChangeCrossSection && (
+            <div className="flex flex-col">
+              <label
+                className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                htmlFor="cross-section-select"
+              >
+                Querschnitt (mm²)
+              </label>
+              <select
+                id="cross-section-select"
+                value={typeof storedCs === 'number' && Number.isFinite(storedCs) ? String(storedCs) : '2.5'}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next) && next > 0) {
+                    onChangeCrossSection(edge.id, next);
+                  }
+                }}
+                className="min-h-11 rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+              >
+                {typeof storedCs === 'number' &&
+                  Number.isFinite(storedCs) &&
+                  !VDE_SIZES.includes(storedCs) && (
+                    <option value={String(storedCs)}>
+                      {String(storedCs).replace('.', ',')} mm² (benutzerdefiniert)
+                    </option>
+                  )}
+                {VDE_SIZES.map((size) => (
+                  <option key={size} value={String(size)}>
+                    {String(size).replace('.', ',')} mm²
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col">
             <label
               className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
@@ -169,10 +205,11 @@ export function EdgeInspector({
             <ValidatingInput
               id="length-input"
               min="0.1"
+              max="100"
               step="0.1"
               isFloat={true}
               value={edge.data?.length ?? lengthEstimateM ?? 3}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxCableLengthM]}
               onValidChange={(val) => onChangeLength(edge.id, val)}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -205,8 +242,9 @@ export function EdgeInspector({
                 isFloat
                 id="fuse-input"
                 min="0"
+                max="1000"
                 value={edge.data?.fuseSize ?? 0}
-                rules={[COMMON_RULES.positive]}
+                rules={[COMMON_RULES.positive, COMMON_RULES.maxFuseRating]}
                 onValidChange={(val) => onChangeFuseSize(edge.id, val)}
                 className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               />
@@ -231,11 +269,11 @@ export function EdgeInspector({
               <ValidatingInput
                 id="fuse-offset-input"
                 min="0"
-                max="1"
+                max="10"
                 step="0.05"
                 isFloat={true}
                 value={edge.data?.fuseOffset ?? 0}
-                rules={[COMMON_RULES.positive]}
+                rules={[COMMON_RULES.positive, COMMON_RULES.maxFuseOffsetM]}
                 onValidChange={(val) => onChangeFuseOffset(edge.id, val)}
                 className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               />
@@ -304,8 +342,9 @@ export function EdgeInspector({
                     isFloat
                     id="ac-fuse-input"
                     min="1"
+                    max="125"
                     value={edge.data?.fuseSize ?? 0}
-                    rules={[COMMON_RULES.positive]}
+                    rules={[COMMON_RULES.positive, COMMON_RULES.maxShoreCurrent]}
                     onValidChange={(val) => onChangeFuseSize(edge.id, val)}
                     className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                   />

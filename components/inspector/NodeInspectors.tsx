@@ -6,6 +6,15 @@ import { InspectorSection } from './InspectorSection';
 import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
 import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
 import {
+  DERATE_FACTOR,
+  FUSE_MAP,
+  MAX_MODELED_AMPACITY_A,
+  MAX_MODELED_CROSS_SECTION_MM2,
+  calculateCrossSection,
+  selectFuseSize,
+} from '../../lib/electrical';
+import { syncDefaultNodeLabel } from '../../lib/nodeSchema';
+import {
   getSystemVoltage,
   isStarterBatteryLabel,
   VDE_DISCHARGE_VOLTAGE_FACTOR,
@@ -67,8 +76,9 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
               isFloat
               id={`${node.id}-rating`}
               min="1"
+              max="2000"
               value={busbar.data?.rating || 250}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxAmps]}
               onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
               className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -109,10 +119,20 @@ export function BatteryInspector({
             <ValidatingInput
               isFloat
               id={`${node.id}-capacity`}
-              min="0"
+              min="1"
+              max="10000"
               value={node.data?.capacity || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
-              onValidChange={(val) => onUpdateNodeData?.(node.id, { capacity: val })}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxCapacity]}
+              onValidChange={(val) => {
+                const patch: NodeDataPatch = { capacity: val };
+                const synced = syncDefaultNodeLabel(
+                  'battery',
+                  (node.data ?? {}) as Record<string, unknown>,
+                  patch as Record<string, unknown>
+                );
+                if (synced !== undefined) patch.label = synced;
+                onUpdateNodeData?.(node.id, patch);
+              }}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
@@ -126,7 +146,16 @@ export function BatteryInspector({
             <select
               id={`${node.id}-chemistry`}
               value={node.data?.chemistry || 'LiFePO4'}
-              onChange={(e) => onUpdateNodeData?.(node.id, { chemistry: e.target.value })}
+              onChange={(e) => {
+                const patch: NodeDataPatch = { chemistry: e.target.value };
+                const synced = syncDefaultNodeLabel(
+                  'battery',
+                  (node.data ?? {}) as Record<string, unknown>,
+                  patch as Record<string, unknown>
+                );
+                if (synced !== undefined) patch.label = synced;
+                onUpdateNodeData?.(node.id, patch);
+              }}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             >
               <option value="LiFePO4">LiFePO4</option>
@@ -172,7 +201,8 @@ export function BatteryInspector({
             </label>
             <ValidatingInput
               id={`${node.id}-nominalVoltage`}
-              min="0"
+              min="6"
+              max="60"
               step="0.1"
               isFloat={true}
               // Nachtest: `|| 0` zeigte „0 V“, obwohl die Engine ohne Angabe
@@ -181,7 +211,7 @@ export function BatteryInspector({
               allowEmpty
               value={node.data?.nominalVoltage ?? ''}
               placeholder={node.data?.chemistry === 'LiFePO4' ? '12,8 (angenommen)' : '12,0 (angenommen)'}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.nominalVoltage]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { nominalVoltage: val })}
               onEmptyChange={() => onUpdateNodeData?.(node.id, { nominalVoltage: undefined })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
@@ -206,8 +236,9 @@ export function BatteryInspector({
               isFloat
               id={`${node.id}-bmsContinuousDischarge`}
               min="0"
+              max="2000"
               value={node.data?.bmsContinuousDischarge || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxAmps]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousDischarge: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -223,8 +254,9 @@ export function BatteryInspector({
               isFloat
               id={`${node.id}-bmsPeakDischarge`}
               min="0"
+              max="2000"
               value={node.data?.bmsPeakDischarge || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxAmps]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsPeakDischarge: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -239,8 +271,8 @@ export function BatteryInspector({
               <div className="flex flex-col gap-1 text-sm text-ink-soft">
                 {chargingTimeStr && (
                   <div className="flex justify-between">
-                    <span>Ladezeit:</span>
-                    <span className="font-semibold">{chargingTimeStr}</span>
+                    <span>Ladezeit (Nennleistung):</span>
+                    <span className="font-semibold">{chargingTimeStr.replace('.', ',')}</span>
                   </div>
                 )}
                 {calculatedSolarWatts !== undefined && (
@@ -264,16 +296,17 @@ export function BatteryInspector({
             <ValidatingInput
               id={`${node.id}-internalResistance`}
               min="0"
+              max="500"
               step="0.1"
               isFloat={true}
               value={node.data?.internalResistance || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxInternalResistance]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { internalResistance: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Datenblattwert (Block inkl. BMS). Bleibt das Feld leer, schätzt der Planer aus Chemie und
-              Kapazität (≈ 3 mΩ je 100 Ah bei LiFePO4) — Schätzung, kein Grenzfalldatenblatt.
+              Datenblattwert (Block inkl. BMS). Bleibt das Feld leer, schätzt der Planer aus Chemie, Kapazität
+              und Blockspannung (≈ 3 mΩ je 100 Ah bei 12,8-V-LiFePO4) — Schätzung, kein Grenzfalldatenblatt.
             </p>
           </div>
           {/* DOM-002-Nachpflege (Peukert): lastabhängige Kapazität der
@@ -288,10 +321,11 @@ export function BatteryInspector({
             <ValidatingInput
               id={`${node.id}-peukertExponent`}
               min="1"
+              max="2"
               step="0.01"
               isFloat={true}
               value={node.data?.peukertExponent || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.peukertRange]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { peukertExponent: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -312,8 +346,9 @@ export function BatteryInspector({
               isFloat
               id={`${node.id}-bmsContinuousCharge`}
               min="0"
+              max="2000"
               value={node.data?.bmsContinuousCharge || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxAmps]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousCharge: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -419,10 +454,11 @@ export function ChargerInspector({
               <ValidatingInput
                 id={`${node.id}-maxPvVoltage`}
                 min="0"
+                max="250"
                 step="0.1"
                 isFloat={true}
                 value={node.data?.maxPvVoltage || 0}
-                rules={[COMMON_RULES.positive]}
+                rules={[COMMON_RULES.positive, COMMON_RULES.maxPvVoltage]}
                 onValidChange={(val) => onUpdateNodeData?.(node.id, { maxPvVoltage: val })}
                 className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
               />
@@ -442,10 +478,11 @@ export function ChargerInspector({
             <ValidatingInput
               id={`${node.id}-amps`}
               min="0"
+              max="500"
               step="0.1"
               isFloat
               value={node.data?.amps || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxChargerCurrent]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -499,8 +536,9 @@ export function FuseInspector({
             isFloat
             id={`${node.id}-rating`}
             min="0"
+            max="1000"
             value={node.data?.rating || 0}
-            rules={[COMMON_RULES.strictlyPositive]}
+            rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxFuseRating]}
             onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
             className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
           />
@@ -551,9 +589,10 @@ export function ShorePowerInspector({
             <ValidatingInput
               id={`${node.id}-rating`}
               type="number"
+              max="125"
               value={node.data?.rating ?? ''}
               allowEmpty
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxShoreCurrent]}
               onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
               onEmptyChange={() => onUpdateNodeData?.(node.id, { rating: undefined })}
               className="min-h-11 rounded border border-border px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
@@ -574,10 +613,11 @@ export function ShorePowerInspector({
               isFloat
               id={`${node.id}-prospectiveIkA`}
               min="1"
+              max="50000"
               step="1"
               allowEmpty
               value={node.data?.prospectiveIkA ?? ''}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxProspectiveIk]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { prospectiveIkA: val })}
               onEmptyChange={() => onUpdateNodeData?.(node.id, { prospectiveIkA: undefined })}
               className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
@@ -600,10 +640,16 @@ export function InverterInspector({
   node,
   onUpdateNodeData,
   nodes,
+  edges,
+  onChangeCrossSection,
+  onChangeFuseSize,
 }: {
   node: InspectorNode<'inverter'>;
   onUpdateNodeData?: InspectorUpdate;
   nodes?: PlannerFlowNode[];
+  edges?: Edge[];
+  onChangeCrossSection?: (id: string, crossSection: number) => void;
+  onChangeFuseSize?: (id: string, fuseSize: number) => void;
 }) {
   const consumerNodes = React.useMemo(() => {
     return nodes?.filter((n) => n.type === 'consumer230v') || [];
@@ -613,17 +659,48 @@ export function InverterInspector({
   const currentPowerW = Number(node.data?.continuousPower ?? node.data?.watts ?? 0) || 0;
   const floorVoltage = Math.max(1, sysVoltage * VDE_DISCHARGE_VOLTAGE_FACTOR);
   const dcInputAmps = currentPowerW > 0 ? currentPowerW / (floorVoltage * VDE_INVERTER_EFFICIENCY) : 0;
+  const maxModeledDcCurrentA = MAX_MODELED_AMPACITY_A * DERATE_FACTOR;
+  const maxModeledFuseA = FUSE_MAP[MAX_MODELED_CROSS_SECTION_MM2] ?? 160;
 
-  // M7: Automatische Leistungsbezeichnung („500W Inverter“ → „2000W Inverter“)
+  // H2: Prüfen, ob angeschlossene DC-Zuleitungen für die aktuelle Dauerleistung
+  // unterdimensioniert sind, und Direkt-Anpassung auf Knopfdruck anbieten.
+  const undersizedDcEdges = React.useMemo(() => {
+    if (!edges || dcInputAmps <= 0) return [];
+    return edges
+      .filter((e) => {
+        if (e.source !== node.id && e.target !== node.id) return false;
+        const data = e.data as CableEdgeData | undefined;
+        return data?.edgeDomain !== 'AC_230V';
+      })
+      .flatMap((e) => {
+        const data = e.data as CableEdgeData | undefined;
+        const lengthM = typeof data?.length === 'number' && data.length > 0 ? data.length : 1.5;
+        const recCs = calculateCrossSection(dcInputAmps, lengthM, undefined, 'DC_12V');
+        const curCs = typeof data?.crossSection === 'number' ? data.crossSection : 0;
+        const hasFuse = typeof data?.fuseSize === 'number' && data.fuseSize > 0;
+        const recFuse = hasFuse ? selectFuseSize(dcInputAmps, recCs) : undefined;
+        const fuseNeedsUpdate =
+          hasFuse &&
+          recFuse !== undefined &&
+          (data.fuseSize! < dcInputAmps || data.fuseSize! > (FUSE_MAP[recCs] ?? Infinity));
+        if (curCs < recCs - 1e-9 || fuseNeedsUpdate) {
+          return [{ id: e.id, recCs: Math.max(curCs, recCs), recFuse }];
+        }
+        return [];
+      });
+  }, [edges, node.id, dcInputAmps]);
+
+  // M7 + N13: Automatische Leistungsbezeichnung („500W Inverter“ → „2000W Inverter“)
   // mitschreiben, ohne individuelle Nutzernamen („MultiPlus Sitzbank“) zu überschreiben.
   const handlePowerChange = React.useCallback(
     (val: number) => {
       const patch: NodeDataPatch = { continuousPower: val, watts: val };
-      const currentLabel = typeof node.data?.label === 'string' ? node.data.label.trim() : '';
-      const autoLabelMatch = currentLabel.match(/^(\d+(?:[.,]\d+)?)\s*W\s+(Inverter|Wechselrichter)$/i);
-      if (autoLabelMatch?.[2]) {
-        patch.label = `${Math.round(val)}W ${autoLabelMatch[2]}`;
-      }
+      const synced = syncDefaultNodeLabel(
+        'inverter',
+        (node.data ?? {}) as Record<string, unknown>,
+        patch as Record<string, unknown>
+      );
+      if (synced !== undefined) patch.label = synced;
       onUpdateNodeData?.(node.id, patch);
     },
     [node.data, node.id, onUpdateNodeData]
@@ -655,13 +732,34 @@ export function InverterInspector({
                 {sysVoltage.toFixed(1).replace(/\.0$/, '').replace('.', ',')} V Systemspannung)
               </span>
             )}
-            {dcInputAmps > 100 && (
+            {onChangeCrossSection && undersizedDcEdges.length > 0 && dcInputAmps <= maxModeledDcCurrentA && (
+              <button
+                type="button"
+                onClick={() => {
+                  for (const item of undersizedDcEdges) {
+                    onChangeCrossSection(item.id, item.recCs);
+                    if (item.recFuse !== undefined && onChangeFuseSize) {
+                      onChangeFuseSize(item.id, item.recFuse);
+                    }
+                  }
+                }}
+                className="mt-2 min-h-11 rounded border border-border bg-accent px-3 py-2 text-left text-xs font-semibold text-foreground transition-colors hover:bg-accent/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                DC-Zuleitungen passend anheben ({undersizedDcEdges[0]?.recCs} mm²
+                {undersizedDcEdges[0]?.recFuse ? ` / ${undersizedDcEdges[0].recFuse} A` : ''})
+              </button>
+            )}
+            {dcInputAmps > maxModeledDcCurrentA && (
               <div className="warn-card warn-card-warning mt-2 p-2 text-xs leading-relaxed">
-                <strong>Modellgrenze Einzelader (max. 70 mm² / 100 A):</strong> Bei {dcInputAmps.toFixed(0)} A
-                DC-Strom reicht eine einzelne Leitung bis 70 mm² im Planermodell nicht aus. Lösung in der
-                Praxis: Aufbaubank auf <strong>24 V / 48 V</strong> auslegen (halbiert bzw. viertelt den
-                Strom), nach Herstellervorgabe <strong>parallele Zuleitungen</strong> gleicher Länge führen
-                oder Dauerleistung reduzieren.
+                <strong>
+                  Modellgrenze Einzelader (max. {MAX_MODELED_CROSS_SECTION_MM2} mm² /{' '}
+                  {maxModeledDcCurrentA.toFixed(1).replace('.', ',')} A · Sicherung max. {maxModeledFuseA} A):
+                </strong>{' '}
+                Bei {dcInputAmps.toFixed(0)} A DC-Strom reicht eine einzelne Leitung bis{' '}
+                {MAX_MODELED_CROSS_SECTION_MM2} mm² im Planermodell nicht aus. Lösung in der Praxis:
+                Aufbaubank auf <strong>24 V / 48 V</strong> auslegen (halbiert bzw. viertelt den Strom), nach
+                Herstellervorgabe <strong>parallele Zuleitungen</strong> gleicher Länge führen oder
+                Dauerleistung reduzieren.
               </div>
             )}
           </div>
@@ -676,9 +774,28 @@ export function InverterInspector({
               isFloat
               id={`${node.id}-idleWatts`}
               min="0"
+              max="500"
               value={node.data?.idleWatts || 0}
-              rules={[COMMON_RULES.positive, COMMON_RULES.maxPower]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxIdleWatts]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { idleWatts: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+              htmlFor={`${node.id}-hours`}
+            >
+              Einschaltdauer / Standby (h/Tag)
+            </label>
+            <ValidatingInput
+              isFloat
+              id={`${node.id}-hours`}
+              min="0"
+              max="24"
+              value={node.data?.hours ?? 24}
+              rules={[COMMON_RULES.hours]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
@@ -843,9 +960,19 @@ export function SolarInspector({
               isFloat
               id={`${node.id}-wattsSolar`}
               min="0"
+              max="50000"
               value={node.data?.watts || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
-              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
+              onValidChange={(val) => {
+                const patch: NodeDataPatch = { watts: val };
+                const synced = syncDefaultNodeLabel(
+                  'solar',
+                  (node.data ?? {}) as Record<string, unknown>,
+                  patch as Record<string, unknown>
+                );
+                if (synced !== undefined) patch.label = synced;
+                onUpdateNodeData?.(node.id, patch);
+              }}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
@@ -859,10 +986,11 @@ export function SolarInspector({
             <ValidatingInput
               id={`${node.id}-voltage`}
               min="0"
+              max="250"
               step="0.1"
               isFloat={true}
               value={node.data?.voltage || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPvVoltage]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { voltage: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -877,10 +1005,11 @@ export function SolarInspector({
             <ValidatingInput
               id={`${node.id}-ampsSolar`}
               min="0"
+              max="200"
               step="0.1"
               isFloat={true}
               value={node.data?.amps || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPvCurrent]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -901,10 +1030,11 @@ export function SolarInspector({
             <ValidatingInput
               id={`${node.id}-isc`}
               min="0"
+              max="200"
               step="0.1"
               isFloat={true}
               value={node.data?.isc || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxPvCurrent]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { isc: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -923,10 +1053,11 @@ export function SolarInspector({
             <ValidatingInput
               id={`${node.id}-voc`}
               min="0"
+              max="250"
               step="0.1"
               isFloat={true}
               value={node.data?.voc || 0}
-              rules={[COMMON_RULES.positive]}
+              rules={[COMMON_RULES.positive, COMMON_RULES.maxPvVoltage]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { voc: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -984,8 +1115,9 @@ export function RoofWindowInspector({
             <ValidatingInput
               id={`${node.id}-width`}
               min="1"
+              max="1000"
               value={node.data?.width || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxRoofDimensionCm]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -1000,8 +1132,9 @@ export function RoofWindowInspector({
             <ValidatingInput
               id={`${node.id}-height`}
               min="1"
+              max="1000"
               value={node.data?.height || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxRoofDimensionCm]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -1033,8 +1166,9 @@ export function RoofSolarInspector({
             <ValidatingInput
               id={`${node.id}-width2`}
               min="1"
+              max="1000"
               value={node.data?.width || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxRoofDimensionCm]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -1049,8 +1183,9 @@ export function RoofSolarInspector({
             <ValidatingInput
               id={`${node.id}-height2`}
               min="1"
+              max="1000"
               value={node.data?.height || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxRoofDimensionCm]}
               onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
@@ -1070,9 +1205,19 @@ export function RoofSolarInspector({
               isFloat
               id={`${node.id}-wattsRoof`}
               min="0"
+              max="50000"
               value={node.data?.watts || 0}
-              rules={[COMMON_RULES.strictlyPositive]}
-              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
+              onValidChange={(val) => {
+                const patch: NodeDataPatch = { watts: val };
+                const synced = syncDefaultNodeLabel(
+                  'roofSolar',
+                  (node.data ?? {}) as Record<string, unknown>,
+                  patch as Record<string, unknown>
+                );
+                if (synced !== undefined) patch.label = synced;
+                onUpdateNodeData?.(node.id, patch);
+              }}
               className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>

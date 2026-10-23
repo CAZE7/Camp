@@ -62,7 +62,14 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       <div className="measure flex flex-col gap-1 text-xs text-muted-foreground">
         <div>12 V Eingang / 230 V Ausgang</div>
         <div className="measure text-xs text-muted-foreground">230-V-Eingang oben</div>
-        <div>Effizienz: 85%</div>
+        <div>
+          Effizienz:{' '}
+          {(() => {
+            const rawEff = Number(data.efficiency);
+            if (!Number.isFinite(rawEff) || rawEff <= 0) return '85%';
+            return `${Math.round(rawEff <= 1 ? rawEff * 100 : rawEff)}%`;
+          })()}
+        </div>
         {overloadStats.continuousPower > 0 && <div>Leistung: {overloadStats.continuousPower} W</div>}
       </div>
 

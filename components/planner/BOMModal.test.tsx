@@ -210,4 +210,41 @@ describe('BOMModal — Dokumentstatus und CSV-Freigabe', () => {
     expect(status).toHaveTextContent(/Dokumentstatus/);
     expect(screen.getByTestId('bom-export-csv')).not.toBeDisabled();
   });
+
+  it('N14 + N17: kopiert deutsche Text-Stückliste statt JSON und führt Starter-/Aufbaubatterie getrennt', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    act(() => {
+      usePlannerStore.getState().setNodes([
+        {
+          id: 'starter-battery-1',
+          type: 'battery',
+          position: { x: 0, y: 0 },
+          data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
+        },
+        {
+          id: 'battery-1',
+          type: 'battery',
+          position: { x: 200, y: 0 },
+          data: { label: 'Aufbaubatterie', role: 'house', capacity: 100, chemistry: 'LiFePO4' },
+        },
+      ]);
+      usePlannerStore.getState().setEdges([]);
+    });
+    render(<BOMModal />);
+    openBom();
+
+    expect(await screen.findByText('Starterbatterie (90 Ah AGM)')).toBeInTheDocument();
+    expect(screen.getByText('Aufbaubatterie (100 Ah LiFePO4)')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Stückliste kopieren/i }));
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copied = writeText.mock.calls[0]?.[0] as string;
+    expect(copied).toContain('1 × Starterbatterie (90 Ah AGM)');
+    expect(copied).toContain('1 × Aufbaubatterie (100 Ah LiFePO4)');
+    expect(copied).not.toContain('```json');
+  });
 });

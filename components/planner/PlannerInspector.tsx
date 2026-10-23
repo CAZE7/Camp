@@ -18,6 +18,7 @@ export function PlannerInspector() {
     selectedNodes,
     selectedEdges,
     handleChangeLength,
+    handleChangeCrossSection,
     handleChangeFuseSize,
     handleChangeFuseOffset,
     handleChangeFuseType,
@@ -38,6 +39,7 @@ export function PlannerInspector() {
       selectedNodes: state.selectedNodes,
       selectedEdges: state.selectedEdges,
       handleChangeLength: state.handleChangeLength,
+      handleChangeCrossSection: state.handleChangeCrossSection,
       handleChangeFuseSize: state.handleChangeFuseSize,
       handleChangeFuseOffset: state.handleChangeFuseOffset,
       handleChangeFuseType: state.handleChangeFuseType,
@@ -107,6 +109,7 @@ export function PlannerInspector() {
             selectedEdge={selectedEdge}
             selectedNode={selectedNode}
             onChangeLength={handleChangeLength}
+            onChangeCrossSection={handleChangeCrossSection}
             onChangeFuseSize={handleChangeFuseSize}
             onChangeFuseOffset={handleChangeFuseOffset}
             onChangeFuseType={handleChangeFuseType}

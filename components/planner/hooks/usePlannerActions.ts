@@ -43,7 +43,12 @@ import { requestBomModalOpen } from '../utils/bomModalEvents';
 import { requestConfirm } from '../../ui/ConfirmDialog';
 import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
-import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
+import {
+  formatImportWarningsForUser,
+  parsePlannerProject,
+  projectFileName,
+  serializePlannerProject,
+} from '../../../store/projectFile';
 import { buildShareUrl } from '../../../store/sharePlan';
 import { isStarterPlan, PLANNER_TEMPLATES } from '../templates';
 import type { ValidationWarning } from './useLiveValidation';
@@ -449,9 +454,11 @@ export function usePlannerActions({
     if (!picked) return;
     const result = parsePlannerProject(picked.text);
     if (!result.ok) {
+      const joinedErrors = result.errors.join(' ');
+      const suffix = /bleibt unverändert/i.test(joinedErrors) ? '' : ' Der aktuelle Plan bleibt unverändert.';
       onFeedback({
         type: 'error',
-        message: `Projektdatei „${picked.name}“ nicht geöffnet: ${result.errors.join(' ')} Der aktuelle Plan bleibt unverändert.`,
+        message: `Projektdatei „${picked.name}“ nicht geöffnet: ${joinedErrors}${suffix}`,
       });
       return;
     }
@@ -480,12 +487,13 @@ export function usePlannerActions({
       });
       return;
     }
+    const cleanWarnings = formatImportWarningsForUser(result.warnings);
     const warningNote =
-      result.warnings.length > 0
-        ? ` ${result.warnings.length} Hinweis(e) zur Bereinigung: ${result.warnings.slice(0, 3).join(' ')}`
+      cleanWarnings.length > 0
+        ? ` ${cleanWarnings.length === 1 ? '1 Hinweis zur Bereinigung' : `${cleanWarnings.length} Hinweise zur Bereinigung`}: ${cleanWarnings.slice(0, 3).join(' ')}`
         : '';
     onFeedback({
-      type: result.warnings.length > 0 ? 'info' : 'success',
+      type: cleanWarnings.length > 0 ? 'info' : 'success',
       message: `Projekt „${picked.name}“ geöffnet.${warningNote}`,
     });
   }, [onFeedback]);
