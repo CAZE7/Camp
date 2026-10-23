@@ -4664,7 +4664,10 @@ html.planner-root-active body {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 40;
+  /* Unter dem Blatt (40), über Leisten und Zeichenfläche: Der Schleier
+     schluckt Klicks auf die Fläche, darf aber nie das Blatt selbst oder
+     einen Dialog überdecken. */
+  z-index: var(--z-popover);
   border: 0;
   background: transparent;
   padding: 0;
@@ -4702,7 +4705,7 @@ html.planner-root-active body {
 
 .planner-minimap.planner-minimap--open {
   display: block !important;
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 /* Kurzes Querformat: Prüfbericht und Prüfliste teilen sich die Höhe,
