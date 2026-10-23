@@ -3872,7 +3872,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: 6.5rem !important;
-    z-index: var(--z-toast) !important;
+    z-index: var(--z-sheet) !important;
   }
 
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
@@ -3954,7 +3954,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: min(28dvh, 11rem) !important;
-    z-index: var(--z-toast) !important;
+    z-index: var(--z-sheet) !important;
   }
 
   .planner-shell .planner-verification-panel {
@@ -4051,7 +4051,7 @@ html.planner-root-active body {
     max-width: none !important;
     max-height: none !important;
     height: auto !important;
-    z-index: var(--z-toast) !important;
+    z-index: var(--z-sheet) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
@@ -4066,7 +4066,7 @@ html.planner-root-active body {
     width: auto !important;
     max-width: none !important;
     height: auto !important;
-    z-index: var(--z-toast) !important;
+    z-index: var(--z-sheet) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: stretch !important;
