@@ -235,7 +235,7 @@ export function BatteryInspector({
         <div className="flex flex-col gap-3">
           {(chargingTimeStr || calculatedSolarWatts !== undefined) && (
             <div className="warn-card warn-card-info mb-4 flex-col gap-2 p-3">
-              <h4 className="label-eyebrow text-warn-info">Lade-Informationen</h4>
+              <h4 className="kicker text-warn-info">Lade-Informationen</h4>
               <div className="flex flex-col gap-1 text-sm text-ink-soft">
                 {chargingTimeStr && (
                   <div className="flex justify-between">

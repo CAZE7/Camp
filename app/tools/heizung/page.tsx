@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -249,7 +248,7 @@ function VehicleConfiguration({
       id="section-fahrzeug"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Home className="h-4 w-4" aria-hidden="true" />
           Fahrzeug-Konfiguration
         </CardTitle>
@@ -299,7 +298,7 @@ function HeaterSelection({
       id="section-heizgeraet"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Flame className="h-4 w-4" aria-hidden="true" />
           Heizgeräte-Katalog
         </CardTitle>
@@ -381,7 +380,7 @@ function TemperatureInputs({
     <div className="grid scroll-mt-24 grid-cols-1 gap-6 md:grid-cols-2" id="section-temperatur">
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+          <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
             <Thermometer className="h-4 w-4 text-copper" aria-hidden="true" />
             Wunsch-Temperatur
           </CardTitle>
@@ -426,7 +425,7 @@ function TemperatureInputs({
 
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+          <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
             <Snowflake className="h-4 w-4 text-warn-info" aria-hidden="true" />
             Außen-Temperatur
           </CardTitle>
@@ -485,7 +484,7 @@ function InsulationInputs({
       id="section-daemmung"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Ruler className="h-4 w-4" aria-hidden="true" />
           Isolierung (Armaflex-Stärke)
         </CardTitle>
@@ -544,7 +543,7 @@ function AdvancedParameters({
       id="section-erweitert"
     >
       <CardHeader>
-        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
+        <CardTitle className="kicker flex items-center gap-2 text-ink-soft">
           <Wind className="h-4 w-4" aria-hidden="true" />
           Erweiterte Parameter
         </CardTitle>
@@ -679,7 +678,7 @@ function Metric({
     <div className="flex flex-col items-start gap-1 border border-rule bg-bone p-3">
       <div className="flex items-center gap-2 text-copper">
         <span aria-hidden="true">{icon}</span>
-        <span className="label-eyebrow text-ink-soft">{label}</span>
+        <span className="kicker text-ink-soft">{label}</span>
         {hint}
       </div>
       <p className="measure text-xl font-semibold text-ink">
@@ -769,7 +768,7 @@ function ResultsView({
       id="section-ergebnis"
     >
       <CardHeader className="border-b border-rule bg-paper">
-        <CardTitle className="label-eyebrow text-ink-soft">Ergebnisse & Sicherheitsanalyse</CardTitle>
+        <CardTitle className="kicker text-ink-soft">Ergebnisse & Sicherheitsanalyse</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
         {error ? (
@@ -839,7 +838,7 @@ function ResultsView({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="flex flex-col items-start gap-1 border border-rule bg-paper p-3">
                 <div className="flex items-center gap-2">
-                  <span className="label-eyebrow text-ink-soft">Transmission</span>
+                  <span className="kicker text-ink-soft">Transmission</span>
                   <InfoHint title="Transmissionswärmeverlust">
                     Wärme, die durch Wände, Fenster und Dach verloren geht. Sinkt mit besserer Dämmung.
                   </InfoHint>
@@ -850,7 +849,7 @@ function ResultsView({
               </div>
               <div className="flex flex-col items-start gap-1 border border-rule bg-paper p-3">
                 <div className="flex items-center gap-2">
-                  <span className="label-eyebrow text-ink-soft">Lüftungsverlust</span>
+                  <span className="kicker text-ink-soft">Lüftungsverlust</span>
                   <InfoHint title="Lüftungswärmeverlust">
                     Wärme, die durch Frischluft-Zufuhr und Ritzen entweicht. Steigt mit mehr Fensterfläche.
                   </InfoHint>
@@ -863,7 +862,7 @@ function ResultsView({
 
             {/* Main Result */}
             <div className="border-2 border-oxide/30 bg-paper p-6">
-              <p className="label-eyebrow text-oxide">Benötigte Heizleistung (Q_total)</p>
+              <p className="kicker text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <p className="measure text-2xl font-semibold tracking-tight text-ink md:text-6xl">
                   {Q_total.toFixed(0)}
@@ -882,7 +881,7 @@ function ResultsView({
 
             {/* Sizing Reference */}
             <div className="border border-rule bg-paper p-4">
-              <p className="label-eyebrow text-ink-soft">Referenzwerte</p>
+              <p className="kicker text-ink-soft">Referenzwerte</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                 <li>
                   <strong className="text-ink">≤ 2 200 W:</strong> Ideal für kompakte 2 kW-Standheizungen.
@@ -1015,114 +1014,110 @@ export default function HeatingCalculatorPage() {
   }, [Q_total, Q_at_minus_10, error]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <SiteHeader />
-      <main id="main" className="flex-1 pb-16">
-        <div className="mx-auto w-full max-w-3xl px-5 py-10">
-          <Link
-            href="/"
-            className="mb-4 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
+    <PageShell variant="tool" mainClassName="pb-16">
+      <div className="mx-auto w-full max-w-3xl px-5 py-10">
+        <Link
+          href="/"
+          className="mb-4 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
+        >
+          ← Zurück zur Startseite
+        </Link>
+        {/* Header */}
+        <div>
+          <p className="kicker text-copper">Werkzeug</p>
+          <h1
+            className={cn(
+              'mt-2 font-display text-2xl font-semibold tracking-tight text-ink md:text-2xl',
+              outfit.className
+            )}
           >
-            ← Zurück zur Startseite
-          </Link>
-          {/* Header */}
-          <div>
-            <p className="label-eyebrow text-copper">Werkzeug</p>
-            <h1
-              className={cn(
-                'mt-2 font-display text-2xl font-semibold tracking-tight text-ink md:text-2xl',
-                outfit.className
-              )}
-            >
-              Heizlast-Rechner
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive
-              Empfehlung, welches Modell passt.
-            </p>
-          </div>
+            Heizlast-Rechner
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-ink-soft">
+            Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive
+            Empfehlung, welches Modell passt.
+          </p>
+        </div>
 
-          {/* Sticky TOC */}
-          <nav
-            aria-label="Abschnitte"
-            className="sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone p-2"
-          >
-            <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
-            <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />
-            <SectionAnchor
-              id="section-temperatur"
-              label="Temperatur"
-              icon={<Thermometer className="h-4 w-4" />}
-            />
-            <SectionAnchor id="section-daemmung" label="Dämmung" icon={<Ruler className="h-4 w-4" />} />
-            <SectionAnchor id="section-erweitert" label="Erweitert" icon={<Wind className="h-4 w-4" />} />
-            <SectionAnchor id="section-ergebnis" label="Ergebnis" icon={<Gauge className="h-4 w-4" />} />
-          </nav>
+        {/* Sticky TOC */}
+        <nav
+          aria-label="Abschnitte"
+          className="sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone p-2"
+        >
+          <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
+          <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />
+          <SectionAnchor
+            id="section-temperatur"
+            label="Temperatur"
+            icon={<Thermometer className="h-4 w-4" />}
+          />
+          <SectionAnchor id="section-daemmung" label="Dämmung" icon={<Ruler className="h-4 w-4" />} />
+          <SectionAnchor id="section-erweitert" label="Erweitert" icon={<Wind className="h-4 w-4" />} />
+          <SectionAnchor id="section-ergebnis" label="Ergebnis" icon={<Gauge className="h-4 w-4" />} />
+        </nav>
 
-          <div className="mt-8 space-y-6">
-            <VehicleConfiguration
-              selectedVehicleId={selectedVehicleId}
-              setSelectedVehicleId={setSelectedVehicleId}
-            />
+        <div className="mt-8 space-y-6">
+          <VehicleConfiguration
+            selectedVehicleId={selectedVehicleId}
+            setSelectedVehicleId={setSelectedVehicleId}
+          />
 
-            <HeaterSelection
-              selectedHeaterId={selectedHeaterId}
-              setSelectedHeaterId={setSelectedHeaterId}
-              recommendedHeaterId={recommendedHeater?.id ?? null}
-            />
+          <HeaterSelection
+            selectedHeaterId={selectedHeaterId}
+            setSelectedHeaterId={setSelectedHeaterId}
+            recommendedHeaterId={recommendedHeater?.id ?? null}
+          />
 
-            <TemperatureInputs
-              tempInside={tempInside}
-              setTempInside={setTempInside}
-              tempOutside={tempOutside}
-              setTempOutside={setTempOutside}
-            />
+          <TemperatureInputs
+            tempInside={tempInside}
+            setTempInside={setTempInside}
+            tempOutside={tempOutside}
+            setTempOutside={setTempOutside}
+          />
 
-            <InsulationInputs
-              insulationThickness={insulationThickness}
-              setInsulationThickness={setInsulationThickness}
-            />
+          <InsulationInputs
+            insulationThickness={insulationThickness}
+            setInsulationThickness={setInsulationThickness}
+          />
 
-            <AdvancedParameters
-              windowArea={windowArea}
-              setWindowArea={setWindowArea}
-              insulationCoverage={insulationCoverage}
-              setInsulationCoverage={setInsulationCoverage}
-              quickHeat={quickHeat}
-              setQuickHeat={setQuickHeat}
-              tempOutside={tempOutside}
-              tempInside={tempInside}
-            />
+          <AdvancedParameters
+            windowArea={windowArea}
+            setWindowArea={setWindowArea}
+            insulationCoverage={insulationCoverage}
+            setInsulationCoverage={setInsulationCoverage}
+            quickHeat={quickHeat}
+            setQuickHeat={setQuickHeat}
+            tempOutside={tempOutside}
+            tempInside={tempInside}
+          />
 
-            <ResultsView
-              area={area}
-              volume={volume}
-              airChangeRate={airChangeRate}
-              U_mix={U_mix}
-              Q_trans={Q_trans}
-              Q_luft={Q_luft}
-              Q_total={Q_total}
-              selectedHeater={selectedHeater}
-              validation={validation}
-              error={error}
-              recommendedName={recommendedHeater?.name ?? null}
-            />
+          <ResultsView
+            area={area}
+            volume={volume}
+            airChangeRate={airChangeRate}
+            U_mix={U_mix}
+            Q_trans={Q_trans}
+            Q_luft={Q_luft}
+            Q_total={Q_total}
+            selectedHeater={selectedHeater}
+            validation={validation}
+            error={error}
+            recommendedName={recommendedHeater?.name ?? null}
+          />
 
-            {/* Bridge zu weiteren Tools */}
-            <div className="warn-card warn-card-info">
-              <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-              <div className="text-sm">
-                Bereit für den nächsten Schritt?{' '}
-                <Link href="/planer" className="underline">
-                  Plane die Stromversorgung im Schaltplan
-                </Link>{' '}
-                — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.
-              </div>
+          {/* Bridge zu weiteren Tools */}
+          <div className="warn-card warn-card-info">
+            <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div className="text-sm">
+              Bereit für den nächsten Schritt?{' '}
+              <Link href="/planer" className="underline">
+                Plane die Stromversorgung im Schaltplan
+              </Link>{' '}
+              — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.
             </div>
           </div>
         </div>
-      </main>
-      <SiteFooter />
-    </div>
+      </div>
+    </PageShell>
   );
 }

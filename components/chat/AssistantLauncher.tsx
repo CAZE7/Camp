@@ -41,7 +41,7 @@ export default function AssistantLauncher() {
         disabled={loading}
         aria-label={loading ? 'Assistent wird geladen' : 'Chat öffnen'}
         aria-busy={loading}
-        className="assistant-launcher-button fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent disabled:cursor-wait disabled:opacity-70"
+        className="assistant-launcher-button fixed right-6 bottom-6 z-chrome flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent disabled:cursor-wait disabled:opacity-70"
       >
         {loading ? (
           <span aria-hidden="true">…</span>
@@ -52,7 +52,7 @@ export default function AssistantLauncher() {
       {loadFailed && (
         <p
           role="alert"
-          className="assistant-load-error fixed inset-x-4 bottom-24 z-50 mx-auto w-auto max-w-xs border border-border bg-surface-panel p-3 text-sm text-foreground sm:right-6 sm:left-auto"
+          className="assistant-load-error fixed inset-x-4 bottom-24 z-chrome mx-auto w-auto max-w-xs border border-border bg-surface-panel p-3 text-sm text-foreground sm:right-6 sm:left-auto"
         >
           Der Assistent konnte nicht geladen werden. Bitte versuche es erneut.
         </p>

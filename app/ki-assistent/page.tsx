@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { metadataForPage } from '@/app/seoMetadata';
-import { SiteHeader } from '@/components/brand/SiteHeader';
+import { PageShell } from '@/components/brand/PageShell';
 import AssistantLauncher from '@/components/chat/AssistantLauncher';
 import ChatUnavailablePanel from '@/components/chat/ChatUnavailablePanel';
 
@@ -18,12 +18,9 @@ const chatAvailable =
 
 export default function KiAssistent() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper">
-      <SiteHeader />
-      <main id="main" className="relative flex-1">
-        <h1 className="sr-only">Camper-Assistent</h1>
-        {chatAvailable ? <AssistantLauncher /> : <ChatUnavailablePanel />}
-      </main>
-    </div>
+    <PageShell variant="tool" mainClassName="relative">
+      <h1 className="sr-only">Camper-Assistent</h1>
+      {chatAvailable ? <AssistantLauncher /> : <ChatUnavailablePanel />}
+    </PageShell>
   );
 }

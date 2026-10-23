@@ -22,7 +22,7 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
       {/* Front Indicator (Windshield) */}
       <div className="absolute -top-12 left-1/2 flex -translate-x-1/2 flex-col items-center">
         <div className="h-8 w-32 rounded-t-full border border-rule bg-bone opacity-70" aria-hidden="true" />
-        <span className="label-eyebrow mt-1 text-copper">Fahrtrichtung</span>
+        <span className="kicker mt-1 text-copper">Fahrtrichtung</span>
       </div>
 
       {/* Safe Zone Boundary */}
@@ -35,7 +35,7 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
           right: marginRight,
         }}
       >
-        <div className="label-eyebrow rotate-90 text-oxide select-none md:rotate-0">Safe Zone</div>
+        <div className="kicker rotate-90 text-oxide select-none md:rotate-0">Safe Zone</div>
       </div>
 
       {/* Dot grid */}

@@ -17,7 +17,7 @@ export const metadata: Metadata = metadataForPage('/guides/camper-ausbauguide/')
 
 export default function CamperAusbauguide() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <div className="flex min-h-dvh flex-col bg-paper text-ink">
       <PageStructuredData path="/guides/camper-ausbauguide/" />
       <SiteHeader />
       <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pt-12 pb-24 sm:px-6">
@@ -79,7 +79,7 @@ export default function CamperAusbauguide() {
 
               {/* Dezenter Platzhalter statt externem Unsplash-Bild (offline-fähiger Export). */}
               <div className="my-10 flex aspect-video w-full items-center justify-center border border-rule bg-paper">
-                <span className="label-eyebrow text-copper">Ausbau-Impressionen</span>
+                <span className="kicker text-copper">Ausbau-Impressionen</span>
               </div>
 
               <hr className="my-12 border-rule" />

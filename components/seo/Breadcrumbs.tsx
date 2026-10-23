@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { cn } from '@/lib/utils';
+
 import { topicTrail } from '@/lib/seo/topics';
 
 /**
@@ -50,8 +52,26 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
         {items.map((item, index) => {
           const isCurrent = index === items.length - 1;
           return (
-            <li key={item.path} className="flex items-center gap-2">
-              {index > 0 && <span aria-hidden="true">/</span>}
+            <li
+              key={item.path}
+              // Mobil bleibt nur die letzte Ebene stehen („← Solar" statt drei
+              // umbrechender Zeilen) — Designkonzept 2026-10, Navigation.
+              className={cn('flex items-center gap-2', !isCurrent && 'hidden sm:flex')}
+            >
+              {index > 0 && !isCurrent && (
+                <span aria-hidden="true" className="hidden sm:inline">
+                  /
+                </span>
+              )}
+              {isCurrent && items.length > 1 && (
+                <Link
+                  href={items[items.length - 2]!.path}
+                  aria-label={`Zurück zu ${items[items.length - 2]!.name}`}
+                  className="text-ink-soft hover:text-ink sm:hidden"
+                >
+                  ←
+                </Link>
+              )}
               {isCurrent ? (
                 <span aria-current="page" className="text-ink">
                   {item.name}

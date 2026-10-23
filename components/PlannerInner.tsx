@@ -279,9 +279,9 @@ function PlannerShell() {
    */
   const inspectorClass = [
     'min-h-0 flex-col bg-surface-panel',
-    activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex' : 'max-md:hidden',
+    activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-sheet max-md:flex' : 'max-md:hidden',
     isInspectorOpen
-      ? 'md:fixed md:bottom-0 md:right-0 md:top-[calc(var(--cad-menubar-h)+var(--cad-toolbar-h))] md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border'
+      ? 'md:fixed md:bottom-0 md:right-0 md:top-[calc(var(--cad-menubar-h)+var(--cad-toolbar-h))] md:z-sheet md:flex md:w-80 md:flex-none md:border-l md:border-border'
       : 'md:hidden',
     isInspectorOpen
       ? 'xl:static xl:z-auto xl:flex xl:w-[288px] xl:flex-none 2xl:w-[320px]'
@@ -345,7 +345,7 @@ function PlannerShell() {
           data-testid="planner-sidebar-slot"
           className={`min-h-0 w-full flex-1 md:flex md:w-fit md:flex-none ${
             activeTab === 'sidebar'
-              ? 'max-md:absolute max-md:inset-0 max-md:z-40 max-md:flex max-md:flex-col'
+              ? 'max-md:absolute max-md:inset-0 max-md:z-sheet max-md:flex max-md:flex-col'
               : 'hidden md:flex'
           }`}
         >
@@ -354,7 +354,7 @@ function PlannerShell() {
 
         {/* Zeichenfläche: auf jeder Breite sichtbar und montiert. `isolate`
             hält die schwebenden Canvas-Griffe (Undo/Redo, Expertenschalter,
-            z-50) in dieser Spalte — sie dürfen nicht über die Blätter des
+            z-chrome) in dieser Spalte — sie dürfen nicht über die Blätter des
             Handys zeichnen, die eine Ebene höher liegen. */}
         <div
           data-testid="planner-canvas-column"
@@ -368,7 +368,7 @@ function PlannerShell() {
               <div
                 role={entryNotice.type === 'error' ? 'alert' : 'status'}
                 aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-30 flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
+                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-popover flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
               >
                 <button
                   type="button"
@@ -428,7 +428,7 @@ function PlannerShell() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="absolute inset-0 z-20 hidden bg-ink/25 md:block xl:hidden"
+            className="absolute inset-0 z-chrome hidden bg-ink/25 md:block xl:hidden"
           />
         )}
 
@@ -464,7 +464,7 @@ function PlannerShell() {
           Zustände spiegeln die History des Stores unmittelbar. */}
       {activeTab === 'canvas' && (
         <div
-          className="planner-mobile-history absolute bottom-20 left-3 z-50 flex gap-1 md:hidden"
+          className="planner-mobile-history absolute bottom-20 left-3 z-chrome flex gap-1 md:hidden"
           role="group"
           aria-label="Änderungen rückgängig machen oder wiederholen"
         >
@@ -520,7 +520,7 @@ function PlannerShell() {
           Katalog „versteckt“, weil der Katalog die Zeichenfläche ersetzte. */}
       <nav
         data-testid="planner-bottom-nav"
-        className="planner-bottom-nav z-50 flex shrink-0 items-center border-t border-border bg-surface-panel md:hidden"
+        className="planner-bottom-nav z-chrome flex shrink-0 items-center border-t border-border bg-surface-panel md:hidden"
         aria-label="Planerbereiche"
       >
         <button

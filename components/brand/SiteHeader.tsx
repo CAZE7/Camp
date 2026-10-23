@@ -42,7 +42,8 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 border-b',
+        // Ebene 20 = Website-Chrome (Designkonzept 2026-10, Planer-Regel 6).
+        'sticky top-0 z-chrome border-b',
         inverted ? 'border-on-signal/10 bg-soot text-paper' : 'border-rule bg-surface-canvas text-ink'
       )}
     >

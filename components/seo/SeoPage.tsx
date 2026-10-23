@@ -2,8 +2,7 @@ import Link from 'next/link';
 
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
-import { SiteFooter } from '@/components/brand/SiteFooter';
-import { SiteHeader } from '@/components/brand/SiteHeader';
+import { PageShell } from '@/components/brand/PageShell';
 import {
   breadcrumbNode,
   faqNode,
@@ -16,7 +15,7 @@ import {
 import { topicOf } from '@/lib/seo/topics';
 import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
-import { Breadcrumbs, breadcrumbsFor } from './Breadcrumbs';
+import { breadcrumbsFor } from './Breadcrumbs';
 import { RichText } from './RichText';
 
 /**
@@ -94,79 +93,77 @@ export function SeoPage({
   const breadcrumb = breadcrumbsFor(page);
   const topic = topicOf(page.topicId);
 
+  // Jede inhaltsgetriebene Seite teilt das Gerüst (PageShell): Kopf,
+  // Brotkrumen unter dem Kopf, Lesespalte an derselben Kante, Fuß.
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <PageShell variant="article" breadcrumbs={breadcrumb}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLdFor(page)) }}
       />
-      <SiteHeader />
+      <div className="container-page space-y-14">
+        <header className="prose-measure">
+          <p className="kicker">{topic.label}</p>
+          <h1 className="h1 mt-3">{page.h1}</h1>
+          <p className="mt-4 text-md leading-relaxed text-ink-soft">
+            <RichText text={page.lead} />
+          </p>
+        </header>
 
-      <main id="main" className="flex-1">
-        <div className="container-page space-y-14">
-          <header className="prose-measure">
-            <Breadcrumbs items={breadcrumb} />
-            <p className="label-eyebrow mt-6 text-copper">{topic.label}</p>
-            <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">{page.h1}</h1>
-            <p className="mt-4 text-md leading-relaxed text-ink-soft">
-              <RichText text={page.lead} />
-            </p>
-          </header>
+        {afterHeader}
 
-          {afterHeader}
+        {page.sections.map((section) => (
+          <Section key={section.id} section={section} />
+        ))}
 
-          {page.sections.map((section) => (
-            <Section key={section.id} section={section} />
-          ))}
+        {children}
 
-          {children}
-
-          {(page.faq?.length ?? 0) > 0 && (
-            <section aria-labelledby="faq-titel" className="scroll-mt-20">
-              <h2 id="faq-titel" className="font-display text-xl font-semibold text-ink">
-                Häufige Fragen
-              </h2>
-              <div className="mt-5 max-w-3xl">
-                <FaqAkkordeon entries={page.faq ?? []} />
-              </div>
-            </section>
-          )}
-
-          <TrustBlock page={page} />
-
-          <section aria-labelledby="weiter-titel">
-            <h2 id="weiter-titel" className="font-display text-xl font-semibold text-ink">
-              Weiter im Thema
+        {(page.faq?.length ?? 0) > 0 && (
+          <section aria-labelledby="faq-titel" className="scroll-mt-20">
+            <h2 id="faq-titel" className="font-display text-xl font-semibold text-ink">
+              Häufige Fragen
             </h2>
-            <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
-              {page.related.map((link) => (
-                <li key={link.href} className="border-t border-rule pt-2">
-                  <Link href={link.href} className="font-medium text-ink underline-offset-2 hover:underline">
-                    <RichText text={link.label} />
-                  </Link>
-                  {link.description && (
-                    <p className="mt-1 text-base text-ink-soft">
-                      <RichText text={link.description} />
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-5 max-w-3xl">
+              <FaqAkkordeon entries={page.faq ?? []} />
+            </div>
           </section>
+        )}
 
-          {/* Eigene Kennung, damit sie nicht mit einer Abschnittsüberschrift
+        <TrustBlock page={page} />
+
+        <section aria-labelledby="weiter-titel">
+          <h2 id="weiter-titel" className="font-display text-xl font-semibold text-ink">
+            Weiter im Thema
+          </h2>
+          <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
+            {page.related.map((link) => (
+              <li key={link.href} className="border-t border-rule pt-2">
+                <Link href={link.href} className="font-medium text-ink underline-offset-2 hover:underline">
+                  <RichText text={link.label} />
+                </Link>
+                {link.description && (
+                  <p className="mt-1 text-base text-ink-soft">
+                    <RichText text={link.description} />
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Eigene Kennung, damit sie nicht mit einer Abschnittsüberschrift
               zusammenfällt, die ebenfalls „planer" heißt (§ Barrierefreiheit:
               doppelte IDs sind ungültig). */}
-          <section aria-labelledby="weiter-planer-titel" className="node-card p-5 md:p-6">
-            <h2 id="weiter-planer-titel" className="panel-title">
-              Im Planer weiterrechnen
-            </h2>
-            <p className="mt-2 max-w-3xl text-md text-ink-soft">
-              Der Camper-Elektroplaner prüft dieselben Zusammenhänge für die ganze Anlage: Querschnitt,
-              Spannungsfall, Sicherung und Energiebilanz je Leitung — und erzeugt daraus die Stückliste. Läuft
-              im Browser, ohne Anmeldung.
-            </p>
-            {/*
+        <section aria-labelledby="weiter-planer-titel" className="node-card p-5 md:p-6">
+          <h2 id="weiter-planer-titel" className="panel-title">
+            Im Planer weiterrechnen
+          </h2>
+          <p className="mt-2 max-w-3xl text-md text-ink-soft">
+            Der Camper-Elektroplaner prüft dieselben Zusammenhänge für die ganze Anlage: Querschnitt,
+            Spannungsfall, Sicherung und Energiebilanz je Leitung — und erzeugt daraus die Stückliste. Läuft
+            im Browser, ohne Anmeldung.
+          </p>
+          {/*
               Drei Ziele, in dieser Reihenfolge: die Zeichenanwendung (eigene
               Route `/planer/`, volles Browserfenster), die Wissensseite mit
               Rechner und Normgrundlagen (`/elektrik-planung/`) und der
@@ -176,32 +173,29 @@ export function SeoPage({
               die Elektroplaner-Wissensseite (PLANNER_PATH in
               `scripts/seo/linkGraph.ts`).
             */}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href="/planer/"
-                className="inline-flex min-h-11 items-center bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
-              >
-                Camper-Elektroplaner öffnen
-              </Link>
-              <Link
-                href="/elektrik-planung/"
-                className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-              >
-                Rechner und Normgrundlagen
-              </Link>
-              <Link
-                href="/rechner/"
-                className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-              >
-                Alle Rechner ansehen
-              </Link>
-            </div>
-          </section>
-        </div>
-      </main>
-
-      <SiteFooter />
-    </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/planer/"
+              className="inline-flex min-h-11 items-center bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
+            >
+              Camper-Elektroplaner öffnen
+            </Link>
+            <Link
+              href="/elektrik-planung/"
+              className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+            >
+              Rechner und Normgrundlagen
+            </Link>
+            <Link
+              href="/rechner/"
+              className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+            >
+              Alle Rechner ansehen
+            </Link>
+          </div>
+        </section>
+      </div>
+    </PageShell>
   );
 }
 

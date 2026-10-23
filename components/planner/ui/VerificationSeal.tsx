@@ -26,19 +26,20 @@ const TONE: Record<
   { badge: string; border: string; icon: React.ReactNode; label: string }
 > = {
   ok: {
-    badge: 'bg-moss text-on-signal',
+    // Status als Tönung + Symbol, nicht als gefüllte Pille (Konzept, Farbe).
+    badge: 'border border-moss/40 bg-moss/10 text-ink',
     border: 'border-moss',
     icon: <BadgeCheck className="h-4 w-4 shrink-0 text-moss" aria-hidden="true" />,
     label: 'Prüfbericht',
   },
   warn: {
-    badge: 'bg-warn-warning text-on-signal',
+    badge: 'border border-warn-warning-border bg-warn-warning-bg text-ink',
     border: 'border-warn-warning',
     icon: <ShieldQuestion className="h-4 w-4 shrink-0 text-warn-warning" aria-hidden="true" />,
     label: 'Prüfbericht',
   },
   bad: {
-    badge: 'bg-warn-critical text-on-signal',
+    badge: 'border border-warn-critical-border bg-warn-critical-bg text-ink',
     border: 'border-warn-critical',
     icon: <ShieldAlert className="h-4 w-4 shrink-0 text-warn-critical" aria-hidden="true" />,
     label: 'Prüfbericht',
@@ -51,7 +52,7 @@ function Stat({ value, label, hint }: { value: number; label: string; hint: stri
   return (
     <div className="rounded border border-border bg-card px-2 py-1.5" title={hint}>
       <div className="text-sm font-bold text-foreground">{value}</div>
-      <div className="text-[11px] leading-tight text-muted-foreground">{label}</div>
+      <div className="text-xs leading-tight text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -97,9 +98,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             vollständig im `aria-label`, im Tooltip und im Bericht. */}
         {tone.icon}
         <span className="cad-tb-explain">{tone.label}:</span>{' '}
-        <span
-          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold xl:inline ${tone.badge}`}
-        >
+        <span className={`hidden truncate rounded px-1.5 py-0.5 text-xs font-bold xl:inline ${tone.badge}`}>
           {summary.label}
         </span>{' '}
         {/* „{n} Regeln angewandt · {x} % entschieden“ bleibt im DOM (Teil des
@@ -138,7 +137,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
              er wäre bis auf einen Streifen abgeschnitten. Dieselbe Verankerung
              nutzt die Warnzentrale: schmal als Blatt über der Fußleiste,
              ab `md` als Panel unter der Kopfzeile. */
-          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[85] flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
+          className="planner-verification-panel fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-sheet flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-surface-panel text-xs shadow-[var(--cad-shadow-overlay)] md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-[min(92vw,30rem)]"
         >
           <div className="planner-layer-header">
             <h3 className="text-sm font-bold text-foreground">Prüfbericht</h3>
@@ -192,7 +191,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
                     <span className="min-w-0 text-muted-foreground">
                       {pass.pass}. {pass.name}
                     </span>
-                    <span className="text-[11px] text-foreground">
+                    <span className="text-xs text-foreground">
                       {PASS_STATUS_LABEL[pass.status]} · {pass.ruleCount} Regeln
                     </span>
                   </li>

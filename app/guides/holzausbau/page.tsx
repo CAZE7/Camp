@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
 import { metadataForPage } from '@/app/seoMetadata';
@@ -50,11 +49,9 @@ const STEPS = [
 
 export default function HolzausbauGuide() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <>
       <PageStructuredData path="/guides/holzausbau/" />
-      <SiteHeader />
-
-      <main id="main" className="container-page prose-measure flex-1">
+      <PageShell variant="article" mainClassName="container-page prose-measure">
         <Link
           href="/guides/ausbau-fahrplan"
           className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
@@ -84,8 +81,7 @@ export default function HolzausbauGuide() {
             </section>
           ))}
         </div>
-      </main>
-      <SiteFooter />
-    </div>
+      </PageShell>
+    </>
   );
 }

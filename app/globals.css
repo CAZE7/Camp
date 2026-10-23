@@ -39,10 +39,6 @@
     --surface-raised: #ffffff; /* raised: Popover, Inputs, Hover-Karten */
     /* Editorial-Startseite: warmes Papier + der Signalton der gelieferten
        Magazinreferenz. Die Ingenieurs-App behält --oxide als Hauptakzent. */
-    --editorial-paper: #faf9f5;
-    --editorial-panel: #f4f3ef;
-    --editorial-signal: #d8ff00;
-    --editorial-inverse-text: #f4f3ef;
     --surface-hover: #e7eaed; /* Hover/Active auf Panel */
 
     /* Linien — das 1-px-Raster */
@@ -78,8 +74,12 @@
     --card-foreground: var(--text-high);
     --popover: var(--surface-raised);
     --popover-foreground: var(--text-high);
-    --primary: var(--text-high);
-    --primary-foreground: var(--surface-panel);
+    /* Der Primärknopf trägt den einen Akzent (Designkonzept 2026-10,
+       Planer-Regel 3): Fläche --oxide, Text --on-signal. Vorher zeigte
+       --primary auf --text-high — Dialoge hatten dadurch einen schwarzen
+       „Schließen“-Knopf, während die Leisten rostfarben waren. */
+    --primary: var(--oxide);
+    --primary-foreground: var(--on-signal);
     --secondary: var(--surface-hover);
     --secondary-foreground: var(--text-high);
     --muted: var(--surface-hover);
@@ -97,6 +97,20 @@
     --chart-4: var(--wire-ac);
     --chart-5: var(--text-low);
     --radius: 0.25rem;
+
+    /* 4 · Bedienkanten & Ebenen (Designkonzept 2026-10)
+       --control-border ist die Kante von Feldern und Sekundärknöpfen: Sie
+       muss als grafisches Objekt ≥ 3:1 zur Fläche halten (WCAG 1.4.11), was
+       --rule (1,2:1) bewusst nicht tut — --rule bleibt reiner Trenner.
+       Die z-Skala ersetzt 18 gewachsene Einzelwerte; neue Schichten bekommen
+       eine dieser fünf Stufen, keine freie Zahl. */
+    --control-border: var(--text-low);
+    --z-canvas: 0;
+    --z-overlay: 10;
+    --z-chrome: 20;
+    --z-popover: 30;
+    --z-sheet: 40;
+    --z-toast: 50;
     --sidebar: var(--surface-panel);
     --sidebar-foreground: var(--text-high);
     --sidebar-primary: var(--text-high);
@@ -151,9 +165,12 @@
     --warn-warning: var(--warn); /* Warnung */
     --warn-warning-bg: #f8f1e0;
     --warn-warning-border: #e7d5ab;
-    --warn-info: #1d4ed8; /* Hinweis (Text auf Canvas ≥ 4,5:1, bewacht) */
-    --warn-info-bg: #edf3fe;
-    --warn-info-border: #c8dcfb;
+    /* Hinweis ist neutral, nicht blau: Blau ist ausschließlich die
+       Wechselstromleitung (--wire-ac). Vorher trug der Planer damit einen
+       zweiten Akzent und einen blauen Knopf (Designkonzept 2026-10). */
+    --warn-info: var(--text-med);
+    --warn-info-bg: var(--surface-raised);
+    --warn-info-border: var(--rule-strong);
 
     /* Allgemeine Statusfarben (von Tailwind referenziert) */
     --info: var(--warn-info);
@@ -174,6 +191,7 @@
     --surface-hover-rgb: 231 234 237;
     --rule-rgb: 211 215 219;
     --rule-strong-rgb: 180 186 193;
+    --control-border-rgb: var(--text-low-rgb);
     --oxide-rgb: 163 74 36;
     --text-high-rgb: 22 24 26;
     --text-med-rgb: 74 81 88;
@@ -189,7 +207,7 @@
     --wire-solar-rgb: 180 83 9;
     --pipe-fresh-rgb: 29 78 216;
     --pipe-gray-rgb: 75 85 99;
-    --warn-info-rgb: 29 78 216;
+    --warn-info-rgb: var(--text-med-rgb);
     /* Ketten-Zwillinge — sie folgen den Primitiven themenweit, deshalb
        nur einmal in :root. */
     --background-rgb: var(--surface-canvas-rgb);
@@ -198,8 +216,8 @@
     --card-foreground-rgb: var(--text-high-rgb);
     --popover-rgb: var(--surface-raised-rgb);
     --popover-foreground-rgb: var(--text-high-rgb);
-    --primary-rgb: var(--text-high-rgb);
-    --primary-foreground-rgb: var(--surface-panel-rgb);
+    --primary-rgb: var(--oxide-rgb);
+    --primary-foreground-rgb: var(--on-signal-rgb);
     --secondary-rgb: var(--surface-hover-rgb);
     --secondary-foreground-rgb: var(--text-high-rgb);
     --muted-rgb: var(--surface-hover-rgb);
@@ -239,10 +257,6 @@
     --surface-panel: #191c1f;
     --surface-raised: #212529;
     --surface-hover: #23282d;
-    --editorial-paper: #141412;
-    --editorial-panel: #1c1c1a;
-    --editorial-signal: #d8ff00;
-    --editorial-inverse-text: #f4f3ef;
 
     /* Linien */
     --rule: #2c3136;
@@ -268,10 +282,20 @@
     --surface-2: var(--surface-raised);
     --accent-line: var(--oxide);
     --border: var(--rule);
+    --control-border: var(--text-low);
+    /* Ebenen sind themenunabhängig — hier nur gespiegelt, damit der
+       Token-Guard beide Blöcke prüfen kann (keine dunkle Sonderregel). */
+    --z-canvas: 0;
+    --z-overlay: 10;
+    --z-chrome: 20;
+    --z-popover: 30;
+    --z-sheet: 40;
+    --z-toast: 50;
 
-    /* shadcn-Rollen, die in dunkel andere Fascen/Werte brauchen */
-    --primary: var(--text-high);
-    --primary-foreground: var(--surface-canvas);
+    /* shadcn-Rollen, die in dunkel andere Fascen/Werte brauchen.
+       Der Primärknopf bleibt der Akzent — in dunkel das hellere Oxid. */
+    --primary: var(--oxide);
+    --primary-foreground: var(--on-signal);
     --destructive-foreground: var(--surface-canvas);
     --soot: #101214;
 
@@ -300,9 +324,10 @@
     --warn-critical-border: rgba(242, 107, 96, 0.4);
     --warn-warning-bg: rgba(229, 180, 91, 0.12);
     --warn-warning-border: rgba(229, 180, 91, 0.4);
-    --warn-info: var(--wire-ac); /* Hinweis: helles Blau auf dunkler Fläche */
-    --warn-info-bg: rgba(122, 162, 247, 0.14);
-    --warn-info-border: rgba(122, 162, 247, 0.4);
+    /* Hinweis bleibt auch in dunkel neutral (siehe :root). */
+    --warn-info: var(--text-med);
+    --warn-info-bg: var(--surface-raised);
+    --warn-info-border: var(--rule-strong);
 
     /* Ebene-1-Zwillinge der dunklen Markenpalette (siehe :root, Punkt 5). */
     --surface-canvas-rgb: 19 21 24;
@@ -311,6 +336,7 @@
     --surface-hover-rgb: 35 40 45;
     --rule-rgb: 44 49 54;
     --rule-strong-rgb: 61 67 74;
+    --control-border-rgb: var(--text-low-rgb);
     --oxide-rgb: 226 136 95;
     --text-high-rgb: 232 235 238;
     --text-med-rgb: 166 173 179;
@@ -326,11 +352,11 @@
     --wire-solar-rgb: 251 191 36;
     --pipe-fresh-rgb: 96 165 250;
     --pipe-gray-rgb: 148 163 184;
-    --warn-info-rgb: var(--wire-ac-rgb);
+    --warn-info-rgb: var(--text-med-rgb);
     /* Aliase, die in dunkel einen anderen Ursprung haben als in hell —
        sie spiegeln die Overrides oben (primar/destruktiv-fläche dunkler,
        Drahtauswahl Textfarbe). */
-    --primary-foreground-rgb: var(--surface-canvas-rgb);
+    --primary-foreground-rgb: var(--on-signal-rgb);
     --destructive-foreground-rgb: var(--surface-canvas-rgb);
     --wire-selected-rgb: var(--text-high-rgb);
 
@@ -424,13 +450,85 @@
     font-size: 0.8125rem; /* 13 px */
     line-height: 1.125rem;
   }
-  .label-eyebrow {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.75rem; /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    font-weight: 500;
+  /* --- Überschriften-Skala (Designkonzept 2026-10) --------------------
+     H1: Outfit 26 px mobil / 32 px ab 768 px, 600. H2: 20 px, 600.
+     Kicker: 12 px, Inter, 600, Versalien, 0.04em Sperrung, Oxid.
+     Damit hat jede Seite dieselbe Hierarchie, statt sie neu zu erfinden. */
+  .h1 {
+    font-family: var(--font-display);
+    font-size: 1.625rem; /* 26 px */
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-high);
   }
+  .h2 {
+    font-family: var(--font-display);
+    font-size: 1.25rem; /* 20 px */
+    line-height: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-high);
+  }
+  .kicker {
+    font-family: var(--font-sans);
+    font-size: 0.75rem; /* 12 px */
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--oxide);
+  }
+  @media (min-width: 768px) {
+    .h1 {
+      font-size: 2rem; /* 32 px */
+      line-height: 2.5rem;
+    }
+  }
+
+  /* --- Schieberegler (Touch): 28-px-Daumen in 44-px-Trefferfläche ------
+     Der sichtbare Daumen bleibt klein genug, um präzise zu sein; die
+     Trefferfläche füllt den 44-px-Streifen (WCAG 2.5.8 nicht unterschreiten). */
+  .range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 44px;
+    width: 100%;
+    background: transparent;
+    cursor: pointer;
+  }
+  .range-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 4px;
+    background: var(--rule-strong);
+  }
+  .range-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 4px;
+    background: var(--rule-strong);
+  }
+  .range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -12px;
+    border: 1px solid var(--control-border);
+    border-radius: 4px;
+    background: var(--surface-raised);
+  }
+  .range-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--control-border);
+    border-radius: 4px;
+    background: var(--surface-raised);
+  }
+  .range-slider:focus-visible {
+    outline: 2px solid var(--oxide);
+    outline-offset: 2px;
+  }
+
   .wordmark {
     font-size: 1rem; /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
     font-weight: 600;
@@ -459,11 +557,13 @@
   }
 
   /* Warn-Card-Muster – nutzt zentrale Tokens statt Rose/Amber/Emerald-Salat. */
+  /* Status = Text + Symbol + heller Ton mit Rahmen — kein Knopf, kein
+     runder Kasten, Radius 4 px wie alles andere (Designkonzept 2026-10). */
   .warn-card {
-    border-width: 2px;
+    border-width: 1px;
     border-style: solid;
-    border-radius: 1rem;
-    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -479,9 +579,9 @@
     color: var(--warn-warning);
   }
   .warn-card-ok {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
-    color: var(--oxide);
+    background: color-mix(in srgb, var(--ok) 10%, var(--surface-panel));
+    border-color: color-mix(in srgb, var(--ok) 35%, var(--surface-panel));
+    color: var(--ok);
   }
   .warn-card-info {
     background: var(--warn-info-bg);
@@ -497,13 +597,13 @@
   .aw-tone {
     border-width: 1px;
     border-style: solid;
-    border-radius: 0.375rem;
+    border-radius: 4px;
     padding: 0.5rem;
   }
   .aw-section {
     border-width: 1px;
     border-style: solid;
-    border-radius: 0.375rem;
+    border-radius: 4px;
     padding: 0.75rem;
   }
 
@@ -533,10 +633,14 @@
     padding-inline: 1rem; /* 16 px */
     border-bottom: 1px solid var(--rule);
   }
+  /* Gruppen-Label (Designkonzept 2026-10, Planer-Regel 2): 12 px, Inter,
+     Versalien, 0.04em Sperrung — kein Mono. Mono ist für Tastenkürzel und
+     CSV-Vorschau reserviert. Untergrenze der Schriftgröße ist 12 px. */
   .panel-title {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.6875rem; /* 11 px */
-    letter-spacing: 0.12em;
+    font-family: var(--font-sans);
+    font-size: 0.75rem; /* 12 px */
+    line-height: 1rem;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     font-weight: 600;
     color: var(--text-med);
@@ -572,7 +676,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 150ms ease;
-    z-index: 80;
+    z-index: var(--z-popover);
   }
   .tool-btn:hover::after,
   .tool-btn:focus-visible::after {
@@ -588,7 +692,7 @@
     border-radius: 4px;
     background: var(--surface-raised);
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.6875rem;
+    font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
     line-height: 1.25rem;
     color: var(--text-med);
   }
@@ -597,7 +701,7 @@
   .shortcut-overlay {
     position: fixed;
     inset: 0;
-    z-index: 190;
+    z-index: var(--z-sheet);
     display: grid;
     place-items: center;
     padding: 1rem;
@@ -640,8 +744,11 @@
       padding-block: 4rem;
     }
   }
+  /* Lesespalte 42 rem, aber LINKSBÜNDIG an derselben Kante wie H1, H2 und
+     die Rechner (Designkonzept 2026-10, „Breite"): Vorher rückte `auto` die
+     Spalte in die Mitte, während jede Überschrift links stand — zwei Kanten
+     pro Seite. */
   .prose-measure {
-    margin-inline: auto;
     max-width: 42rem;
   }
 
@@ -679,9 +786,10 @@
       border-color 150ms ease,
       box-shadow 150ms ease;
   }
-  /* Statusleiste: 2 px Akzent über der Kartenoberkante. z-index 1, damit sie
-     sichtbar bleibt — ohne würde der Symbolstreifen (höherer Paint-Order)
-     sie überdecken und Selektion/Fehler wären nie zu sehen. */
+  /* Statusleiste: 2 px Akzent über der Kartenoberkante. Der Wert 1 ist
+     LOKAL (innerhalb des Stapelkontexts der Karte, kein Ebenenwert): ohne ihn
+     überdeckte der Symbolstreifen (höherer Paint-Order) die Leiste und
+     Selektion/Fehler wären nie zu sehen. Deshalb bewusst keine --z-* Variable. */
   .node-card::before {
     content: '';
     position: absolute;
@@ -699,9 +807,17 @@
     border-color: var(--rule-strong);
     box-shadow: 0 1px 4px color-mix(in srgb, var(--text-high) 14%, transparent);
   }
+  /* Auswahl wird NICHT über Farbe gezeigt (Designkonzept 2026-10, §Oxid
+     und DC-Plus): --oxide (#a34a24) und die Plus-Leitung --wire-dc (#c62f21)
+     liegen bei 1,08:1 — ein rostfarbener Auswahlrahmen wäre von einer
+     Plus-Leitung nicht zu unterscheiden. Stattdessen: 2 px Umriss in
+     --text-high (in beiden Themen ≥ 12:1 zur Karte) plus 4 px Oxid-Halo
+     mit 25 % Deckkraft als ruhiger Zusatz. Die Leitung bleibt rot. */
   .node-card--selected {
-    border-color: var(--accent-line);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-line) 45%, transparent);
+    border-color: var(--text-high);
+    outline: 2px solid var(--text-high);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--oxide) 25%, transparent);
   }
   .node-card--selected::before {
     background: var(--accent-line);
@@ -710,7 +826,9 @@
     border-color: var(--error);
   }
   .node-card--error.node-card--selected {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 45%, transparent);
+    border-color: var(--error);
+    outline-color: var(--error);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--error) 25%, transparent);
   }
   .node-card--error::before {
     background: var(--error);
@@ -823,6 +941,7 @@
     top: -22px;
     left: 50%;
     transform: translateX(-50%);
+    /* LOKAL im Knoten (Stapelkontext der Karte), kein globaler Ebenenwert. */
     z-index: 20;
     display: flex;
     /* 44x44 CSS-Pixel Touch-Target (WCAG 2.5.5 / Apple HIG). */
@@ -859,11 +978,16 @@
     border: 1px solid currentColor;
     border-radius: 50%;
   }
+  /* Identitätscode der Bauteilkarte (BAT, MPPT, …): Inter mit Sperrung.
+     Mono ist Tastenkürzeln und der CSV-Vorschau vorbehalten, und die
+     Untergrenze liegt bei 12 px (Designkonzept 2026-10, Planer-Regel 2). */
   .node-symbol__code {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-family: var(--font-sans);
+    font-size: 0.75rem; /* 12 px */
+    line-height: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
   }
   /* D-4: Domain-Tints über Signaltokens gemischt — hell und dunkel korrekt. */
   .node-symbol--dc {
@@ -1366,8 +1490,8 @@
    noch die Typografie-Rolle fest; Umbruch und Rahmen des früheren Panels
    entfallen — sonst stünde sie auf schmalen Geräten dreizeilig im Canvas. */
 .planner-statusbar {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem; /* 12 px — Untergrenze, auch für die Statusleiste */
   line-height: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--text-med);
@@ -1391,10 +1515,12 @@
    ========================================================================== */
 
 .planner-shell {
-  /* Interaktive Leisten haben mindestens 44 px; die Statuszeile bleibt flach. */
-  --cad-menubar-h: 45px;
-  --cad-toolbar-h: 45px;
-  --cad-statusbar-h: 26px;
+  /* Chrome-Höhen: Kopfzeile 48 px (Designkonzept 2026-10, Planer-Regel 4),
+     die Statuszeile ist flach, die Werkzeugleiste kompakt. Interaktive
+     Leisten behalten ihre 44-px-Trefferflächen. */
+  --cad-menubar-h: 48px;
+  --cad-toolbar-h: 44px;
+  --cad-statusbar-h: 28px;
   --cad-palette-w: 232px;
   /* Zeichenfläche des Canvas: feines Raster (10 px) — siehe FlowCanvas. */
   --cad-grid: var(--canvas-grid);
@@ -1412,7 +1538,7 @@
 .planner-shell--focus {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-chrome);
 }
 
 /* Fokus ist ein echter ablenkungsfreier Canvas-Modus, nicht nur ein weiterer
@@ -1441,7 +1567,7 @@
   position: absolute;
   top: max(0.5rem, env(safe-area-inset-top));
   right: max(0.5rem, env(safe-area-inset-right));
-  z-index: 120;
+  z-index: var(--z-popover);
   display: inline-flex;
   width: 44px;
   height: 44px;
@@ -1473,7 +1599,7 @@
    Auswahl beim Öffnen markiert. */
 .cad-menubar {
   position: relative;
-  z-index: 60;
+  z-index: var(--z-chrome);
   display: flex;
   flex-shrink: 0;
   align-items: stretch;
@@ -1520,8 +1646,9 @@
   max-width: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
+  font-weight: 500;
   color: var(--text-high);
 }
 .cad-menubar__menus {
@@ -1577,11 +1704,11 @@
   white-space: nowrap;
 }
 
-/* Dropdown eines Menüs */
+/* Dropdown eines Menüs — Popover-Ebene (Designkonzept 2026-10, Ebenen). */
 .cad-menu {
   position: absolute;
   top: 100%;
-  z-index: 90;
+  z-index: var(--z-popover);
   min-width: 15rem;
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
@@ -1596,10 +1723,12 @@
 }
 .cad-menu__label {
   padding: 0.25rem 0.75rem;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 600;
   color: var(--text-low);
 }
 .cad-menu__item {
@@ -1664,7 +1793,7 @@
    Vorher scrollte die Leiste auch senkrecht (Inhalt 60 px in 44 px Höhe). */
 .cad-toolbar {
   position: relative;
-  z-index: 60;
+  z-index: var(--z-chrome);
   display: flex;
   flex-shrink: 0;
   min-height: var(--cad-toolbar-h);
@@ -1765,7 +1894,7 @@
    dimensions; keep a compact anchored window when there is desktop space. */
 .chat-window {
   position: fixed;
-  z-index: 50;
+  z-index: var(--z-toast);
   top: max(1rem, env(safe-area-inset-top));
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom));
@@ -1897,15 +2026,37 @@ summary:active {
   background: color-mix(in srgb, var(--accent-line) 12%, transparent);
   color: var(--text-high);
 }
-/* Die eine hervorgehobene Aktion (AutoWire): Rahmen statt Farbfläche. */
+/* Primärknopf (Designkonzept 2026-10, Planer-Regel 3): 44 px hoch, 4 px
+   Radius, Fläche --oxide, Text --on-signal. Genau EINE gefüllte Fläche pro
+   Ansicht — in der geführten Ansicht die Schrittaktion (`GuidedPlanRail`),
+   im Expertenmodus „Vorschlag prüfen“ (`PlannerToolbar`); beide schließen
+   sich gegenseitig aus. Hinweise, Prüfstatus und Schließen sind nie primär. */
 .cad-btn--primary {
-  border-color: var(--accent-line);
-  background: var(--surface-raised);
-  color: var(--text-high);
-  font-weight: 500;
+  min-height: 44px;
+  padding-inline: 0.75rem;
+  border-color: var(--oxide);
+  background: var(--oxide);
+  color: var(--on-signal);
+  font-weight: 600;
 }
 .cad-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-line) 14%, var(--surface-raised));
+  background: color-mix(in srgb, var(--oxide) 86%, var(--text-high));
+  border-color: color-mix(in srgb, var(--oxide) 86%, var(--text-high));
+  color: var(--on-signal);
+}
+.cad-btn--primary:focus-visible {
+  outline: 2px solid var(--text-high);
+  outline-offset: 2px;
+}
+/* Ghost: der stille dritte Rang (Expertenmodus, Wiederholen, Zurück). */
+.cad-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-med);
+}
+.cad-btn--ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-high);
 }
 
 /* --- 3. Panels (Palette / Eigenschaften) --------------------------------- */
@@ -1962,10 +2113,12 @@ summary:active {
   border: 0;
   background: transparent;
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem; /* 12 px — Untergrenze */
+  line-height: 1rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 600;
   cursor: pointer;
 }
 .de-inspector__group-toggle:hover {
@@ -2002,7 +2155,7 @@ summary:active {
   background: transparent;
   color: var(--text-med);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -2068,7 +2221,7 @@ summary:active {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   color: var(--text-low);
 }
 .cad-item[aria-selected='true'] {
@@ -2093,8 +2246,9 @@ summary:active {
   font-size: 0.8125rem;
 }
 .cad-kv__val {
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-high);
   text-align: right;
@@ -2125,7 +2279,7 @@ summary:active {
   background: var(--surface-panel);
   padding-inline: 0.5rem;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-variant-numeric: tabular-nums;
   color: var(--text-med);
   overflow-x: auto;
@@ -2188,7 +2342,7 @@ summary:active {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: 45;
+  z-index: var(--z-sheet);
   display: flex;
   max-height: 82dvh;
   flex-direction: column;
@@ -2205,10 +2359,12 @@ summary:active {
   border-bottom: 1px solid var(--rule);
 }
 .cad-sheet__title {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem; /* 12 px — Untergrenze */
+  line-height: 1rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 600;
   color: var(--text-med);
 }
 
@@ -2234,8 +2390,9 @@ summary:active {
    port coordinates, waypoint positions or routing costs. */
 
 .planner-shell {
-  --cad-menubar-h: 45px;
-  --cad-toolbar-h: 45px;
+  /* Eine Kopfzeile, 48 px — dieselbe Höhe wie der Website-Kopf. */
+  --cad-menubar-h: 48px;
+  --cad-toolbar-h: 44px;
   --cad-statusbar-h: 28px;
 }
 
@@ -2246,17 +2403,6 @@ summary:active {
 
 .cad-toolbar__sep {
   margin-inline: 0.375rem;
-}
-
-.cad-btn--primary {
-  border-color: var(--accent-line);
-  background: color-mix(in srgb, var(--accent-line) 7%, var(--surface-raised));
-  color: var(--text-high);
-  font-weight: 600;
-}
-
-.cad-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-line) 14%, var(--surface-raised));
 }
 
 /* Einzeilige Schrittleiste: der nächste Schritt bleibt klar, ohne auf Tablet
@@ -2421,7 +2567,7 @@ summary:active {
   margin: 0 0 0.5rem;
   color: var(--text-med);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2470,14 +2616,18 @@ summary:active {
   box-shadow: none;
 }
 
+/* Selektion im Planer: identische Sprache wie auf der übrigen Zeichenfläche
+   (2 px Umriss in --text-high + Oxid-Halo) — kein zweiter Auswahl-Stil. */
 .planner-shell .node-card--selected {
-  border-color: var(--accent-line);
-  box-shadow: 0 0 0 1px var(--accent-line);
+  border-color: var(--text-high);
+  outline: 2px solid var(--text-high);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--oxide) 25%, transparent);
 }
 
 .planner-shell .node-card--error.node-card--selected {
   border-color: var(--error);
-  box-shadow: 0 0 0 1px var(--error);
+  outline-color: var(--error);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--error) 25%, transparent);
 }
 
 /* Nachtest Bug 16: Modus „Prüfung“ — Befunde markieren, Unauffälliges
@@ -2533,9 +2683,10 @@ summary:active {
 
 .planner-shell .node-symbol__code {
   color: var(--text-high);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -2544,9 +2695,11 @@ summary:active {
   flex: 0 0 auto;
   overflow: visible;
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem; /* 12 px statt 11 px */
+  line-height: 1rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -2558,7 +2711,9 @@ summary:active {
 
 .planner-shell .node-card > .measure {
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  /* Werte in Inter mit tabular-nums — Zahlen bleiben in der Flucht, ohne
+     Monospace-Optik (Planer-Regel 2). */
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   line-height: 1rem;
@@ -2577,9 +2732,12 @@ summary:active {
   border-radius: 2px;
   background: var(--surface-raised);
   color: var(--text-high);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  /* Kabelbeschriftung in Inter mit tabular-nums (Planer-Regel 2): Mono ist
+     Tastenkürzeln und der CSV-Vorschau vorbehalten. */
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
 }
@@ -2624,7 +2782,7 @@ summary:active {
   background: color-mix(in srgb, var(--edge-label-tone) 9%, var(--surface-raised));
   padding: 0.0625rem 0.25rem;
   color: var(--text-high);
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -2867,7 +3025,7 @@ html.planner-root-active body {
     width: auto;
     overflow-y: auto;
     overscroll-behavior: contain;
-    z-index: 70;
+    z-index: var(--z-sheet);
     box-shadow: var(--cad-shadow-overlay);
   }
   /* Solange ein Blatt offen ist, liegen die schwebenden Canvas-Griffe ruhig:
@@ -2888,10 +3046,21 @@ html.planner-root-active body {
 }
 
 /* --- 4. Flaches Querformat ------------------------------------------------
-   Bei niedrigen Fensterhöhen werden Statusanzeige und schwebende Hinweise
-   reduziert. Menü-, Werkzeug- und Aktionsleisten behalten jedoch ihre
-   44-px-Trefferflächen; die Zeichenfläche wird dafür entsprechend kleiner. */
-@media (orientation: landscape) and (max-height: 480px) {
+   Ein Handy im Querformat ist 320–360 px hoch. Gemessen 2026-10-14 bei
+   640×320: Menüleiste 28 + Werkzeugleiste 40 + Schrittleiste 40 +
+   Statuszeile 26 + Fußleiste 44 = 178 px Chrome — es blieben 121 px
+   Zeichenfläche (38 % der Höhe). Deshalb:
+     · die Statuszeile entfällt (Zoom und Raster sitzen als Bedienelemente auf
+       der Zeichenfläche, Umfang und Prüfstand stehen in Menüleiste und
+       Werkzeugleiste),
+     · die Werkzeugleiste wird 36 px flach (Knöpfe 34 px — über der
+       WCAG-2.5.8-Mindestkante von 24 px, unter dem 44-px-Zielwert: eine
+       bewusste, dokumentierte Abweichung für Fenster unter 500 px Höhe),
+     · die Schrittleiste bleibt bei 32 px und zeigt nur Fortschritt + Aktion,
+     · die Fußleiste bleibt bei 44 px (sie ist der einzige Weg zu den
+       Blättern, dort gilt der Zielwert).
+   Ergebnis: ~178 → 189 px Zeichenfläche bei 320 px Fensterhöhe. */
+@media (orientation: landscape) and (max-height: 500px) {
   .planner-shell {
     --cad-menubar-h: 45px;
     --cad-nav-h: 44px;
@@ -3304,7 +3473,7 @@ html.planner-root-active body {
     max-height: min(70dvh, 26rem);
     overflow-x: hidden;
     overflow-y: auto;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-toolbar-sheet .cad-menu__item,
@@ -3328,7 +3497,7 @@ html.planner-root-active body {
 
 /* Querformat auf Telefonen ist ein mobiles Arbeitsfeld – nicht automatisch
    ein Desktop, nur weil die kurze Kante jetzt die lange ist. */
-@media (orientation: landscape) and (max-height: 480px) {
+@media (orientation: landscape) and (max-height: 500px) {
   .planner-shell:not(.planner-shell--focus) .planner-workspace {
     flex-direction: column !important;
   }
@@ -3346,7 +3515,7 @@ html.planner-root-active body {
   .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] [data-testid='planner-sidebar-slot'] {
     position: absolute !important;
     inset: 0 !important;
-    z-index: 40 !important;
+    z-index: var(--z-chrome) !important;
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
@@ -3369,7 +3538,7 @@ html.planner-root-active body {
   .planner-shell:not(.planner-shell--focus)[data-active-tab='inspector'] #inspector-panel {
     position: absolute !important;
     inset: 0 !important;
-    z-index: 40 !important;
+    z-index: var(--z-chrome) !important;
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
@@ -3392,17 +3561,23 @@ html.planner-root-active body {
     display: none !important;
   }
 
+  /* Designkonzept 2026-10, Befund Querformat: Die Blätter waren auf
+     min(60dvh, 26rem) begrenzt und zeigten bei 393 px Fensterhöhe nur rund
+     150 px Inhalt („Hilfe erst nach Scrollen“). Im flachen Fenster nutzen sie
+     jetzt die volle Höhe zwischen Kopfzeile und Fußleiste — ein Scrollbereich,
+     Kopf und Fuß bleiben stehen. */
   .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
     position: fixed !important;
-    top: auto !important;
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem) !important;
     right: max(0.5rem, env(safe-area-inset-right)) !important;
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
     left: max(0.5rem, env(safe-area-inset-left)) !important;
     width: auto !important;
     max-width: none !important;
-    max-height: min(60dvh, 26rem) !important;
+    max-height: none !important;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .planner-menubar-sheet,
@@ -3410,15 +3585,17 @@ html.planner-root-active body {
     position: fixed;
     left: max(0.5rem, env(safe-area-inset-left));
     right: max(0.5rem, env(safe-area-inset-right));
-    top: auto;
+    /* Volle Höhe zwischen Kopfzeile und Fußleiste statt 60 dvh/26 rem
+       (Designkonzept 2026-10: „Hilfe erst nach Scrollen sichtbar“). */
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem);
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem);
     width: auto;
     min-width: 0;
-    max-height: min(60dvh, 26rem);
+    max-height: none;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    z-index: 70;
+    z-index: var(--z-sheet);
     box-shadow: var(--cad-shadow-overlay);
   }
 
@@ -3554,16 +3731,18 @@ html.planner-root-active body {
   }
 }
 
-@media (orientation: landscape) and (max-height: 480px) {
+@media (orientation: landscape) and (max-height: 500px) {
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
     position: fixed !important;
-    top: auto !important;
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem) !important;
     right: max(0.5rem, env(safe-area-inset-right)) !important;
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
     left: max(0.5rem, env(safe-area-inset-left)) !important;
     width: auto !important;
     max-width: none !important;
-    max-height: min(60dvh, 26rem) !important;
+    /* Auch der Prüfbericht nutzt die volle Höhe (vorher 150 px sichtbar). */
+    max-height: none !important;
+    overscroll-behavior: contain;
   }
 
   .cad-toolbar__status > [data-testid^='routing-status-'],
@@ -3714,7 +3893,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: 6.5rem !important;
-    z-index: 90 !important;
+    z-index: var(--z-sheet) !important;
   }
 
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
@@ -3729,7 +3908,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
@@ -3757,7 +3936,7 @@ html.planner-root-active body {
     bottom: calc(var(--cad-nav-h, 44px) + var(--cad-statusbar-h, 22px) + 0.35rem) !important;
     left: auto !important;
     right: 0.25rem !important;
-    z-index: 45;
+    z-index: var(--z-overlay);
   }
 
   .planner-shell .planner-mobile-feedback {
@@ -3770,7 +3949,7 @@ html.planner-root-active body {
     max-height: 3.25rem;
     overflow: hidden;
     clip-path: none;
-    z-index: 45;
+    z-index: var(--z-overlay);
   }
 }
 
@@ -3796,7 +3975,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: min(28dvh, 11rem) !important;
-    z-index: 90 !important;
+    z-index: var(--z-sheet) !important;
   }
 
   .planner-shell .planner-verification-panel {
@@ -3813,7 +3992,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
@@ -3893,7 +4072,7 @@ html.planner-root-active body {
     max-width: none !important;
     max-height: none !important;
     height: auto !important;
-    z-index: 95 !important;
+    z-index: var(--z-sheet) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
@@ -3908,7 +4087,7 @@ html.planner-root-active body {
     width: auto !important;
     max-width: none !important;
     height: auto !important;
-    z-index: 95 !important;
+    z-index: var(--z-sheet) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: stretch !important;
@@ -4027,12 +4206,12 @@ html.planner-root-active body {
    beiden Leisten. „Hilfe“ ist der letzte Eintrag und bleibt rechts im Bild. */
 @media (min-width: 768px) and (min-height: 501px) {
   .cad-menubar {
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .cad-menubar .cad-menu.planner-menubar-sheet {
     top: calc(100% + var(--cad-toolbar-h, 45px) + 4px);
-    z-index: 80;
+    z-index: var(--z-sheet);
     max-height: calc(100dvh - var(--cad-menubar-h, 45px) - var(--cad-toolbar-h, 45px) - 1rem);
     min-width: min(16rem, calc(100vw - 1.5rem));
     overflow-x: hidden;
@@ -4305,7 +4484,7 @@ html.planner-root-active body {
   .planner-phone-menu-layer {
     position: fixed;
     inset: 0;
-    z-index: 80;
+    z-index: var(--z-sheet);
     pointer-events: none;
     overflow: hidden;
   }
@@ -4511,7 +4690,10 @@ html.planner-root-active body {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 40;
+  /* Unter dem Blatt (40), über Leisten und Zeichenfläche: Der Schleier
+     schluckt Klicks auf die Fläche, darf aber nie das Blatt selbst oder
+     einen Dialog überdecken. */
+  z-index: var(--z-popover);
   border: 0;
   background: transparent;
   padding: 0;
@@ -4549,7 +4731,7 @@ html.planner-root-active body {
 
 .planner-minimap.planner-minimap--open {
   display: block !important;
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 /* Kurzes Querformat: Prüfbericht und Prüfliste teilen sich die Höhe,
@@ -4603,163 +4785,3 @@ html.planner-root-active body {
 
 /* Editorial start-page layer: typography, information hierarchy, warm paper,
    and a restrained lime signal borrowed from the supplied magazine reference. */
-.editorial-home {
-  background-color: var(--editorial-paper);
-  color: var(--text-high);
-}
-
-.editorial-home > header,
-.editorial-home > footer {
-  border-color: var(--rule);
-  background-color: var(--editorial-paper);
-}
-
-.editorial-headline {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.16;
-}
-
-.editorial-kicker {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
-  line-height: 1rem;
-  text-transform: uppercase;
-}
-
-.editorial-signal-badge {
-  background-color: var(--editorial-signal);
-  color: var(--soot);
-}
-
-.editorial-signal-ink {
-  /* Signal lime stays on fills and rules; small text uses the accessible copper
-     accent on paper. */
-  color: var(--oxide);
-}
-
-.editorial-dark-panel .editorial-signal-ink {
-  color: var(--editorial-signal);
-}
-
-.editorial-icon-tile {
-  border: 1px solid var(--rule);
-  background-color: var(--editorial-paper);
-  color: var(--text-high);
-}
-
-.editorial-icon-tile--signal {
-  border-color: var(--editorial-signal);
-  background-color: var(--editorial-signal);
-  color: var(--soot);
-}
-
-.editorial-paper-panel {
-  background-color: var(--editorial-panel);
-  border: 1px solid var(--rule);
-}
-
-.editorial-hero-index {
-  background-color: var(--editorial-paper);
-}
-
-.editorial-index-number {
-  border: 1px solid var(--rule-strong);
-  background-color: var(--editorial-panel);
-  color: var(--text-high);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.editorial-index-link:hover .editorial-index-number {
-  border-color: var(--editorial-signal);
-  background-color: var(--editorial-signal);
-  color: var(--soot);
-}
-
-.editorial-quote {
-  border-left: 3px solid var(--editorial-signal);
-  background-color: var(--editorial-panel);
-}
-
-.editorial-rechner-panel {
-  border: 1px solid var(--rule);
-  background-color: var(--editorial-panel);
-}
-
-.editorial-rechner-panel > div {
-  border: 0;
-  background-color: transparent;
-}
-
-.editorial-guide-list > li + li {
-  border-top: 1px solid var(--rule);
-}
-
-.editorial-guide-row {
-  transition: background-color 150ms ease;
-}
-
-.editorial-guide-row:hover {
-  background-color: var(--editorial-panel);
-}
-
-.editorial-guide-number {
-  color: var(--text-low);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.editorial-story-card {
-  border: 1px solid var(--rule);
-  background-color: var(--editorial-panel);
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease;
-}
-
-.editorial-story-card:hover {
-  border-color: var(--rule-strong);
-  background-color: var(--editorial-paper);
-}
-
-.editorial-dark-panel {
-  background-color: var(--soot);
-  color: var(--editorial-inverse-text);
-}
-
-.editorial-dark-panel__copy {
-  color: var(--editorial-inverse-text);
-}
-
-.editorial-bottom-nav {
-  border-top: 1px solid var(--rule);
-  background-color: color-mix(in srgb, var(--editorial-paper) 95%, transparent);
-  box-shadow: 0 -2px 12px color-mix(in srgb, var(--text-high) 5%, transparent);
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
-}
-
-.editorial-bottom-nav a {
-  position: relative;
-  min-width: 44px;
-  min-height: 44px;
-  color: var(--text-med);
-}
-
-.editorial-bottom-nav a[aria-current='page'] {
-  color: var(--text-high);
-  font-weight: 600;
-}
-
-.editorial-bottom-nav a[aria-current='page']::after {
-  position: absolute;
-  bottom: 0.25rem;
-  left: calc(50% - 0.625rem);
-  width: 1.25rem;
-  height: 2px;
-  background-color: var(--editorial-signal);
-  content: '';
-}

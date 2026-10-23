@@ -19,7 +19,7 @@
 
 - **Kein Farbmissbrauch:** Rot nicht für Erfolg, Grün nicht für Fehler, Blau nicht für Warnung.
 - **Keine Palettenklassen:** `bg-red-500`, `text-blue-600` verboten — nur Tokens.
-- **Kein Regenbogen:** Max 1 Akzent (Bernstein/Amber) + semantische Leitungsfarben. Kein bunter UI-Chrome.
+- **Kein Regenbogen:** Genau 1 Akzent — **Oxid `#a34a24`** (`--oxide`, dunkel `#e2885f`) — plus die semantischen Leitungsfarben. Kein bunter UI-Chrome, kein Bernstein, kein Limettengrün, kein Blau außer für Wechselstromleitungen (`--wire-ac`).
 - **Keine Schatten als Farbersatz:** Schatten vermatscht im Dark, nutze 1px Border.
 
 | No-Go                        | Warum                                   | Fix                    |
@@ -34,10 +34,10 @@
 
 ### Do's
 
-- **Inter für UI, IBM Plex Mono für Werte:** `font-sans` vs `font-mono`.
+- **Inter für UI und Werte:** `font-sans` mit `tabular-nums` für Zahlen. IBM Plex Mono nur für Tastenkürzel und die CSV-Vorschau — nicht für Titel, Labels, Kabelbeschriftungen oder die Statusleiste.
 - **Tabular-nums:** `font-variant-numeric: tabular-nums` + `font-feature-settings: 'tnum' 1` für alle Zahlen — verhindert Jitter.
-- **11px Minimum:** Port-Labels 11px, Metadaten 12px, UI Base 14px. Nie darunter.
-- **Fluid via clamp:** `clamp(11px, 0.65rem + 0.15vw, 13px)` für 375→1440px.
+- **12px Minimum:** Labels 12px, UI-Base 14px, Fließtext 16px, H1 32px (26px mobil). Kein Text unter 12 px — auch nicht in Statusleiste und Etiketten.
+- **Skala statt Fluid:** 12 / 13 / 14 / 16 / 20 / 26 / 32 px (`tailwind.config.ts` + `.h1`/`.h2`/`.kicker`). Keine `clamp()`-Sonderwege.
 
 ### Don'ts
 
@@ -45,11 +45,11 @@
 - **Keine zentrierten Zahlenkolonnen:** Zahlen immer rechtsbündig, Keys links — Fluchtlinie.
 - **Kein Text-Wrapping in Nodes:** Node-Breite fix 192/224/256px, Text truncate, nicht umbrechen.
 
-| No-Go                           | Warum                        | Fix                      |
-| ------------------------------- | ---------------------------- | ------------------------ |
-| `text-[10px]`                   | Unter Lesbarkeitsfloor       | `text-[11px]` min        |
-| `font-mono` ohne `tabular-nums` | Zahlen springen bei Änderung | `.de-mono-numeric`       |
-| Einheit im Label `Spannung (V)` | Platzverschwendung           | Wert `13.2 V` mit Suffix |
+| No-Go                           | Warum                        | Fix                                                            |
+| ------------------------------- | ---------------------------- | -------------------------------------------------------------- |
+| `text-[10px]` / `text-[11px]`   | Unter Lesbarkeitsfloor       | `text-xs` (12 px) min                                          |
+| `font-mono` ohne `tabular-nums` | Zahlen springen bei Änderung | `font-mono` + `tabular-nums`; besser: `font-sans tabular-nums` |
+| Einheit im Label `Spannung (V)` | Platzverschwendung           | Wert `13.2 V` mit Suffix                                       |
 
 ---
 
