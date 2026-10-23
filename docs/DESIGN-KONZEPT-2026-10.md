@@ -149,7 +149,18 @@ Umsetzung: `components/ui/button.tsx` (Website) und `.cad-btn*` in
 
 - Farbe, Auswahl-Sprache, Statusflächen, Knopf-System, Seitenbasis (`PageShell`),
   Typo-Skala, Touch-Ziele, Höhengrenze 500 px.
-- **Ebenen:** vollständig auf `--z-*` umgestellt (`§5`).
+- **Ebenen:** vollständig auf `--z-*` umgestellt (`§5`) — auch die
+  Tailwind-Klassen (`z-chrome`, `z-popover`, `z-sheet`, `z-toast`) ersetzen die
+  Zahlen. `z-50` ist damit für Leisten und Panels gesperrt; ein Wächter in
+  `lib/designTokens.test.ts` prüft das. Anlass: Der Onboarding-Dialog lag auf
+  `z-sheet` (40) und der Handy-Tab darunter auf dem alten `z-50` — der Dialog
+  war sichtbar, aber nicht bedienbar. Ebenso lag der Schleier eines Blattes
+  über dem Blatt selbst. Merksatz: Leisten `z-chrome`, Was schwebt
+  `z-popover`, Blätter und Dialoge `z-sheet`, Meldungen `z-toast`.
+- **Pflichttexte bleiben ganz:** Die Erklärzeile im Dialog ist bewusst nicht
+  auf zwei Zeilen geklemmt — im Stücklisten-Dialog verschwand sonst genau der
+  Satz, der die Freigabe begründet. Die Zwei-Zeilen-Regel gilt für selbst
+  geschriebene Kopfbeschreibungen in Blättern, nicht für Pflichtangaben.
 - **Bauteilkarten (Typografie):** Identitätscode und DIN-Kürzel in Inter mit
   `tabular-nums` und 12 px Untergrenze, Messwerte in Inter statt Mono. Die
   Kartenbreite ist fix (`w-48`/`w-64`), die Höhe folgt dem Inhalt — deshalb

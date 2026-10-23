@@ -214,7 +214,7 @@ jobs:
         # `tests/e2e/pixelMarker.ts`. Dass kein Pixelvergleich ohne diese
         # Kennzeichnung in diesen Lauf rutscht, prüft
         # `scripts/ci/e2eGatePartition.test.ts` im Job `quality`.
-        run: npx playwright test --grep-invert "hält die Baseline" --max-failures=8
+        run: npx playwright test --grep-invert "hält die Baseline"
 
       - name: Report hochladen
         if: ${{ failure() }}
