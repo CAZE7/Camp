@@ -507,7 +507,7 @@ export function ExpertPanel() {
         // Kein `transition-all`: Ein Blatt, das seine Breite animiert, wirkt wie
         // eine Karte aus einer Marketing-Oberfläche. Bewegung gibt es nur als
         // kurzes Einblenden, damit der Blick nicht springt.
-        'planner-expert-panel pointer-events-auto absolute z-50 transition-opacity duration-150 ease-out',
+        'planner-expert-panel pointer-events-auto absolute z-sheet transition-opacity duration-150 ease-out',
         // Geschlossen: FAB unten rechts, ab md über der Statuszeile.
         // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
         // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf

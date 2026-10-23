@@ -309,7 +309,7 @@ export default function Home() {
 
         <section className="grid gap-5 rounded border border-rule bg-soot p-5 text-paper md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-7">
           <div>
-            <p className="panel-title">WERKZEUG // SCHALTPLAN</p>
+            <p className="panel-title text-paper/70">WERKZEUG // SCHALTPLAN</p>
             <h2 className="h2 mt-2 text-paper">Vom Überblick zum eigenen Schaltplan.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper/80">
               Bauteile verbinden, Angaben strukturieren und den Plan dokumentieren. Vor dem Einbau bleibt eine

@@ -980,7 +980,7 @@ export function FlowCanvas() {
       {saveFailure && (
         <div
           role="alert"
-          className="absolute top-8 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
+          className="absolute top-8 left-1/2 z-overlay w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
         >
           Plan konnte nicht gespeichert werden ({saveFailure.message}). Änderungen gehen beim Neuladen
           verloren — Browser-Speicher freigeben und den Plan erneut öffnen.
@@ -991,7 +991,7 @@ export function FlowCanvas() {
         <div
           role="status"
           aria-live="polite"
-          className="absolute top-24 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
+          className="absolute top-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
         >
           {waterWarning}
         </div>
@@ -1242,7 +1242,7 @@ export function FlowCanvas() {
       </DesignatorContext.Provider>
 
       <div
-        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"
+        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 text-center md:bottom-6"
         aria-live="polite"
         role="status"
       >

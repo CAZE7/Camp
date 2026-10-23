@@ -605,7 +605,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           // schwebenden Undo-Leiste), ab `md` als Bericht unter der
           // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
           // sichtbaren Bereich.
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-sheet flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
           aria-label="Planungsprüfung"
         >

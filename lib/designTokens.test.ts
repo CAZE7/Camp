@@ -176,6 +176,30 @@ describe('Designkonzept 2026-10 — Ebenen (z-Index-Skala)', () => {
     for (const root of ROOTS) walk(root);
     expect(offenders, offenders.join('\n')).toEqual([]);
   });
+
+  it('keine numerischen z-Klassen oberhalb der Ebene „Blatt" (40)', () => {
+    // `z-50` ist in Tailwind derselbe Wert wie `--z-toast`. Wer ihn für
+    // Leisten oder Panels benutzt, setzt sie damit über Dialog und Blatt —
+    // genau das ließ den Onboarding-Dialog unbedienbar werden (der
+    // Handy-Tab fing die Klicks ab). Oberhalb von `--z-sheet` steht nur,
+    // was wirklich eine Meldung ist: `z-toast`.
+    const ROOTS = ['app', 'components'] as const;
+    const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          if (entry !== 'node_modules') walk(full);
+        } else if (/\.(ts|tsx)$/.test(entry) && !IGNORED.test(entry)) {
+          const src = readFileSync(full, 'utf8');
+          if (/(^|[\s"'`:])z-50(\b|\s)/.test(src)) offenders.push(full);
+        }
+      }
+    };
+    for (const root of ROOTS) walk(root);
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
 });
 
 describe('M7-5 — Kontraste WCAG ≥ 4,5:1 (Text) bzw. ≥ 3:1 (Leitungen)', () => {

@@ -26,7 +26,7 @@ export function FloatingMetricsCard() {
       // Keine Glass-Fläche: Die Kennzahlen liegen auf einer deckenden Fläche,
       // die Kante trennt sie vom Raster — dahinter durchscheinende Leitungen
       // würden die Zahlen lesen lassen wie ein HUD aus einem Spiel.
-      className={`pointer-events-none absolute top-28 right-3 z-40 hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
+      className={`pointer-events-none absolute top-28 right-3 z-popover hidden overflow-hidden rounded border border-[var(--de-rule-strong)] bg-surface-panel transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">

@@ -84,7 +84,7 @@ export function PlannerInspector() {
            ausdrücklichen `visible`-Regel aufhebbar — ohne sie war der Griff
            genau dann unsichtbar, wenn er gebraucht wurde: Nach dem Schließen
            ließ sich die Spalte am Desktop nur über eine neue Auswahl öffnen. */
-        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:visible xl:inline-flex ${
+        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1/2 z-chrome hidden h-11 w-11 -translate-y-1/2 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:visible xl:inline-flex ${
           isInspectorOpen ? 'planner-inspector-toggle--open' : 'right-0.5'
         }`}
         title={isInspectorOpen ? 'Inspector einklappen' : 'Inspector ausklappen'}
@@ -101,7 +101,7 @@ export function PlannerInspector() {
 
       {/* Die Spaltenbreite setzt der Container in PlannerInner (Slide-over vs.
           Spalte); hier füllt das Panel nur noch den zugewiesenen Platz. */}
-      <div className="relative z-40 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-panel">
+      <div className="relative z-sheet flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-panel">
         <div className="h-full w-full">
           <Inspector
             selectedEdge={selectedEdge}
