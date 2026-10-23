@@ -112,7 +112,7 @@ export function AccessibleDialog({
     // ist Escape (onKeyDown) plus Focus-Trap — das Dialog-Pattern (WAI-APG).
     // Das a11y-Gate darüber liegt bei axe (tests/e2e/a11y.spec.ts).
     <div
-      className="planner-dialog-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-scrim p-4"
+      className="planner-dialog-backdrop fixed inset-0 z-sheet flex items-center justify-center bg-scrim p-4"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
@@ -125,16 +125,25 @@ export function AccessibleDialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          'planner-dialog relative flex max-h-[min(100dvh-1rem,90dvh)] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-border bg-card text-foreground shadow-2xl focus:outline-none',
+          // Ein Scrollbereich pro Blatt: Kopf und Fußleiste bleiben stehen,
+          // nur der Inhalt scrollt (Designkonzept 2026-10, Planer-Regel 5).
+          // Radius 4 px wie alles andere; die Höhe folgt dem Fenster.
+          'planner-dialog relative flex max-h-[min(100dvh-1rem,90dvh)] w-full max-w-lg flex-col overflow-hidden rounded border border-border bg-card text-foreground shadow-2xl focus:outline-none',
           className
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="text-xl font-bold break-words text-foreground">
+            {/* Blatt- und Dialogtitel: 16 px, 600, Satzschreibung — nicht mono,
+                nicht 24 px (Planer-Regel 2). */}
+            <h2 id={titleId} className="text-md font-semibold break-words text-foreground">
               {title}
             </h2>
             {description && (
+              /* Die Erklärung bleibt vollständig lesbar. Ein Abschneiden auf
+                 zwei Zeilen hat im BOM-Dialog genau den Satz verschluckt, der
+                 die Freigabe begründet — Regel „Kopf kurz halten" gilt für
+                 selbst geschriebene Texte, nicht für Pflichtangaben. */
               <p
                 id={descriptionId}
                 className="planner-dialog__description mt-1 text-sm break-words text-muted-foreground"

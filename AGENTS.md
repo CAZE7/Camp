@@ -44,6 +44,9 @@ Modul-READMEs (jeweils: Was ist es · Public API · Besitz · Verbote · schütz
 
 **Mehrere Themen?** Erst `ARCHITECTURE-RULES.md`, dann je Thema das Kontextdokument.
 **Nichts davon?** Dann ist es wahrscheinlich UI/Store/Tooling — frage nach, statt zu raten.
+Für Design-Änderungen gilt zusätzlich das verbindliche
+[Designkonzept 2026-10](docs/DESIGN-KONZEPT-2026-10.md) (ein Akzent Oxid, 12-px-Untergrenze,
+PageShell, Knopf- und Ebenen-Regeln); Wächter ist `lib/designTokens.test.ts`.
 
 ## 3. Wenn du Routing änderst
 

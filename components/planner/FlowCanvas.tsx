@@ -355,6 +355,13 @@ export function FlowCanvas() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [collidingNodeId, setCollidingNodeId] = useState<string | null>(null);
   const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
+  /**
+   * Hinweis „Dachplaner-Daten erkannt“ (Designkonzept 2026-10, Regel 6):
+   * Das war ein Dauerpanel über der Zeichenfläche — auf dem Telefon lag es
+   * über den Trassen und blieb stehen, auch wenn man es gelesen hatte. Jetzt
+   * ein Hinweis mit Schließen, der die Fläche freigibt.
+   */
+  const [solarNoticeDismissed, setSolarNoticeDismissed] = useState(false);
   const connectionAttempt = useRef(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -973,7 +980,7 @@ export function FlowCanvas() {
       {saveFailure && (
         <div
           role="alert"
-          className="absolute top-8 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
+          className="absolute top-8 left-1/2 z-overlay w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
         >
           Plan konnte nicht gespeichert werden ({saveFailure.message}). Änderungen gehen beim Neuladen
           verloren — Browser-Speicher freigeben und den Plan erneut öffnen.
@@ -984,7 +991,7 @@ export function FlowCanvas() {
         <div
           role="status"
           aria-live="polite"
-          className="absolute top-24 left-1/2 z-50 w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
+          className="absolute top-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
         >
           {waterWarning}
         </div>
@@ -1162,7 +1169,7 @@ export function FlowCanvas() {
                         ? 'Prüfung: Stimmt es? Bauteile und Leitungen mit Befunden sind markiert, unauffällige abgedunkelt.'
                         : 'Planung: Was gehört elektrisch zusammen?'
                   }
-                  className="planner-mode-caption mx-auto mt-1 max-w-full border border-rule-strong bg-surface-panel px-2 py-1 text-center text-[11px] leading-snug text-ink-soft"
+                  className="planner-mode-caption mx-auto mt-1 max-w-[min(92vw,30rem)] border border-rule-strong bg-surface-panel px-2 py-1 text-center text-xs leading-snug text-ink-soft"
                 >
                   {plannerMode === 'physisch'
                     ? 'Physisch: Wo liegt es? Leitungslängen sind eingeblendet (Schätzmaßstab 100 px = 1 m).'
@@ -1202,19 +1209,32 @@ export function FlowCanvas() {
                   role="status"
                   className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
                 >
-                  <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
+                  <span className="kicker mr-2 text-oxide">Strompfad</span>
                   {traceLabel}
                 </div>
               </Panel>
             )}
 
-            {viewMode === 'electric' && calculatedSolarWatts > 0 && (
+            {viewMode === 'electric' && calculatedSolarWatts > 0 && !solarNoticeDismissed && (
               <Panel
                 position="bottom-center"
-                className="mb-4 border border-rule-strong bg-surface-panel p-2 text-xs text-foreground"
+                className="mb-4 max-w-[min(32rem,calc(100vw-2rem))] border border-rule-strong bg-surface-panel p-2 text-xs text-foreground"
               >
-                <strong className="font-semibold">Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W
-                Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
+                <div role="status" className="flex items-start gap-2">
+                  <p className="min-w-0">
+                    <strong className="font-semibold">Dachplaner-Daten erkannt:</strong>{' '}
+                    {calculatedSolarWatts} W Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür
+                    passend dimensioniert sein.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSolarNoticeDismissed(true)}
+                    aria-label="Hinweis schließen"
+                    className="-mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded text-ink-soft hover:bg-surface-hover hover:text-ink"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
               </Panel>
             )}
           </ReactFlow>
@@ -1222,7 +1242,7 @@ export function FlowCanvas() {
       </DesignatorContext.Provider>
 
       <div
-        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"
+        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 text-center md:bottom-6"
         aria-live="polite"
         role="status"
       >

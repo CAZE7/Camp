@@ -41,7 +41,7 @@ describe('RootLayout', () => {
     );
     expect(bodyElement).toBeDefined();
     expect(bodyElement!.props.className).toContain('font-sans');
-    expect(bodyElement!.props.className).toContain('min-h-screen');
+    expect(bodyElement!.props.className).toContain('min-h-dvh');
 
     // Body enthält SystemThemeSync, den Skip-Link (a) und die Children —
     // gesucht wird per Typ/Props, nicht per Index.

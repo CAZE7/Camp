@@ -12,7 +12,7 @@ export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boo
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="chat-window-launcher fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent"
+        className="chat-window-launcher fixed right-6 bottom-6 z-chrome flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent"
         aria-label="Chat öffnen"
       >
         <MessageSquare className="h-5 w-5" aria-hidden="true" />
@@ -21,7 +21,7 @@ export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boo
   }
 
   return (
-    <div className="chat-window rounded-lg border border-border bg-bone shadow-2xl">
+    <div className="chat-window z-toast rounded-lg border border-border bg-bone shadow-2xl">
       <div className="flex items-center justify-between rounded-t-lg border-b border-border bg-oxide p-4 text-on-signal">
         <h2 className="font-semibold">Camper AI Assistent</h2>
         <button

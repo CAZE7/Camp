@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
 // AUDIT „Impressum-Placeholder": Die Angaben stehen in `lib/siteLegal.ts` —
 // eine Stelle zum Ausfüllen, eine maschinell prüfbare Vollständigkeit
@@ -19,10 +18,9 @@ export default function ImpressumPage() {
   const responsibleComplete = !isPlaceholderText(legal.contentResponsible);
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <>
       <PageStructuredData path="/impressum/" />
-      <SiteHeader />
-      <main id="main" className="container-page prose-measure flex-1">
+      <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Impressum</h1>
         <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 TMG.</p>
 
@@ -69,8 +67,7 @@ export default function ImpressumPage() {
             Landstrom-Anlagen ist eine Prüfung durch qualifiziertes Personal nach DIN VDE 0100-721 Pflicht.
           </p>
         </section>
-      </main>
-      <SiteFooter />
-    </div>
+      </PageShell>
+    </>
   );
 }

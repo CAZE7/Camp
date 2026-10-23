@@ -92,10 +92,6 @@ const MARKEN_TOKENS = [
   'surface-panel',
   'surface-raised',
   'surface-hover',
-  'editorial-paper',
-  'editorial-panel',
-  'editorial-signal',
-  'editorial-inverse-text',
   'rule',
   'rule-strong',
   'oxide',
@@ -130,6 +126,79 @@ describe('M7-1 — Planer-Design-Tokens', () => {
     expect(rootTokens.has('danger')).toBe(true);
     expect(rootTokens.has('canvas-bg')).toBe(true);
     expect(darkTokens.has('canvas-bg')).toBe(true);
+  });
+});
+
+describe('Designkonzept 2026-10 — Ebenen (z-Index-Skala)', () => {
+  const Z_TOKENS = ['z-canvas', 'z-overlay', 'z-chrome', 'z-popover', 'z-sheet', 'z-toast'] as const;
+
+  it.each(Z_TOKENS)('--%s ist in hell und dunkel definiert', (name) => {
+    expect(rootTokens.has(name)).toBe(true);
+    expect(darkTokens.has(name)).toBe(true);
+  });
+
+  it('hält die fünf Ebenen in aufsteigender Reihenfolge', () => {
+    const value = (name: string) => parseInt(rootTokens.get(name) ?? '', 10);
+    const order = Z_TOKENS.map(value);
+    for (const v of order) expect(Number.isFinite(v)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(new Set(order).size).toBe(order.length);
+  });
+
+  it('kein globaler z-Index über der obersten Ebene (50)', () => {
+    // Lokale Werte innerhalb eines Stapelkontexts (Karte, Knoten, Kante) sind
+    // erlaubt und bleiben klein; globale Schichten laufen über --z-*.
+    const offenders: string[] = [];
+    ast.walkDecls('z-index', (decl) => {
+      const numeric = Number.parseInt(decl.value.replace('!important', '').trim(), 10);
+      if (Number.isFinite(numeric) && numeric > 50) {
+        offenders.push(`${decl.parent?.toString().slice(0, 60)} → ${decl.value}`);
+      }
+    });
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('keine willkürlichen z-[…]-Klassen in Komponenten (nur die Skala)', () => {
+    const ROOTS = ['app', 'components'] as const;
+    const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          if (entry !== 'node_modules') walk(full);
+        } else if (/\.(ts|tsx)$/.test(entry) && !IGNORED.test(entry)) {
+          const src = readFileSync(full, 'utf8');
+          if (/z-\[/.test(src)) offenders.push(full);
+        }
+      }
+    };
+    for (const root of ROOTS) walk(root);
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('keine numerischen z-Klassen oberhalb der Ebene „Blatt" (40)', () => {
+    // `z-50` ist in Tailwind derselbe Wert wie `--z-toast`. Wer ihn für
+    // Leisten oder Panels benutzt, setzt sie damit über Dialog und Blatt —
+    // genau das ließ den Onboarding-Dialog unbedienbar werden (der
+    // Handy-Tab fing die Klicks ab). Oberhalb von `--z-sheet` steht nur,
+    // was wirklich eine Meldung ist: `z-toast`.
+    const ROOTS = ['app', 'components'] as const;
+    const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          if (entry !== 'node_modules') walk(full);
+        } else if (/\.(ts|tsx)$/.test(entry) && !IGNORED.test(entry)) {
+          const src = readFileSync(full, 'utf8');
+          if (/(^|[\s"'`:])z-50(\b|\s)/.test(src)) offenders.push(full);
+        }
+      }
+    };
+    for (const root of ROOTS) walk(root);
+    expect(offenders, offenders.join('\n')).toEqual([]);
   });
 });
 
@@ -170,14 +239,16 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
     expect(read('components/planner/FlowCanvas.tsx')).toContain('variant={BackgroundVariant.Dots}');
   });
 
-  it('selektiert Bauteile mit 1 px Akzent-Linie (M7-3)', () => {
+  it('selektiert Bauteile über Form, nicht über Farbe (Designkonzept 2026-10)', () => {
     // Live-Mechanik: die Knotenkomponenten setzen bei Auswahl die Klasse
-    // `node-card--selected`; die 1-px-Linie kommt aus `.node-card`
-    // (`border: 1px solid …`) und dem Token `--accent-line`. Der frühere
-    // Träger dieser Regel (`components/nodes/BaseNode.tsx`) war toter Code
-    // und ist am 2026-09-28 entfernt — der Test prüft jetzt das, was läuft.
+    // `node-card--selected`. Seit dem Designkonzept zeigt die Auswahl einen
+    // 2-px-Umriss in --text-high plus einen Oxid-Halo, NICHT den Akzent als
+    // Rahmenfarbe: --oxide (#a34a24) und die Plus-Leitung --wire-dc (#c62f21)
+    // liegen bei 1,08:1 — ein rostfarbener Auswahlrahmen wäre von einer
+    // Plus-Leitung nicht zu unterscheiden. Die Leitung bleibt rot.
     expect(read('components/nodes/BatteryNode.tsx')).toContain("selected ? 'node-card--selected'");
-    expect(css).toMatch(/\.node-card--selected\s*\{[^}]*border-color:\s*var\(--accent-line\)/);
+    expect(css).toMatch(/\.node-card--selected\s*\{[^}]*outline:\s*2px solid var\(--text-high\)/);
+    expect(css).toMatch(/\.node-card--selected\s*\{[^}]*box-shadow:[^;]*var\(--oxide\) 25%/);
   });
 
   it('bindet Inter als UI-Schrift und Outfit als Display-Schrift ein (D-2/M7-2)', () => {
@@ -212,12 +283,7 @@ describe('D-1 Marken-Token-Fundament — Kontraste WCAG AA', () => {
   const textPairs = [
     ['text-high', 'surface-canvas'],
     ['text-high', 'surface-panel'],
-    ['text-high', 'editorial-paper'],
-    ['text-high', 'editorial-panel'],
     ['text-med', 'surface-panel'],
-    ['text-med', 'editorial-panel'],
-    ['editorial-inverse-text', 'soot'],
-    ['soot', 'editorial-signal'],
     ['text-med', 'surface-raised'],
     ['text-low', 'surface-canvas'],
     ['oxide', 'surface-canvas'],

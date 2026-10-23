@@ -164,7 +164,7 @@ describe('PlannerInner — responsives Layout', () => {
     // `data-panel-open` blendet die schwebenden Canvas-Griffe aus).
     expect(canvasColumn.className).not.toContain('hidden');
     expect(sidebarColumn.className).toContain('max-md:absolute');
-    expect(sidebarColumn.className).toContain('max-md:z-40');
+    expect(sidebarColumn.className).toContain('max-md:z-sheet');
     expect(shell()).toHaveAttribute('data-panel-open', 'true');
 
     // Zurück auf die Zeichenfläche: Blatt zu, Canvas weiter im Aufbau.

@@ -649,9 +649,13 @@ export function checkStructuredData(
     const visibleBreadcrumbNav = dom.window.document.querySelector('nav[aria-label="Pfad"]');
     const visibleBreadcrumbs = visibleBreadcrumbNav
       ? [...visibleBreadcrumbNav.querySelectorAll('li')].flatMap((listItem) => {
+          // Die aktuelle Station ist Text mit `aria-current="page"`. Mobil
+          // steht davor noch ein „←"-Verweis zurück zur Elternseite; der ist
+          // Bedienhilfe, keine Brotkrume, und darf den Abgleich nicht
+          // verschieben. Deshalb zuerst die aktuelle Station, dann der Link.
           const labelElement = listItem.matches('[aria-current="page"]')
             ? listItem
-            : listItem.querySelector('a, [aria-current="page"]');
+            : (listItem.querySelector('[aria-current="page"]') ?? listItem.querySelector('a'));
           if (!labelElement) return [];
           const name = (labelElement.textContent ?? '').replace(/\s+/g, ' ').trim();
           const rawHref =

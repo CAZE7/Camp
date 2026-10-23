@@ -25,20 +25,21 @@ const TYPE_STYLES: Record<
   { badge: string; card: string; icon: React.ReactNode; label: string }
 > = {
   critical: {
-    badge: 'bg-warn-critical text-on-signal',
-    card: 'bg-warn-critical-bg border-warn-critical',
+    // `badge` ist die Farbe des Symbols, nicht einer gefüllten Fläche.
+    badge: 'text-warn-critical',
+    card: 'bg-warn-critical-bg border-warn-critical-border',
     icon: <AlertTriangle className="h-5 w-5 shrink-0 text-warn-critical" />,
     label: 'Kritisch',
   },
   warning: {
-    badge: 'bg-warn-warning text-on-signal',
-    card: 'bg-warn-warning-bg border-warn-warning',
+    badge: 'text-warn-warning',
+    card: 'bg-warn-warning-bg border-warn-warning-border',
     icon: <AlertCircle className="h-5 w-5 shrink-0 text-warn-warning" />,
     label: 'Warnung',
   },
   info: {
-    badge: 'bg-warn-info text-on-signal',
-    card: 'bg-warn-info-bg border-warn-info',
+    badge: 'text-warn-info',
+    card: 'bg-warn-info-bg border-warn-info-border',
     icon: <Info className="h-5 w-5 shrink-0 text-warn-info" />,
     label: 'Hinweis',
   },
@@ -180,7 +181,7 @@ function FindingCard({
     details?.rcdsElsewhere !== undefined;
 
   return (
-    <li className={`rounded-lg border-l-4 p-3 ${style.card}`}>
+    <li className={`rounded border border-l-4 p-3 ${style.card}`}>
       <div className="flex items-start gap-2">
         {style.icon}
         <div className="min-w-0 flex-1">
@@ -213,7 +214,7 @@ function FindingCard({
           {/* Gleiche Ursache, mehrere Leitungen (Phase 10/11) — kompakt, ohne
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
           {rootCause && rootCause.findingCount > 1 && (
-            <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-soft">
+            <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
               Gleiche Ursache · {rootCause.findingCount} Leitungen betroffen
               {warning.status === 'incomplete' ? ' · Datenlage unvollständig, kein Verstoß' : ''}
             </p>
@@ -234,7 +235,7 @@ function FindingCard({
                 Warum? Technische Details
               </button>
               {whyOpen && (
-                <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-xs leading-relaxed text-ink-soft">
                   {warning.source && <p>Grundlage: {warning.source}</p>}
                   {details?.calculationMethod && (
                     <p>
@@ -552,14 +553,16 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
         // (WCAG 2.5.3 „Label in Name").
         aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none md:px-3 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
+        // Ghost-Knopf (Designkonzept 2026-10, Planer-Regel 3): Zahl in
+        // --text-high, Symbol in der Statusfarbe, keine gefüllte Pille.
+        className="flex min-h-11 items-center gap-1.5 rounded border border-control-border bg-surface-raised px-2 text-xs font-semibold text-ink shadow-none transition-colors duration-150 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-oxide focus-visible:ring-offset-2 focus-visible:outline-none md:px-3"
       >
         {topType === 'critical' ? (
-          <OctagonAlert className="h-4 w-4" aria-hidden="true" />
+          <OctagonAlert className={`h-4 w-4 ${TYPE_STYLES[topType].badge}`} aria-hidden="true" />
         ) : topType === 'warning' ? (
-          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          <AlertTriangle className={`h-4 w-4 ${TYPE_STYLES[topType].badge}`} aria-hidden="true" />
         ) : (
-          <Info className="h-4 w-4" aria-hidden="true" />
+          <Info className={`h-4 w-4 ${TYPE_STYLES[topType].badge}`} aria-hidden="true" />
         )}
         <span className="cad-warn-chip__text whitespace-nowrap">{badgeLabel}</span>
         {/* Kompakt: Der vollständige Satz („14 von 24 kritisch“) braucht
@@ -602,7 +605,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           // schwebenden Undo-Leiste), ab `md` als Bericht unter der
           // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
           // sichtbaren Bereich.
-          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-sheet flex max-h-[60dvh] min-w-0 flex-col overflow-hidden overscroll-contain rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:top-[4.75rem] md:right-3 md:bottom-auto md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
           aria-label="Planungsprüfung"
         >

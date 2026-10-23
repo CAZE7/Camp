@@ -40,15 +40,16 @@ gilt der **Code**, danach `docs/ai/*`.
 
 ## 2. Task-Routing (Entscheidungslogik)
 
-| Task enthält …                                                  | Zuerst lesen                                     |
-| --------------------------------------------------------------- | ------------------------------------------------ |
-| `routing / path / collision / crossing / lane / hop / ELK / A*` | [ROUTING-CONTEXT.md](./ROUTING-CONTEXT.md)       |
-| `fuse / cable / voltage / current / battery / solar`            | [ELECTRICAL-CONTEXT.md](./ELECTRICAL-CONTEXT.md) |
-| `autowire / automatic wiring`                                   | [AUTOWIRE-CONTEXT.md](./AUTOWIRE-CONTEXT.md)     |
-| `component / port / connection / node.type`                     | [DOMAIN-CONTEXT.md](./DOMAIN-CONTEXT.md)         |
-| `warning / validation / error / rule`                           | [VALIDATION-CONTEXT.md](./VALIDATION-CONTEXT.md) |
-| `test / regression / golden / e2e`                              | [TESTING-CONTEXT.md](./TESTING-CONTEXT.md)       |
-| `refactor / move / new file / dependency`                       | [ARCHITECTURE-RULES.md](./ARCHITECTURE-RULES.md) |
+| Task enthält …                                                  | Zuerst lesen                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------ |
+| `routing / path / collision / crossing / lane / hop / ELK / A*` | [ROUTING-CONTEXT.md](./ROUTING-CONTEXT.md)                   |
+| `fuse / cable / voltage / current / battery / solar`            | [ELECTRICAL-CONTEXT.md](./ELECTRICAL-CONTEXT.md)             |
+| `autowire / automatic wiring`                                   | [AUTOWIRE-CONTEXT.md](./AUTOWIRE-CONTEXT.md)                 |
+| `component / port / connection / node.type`                     | [DOMAIN-CONTEXT.md](./DOMAIN-CONTEXT.md)                     |
+| `warning / validation / error / rule`                           | [VALIDATION-CONTEXT.md](./VALIDATION-CONTEXT.md)             |
+| `test / regression / golden / e2e`                              | [TESTING-CONTEXT.md](./TESTING-CONTEXT.md)                   |
+| `design / farbe / typografie / knopf / radius / page shell`     | [../DESIGN-KONZEPT-2026-10.md](../DESIGN-KONZEPT-2026-10.md) |
+| `refactor / move / new file / dependency`                       | [ARCHITECTURE-RULES.md](./ARCHITECTURE-RULES.md)             |
 
 Zusätzlich **immer**, wenn die Änderung Verhalten betrifft:
 [CHANGE-WORKFLOW.md](./CHANGE-WORKFLOW.md) (Routing und Electrical haben eigene Abläufe).
