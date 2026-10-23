@@ -156,6 +156,12 @@ Umsetzung: `components/ui/button.tsx` (Website) und `.cad-btn*` in
   nachgewiesen ohne Geometrie-Drift: `npm run test:regression` (68 Tests,
   byte-exakte SVGs) und `npm run test:goldenmaster` (13 Tests) sind grün,
   `npx tsx scripts/routing/audit.ts` meldet I1–I7 = 0 und Fallback 0.
+- **Ein Gerüst für alle Seiten:** `SeoPage`, `/elektrik-planung`, `/tools/dach`
+  und `/tools/heizung` bauen ihren Rahmen nicht mehr selbst (`min-h-screen`,
+  eigener Kopf, eigener Fuß), sondern rendern in `PageShell` (`article`/`tool`).
+  Brotkrumen sitzen dort, wo das Konzept sie vorsieht: unter dem Kopf, in der
+  Lesespalte. Damit gibt es keine Seite mehr ohne Fuß und keine zweite
+  Lesekante.
 - **Querformat (≤ 500 px Höhe):** Menü-, Werkzeug- und Prüf-Blätter nutzen die
   volle Höhe zwischen Kopfzeile und Fußleiste (vorher `min(60dvh, 26rem)` →
   ~150 px sichtbar); die Warnzentrale ebenso. Der Hinweis „Dachplaner-Daten
