@@ -113,10 +113,13 @@ Umsetzung: `components/ui/button.tsx` (Website) und `.cad-btn*` in
   28 px sichtbarer Daumen in einer 44 px hohen Trefferfläche (`.range-slider`).
 - **Ebenen (z-Index):** genau fünf Stufen — `--z-canvas 0`, `--z-overlay 10`,
   `--z-chrome 20`, `--z-popover 30`, `--z-sheet 40`, `--z-toast 50`
-  (Tailwind: `z-canvas` … `z-toast`). Website-Kopf und Chat nutzen sie bereits.
-  Die gewachsenen Einzelwerte des Planers (60/70/90/120/190) bleiben vorerst —
-  sie umzustellen verlangt einen neuen Lauf der visuellen E2E-Snapshots; das ist
-  ein eigener Schritt, kein Nebenprodukt.
+  (Tailwind: `z-canvas` … `z-toast`). Umgesetzt: alle globalen Schichten von
+  `app/globals.css` und alle Komponenten nutzen die Tokens; willkürliche
+  `z-[…]`-Klassen gibt es nicht mehr. **Lokale** Werte innerhalb eines
+  Stapelkontexts (`.node-card::before` 1, Drag-Griff 20, Kartenkante 4) bleiben
+  Zahlen — sie sind keine Ebenen, sondern Zeichenreihenfolge innerhalb einer
+  Karte bzw. der Zeichenfläche. Wächter: `lib/designTokens.test.ts`
+  („kein globaler z-Index über 50", „keine `z-[…]`-Klassen").
 - **Höhengrenze:** genau eine — `@media (orientation: landscape) and
 (max-height: 500px)`. Die alten Grenzen 480, 520 und 700 px sind entfallen.
 
@@ -139,12 +142,33 @@ Umsetzung: `components/ui/button.tsx` (Website) und `.cad-btn*` in
 
 ---
 
-## 7. Was bewusst offen bleibt
+## 7. Stand der Umsetzung und was offen bleibt
 
-- **Node-Karten und Bauteiltexte:** Breite und Innenaufbau bestimmen die
-  Anschlusskoordinaten und damit das Routing (Invarianten I1–I10, byte-exakte
-  Regression). Schriftumstellung in Karten ist ein eigener Schritt mit
-  Recapture der Golden Plans.
-- **Planer-z-Indizes:** siehe §5 — Umstellung nur mit neuen visuellen Snapshots.
+**Umgesetzt** (Wächter: `lib/designTokens.test.ts`, `components/ui/button.test.tsx`,
+`components/planner/FlowCanvas.test.tsx`):
+
+- Farbe, Auswahl-Sprache, Statusflächen, Knopf-System, Seitenbasis (`PageShell`),
+  Typo-Skala, Touch-Ziele, Höhengrenze 500 px.
+- **Ebenen:** vollständig auf `--z-*` umgestellt (`§5`).
+- **Bauteilkarten (Typografie):** Identitätscode und DIN-Kürzel in Inter mit
+  `tabular-nums` und 12 px Untergrenze, Messwerte in Inter statt Mono. Die
+  Kartenbreite ist fix (`w-48`/`w-64`), die Höhe folgt dem Inhalt — deshalb
+  nachgewiesen ohne Geometrie-Drift: `npm run test:regression` (68 Tests,
+  byte-exakte SVGs) und `npm run test:goldenmaster` (13 Tests) sind grün,
+  `npx tsx scripts/routing/audit.ts` meldet I1–I7 = 0 und Fallback 0.
+- **Querformat (≤ 500 px Höhe):** Menü-, Werkzeug- und Prüf-Blätter nutzen die
+  volle Höhe zwischen Kopfzeile und Fußleiste (vorher `min(60dvh, 26rem)` →
+  ~150 px sichtbar); die Warnzentrale ebenso. Der Hinweis „Dachplaner-Daten
+  erkannt“ ist kein Dauerpanel mehr, sondern schließbar.
+
+**Offen — bewusst, mit Begründung:**
+
+- **Pixel-Baselines:** `tests/e2e/visual.spec.ts-snapshots/` (40 Bilder) und
+  `visual-de-pixel` sind nach diesen Änderungen veraltet. Refresh läuft über
+  `.github/workflows/baselines.yml` (nur `workflow_dispatch`, ohne Schreibrecht)
+  und wird **nach optischer Freigabe** von Hand committet — ein Lauf, der
+  Baselines selbst eincheckt, wäre ein selbstgemachtes Gate. Das visuelle Gate
+  in `quality.yml` ist ausdrücklich nicht blockierend.
 - **`/design-system`:** dunkle Spielwiese mit eigenem `--de-*`-Namensraum; dort
-  gilt die 12-px-Untergrenze ebenfalls, die Kontrastwerte werden separat gepflegt.
+  gilt die 12-px-Untergrenze ebenfalls, die Kontrastwerte werden separat gepflegt
+  und eigene `--de-*`-Z-Indizes gibt es nicht (die Seite erbt `--z-*`).

@@ -283,6 +283,14 @@
     --accent-line: var(--oxide);
     --border: var(--rule);
     --control-border: var(--text-low);
+    /* Ebenen sind themenunabhängig — hier nur gespiegelt, damit der
+       Token-Guard beide Blöcke prüfen kann (keine dunkle Sonderregel). */
+    --z-canvas: 0;
+    --z-overlay: 10;
+    --z-chrome: 20;
+    --z-popover: 30;
+    --z-sheet: 40;
+    --z-toast: 50;
 
     /* shadcn-Rollen, die in dunkel andere Fascen/Werte brauchen.
        Der Primärknopf bleibt der Akzent — in dunkel das hellere Oxid. */
@@ -675,7 +683,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 150ms ease;
-    z-index: 80;
+    z-index: var(--z-popover);
   }
   .tool-btn:hover::after,
   .tool-btn:focus-visible::after {
@@ -691,7 +699,7 @@
     border-radius: 4px;
     background: var(--surface-raised);
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.6875rem;
+    font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
     line-height: 1.25rem;
     color: var(--text-med);
   }
@@ -700,7 +708,7 @@
   .shortcut-overlay {
     position: fixed;
     inset: 0;
-    z-index: 190;
+    z-index: var(--z-sheet);
     display: grid;
     place-items: center;
     padding: 1rem;
@@ -785,9 +793,10 @@
       border-color 150ms ease,
       box-shadow 150ms ease;
   }
-  /* Statusleiste: 2 px Akzent über der Kartenoberkante. z-index 1, damit sie
-     sichtbar bleibt — ohne würde der Symbolstreifen (höherer Paint-Order)
-     sie überdecken und Selektion/Fehler wären nie zu sehen. */
+  /* Statusleiste: 2 px Akzent über der Kartenoberkante. Der Wert 1 ist
+     LOKAL (innerhalb des Stapelkontexts der Karte, kein Ebenenwert): ohne ihn
+     überdeckte der Symbolstreifen (höherer Paint-Order) die Leiste und
+     Selektion/Fehler wären nie zu sehen. Deshalb bewusst keine --z-* Variable. */
   .node-card::before {
     content: '';
     position: absolute;
@@ -933,6 +942,7 @@
     top: -22px;
     left: 50%;
     transform: translateX(-50%);
+    /* LOKAL im Knoten (Stapelkontext der Karte), kein globaler Ebenenwert. */
     z-index: 20;
     display: flex;
     /* 44x44 CSS-Pixel Touch-Target (WCAG 2.5.5 / Apple HIG). */
@@ -969,11 +979,16 @@
     border: 1px solid currentColor;
     border-radius: 50%;
   }
+  /* Identitätscode der Bauteilkarte (BAT, MPPT, …): Inter mit Sperrung.
+     Mono ist Tastenkürzeln und der CSV-Vorschau vorbehalten, und die
+     Untergrenze liegt bei 12 px (Designkonzept 2026-10, Planer-Regel 2). */
   .node-symbol__code {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-family: var(--font-sans);
+    font-size: 0.75rem; /* 12 px */
+    line-height: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
   }
   /* D-4: Domain-Tints über Signaltokens gemischt — hell und dunkel korrekt. */
   .node-symbol--dc {
@@ -1524,7 +1539,7 @@
 .planner-shell--focus {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-chrome);
 }
 
 /* Fokus ist ein echter ablenkungsfreier Canvas-Modus, nicht nur ein weiterer
@@ -1553,7 +1568,7 @@
   position: absolute;
   top: max(0.5rem, env(safe-area-inset-top));
   right: max(0.5rem, env(safe-area-inset-right));
-  z-index: 120;
+  z-index: var(--z-popover);
   display: inline-flex;
   width: 44px;
   height: 44px;
@@ -1585,7 +1600,7 @@
    Auswahl beim Öffnen markiert. */
 .cad-menubar {
   position: relative;
-  z-index: 60;
+  z-index: var(--z-chrome);
   display: flex;
   flex-shrink: 0;
   align-items: stretch;
@@ -1690,11 +1705,11 @@
   white-space: nowrap;
 }
 
-/* Dropdown eines Menüs */
+/* Dropdown eines Menüs — Popover-Ebene (Designkonzept 2026-10, Ebenen). */
 .cad-menu {
   position: absolute;
   top: 100%;
-  z-index: 90;
+  z-index: var(--z-popover);
   min-width: 15rem;
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
@@ -1779,7 +1794,7 @@
    Vorher scrollte die Leiste auch senkrecht (Inhalt 60 px in 44 px Höhe). */
 .cad-toolbar {
   position: relative;
-  z-index: 60;
+  z-index: var(--z-chrome);
   display: flex;
   flex-shrink: 0;
   min-height: var(--cad-toolbar-h);
@@ -1880,7 +1895,7 @@
    dimensions; keep a compact anchored window when there is desktop space. */
 .chat-window {
   position: fixed;
-  z-index: 50;
+  z-index: var(--z-toast);
   top: max(1rem, env(safe-area-inset-top));
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom));
@@ -2141,7 +2156,7 @@ summary:active {
   background: transparent;
   color: var(--text-med);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -2207,7 +2222,7 @@ summary:active {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   color: var(--text-low);
 }
 .cad-item[aria-selected='true'] {
@@ -2265,7 +2280,7 @@ summary:active {
   background: var(--surface-panel);
   padding-inline: 0.5rem;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-variant-numeric: tabular-nums;
   color: var(--text-med);
   overflow-x: auto;
@@ -2328,7 +2343,7 @@ summary:active {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: 45;
+  z-index: var(--z-sheet);
   display: flex;
   max-height: 82dvh;
   flex-direction: column;
@@ -2553,7 +2568,7 @@ summary:active {
   margin: 0 0 0.5rem;
   color: var(--text-med);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2669,9 +2684,10 @@ summary:active {
 
 .planner-shell .node-symbol__code {
   color: var(--text-high);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -2680,9 +2696,11 @@ summary:active {
   flex: 0 0 auto;
   overflow: visible;
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem; /* 12 px statt 11 px */
+  line-height: 1rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -2694,7 +2712,9 @@ summary:active {
 
 .planner-shell .node-card > .measure {
   color: var(--text-med);
-  font-family: var(--font-mono), ui-monospace, monospace;
+  /* Werte in Inter mit tabular-nums — Zahlen bleiben in der Flucht, ohne
+     Monospace-Optik (Planer-Regel 2). */
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   line-height: 1rem;
@@ -2763,7 +2783,7 @@ summary:active {
   background: color-mix(in srgb, var(--edge-label-tone) 9%, var(--surface-raised));
   padding: 0.0625rem 0.25rem;
   color: var(--text-high);
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12 px – Lesbarkeits-Untergrenze */
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -3004,7 +3024,7 @@ html.planner-root-active body {
     width: auto;
     overflow-y: auto;
     overscroll-behavior: contain;
-    z-index: 70;
+    z-index: var(--z-sheet);
     box-shadow: var(--cad-shadow-overlay);
   }
   /* Solange ein Blatt offen ist, liegen die schwebenden Canvas-Griffe ruhig:
@@ -3442,7 +3462,7 @@ html.planner-root-active body {
     max-height: min(70dvh, 26rem);
     overflow-x: hidden;
     overflow-y: auto;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-toolbar-sheet .cad-menu__item,
@@ -3484,7 +3504,7 @@ html.planner-root-active body {
   .planner-shell:not(.planner-shell--focus)[data-active-tab='sidebar'] [data-testid='planner-sidebar-slot'] {
     position: absolute !important;
     inset: 0 !important;
-    z-index: 40 !important;
+    z-index: var(--z-chrome) !important;
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
@@ -3507,7 +3527,7 @@ html.planner-root-active body {
   .planner-shell:not(.planner-shell--focus)[data-active-tab='inspector'] #inspector-panel {
     position: absolute !important;
     inset: 0 !important;
-    z-index: 40 !important;
+    z-index: var(--z-chrome) !important;
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
@@ -3530,17 +3550,23 @@ html.planner-root-active body {
     display: none !important;
   }
 
+  /* Designkonzept 2026-10, Befund Querformat: Die Blätter waren auf
+     min(60dvh, 26rem) begrenzt und zeigten bei 393 px Fensterhöhe nur rund
+     150 px Inhalt („Hilfe erst nach Scrollen“). Im flachen Fenster nutzen sie
+     jetzt die volle Höhe zwischen Kopfzeile und Fußleiste — ein Scrollbereich,
+     Kopf und Fuß bleiben stehen. */
   .planner-shell:not(.planner-shell--focus) .de-warning-center [role='dialog'] {
     position: fixed !important;
-    top: auto !important;
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem) !important;
     right: max(0.5rem, env(safe-area-inset-right)) !important;
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
     left: max(0.5rem, env(safe-area-inset-left)) !important;
     width: auto !important;
     max-width: none !important;
-    max-height: min(60dvh, 26rem) !important;
+    max-height: none !important;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .planner-menubar-sheet,
@@ -3548,15 +3574,17 @@ html.planner-root-active body {
     position: fixed;
     left: max(0.5rem, env(safe-area-inset-left));
     right: max(0.5rem, env(safe-area-inset-right));
-    top: auto;
+    /* Volle Höhe zwischen Kopfzeile und Fußleiste statt 60 dvh/26 rem
+       (Designkonzept 2026-10: „Hilfe erst nach Scrollen sichtbar“). */
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem);
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem);
     width: auto;
     min-width: 0;
-    max-height: min(60dvh, 26rem);
+    max-height: none;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    z-index: 70;
+    z-index: var(--z-sheet);
     box-shadow: var(--cad-shadow-overlay);
   }
 
@@ -3692,13 +3720,15 @@ html.planner-root-active body {
 @media (orientation: landscape) and (max-height: 500px) {
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
     position: fixed !important;
-    top: auto !important;
+    top: calc(var(--cad-menubar-h, 44px) + 0.5rem) !important;
     right: max(0.5rem, env(safe-area-inset-right)) !important;
     bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.5rem) !important;
     left: max(0.5rem, env(safe-area-inset-left)) !important;
     width: auto !important;
     max-width: none !important;
-    max-height: min(60dvh, 26rem) !important;
+    /* Auch der Prüfbericht nutzt die volle Höhe (vorher 150 px sichtbar). */
+    max-height: none !important;
+    overscroll-behavior: contain;
   }
 
   .cad-toolbar__status > [data-testid^='routing-status-'],
@@ -3849,7 +3879,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: 6.5rem !important;
-    z-index: 90 !important;
+    z-index: var(--z-toast) !important;
   }
 
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
@@ -3864,7 +3894,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
@@ -3892,7 +3922,7 @@ html.planner-root-active body {
     bottom: calc(var(--cad-nav-h, 44px) + var(--cad-statusbar-h, 22px) + 0.35rem) !important;
     left: auto !important;
     right: 0.25rem !important;
-    z-index: 45;
+    z-index: var(--z-overlay);
   }
 
   .planner-shell .planner-mobile-feedback {
@@ -3905,7 +3935,7 @@ html.planner-root-active body {
     max-height: 3.25rem;
     overflow: hidden;
     clip-path: none;
-    z-index: 45;
+    z-index: var(--z-overlay);
   }
 }
 
@@ -3931,7 +3961,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-height: min(28dvh, 11rem) !important;
-    z-index: 90 !important;
+    z-index: var(--z-toast) !important;
   }
 
   .planner-shell .planner-verification-panel {
@@ -3948,7 +3978,7 @@ html.planner-root-active body {
     left: 0.5rem !important;
     width: auto !important;
     max-width: none !important;
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .planner-shell .planner-expert-panel--open [data-testid='expert-panel-open'] {
@@ -4028,7 +4058,7 @@ html.planner-root-active body {
     max-width: none !important;
     max-height: none !important;
     height: auto !important;
-    z-index: 95 !important;
+    z-index: var(--z-toast) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
@@ -4043,7 +4073,7 @@ html.planner-root-active body {
     width: auto !important;
     max-width: none !important;
     height: auto !important;
-    z-index: 95 !important;
+    z-index: var(--z-toast) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: stretch !important;
@@ -4162,12 +4192,12 @@ html.planner-root-active body {
    beiden Leisten. „Hilfe“ ist der letzte Eintrag und bleibt rechts im Bild. */
 @media (min-width: 768px) and (min-height: 501px) {
   .cad-menubar {
-    z-index: 80;
+    z-index: var(--z-sheet);
   }
 
   .cad-menubar .cad-menu.planner-menubar-sheet {
     top: calc(100% + var(--cad-toolbar-h, 45px) + 4px);
-    z-index: 80;
+    z-index: var(--z-sheet);
     max-height: calc(100dvh - var(--cad-menubar-h, 45px) - var(--cad-toolbar-h, 45px) - 1rem);
     min-width: min(16rem, calc(100vw - 1.5rem));
     overflow-x: hidden;
@@ -4440,7 +4470,7 @@ html.planner-root-active body {
   .planner-phone-menu-layer {
     position: fixed;
     inset: 0;
-    z-index: 80;
+    z-index: var(--z-sheet);
     pointer-events: none;
     overflow: hidden;
   }

@@ -129,6 +129,55 @@ describe('M7-1 — Planer-Design-Tokens', () => {
   });
 });
 
+describe('Designkonzept 2026-10 — Ebenen (z-Index-Skala)', () => {
+  const Z_TOKENS = ['z-canvas', 'z-overlay', 'z-chrome', 'z-popover', 'z-sheet', 'z-toast'] as const;
+
+  it.each(Z_TOKENS)('--%s ist in hell und dunkel definiert', (name) => {
+    expect(rootTokens.has(name)).toBe(true);
+    expect(darkTokens.has(name)).toBe(true);
+  });
+
+  it('hält die fünf Ebenen in aufsteigender Reihenfolge', () => {
+    const value = (name: string) => parseInt(rootTokens.get(name) ?? '', 10);
+    const order = Z_TOKENS.map(value);
+    for (const v of order) expect(Number.isFinite(v)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(new Set(order).size).toBe(order.length);
+  });
+
+  it('kein globaler z-Index über der obersten Ebene (50)', () => {
+    // Lokale Werte innerhalb eines Stapelkontexts (Karte, Knoten, Kante) sind
+    // erlaubt und bleiben klein; globale Schichten laufen über --z-*.
+    const offenders: string[] = [];
+    ast.walkDecls('z-index', (decl) => {
+      const numeric = Number.parseInt(decl.value.replace('!important', '').trim(), 10);
+      if (Number.isFinite(numeric) && numeric > 50) {
+        offenders.push(`${decl.parent?.toString().slice(0, 60)} → ${decl.value}`);
+      }
+    });
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('keine willkürlichen z-[…]-Klassen in Komponenten (nur die Skala)', () => {
+    const ROOTS = ['app', 'components'] as const;
+    const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          if (entry !== 'node_modules') walk(full);
+        } else if (/\.(ts|tsx)$/.test(entry) && !IGNORED.test(entry)) {
+          const src = readFileSync(full, 'utf8');
+          if (/z-\[/.test(src)) offenders.push(full);
+        }
+      }
+    };
+    for (const root of ROOTS) walk(root);
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+});
+
 describe('M7-5 — Kontraste WCAG ≥ 4,5:1 (Text) bzw. ≥ 3:1 (Leitungen)', () => {
   const textPairs = [
     ['text-high', 'surface-0'],

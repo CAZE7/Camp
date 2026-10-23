@@ -539,7 +539,7 @@ export function ExpertPanel() {
           // schmalen Schlitz mit Dauer-Scrollen. Auf Desktop darf das
           // Panel deutlich höher wachsen (36 rem), begrenzt bleibt die
           // Fensterhöhe minus Leisten.
-          className="pointer-events-auto relative z-[45] flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
+          className="pointer-events-auto relative z-overlay flex max-h-[min(28rem,100%)] min-h-0 flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in md:max-h-[min(36rem,100%)]"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">

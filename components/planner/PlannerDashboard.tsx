@@ -394,7 +394,7 @@ export function PlannerDashboard() {
           role={feedback.type === 'error' ? 'alert' : 'status'}
           aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
           data-testid="action-feedback"
-          className={`planner-action-feedback fixed top-20 left-1/2 z-[80] flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
+          className={`fixed top-20 left-1/2 z-toast flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
             feedback.type === 'error'
               ? 'border-l-destructive'
               : feedback.type === 'success'
