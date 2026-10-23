@@ -130,6 +130,74 @@ describe('buildBom — deterministisch über einen Planstand', () => {
     const bom = buildBom({ nodes: [], edges: [], waterNodes: [], waterEdges: [] }, noRoute);
     expect(bom).toEqual({ counts: {}, cableLengths: {}, pipeLengths: {}, lengthAssumptions: [] });
   });
+
+  it('M5 & M10: sortiert Querschnitte aufsteigend, führt Sicherungen/Kabelschuhe/Hauptschalter und unterscheidet Sammelschienen-Rückweg vs. Karosseriemasse', () => {
+    const busbarPlan = buildBom(
+      {
+        nodes: [
+          battery,
+          { id: 'shunt-1', type: 'shunt', position: { x: 100, y: 100 }, data: { label: 'Shunt' } },
+          {
+            id: 'fb',
+            type: 'fuse',
+            position: { x: 200, y: 0 },
+            data: { label: 'Sicherungskasten', rating: 60 },
+          },
+          {
+            id: 'f-main',
+            type: 'fuse',
+            position: { x: 100, y: 0 },
+            data: { label: 'Hauptsicherung 150A', rating: 150, fuseType: 'ul248-classT' },
+          },
+          consumer,
+        ],
+        edges: [
+          cable('e-main', { length: 0.2, crossSection: 35 }),
+          {
+            ...cable('e-branch', { length: 3, crossSection: 1.5, fuseSize: 10, fuseType: 'ato' }),
+            source: 'fb',
+            target: 'c1',
+          },
+        ],
+        waterNodes: [],
+        waterEdges: [],
+      },
+      noRoute
+    );
+    const parsed = JSON.parse(bomToJson(busbarPlan)) as {
+      cables: Array<{ crossSection: number; length: number; modeledLength?: number; returnLength?: number }>;
+    };
+    expect(parsed.cables.map((c) => c.crossSection)).toEqual([1.5, 35]);
+    // 1.5 mm²: 3 m Plus + 3 m Minus-Rückleitung wegen Shunt/Sammelschienen-Rückführung:
+    expect(parsed.cables[0]).toMatchObject({
+      crossSection: 1.5,
+      length: 6,
+      modeledLength: 3,
+      returnLength: 3,
+    });
+    expect(busbarPlan.fuses?.some((f) => f.ratingA === 150)).toBe(true);
+    expect(busbarPlan.fuses?.some((f) => f.ratingA === 10)).toBe(true);
+    expect(busbarPlan.cableLugs?.length).toBeGreaterThan(0);
+    expect(busbarPlan.recommendedItems?.some((r) => r.id === 'main-disconnect-switch')).toBe(true);
+
+    // Karosseriemasse ohne Minus-Sammelschiene / Shunt: KEIN blindes ×2!
+    const chassisPlan = buildBom(
+      {
+        nodes: [
+          battery,
+          { id: 'gnd', type: 'ground', position: { x: 0, y: 200 }, data: { label: 'Massepunkt' } },
+          consumer,
+        ],
+        edges: [cable('e1', { length: 4, crossSection: 2.5, fuseSize: 10, fuseType: 'ato' })],
+        waterNodes: [],
+        waterEdges: [],
+      },
+      noRoute
+    );
+    expect(chassisPlan.cableLengths['2.5']).toBe(4);
+    expect(chassisPlan.dcReturnLengths).toBeUndefined();
+    expect(chassisPlan.chassisGroundReturnCount).toBe(1);
+  });
 });
 
 describe('CSV-Export', () => {

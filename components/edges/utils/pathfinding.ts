@@ -2559,10 +2559,15 @@ export function findCablePath(input: PathRequest): PathResult {
   // Freigabe ist ja gerade das, was eingehalten werden soll). Die eigenen
   // Bauteile sind über `relevantObstacles` bereits raus.
   const entryVector = targetEntryVector(input.targetPosition);
+  const mergeCap = (a: number | undefined, b: number | undefined): number | undefined =>
+    a !== undefined && b !== undefined ? Math.min(a, b) : (a ?? b);
   const capped: PathRequest = {
     ...input,
-    stubCap: stubCapFor(start, sourceExitVector(input.sourcePosition), relevant),
-    stubCapTarget: stubCapFor(end, { x: -entryVector.x, y: -entryVector.y }, relevant),
+    stubCap: mergeCap(input.stubCap, stubCapFor(start, sourceExitVector(input.sourcePosition), relevant)),
+    stubCapTarget: mergeCap(
+      input.stubCapTarget,
+      stubCapFor(end, { x: -entryVector.x, y: -entryVector.y }, relevant)
+    ),
   };
   const crossingSegments = input.crossingSegments ?? [];
   const key = requestKey(input, obstacles);

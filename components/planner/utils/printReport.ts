@@ -14,10 +14,23 @@
  *    Modellgrenzen und den Hinweis, dass dies keine normative Abnahme ist.
  */
 import type { BomData } from './bom';
-import { componentTypeInfo, lengthsDiverge } from './bom';
+import { componentTypeInfo, formatCrossSectionDe, lengthsDiverge, sortedCableEntries } from './bom';
 import type { ReleaseAssessment } from './releaseStatus';
 import type { VerificationSummary } from './verificationWarnings';
 import { toPlainGerman } from './plainGerman';
+
+/** Formatiert einen ISO-Zeitstempel oder ein Date-Objekt deutsch lesbar (N2). */
+export function formatReportTimestamp(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : '';
+  return `${new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)} Uhr`;
+}
 
 export interface PrintReportInput {
   bom: BomData;
@@ -68,10 +81,37 @@ function bomBlock(bom: BomData): string {
         `<tr><td>${escapeHtml(componentTypeInfo(type).label)}</td><td class="num">${count}</td><td>Stk</td></tr>`
     )
     .join('');
-  const cables = Object.entries(bom.cableLengths)
+  const fuses = (bom.fuses ?? [])
     .map(
-      ([cs, meters]) =>
-        `<tr><td>Leitung ${escapeHtml(cs)} mm²</td><td class="num">${num(meters)}</td><td>m</td></tr>`
+      (fuse) => `<tr><td>${escapeHtml(fuse.label)}</td><td class="num">${fuse.count}</td><td>Stk</td></tr>`
+    )
+    .join('');
+  const dcReturn = bom.dcReturnLengths ?? {};
+  const cables = sortedCableEntries(bom.cableLengths)
+    .map(([cs, meters]) => {
+      const ret = dcReturn[cs] ?? 0;
+      const label =
+        ret > 0
+          ? `Leitung ${formatCrossSectionDe(cs)} mm² (inkl. ${num(ret)} m Minus-Rückleitung)`
+          : `Leitung ${formatCrossSectionDe(cs)} mm²`;
+      return `<tr><td>${escapeHtml(label)}</td><td class="num">${num(meters + ret)}</td><td>m</td></tr>`;
+    })
+    .join('');
+  const acCables = bom.acCableLengths
+    ? sortedCableEntries(bom.acCableLengths)
+        .map(
+          ([cs, meters]) =>
+            `<tr><td>230-V-Mantelleitung 3G ${escapeHtml(formatCrossSectionDe(cs))} mm²</td><td class="num">${num(meters)}</td><td>m</td></tr>`
+        )
+        .join('')
+    : '';
+  const lugs = (bom.cableLugs ?? [])
+    .map((lug) => `<tr><td>${escapeHtml(lug.label)}</td><td class="num">${lug.count}</td><td>Stk</td></tr>`)
+    .join('');
+  const recommended = (bom.recommendedItems ?? [])
+    .map(
+      (item) =>
+        `<tr><td>${escapeHtml(item.label)} (Empfehlung)</td><td class="num">${item.count}</td><td>Stk</td></tr>`
     )
     .join('');
   const pipes = Object.entries(bom.pipeLengths)
@@ -80,7 +120,7 @@ function bomBlock(bom: BomData): string {
         `<tr><td>${type === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr'}</td><td class="num">${num(meters)}</td><td>m</td></tr>`
     )
     .join('');
-  const rows = components + cables + pipes;
+  const rows = components + fuses + cables + acCables + lugs + recommended + pipes;
   const assumptions = bom.lengthAssumptions
     .map((entry) => {
       const text =
@@ -178,7 +218,7 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
 </head>
 <body>
 <h1>${escapeHtml(input.projectName)} – Planungsbericht</h1>
-<p class="meta">Erzeugt: ${escapeHtml(input.generatedAt)} · Planstand: <code>${escapeHtml(planRef)}</code>${summary ? ` · Engine ${escapeHtml(summary.engineVersion)} · Zertifikat ${escapeHtml(summary.certificateHash)}` : ''}</p>
+<p class="meta">Erzeugt: ${escapeHtml(formatReportTimestamp(input.generatedAt))} · Planstand: <code>${escapeHtml(planRef)}</code>${summary ? ` · Engine ${escapeHtml(summary.engineVersion)} · Zertifikat ${escapeHtml(summary.certificateHash)}` : ''}</p>
 ${body}
 <p class="disclaimer">${escapeHtml(DISCLAIMER)}</p>
 <div class="print-actions"><button type="button" onclick="window.print()">Diesen Bericht drucken / als PDF speichern</button></div>

@@ -13,14 +13,21 @@ import {
   buildBom,
   bomToCsv,
   bomToJson,
+  formatCrossSectionDe,
   LENGTH_DIVERGENCE_TOLERANCE,
   componentTypeInfo,
+  sortedCableEntries,
   type BomData,
   type LengthAssumption,
 } from './utils/bom';
 import { downloadTextFile } from './utils/fileIO';
-import { buildPrintReportHtml, openPrintReport } from './utils/printReport';
+import { buildPrintReportHtml, formatReportTimestamp, openPrintReport } from './utils/printReport';
 import { subscribeToBomModalOpen } from './utils/bomModalEvents';
+
+function fmtMeters(value: number | undefined): string {
+  if (value === undefined) return '–';
+  return value.toFixed(1).replace('.', ',');
+}
 
 /**
  * Stückliste — Dialog. Die Berechnung liegt in `utils/bom.ts` (eine Quelle für
@@ -66,14 +73,27 @@ export function BOMModal() {
   }, []);
 
   const componentEntries = useMemo(() => Object.entries(bomData.counts), [bomData.counts]);
-  const cableEntries = useMemo(() => Object.entries(bomData.cableLengths), [bomData.cableLengths]);
+  const cableEntries = useMemo(() => sortedCableEntries(bomData.cableLengths), [bomData.cableLengths]);
+  const acCableEntries = useMemo(
+    () => (bomData.acCableLengths ? sortedCableEntries(bomData.acCableLengths) : []),
+    [bomData.acCableLengths]
+  );
+  const dcReturnLengths = bomData.dcReturnLengths ?? {};
+  const fuseEntries = bomData.fuses ?? [];
+  const lugEntries = bomData.cableLugs ?? [];
+  const recommendedEntries = bomData.recommendedItems ?? [];
   const pipeEntries = useMemo(() => Object.entries(bomData.pipeLengths), [bomData.pipeLengths]);
   const lengthAssumptions: LengthAssumption[] = bomData.lengthAssumptions;
   const inventedLengths = lengthAssumptions.filter((entry) => entry.source === 'fallback');
   const divergingLengths = lengthAssumptions.filter((entry) => entry.source !== 'fallback');
-  const empty = componentEntries.length === 0 && cableEntries.length === 0 && pipeEntries.length === 0;
+  const empty =
+    componentEntries.length === 0 &&
+    cableEntries.length === 0 &&
+    acCableEntries.length === 0 &&
+    pipeEntries.length === 0;
   const assessment = snapshot?.assessment ?? null;
   const planFingerprint = assessment?.planFingerprintHash ?? 'kein-planstand';
+  const generatedTimestamp = useMemo(() => (snapshot ? formatReportTimestamp(new Date()) : ''), [snapshot]);
 
   const bomJson = useMemo(() => bomToJson(bomData), [bomData]);
 
@@ -92,7 +112,7 @@ export function BOMModal() {
       bom: snapshot.bom,
       summary: snapshot.summary,
       assessment,
-      generatedAt: new Date().toISOString(),
+      generatedAt: formatReportTimestamp(new Date()),
       projectName: 'Camper-Elektroplaner',
     });
     if (!openPrintReport(html)) {
@@ -185,19 +205,98 @@ export function BOMModal() {
               </section>
             )}
 
-            {cableEntries.length > 0 && (
+            {fuseEntries.length > 0 && (
+              <section aria-labelledby="bom-fuses">
+                <h3 id="bom-fuses" className="mb-2 font-semibold">
+                  Sicherungen &amp; Schutzorgane
+                </h3>
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {fuseEntries.map((fuse) => (
+                    <li key={fuse.key} className="flex min-w-0 gap-3 p-3">
+                      <span className="min-w-10 shrink-0 font-mono font-bold">{fuse.count} ×</span>
+                      <span className="min-w-0 break-words">
+                        <strong>{fuse.label}</strong>
+                        <span className="block text-sm text-muted-foreground">
+                          Ersatzsicherungen gleicher Bauform und Stromstärke für unterwegs einplanen.
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {(cableEntries.length > 0 || acCableEntries.length > 0) && (
               <section aria-labelledby="bom-cables">
                 <h3 id="bom-cables" className="mb-2 font-semibold">
                   Elektrische Leitungen
                 </h3>
                 <ul className="space-y-2 rounded-lg border border-border p-3">
-                  {cableEntries.map(([crossSection, length]) => (
-                    <li key={crossSection}>
+                  {cableEntries.map(([crossSection, length]) => {
+                    const returnMeters = dcReturnLengths[crossSection] ?? 0;
+                    const totalMeters = length + returnMeters;
+                    const csLabel = formatCrossSectionDe(crossSection);
+                    return (
+                      <li key={crossSection}>
+                        <strong>
+                          {fmtMeters(totalMeters)} m Kabel mit {csLabel} mm²
+                        </strong>
+                        <span className="block text-sm text-muted-foreground">
+                          {returnMeters > 0
+                            ? `DC-Einzelader (${fmtMeters(length)} m gezeichnete Adern + ${fmtMeters(returnMeters)} m Minus-Rückleitung zur Sammelschiene); Montageweg und Reserve prüfen.`
+                            : 'Für die im Plan verbundenen Gleichstromkreise; Montageweg und Reserve vor Kauf prüfen.'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {acCableEntries.map(([crossSection, length]) => (
+                    <li key={`ac-${crossSection}`}>
                       <strong>
-                        {length.toFixed(1)} m Kabel mit {crossSection} mm²
+                        {fmtMeters(length)} m 230-V-Mantelleitung 3G {formatCrossSectionDe(crossSection)} mm²
                       </strong>
                       <span className="block text-sm text-muted-foreground">
-                        Für die im Plan verbundenen Stromkreise; Montageweg und Reserve vor Kauf prüfen.
+                        Flexible Gummischlauchleitung (z. B. H07RN-F 3G, 3-adrig L/N/PE) für den 230-V-Kreis
+                        im Fahrzeug.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {Boolean(bomData.chassisGroundReturnCount) && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Hinweis zur Karosseriemasse: {bomData.chassisGroundReturnCount}{' '}
+                    {bomData.chassisGroundReturnCount === 1
+                      ? 'einpolig gezeichneter 12-V-Verbraucher führt'
+                      : 'einpolig gezeichnete 12-V-Verbraucher führen'}{' '}
+                    den Rückstrom über die Fahrzeugmasse — plane je Gerät eine kurze Masseleitung mit
+                    Ringkabelschuh zum nächsten Massepunkt ein (nicht pauschal die doppelte Pluslänge).
+                  </p>
+                )}
+              </section>
+            )}
+
+            {(lugEntries.length > 0 || recommendedEntries.length > 0) && (
+              <section aria-labelledby="bom-accessories">
+                <h3 id="bom-accessories" className="mb-2 font-semibold">
+                  Anschluss- &amp; Installationsmaterial
+                </h3>
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {lugEntries.map((lug) => (
+                    <li key={lug.crossSection} className="flex min-w-0 gap-3 p-3">
+                      <span className="min-w-10 shrink-0 font-mono font-bold">{lug.count} ×</span>
+                      <span className="min-w-0 break-words">
+                        <strong>{lug.label}</strong>
+                        <span className="block text-sm text-muted-foreground">
+                          2 Anschlüsse je DC-Leitung gerechnet; Lochdurchmesser (M6/M8/M10) am Bauteil prüfen.
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                  {recommendedEntries.map((item) => (
+                    <li key={item.id} className="flex min-w-0 gap-3 p-3">
+                      <span className="min-w-10 shrink-0 font-mono font-bold">{item.count} ×</span>
+                      <span className="min-w-0 break-words">
+                        <strong>{item.label}</strong>
+                        <span className="block text-sm text-muted-foreground">{item.reason}</span>
                       </span>
                     </li>
                   ))}
@@ -214,7 +313,7 @@ export function BOMModal() {
                   {pipeEntries.map(([type, length]) => (
                     <li key={type}>
                       <strong>
-                        {length.toFixed(1)} m {type === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr'}
+                        {fmtMeters(length)} m {type === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr'}
                       </strong>
                       <span className="block text-sm text-muted-foreground">
                         Durchmesser, Anschlüsse und Reserve passend zu deinen Bauteilen ergänzen.
@@ -261,14 +360,14 @@ export function BOMModal() {
                       <span className="font-medium">{entry.label}</span>:{' '}
                       {entry.source === 'fallback' ? (
                         <>
-                          {entry.meters.toFixed(1)} m{' '}
+                          {fmtMeters(entry.meters)} m{' '}
                           <em>(Platzhalter — Länge im Leitungs-Inspektor eintragen)</em>
                         </>
                       ) : (
                         <>
-                          {entry.meters.toFixed(1)} m verwendet (
+                          {fmtMeters(entry.meters)} m verwendet (
                           {entry.source === 'assumed' ? 'Planungsannahme' : 'eingetragen'}{' '}
-                          {entry.storedM?.toFixed(1)} m, geroutet {entry.routedM?.toFixed(1)} m)
+                          {fmtMeters(entry.storedM)} m, geroutet {fmtMeters(entry.routedM)} m)
                         </>
                       )}
                     </li>
@@ -283,6 +382,11 @@ export function BOMModal() {
             )}
           </>
         )}
+        <p className="border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+          {generatedTimestamp ? `Stand: ${generatedTimestamp} · ` : ''}
+          Planungshilfe nach technischen Richtwerten — ersetzt vor Inbetriebnahme (insbesondere bei 230 V nach
+          DIN VDE 0100-721 und Lithium-Hochstromkreisen) keine Prüfung durch eine Elektrofachkraft.
+        </p>
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4">
         {copyError && (

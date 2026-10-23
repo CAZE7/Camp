@@ -222,9 +222,10 @@ export const collectEdgeErrors = (input: {
       errors.push({
         ruleId: 'ampacity-outside-model',
         severity: 'info',
-        message: `Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor (${I.toFixed(
-          1
-        )} A erforderlich, größter Tabellenwert ${boundary.maximumModeledCurrentA.toFixed(1)} A).`,
+        message: `Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor (${I.toFixed(1).replace(
+          '.',
+          ','
+        )} A erforderlich, größter Tabellenwert ${boundary.maximumModeledCurrentA.toFixed(1).replace('.', ',')} A).`,
         measuredValue: Number(I.toFixed(1)),
         expectedValue: Number(boundary.maximumModeledCurrentA.toFixed(1)),
         unit: 'A',
@@ -261,7 +262,7 @@ export const collectEdgeErrors = (input: {
     errors.push({
       ruleId: 'drop-exceeded',
       severity: 'critical',
-      message: `Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`,
+      message: `Gesamt-Drop! (${totalDropPercentage.toFixed(1).replace('.', ',')}% > 3%)`,
       measuredValue: Number(totalDropPercentage.toFixed(1)),
       expectedValue: 3,
       unit: '%',
@@ -383,7 +384,7 @@ export const collectEdgeErrors = (input: {
       errors.push({
         ruleId: 'fuse-offset',
         severity: 'critical',
-        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1)}m vom Batteriepol (max ${FUSE_MAX_UNPROTECTED_LENGTH_M}m)!`,
+        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1).replace('.', ',')}m vom Batteriepol (max ${String(FUSE_MAX_UNPROTECTED_LENGTH_M).replace('.', ',')}m)!`,
         measuredValue: data.fuseOffset,
         expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
         unit: 'm',
@@ -774,7 +775,9 @@ const CableEdge = function ({
   // nicht mehr den Querschnitt — der steht im Label. Siehe utils/cableStyle.ts.
   const renderedStrokeWidth = cableStrokeWidth({ isBackbone, emphasized, trunkMode });
   const routeStatusDetails = [
-    ...(routeInvalid ? ['Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve'] : []),
+    ...(routeInvalid
+      ? ['Abstandshinweis: Leitung liegt zu nah an einem Bauteil (Bauteile mit mehr Abstand platzieren)']
+      : []),
     ...(routeTight
       ? ['Engstelle: reduzierte Bauteil-Reserve; verbindlicher Mindestabstand wird separat geprüft']
       : []),
@@ -813,6 +816,7 @@ const CableEdge = function ({
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
+        interactionWidth={44}
         style={{
           ...style,
           strokeWidth: renderedStrokeWidth,
@@ -861,6 +865,11 @@ const CableEdge = function ({
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`,
               pointerEvents: 'all',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              revealLabel();
+              usePlannerStore.getState().focusElement(id, 'edge');
             }}
             className={`nodrag nopan edge-label ${
               edgeDomain === 'AC_230V'
@@ -893,13 +902,15 @@ const CableEdge = function ({
                 }
               >
                 {crossSectionUndersized ? 'zu klein · ' : '· '}
-                {crossSection} mm² · {length.toFixed(1)} m
-                {crossSectionUndersized ? ` (empf. ${recommendedCrossSection})` : ''}
+                {String(crossSection).replace('.', ',')} mm² · {length.toFixed(1).replace('.', ',')} m
+                {crossSectionUndersized
+                  ? ` (empf. ${String(recommendedCrossSection).replace('.', ',')})`
+                  : ''}
               </span>
             </span>
             {emphasized && routeInvalid && (
               <span className="edge-label__error-message">
-                Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve.
+                Abstandshinweis: Leitung liegt zu nah an einem Bauteil.
               </span>
             )}
             {emphasized && routeTight && (
@@ -953,7 +964,7 @@ const CableEdge = function ({
         style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
         role="button"
         tabIndex={0}
-        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeStatusSuffix}`}
+        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${String(crossSection).replace('.', ',')} Quadratmillimeter, ${length.toFixed(1).replace('.', ',')} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeStatusSuffix}`}
         onClick={() => {
           revealLabel();
           usePlannerStore.getState().focusElement(id, 'edge');
@@ -969,7 +980,7 @@ const CableEdge = function ({
         onMouseLeave={() => setIsHovered(false)}
       >
         <title>
-          {`${length.toFixed(2)} m${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage — im Inspektor überschreibbar)' : lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeStatusDetails.length > 0 ? ` | ${routeStatusDetails.join('; ')}` : ''}`}
+          {`${length.toFixed(2).replace('.', ',')} m${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage — im Inspektor überschreibbar)' : lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${String(crossSection).replace('.', ',')} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeStatusDetails.length > 0 ? ` | ${routeStatusDetails.join('; ')}` : ''}`}
         </title>
       </path>
     </>

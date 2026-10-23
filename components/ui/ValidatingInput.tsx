@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useRef } from 'react';
 import { parseDecimalString } from '../../lib/units';
 
 export type ValidationRule = {
@@ -13,6 +13,18 @@ export const COMMON_RULES = {
   efficiency: {
     validate: (v: number) => v > 0 && v <= 100,
     message: 'Effizienz muss größer als 0 und höchstens 100 Prozent sein.',
+  },
+  maxPower: {
+    validate: (v: number) => v <= 50_000,
+    message: 'Leistung darf höchstens 50.000 W betragen.',
+  },
+  maxCapacity: {
+    validate: (v: number) => v <= 10_000,
+    message: 'Kapazität darf höchstens 10.000 Ah betragen.',
+  },
+  maxAmps: {
+    validate: (v: number) => v <= 2_000,
+    message: 'Strom darf höchstens 2.000 A betragen.',
   },
 };
 
@@ -82,6 +94,14 @@ export function ValidatingInput({
    */
   const [focused, setFocused] = useState(false);
   /**
+   * H4: Ausgangswert zu Beginn des Fokus. Tippt der Nutzer z. B. „1e3“ oder
+   * „2,5,5“, war der Präfix („1“ bzw. „2,5“) kurzzeitig gültig; wird die
+   * Eingabe danach im selben Fokus-Durchgang ungültig, stellt der Rollback
+   * sofort den Wert vor Fokusbeginn wieder her statt den Teilpräfix zu behalten.
+   */
+  const focusBaselineRef = useRef<number | null>(null);
+  const dirtyInFocusRef = useRef(false);
+  /**
    * Optionales Feld vom Nutzer bewusst geleert (AUDIT N1). Ohne diese Marke
    * holt der Sync-Effekt unten den alten Prop-Wert sofort zurück, solange die
    * Elternkomponente das `undefined` noch nicht übernommen hat — das Feld
@@ -126,6 +146,13 @@ export function ValidatingInput({
     }
   }
 
+  const rollbackFocusIfDirty = () => {
+    if (dirtyInFocusRef.current && focusBaselineRef.current !== null) {
+      dirtyInFocusRef.current = false;
+      onValidChange(focusBaselineRef.current);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const strVal = e.target.value;
     setLocalValue(strVal);
@@ -136,9 +163,11 @@ export function ValidatingInput({
       if (allowEmpty) {
         setError(null);
         setClearedOptional(true);
+        dirtyInFocusRef.current = false;
         onEmptyChange?.();
         return;
       }
+      rollbackFocusIfDirty();
       setError(INPUT_ERROR_MESSAGES.required);
       return;
     }
@@ -160,33 +189,41 @@ export function ValidatingInput({
     const numVal = parseDecimalString(strVal);
 
     if (numVal === null) {
+      rollbackFocusIfDirty();
       setError(INPUT_ERROR_MESSAGES.invalidNumber);
       return;
     }
 
     if (!isFloat && !Number.isInteger(numVal)) {
+      rollbackFocusIfDirty();
       setError(INPUT_ERROR_MESSAGES.integerRequired);
       return;
     }
 
     for (const rule of rules) {
       if (!rule.validate(numVal)) {
+        rollbackFocusIfDirty();
         setError(rule.message);
         return;
       }
     }
 
     setError(null);
+    if (focused) dirtyInFocusRef.current = true;
     onValidChange(numVal);
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     setFocused(false);
     if (error || isPendingDecimalText(localValue)) {
-      // Revert to the last valid value on blur if invalid or unfinished.
-      setLocalValue(String(value));
+      // Revert to the pre-focus / last valid value on blur if invalid or unfinished.
+      const revertTarget =
+        focusBaselineRef.current !== null ? String(focusBaselineRef.current) : String(value);
+      setLocalValue(revertTarget);
       setError(null);
     }
+    focusBaselineRef.current = null;
+    dirtyInFocusRef.current = false;
     props.onBlur?.(e);
   };
 
@@ -211,6 +248,8 @@ export function ValidatingInput({
         onChange={handleChange}
         onFocus={(e) => {
           setFocused(true);
+          focusBaselineRef.current = typeof value === 'number' ? value : parseDecimalString(String(value));
+          dirtyInFocusRef.current = false;
           props.onFocus?.(e);
         }}
         onBlur={handleBlur}

@@ -39,7 +39,8 @@ import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
-import { useCoarsePointer } from './hooks/useMediaCapabilities';
+import { useCoarsePointer, useMediaQuery } from './hooks/useMediaCapabilities';
+import { usePlannerDarkMode } from './hooks/usePlannerTheme';
 import { useSaveFailure } from './hooks/useSaveFailure';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
 import {
@@ -347,6 +348,15 @@ export function FlowCanvas() {
   // Zeigerklasse statt Fensterbreite: ein iPad quer ist 1024 px breit und
   // trotzdem Touch. Alle Interaktions-Props hängen hieran, nicht am Layout.
   const coarsePointer = useCoarsePointer();
+  const compactViewport = useMediaQuery('(max-width: 1023.98px)');
+  const isDarkPlanner = usePlannerDarkMode();
+  const fitMinZoom = coarsePointer || compactViewport ? 0.55 : PLANNER_INITIAL_FIT_MIN_ZOOM;
+  // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht)
+  // und untere Steuerelemente (Zoom/MiniMap) beim automatischen Einpassen frei.
+  const fitPanelPadding = useMemo(
+    () => ({ top: '96px' as const, right: '24px' as const, bottom: '76px' as const, left: '24px' as const }),
+    []
+  );
   const interaction = useMemo(
     () => getFlowInteractionProps(pointerModeFromCoarse(coarsePointer)),
     [coarsePointer]
@@ -395,8 +405,8 @@ export function FlowCanvas() {
       const full = (event as CustomEvent<{ full?: boolean }>).detail?.full === true;
       void fitView({
         duration: 400,
-        padding: PLANNER_FIT_PADDING,
-        ...(full ? {} : { minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }),
+        padding: full ? PLANNER_FIT_PADDING : fitPanelPadding,
+        ...(full ? {} : { minZoom: fitMinZoom }),
       });
     };
     const handleFocusElement = (event: Event) => {
@@ -432,7 +442,7 @@ export function FlowCanvas() {
       window.removeEventListener('planner-fit-view', handleFitView);
       window.removeEventListener('planner-focus-element', handleFocusElement);
     };
-  }, [fitView, getNode, setCenter]);
+  }, [fitView, getNode, setCenter, fitMinZoom, fitPanelPadding]);
 
   const {
     viewMode,
@@ -549,10 +559,9 @@ export function FlowCanvas() {
       // Nachtest Bug 25: Automatische Fits respektieren die Zoom-
       // Untergrenze — sonst startet ein großer Plan bei 29 % unlesbar.
       // Nur die bewusste „Gesamtübersicht“ darf weiter herauszoomen.
-      else
-        void fitView({ duration: 400, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
+      else void fitView({ duration: 400, padding: fitPanelPadding, minZoom: fitMinZoom });
     });
-  }, [viewMode, fitView, getViewport, setViewport]);
+  }, [viewMode, fitView, getViewport, setViewport, fitMinZoom, fitPanelPadding]);
 
   /**
    * Tap/keyboard additions deliberately land in the currently visible canvas
@@ -945,14 +954,13 @@ export function FlowCanvas() {
   // Einmal pro Mount aufgelöst: getComputedStyle pro Node im
   // Minimap-Callback war bei größeren Plänen spürbar. Die Palette hält
   // Maske, Hintergrund und alle Domänenfarben in einem Memo.
-  const minimapColors = useMemo(
-    () => ({
+  const minimapColors = useMemo(() => {
+    void isDarkPlanner;
+    return {
       mask: cssToken('--canvas-minimap-mask', 'var(--canvas-minimap-mask)'),
-      background: cssToken('--bone', 'var(--bone)'),
       palette: resolveMinimapPalette(),
-    }),
-    []
-  );
+    };
+  }, [isDarkPlanner]);
 
   const handleConnect = React.useCallback(
     (connection: Connection) => {
@@ -1017,7 +1025,6 @@ export function FlowCanvas() {
 
       <DesignatorContext.Provider value={designators}>
         <div className="de-canvas relative h-full w-full flex-1" data-planner-mode={plannerMode}>
-          <FloatingMetricsCard />
           <ReactFlow
             nodes={reviewNodes}
             edges={reviewEdges}
@@ -1049,7 +1056,7 @@ export function FlowCanvas() {
             onDragOver={onDragOver}
             onDrop={onDrop}
             fitView
-            fitViewOptions={{ padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM }}
+            fitViewOptions={{ padding: fitPanelPadding, minZoom: fitMinZoom }}
             minZoom={PLANNER_MIN_ZOOM}
             maxZoom={PLANNER_MAX_ZOOM}
             snapToGrid
@@ -1142,7 +1149,7 @@ export function FlowCanvas() {
                 ariaLabel="Miniaturübersicht des Plans"
                 nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
                 maskColor={minimapColors.mask}
-                style={{ backgroundColor: minimapColors.background }}
+                style={{ backgroundColor: 'var(--surface-panel)' }}
               />
             )}
 
@@ -1174,17 +1181,23 @@ export function FlowCanvas() {
             )}
 
             {viewMode === 'electric' && (
-              <Panel position="top-right" className="planner-display-options-panel m-2 sm:m-3">
-                <CanvasDisplayOptions
-                  activeDomains={activeDomains}
-                  onToggleDomain={toggleDomain}
-                  trunkMode={trunkMode}
-                  onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
-                  backboneGrouping={backboneGrouping}
-                  onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
-                  detailLevel={detailLevel}
-                  onSelectDetailLevel={setDetailLevel}
-                />
+              <Panel
+                position="top-right"
+                className="planner-display-options-panel pointer-events-none m-2 flex flex-col items-end gap-2 sm:m-3"
+              >
+                <div className="pointer-events-auto relative z-20">
+                  <CanvasDisplayOptions
+                    activeDomains={activeDomains}
+                    onToggleDomain={toggleDomain}
+                    trunkMode={trunkMode}
+                    onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
+                    backboneGrouping={backboneGrouping}
+                    onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+                    detailLevel={detailLevel}
+                    onSelectDetailLevel={setDetailLevel}
+                  />
+                </div>
+                <FloatingMetricsCard />
               </Panel>
             )}
 

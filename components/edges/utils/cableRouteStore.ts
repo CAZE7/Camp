@@ -119,7 +119,7 @@ type EdgeTopologySignatureInput = Pick<Edge, 'id' | 'source' | 'target' | 'sourc
  * So fließen die Routing-Einstellungen in den Hash ein — ohne Abhängigkeit
  * von der Geometrie-Schicht.
  */
-export const ROUTING_TOKENS_VERSION = 3;
+export const ROUTING_TOKENS_VERSION = 4;
 
 export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput[]): string {
   const parts: string[] = [];
@@ -720,11 +720,15 @@ export function CableRouteSync() {
             state: 'optimized' as const,
             geometryHash: status.hash,
           };
+          const keptIsInvalid =
+            currentValidation?.status === 'INVALID' || generationBefore?.state === 'invalid';
           publishCableRouteGeneration({
             ...kept,
-            // Die Wege bleiben. „retained“ ist der Status, den die Leiste
-            // für einen gehaltenen gültigen Stand schon kennt.
-            state: generationBefore ? 'retained' : 'optimized',
+            // Nur ein tatsächlich gültiger Vorstand darf „retained“ („vorheriger
+            // gültiger Stand“) heißen. War der gehaltene Plan bereits ungültig,
+            // bleibt `state: 'invalid'`, damit `RoutingStatusBadge` weiterhin
+            // ehrlich die offenen Regelverletzungen nennt.
+            state: keptIsInvalid ? 'invalid' : generationBefore ? 'retained' : 'optimized',
             reason: feedback,
             optimization: {
               attempted: summary.attempted,

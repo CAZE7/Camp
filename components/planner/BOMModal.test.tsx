@@ -69,8 +69,8 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     // Nachtest Bug 7: Der Zeichenweg (100 px = 1 m, mit Umwegen) zeigte
     // zwischen Nachbarn 6,4 m und schlug per max() den Nutzereintrag.
     // Jetzt gewinnt der Eintrag; der Widerspruch bleibt gemeldet.
-    expect(screen.getByText('22.1 m Kabel mit 4 mm²')).toBeInTheDocument();
-    expect(screen.queryByText('38.1 m Kabel mit 4 mm²')).not.toBeInTheDocument();
+    expect(screen.getByText('22,1 m Kabel mit 4 mm²')).toBeInTheDocument();
+    expect(screen.queryByText('38,1 m Kabel mit 4 mm²')).not.toBeInTheDocument();
     // Und der Widerspruch wird gesagt, mit beiden Zahlen.
     expect(
       screen.getByText(/widersprechen sich eingetragene Länge und gerouteter Verlegeweg/i)
@@ -78,7 +78,7 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     // Der Strecken-Name steht jetzt auch im Freigabe-Banner (kritischer Befund),
     // daher: mindestens ein Treffer statt eindeutig.
     expect(screen.getAllByText(/Batterie → Kühlbox/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/eingetragen 22.1 m, geroutet 38.1 m/i)).toBeInTheDocument();
+    expect(screen.getByText(/eingetragen 22,1 m, geroutet 38,1 m/i)).toBeInTheDocument();
   });
 
   it('kleine Abweichungen sind kein Widerspruch (Rundung/Toleranz)', async () => {
@@ -89,7 +89,7 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
     // Verwendet wird der Eintrag (22,1 m); innerhalb der Toleranz entsteht
     // kein Widerspruchshinweis.
-    expect(screen.getByText('22.1 m Kabel mit 4 mm²')).toBeInTheDocument();
+    expect(screen.getByText('22,1 m Kabel mit 4 mm²')).toBeInTheDocument();
     expect(
       screen.queryByText(/widersprechen sich eingetragene Länge und gerouteter Verlegeweg/i)
     ).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     openBom();
 
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
-    expect(screen.getByText('30.0 m Kabel mit 4 mm²')).toBeInTheDocument();
+    expect(screen.getByText('30,0 m Kabel mit 4 mm²')).toBeInTheDocument();
     expect(screen.queryByText(/Platzhalter/i)).not.toBeInTheDocument();
   });
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
+  AlertTriangle,
   Battery,
   Cable,
   CheckCircle2,
@@ -22,6 +23,8 @@ import {
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
+import { verificationReportFor } from './utils/verificationWarnings';
+import { useCableRouteFinalValidation } from '../edges/utils/cableRouteStore';
 import {
   VDE_INVERTER_EFFICIENCY,
   VDE_SOLAR_VMP_VOLTAGE,
@@ -377,14 +380,15 @@ function LiveRecommendationCard({
           <span className="text-xs font-normal text-ink-soft normal-case">
             {isStandardwert
               ? '(Berechnung basiert auf 2m Standardwert – bitte Kabel verbinden!)'
-              : `(bei ${length.toFixed(1)}m Kabel)`}
+              : `(bei ${length.toFixed(1).replace('.', ',')}m Kabel)`}
           </span>
         </h4>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col rounded border border-border bg-surface-raised p-2.5">
             <span className="text-muted-ink mb-1 text-xs font-semibold">Kabelquerschnitt</span>
             <span className="font-display text-lg font-bold text-ink">
-              {crossSection} <span className="text-muted-ink text-xs font-bold">mm²</span>
+              {String(crossSection).replace('.', ',')}{' '}
+              <span className="text-muted-ink text-xs font-bold">mm²</span>
             </span>
           </div>
           <div className="flex flex-col rounded border border-border bg-surface-raised p-2.5">
@@ -393,7 +397,7 @@ function LiveRecommendationCard({
           </div>
           <div className="col-span-2 flex items-center justify-between rounded border border-border bg-surface-raised p-2">
             <span className="text-xs font-semibold text-ink-soft">Erwarteter Strom:</span>
-            <span className="text-sm font-bold text-ink">{I.toFixed(1)} A</span>
+            <span className="text-sm font-bold text-ink">{I.toFixed(1).replace('.', ',')} A</span>
           </div>
         </div>
       </div>
@@ -434,7 +438,20 @@ export function ExpertPanel() {
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
   const nodes = usePlannerStore((s) => s.nodes);
+  const routingValidation = useCableRouteFinalValidation();
   const currentTopology = useMemo(() => graphTopologyFingerprint(nodes, edges), [nodes, edges]);
+  const autoWireIssues = useMemo(() => {
+    if (!autoWireSummary) return { hasIssues: false, edgeWarnings: 0, failedRules: 0, routingInvalid: false };
+    const edgeWarnings = edges.filter((e) => Boolean(e.data?.fuseWarning || e.data?.dropWarning)).length;
+    const failedRules = verificationReportFor(nodes, edges).coverage.failed;
+    const routingInvalid = routingValidation?.status === 'INVALID';
+    return {
+      hasIssues: edgeWarnings > 0 || failedRules > 0 || routingInvalid,
+      edgeWarnings,
+      failedRules,
+      routingInvalid,
+    };
+  }, [autoWireSummary, edges, nodes, routingValidation]);
 
   // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
   // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
@@ -575,21 +592,41 @@ export function ExpertPanel() {
             </button>
           </div>
 
-          {/* Automatische Verbindung Erfolgs-Bestätigung */}
+          {/* Automatische Verbindung Zusammenfassung (grün nur ohne offene Fehler) */}
           {autoWireSummary && autoWireSummary.topology === currentTopology && (
-            <div className="mx-4 mt-4 rounded border border-moss bg-moss/10 p-3.5 duration-150 animate-in fade-in">
+            <div
+              data-testid="autowire-summary-banner"
+              className={`mx-4 mt-4 rounded border p-3.5 duration-150 animate-in fade-in ${
+                autoWireIssues.hasIssues
+                  ? 'border-oxide/50 bg-oxide/10 text-oxide'
+                  : 'border-moss bg-moss/10 text-moss'
+              }`}
+            >
               <div className="flex items-start gap-2.5">
-                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
+                {autoWireIssues.hasIssues ? (
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0 text-oxide" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black text-moss">Automatische Verbindung abgeschlossen</p>
-                  <p className="mt-1 text-xs leading-snug text-moss">
-                    {autoWireSummary.edgeCount} Kabel verlegt · alle Sicherungen &amp; Querschnitte berechnet
-                    (DIN VDE 0298-4 / 0100-721). Klicke auf eine Komponente für Details.
+                  <p className="text-xs font-black">
+                    {autoWireIssues.hasIssues
+                      ? 'Automatische Verbindung mit Prüfpunkten'
+                      : 'Automatische Verbindung abgeschlossen'}
+                  </p>
+                  <p className="mt-1 text-xs leading-snug">
+                    {autoWireIssues.hasIssues
+                      ? `${autoWireSummary.edgeCount} Kabel verlegt · einige Leitungen oder Prüfregeln erfordern noch Nachkontrolle. Bitte die Prüfliste oben beachten.`
+                      : `${autoWireSummary.edgeCount} Kabel verlegt · Sicherungen & Querschnitte dimensioniert (DIN VDE 0298-4 / 0100-721). Klicke auf eine Komponente für Details.`}
                   </p>
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-md text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
+                  className={`flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-md transition-colors ${
+                    autoWireIssues.hasIssues
+                      ? 'text-oxide/70 hover:bg-oxide/10 hover:text-oxide'
+                      : 'text-moss/60 hover:bg-moss/10 hover:text-moss'
+                  }`}
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg

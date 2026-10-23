@@ -228,4 +228,30 @@ describe('routingV2Adapter - advanced layout integration', () => {
       expect('geometry' in (current.data ?? {})).toBe(false);
     }
   }, 20_000);
+
+  it('weitet überlastete LR-Verteilerspalten (>= 6 Kanten im Spalt) für kollisionsfreie Trassen auf', async () => {
+    const left = ['s1', 's2', 's3'].map((id, i) => ({
+      ...node(id, 'charger', 0, i * 160),
+      measured: { width: 192, height: 126 },
+    }));
+    const right = ['t1', 't2', 't3'].map((id, i) => ({
+      ...node(id, 'busbar', 300, i * 160),
+      measured: { width: 192, height: 126 },
+    }));
+    const extra = Array.from({ length: 10 }, (_, i) => edge(`x-${i}`, 't1', 't2'));
+    const spanning = [
+      edge('e1', 's1', 't1'),
+      edge('e2', 's1', 't2'),
+      edge('e3', 's2', 't1'),
+      edge('e4', 's2', 't2'),
+      edge('e5', 's3', 't1'),
+      edge('e6', 's3', 't3'),
+    ];
+    const result = await applyAdvancedLayout([...left, ...right], [...spanning, ...extra], 'LR');
+    const maxLeftRight = Math.max(
+      ...result.nodes.filter((n) => n.id.startsWith('s')).map((n) => n.position.x + 192)
+    );
+    const minRightX = Math.min(...result.nodes.filter((n) => n.id.startsWith('t')).map((n) => n.position.x));
+    expect(minRightX - maxLeftRight).toBeGreaterThanOrEqual(200);
+  }, 20_000);
 });

@@ -1,4 +1,4 @@
-import type { Node, Position, XYPosition } from '@xyflow/react';
+import { Position, type Node, type XYPosition } from '@xyflow/react';
 
 /**
  * React-Flow-Adapter für Node-Geometrie (S-1, React Flow 12).
@@ -128,9 +128,78 @@ export function measuredHeight(node: GeometryNode): number | undefined {
   return node.measured?.height ?? node.height ?? undefined;
 }
 
+/**
+ * Normalisiert außenliegende CSS-Trefferflächen (`.react-flow__handle`,
+ * 60 × 60 Plan-px per `translate(±100%, -50%)` vor der Kartenkante, während
+ * der sichtbare 8-px-Anschlusspunkt `> div` exakt auf der Kartenkante sitzt)
+ * auf ihren realen CAD-Ankerpunkt auf dem Kartenrand.
+ *
+ * Ohne diese Normalisierung wuchs jede 192-px-Karte durch beidseitige 60-px-
+ * Trefferboxen auf 312 px Hindernisbreite (überlappende Spalten ab ≤ 300 px
+ * Raster) und der Leitungsanker wanderte 30 px vor den sichtbaren Polpunkt.
+ * Kleine oder den Rand mittig überlappende Boxen (Unit-Tests, ältere Fixtures)
+ * bleiben unverändert.
+ */
+const EXTERIOR_HIT_BOX_MIN_PX = 48;
+const EXTERIOR_FLUSH_TOLERANCE_PX = 2;
+
+function normalizeHandleBox(hb: HandleBox, nodeW?: number, nodeH?: number): HandleBox {
+  if (
+    hb.position === Position.Left &&
+    hb.width >= EXTERIOR_HIT_BOX_MIN_PX &&
+    Math.abs(hb.x + hb.width) <= EXTERIOR_FLUSH_TOLERANCE_PX
+  ) {
+    return { ...hb, x: 0, y: hb.y + hb.height / 2, width: 0, height: 0 };
+  }
+  if (
+    hb.position === Position.Right &&
+    nodeW !== undefined &&
+    hb.width >= EXTERIOR_HIT_BOX_MIN_PX &&
+    Math.abs(hb.x - nodeW) <= EXTERIOR_FLUSH_TOLERANCE_PX
+  ) {
+    return { ...hb, x: nodeW, y: hb.y + hb.height / 2, width: 0, height: 0 };
+  }
+  if (
+    hb.position === Position.Top &&
+    hb.height >= EXTERIOR_HIT_BOX_MIN_PX &&
+    Math.abs(hb.y + hb.height) <= EXTERIOR_FLUSH_TOLERANCE_PX
+  ) {
+    return { ...hb, x: hb.x + hb.width / 2, y: 0, width: 0, height: 0 };
+  }
+  if (
+    hb.position === Position.Bottom &&
+    nodeH !== undefined &&
+    hb.height >= EXTERIOR_HIT_BOX_MIN_PX &&
+    Math.abs(hb.y - nodeH) <= EXTERIOR_FLUSH_TOLERANCE_PX
+  ) {
+    return { ...hb, x: hb.x + hb.width / 2, y: nodeH, width: 0, height: 0 };
+  }
+  return hb;
+}
+
 /** Handle-Rechtecke des Knotens, unabhängig von der React-Flow-Version. */
 export function nodeHandleBounds(node: GeometryNode): HandleBoundsMap | undefined {
-  return node.internals?.handleBounds ?? node.handleBounds ?? undefined;
+  const raw = node.internals?.handleBounds ?? node.handleBounds ?? undefined;
+  if (!raw) return undefined;
+  const w = measuredWidth(node);
+  const h = measuredHeight(node);
+  const mapGroup = (group: HandleBox[] | null | undefined): HandleBox[] | null | undefined => {
+    if (!group) return group;
+    let changed = false;
+    const mapped = group.map((hb) => {
+      const next = normalizeHandleBox(hb, w, h);
+      if (next !== hb) changed = true;
+      return next;
+    });
+    return changed ? mapped : group;
+  };
+  const source = mapGroup(raw.source);
+  const target = mapGroup(raw.target);
+  if (source === raw.source && target === raw.target) return raw;
+  return {
+    ...(raw.source !== undefined ? { source } : {}),
+    ...(raw.target !== undefined ? { target } : {}),
+  };
 }
 
 /**

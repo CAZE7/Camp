@@ -138,6 +138,7 @@ describe('evaluateGuidedSteps', () => {
     expect(plan.steps[4]!.complete).toBe(false);
     expect(plan.currentStep).toBe(5);
     expect(plan.steps[4]!.detail).toBe('Prüfbericht unvollständig belegt (fehlende Angaben).');
+    expect(plan.activeStep.action).toEqual({ label: 'Prüfung klären', kind: 'warnings' });
   });
 
   it('nennt bei verletztem Routing den Grund, statt „geprüft“ zu behaupten', () => {
@@ -151,6 +152,7 @@ describe('evaluateGuidedSteps', () => {
 
     expect(plan.steps[4]!.complete).toBe(false);
     expect(plan.steps[4]!.detail).toBe('Routing: Regelverletzung offen.');
+    expect(plan.activeStep.action).toEqual({ label: 'Prüfung klären', kind: 'warnings' });
   });
 
   it('markiert Schritt 5 nur bei bestandenem Prüfbericht und gültigem Routing als erledigt', () => {

@@ -1034,10 +1034,13 @@ export function routeAllCables(
       // Stubs) für die Verifikations-Reparatur.
       priorGeometries,
     };
-    const measureCandidateConflicts = (waypoints: readonly Point[]): { hard: number; weighted: number } => {
+    const measureCandidateConflicts = (
+      waypoints: readonly Point[]
+    ): { hard: number; weighted: number; portEndWeighted: number } => {
       const candidate = routedPathGeometry(waypoints);
       let hard = 0;
       let weighted = 0;
+      let portEndWeighted = 0;
       const candidateObstacles = obstaclesNear(
         exclude,
         routeWindow(waypoints, ROUTING_TOKENS.cableClearance)
@@ -1059,7 +1062,9 @@ export function routeAllCables(
           currentDomain !== undefined && priorDomain !== undefined
             ? requiredClearanceBetween(currentDomain, priorDomain)
             : ROUTING_TOKENS.cableClearance;
-        for (const ownSegment of candidate.segments) {
+        for (let segIdx = 0; segIdx < candidate.segments.length; segIdx++) {
+          const ownSegment = candidate.segments[segIdx]!;
+          const isPortEnd = segIdx === 0 || segIdx === candidate.segments.length - 1;
           for (const priorSegment of prior.segments) {
             if (
               isPortBundleProximity(
@@ -1075,11 +1080,14 @@ export function routeAllCables(
             }
             const verdict = classifySegmentAgainstSegment(ownSegment, priorSegment, clearance);
             if (verdict.class === 'hard') hard += 1;
-            else if (verdict.class === 'weighted') weighted += 1;
+            else if (verdict.class === 'weighted') {
+              weighted += 1;
+              if (isPortEnd) portEndWeighted += 1;
+            }
           }
         }
       }
-      return { hard, weighted };
+      return { hard, weighted, portEndWeighted };
     };
     const conflictScore = (conflicts: { hard: number; weighted: number }): number =>
       conflicts.hard * 100 + conflicts.weighted;
@@ -1087,41 +1095,10 @@ export function routeAllCables(
     const routeWithTubes = (requestForRoute: typeof request, routeTubes: Rect[]): PathResult => {
       const initial = findCablePath({ ...requestForRoute, cableTubes: routeTubes });
       const hasAssignedPortLane = lane !== 0 || laneTarget !== 0;
-      if (
-        !hasMeasuredPortGeometry ||
-        !hasAssignedPortLane ||
-        !pathHitsObstacles(initial.waypoints, routeTubes)
-      ) {
+      if (!hasMeasuredPortGeometry || !pathHitsObstacles(initial.waypoints, routeTubes)) {
         return initial;
       }
 
-      // Nur bei einem tatsächlichen Tube-Treffer wird ein strenger Fan-out-
-      // Retry zugelassen. Erst die vorhandenen Tubes umgehen; falls nur ein
-      // echter Kabel-Kreuzungspunkt die Route freigibt, wird ein tube-freier
-      // Kandidat separat gegen die vollständige I1/I2/I3-Geometrie geprüft.
-      // Der normale Request erhält das Fan-out-Flag ausdrücklich NICHT.
-      const retryInput = {
-        ...requestForRoute,
-        // Im gezielten Retry bleibt der Seitenschritt des Bündels erhalten,
-        // aber die geraden Stubs werden auf die Mindestlänge zurückgesetzt.
-        // So beginnt der Fan-out innerhalb der gemeinsamen Port-Zone statt
-        // erst nach einem langen, bereits überlappenden Stub.
-        lane: 0,
-        laneTarget: 0,
-        laneStep: lane,
-        laneStepTarget: laneTarget,
-        stubCapRank: undefined,
-        stubCapRankTarget: undefined,
-        stubTie: undefined,
-        stubTieTarget: undefined,
-        // Die eingebaute Reparatur nimmt lange Port-Überdeckungen zum Anlass,
-        // den Stub zu verlängern. Der gezielte Retry misst die vollständige
-        // Geometrie selbst und muss diesen gegenläufigen Eingriff auslassen.
-        priorGeometries: [],
-        crossingSegments: [],
-        requireFanOutLane: true,
-        skipCache: true,
-      };
       const before = measureCandidateConflicts(initial.waypoints);
       const accept = (candidate: PathResult): boolean => {
         const after = measureCandidateConflicts(candidate.waypoints);
@@ -1133,21 +1110,89 @@ export function routeAllCables(
         );
       };
 
-      const fannedOut = findCablePath({ ...retryInput, cableTubes: routeTubes });
-      if (
-        !pathHitsObstacles(fannedOut.waypoints, routeTubes) &&
-        !fannedOut.tightMarginUsed &&
-        accept(fannedOut)
-      ) {
-        return fannedOut;
+      if (hasAssignedPortLane) {
+        // Nur bei einem tatsächlichen Tube-Treffer wird ein strenger Fan-out-
+        // Retry zugelassen. Erst die vorhandenen Tubes umgehen; falls nur ein
+        // echter Kabel-Kreuzungspunkt die Route freigibt, wird ein tube-freier
+        // Kandidat separat gegen die vollständige I1/I2/I3-Geometrie geprüft.
+        // Der normale Request erhält das Fan-out-Flag ausdrücklich NICHT.
+        const retryInput = {
+          ...requestForRoute,
+          // Im gezielten Retry bleibt der Seitenschritt des Bündels erhalten,
+          // aber die geraden Stubs werden auf die Mindestlänge zurückgesetzt.
+          // So beginnt der Fan-out innerhalb der gemeinsamen Port-Zone statt
+          // erst nach einem langen, bereits überlappenden Stub.
+          lane: 0,
+          laneTarget: 0,
+          laneStep: lane,
+          laneStepTarget: laneTarget,
+          stubCapRank: undefined,
+          stubCapRankTarget: undefined,
+          stubTie: undefined,
+          stubTieTarget: undefined,
+          // Die eingebaute Reparatur nimmt lange Port-Überdeckungen zum Anlass,
+          // den Stub zu verlängern. Der gezielte Retry misst die vollständige
+          // Geometrie selbst und muss diesen gegenläufigen Eingriff auslassen.
+          priorGeometries: [],
+          crossingSegments: [],
+          requireFanOutLane: true,
+          skipCache: true,
+        };
+
+        const fannedOut = findCablePath({ ...retryInput, cableTubes: routeTubes });
+        if (
+          !pathHitsObstacles(fannedOut.waypoints, routeTubes) &&
+          !fannedOut.tightMarginUsed &&
+          accept(fannedOut)
+        ) {
+          return fannedOut;
+        }
+
+        // Eine echte Kreuzung ist zulässig (Soft-Konflikt), solange sie kein
+        // Touch, keine Überdeckung und keine Clearance-Unterschreitung erzeugt.
+        // Diese Suche lässt daher die Tubes weg, hält aber die Fan-out-Lane fest
+        // und nimmt das Ergebnis nur bei messbar besserer, I1–I3-freier Geometrie.
+        const crossingCandidate = findCablePath({ ...retryInput, cableTubes: [] });
+        if (!crossingCandidate.tightMarginUsed && accept(crossingCandidate)) return crossingCandidate;
       }
 
-      // Eine echte Kreuzung ist zulässig (Soft-Konflikt), solange sie kein
-      // Touch, keine Überdeckung und keine Clearance-Unterschreitung erzeugt.
-      // Diese Suche lässt daher die Tubes weg, hält aber die Fan-out-Lane fest
-      // und nimmt das Ergebnis nur bei messbar besserer, I1–I3-freier Geometrie.
-      const crossingCandidate = findCablePath({ ...retryInput, cableTubes: [] });
-      if (!crossingCandidate.tightMarginUsed && accept(crossingCandidate)) return crossingCandidate;
+      // Gekappter Mindest-Stub-Retry (24 px) für nicht-nudgebare Port-End-
+      // Freigabeverletzungen (z. B. 40-px-Zielstub 3 px neben fremder Trasse).
+      if (before.hard > 0 || before.portEndWeighted > 0) {
+        const initialDefect = routeDefectScore([...initial.waypoints]);
+        const acceptMinStub = (candidate: PathResult): boolean => {
+          const after = measureCandidateConflicts(candidate.waypoints);
+          return (
+            conflictScore(after) < conflictScore(before) &&
+            after.hard === 0 &&
+            after.weighted === 0 &&
+            !(candidate.usedSearch === 'fallback' && candidate.fallbackHitsObstacles) &&
+            routeDefectScore([...candidate.waypoints]) <= initialDefect
+          );
+        };
+        const minStubInput = {
+          ...requestForRoute,
+          lane: 0,
+          laneTarget: 0,
+          laneStep: 0,
+          laneStepTarget: 0,
+          stubCap: ROUTING_TOKENS.stubMin,
+          stubCapTarget: ROUTING_TOKENS.stubMin,
+          stubCapRank: undefined,
+          stubCapRankTarget: undefined,
+          stubTie: undefined,
+          stubTieTarget: undefined,
+          skipCache: true,
+        };
+        const minStubWithTubes = findCablePath({ ...minStubInput, cableTubes: routeTubes });
+        if (!minStubWithTubes.tightMarginUsed && acceptMinStub(minStubWithTubes)) {
+          return minStubWithTubes;
+        }
+        const minStubCrossing = findCablePath({ ...minStubInput, cableTubes: [] });
+        if (!minStubCrossing.tightMarginUsed && acceptMinStub(minStubCrossing)) {
+          return minStubCrossing;
+        }
+      }
       return initial;
     };
     let request_ = request;
