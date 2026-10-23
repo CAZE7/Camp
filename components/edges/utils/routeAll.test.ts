@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Position, type Node } from '@xyflow/react';
-import complexPlan from '../../../knownPlans/complex.json';
-import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json';
+import complexPlan from '../../../knownPlans/complex.json' with { type: 'json' };
+import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json' with { type: 'json' };
 import { computeCableRouteFinalValidation } from './cableRouteStore';
 import {
   routeAllCables,

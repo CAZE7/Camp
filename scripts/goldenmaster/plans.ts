@@ -1,7 +1,7 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
-import camperFixture from '../../knownPlans/camper.json';
-import complexFixture from '../../knownPlans/complex.json';
+import camperFixture from '../../knownPlans/camper.json' with { type: 'json' };
+import complexFixture from '../../knownPlans/complex.json' with { type: 'json' };
 
 /**
  * WP-0b (#402): Eingabepläne des Golden Masters.

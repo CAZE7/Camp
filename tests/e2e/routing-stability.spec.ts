@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import complexPlan from '../../knownPlans/complex.json';
+import complexPlan from '../../knownPlans/complex.json' with { type: 'json' };
 import { openPlanner, showCanvas } from './helpers';
 
 const plan = complexPlan.autoWire as {
