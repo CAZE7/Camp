@@ -1,16 +1,19 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { expect, type Page, test } from '@playwright/test';
 
 import { openPlanner, showSidebar } from './helpers';
+
+const SPEC_DIR = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Ein realistischer Plan für die Canvas-Griffe: Ohne Plan steht in der Mitte
  * der leeren Zeichenfläche ein Aufruf-Kasten — eine gewollte Überlagerung.
  */
 function complexPlan(): { nodes: unknown[]; edges: unknown[] } {
-  const raw = JSON.parse(readFileSync(join(__dirname, '..', '..', 'knownPlans', 'complex.json'), 'utf8')) as {
+  const raw = JSON.parse(readFileSync(join(SPEC_DIR, '..', '..', 'knownPlans', 'complex.json'), 'utf8')) as {
     autoWire: { nodes: unknown[]; edges: unknown[] };
   };
   return raw.autoWire;

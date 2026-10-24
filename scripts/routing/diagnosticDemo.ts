@@ -9,7 +9,8 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   createDiagnosticSession,
   enableRoutingDiagnostics,
@@ -23,8 +24,10 @@ import type { CableEdge } from '../../lib/autoWire/primitives';
 
 // ── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+
 function loadPlan(planName: string): { nodes: Node[]; edges: CableEdge[] } {
-  const planPath = join(__dirname, '../../knownPlans', `${planName}.json`);
+  const planPath = join(SCRIPT_DIR, '../../knownPlans', `${planName}.json`);
   const raw = readFileSync(planPath, 'utf-8');
   const plan = JSON.parse(raw);
   return {

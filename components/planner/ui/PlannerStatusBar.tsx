@@ -148,13 +148,6 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
       ) : (
         <span className="cad-statusbar__ok">Keine Hinweise</span>
       )}
-      <a
-        href="#planer-anleitung"
-        className="ml-auto hidden shrink-0 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline xl:inline"
-        aria-label="Zur Anleitung und FAQ unterhalb des Planers springen"
-      >
-        Anleitung &amp; FAQ ↓
-      </a>
     </div>
   );
 }

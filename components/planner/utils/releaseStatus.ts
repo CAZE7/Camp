@@ -110,8 +110,8 @@ export function assessRelease(
       : `${summary.unprovable} Prüfregeln sind mit den vorhandenen Angaben nicht entscheidbar`;
   const hintPhrase =
     openPoints === 1
-      ? '1 offener Hinweis an betroffenen Leitungen/Bauteilen'
-      : `${openPoints} offene Hinweise an betroffenen Leitungen/Bauteilen`;
+      ? '1 offener Hinweis an betroffenen Leitungen/Geräten'
+      : `${openPoints} offene Hinweise an betroffenen Leitungen/Geräten`;
 
   return {
     status: 'entwurf',
