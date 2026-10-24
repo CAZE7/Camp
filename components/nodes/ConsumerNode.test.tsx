@@ -43,6 +43,16 @@ describe('ConsumerNode Component', () => {
     expect(screen.getByText('Nutzung: 4 h/Tag')).toBeInTheDocument();
   });
 
+  it('N1 + N15: formats decimal hours with German comma and marks sanitized missing fields', () => {
+    const { rerender } = render(<ConsumerNode id="1" data={{ watts: 45.5, hours: 0.5 }} />);
+    expect(screen.getByText('Leistung: 45,5 W')).toBeInTheDocument();
+    expect(screen.getByText('Nutzung: 0,5 h/Tag')).toBeInTheDocument();
+
+    rerender(<ConsumerNode id="1" data={{ sanitizedMissingFields: ['watts'], hours: 2 }} />);
+    expect(screen.getByText('Leistung: – (bitte eintragen)')).toBeInTheDocument();
+    expect(screen.getByText('Nutzung: 2 h/Tag')).toBeInTheDocument();
+  });
+
   it('applies selected styling when selected is true', () => {
     const { container } = render(<ConsumerNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;

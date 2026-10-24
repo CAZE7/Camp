@@ -6,6 +6,7 @@ import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { designatorMapFor, nodesWithUniqueDesignators } from '../../components/nodes/designatorModel';
 import { getEdgeDomain } from '../../lib/electrical';
+import { syncDefaultNodeLabel } from '../../lib/nodeSchema';
 import { isFuseType } from '../../lib/shortCircuit';
 import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
@@ -72,6 +73,7 @@ export type GraphSlice = Pick<
   | 'deleteSelected'
   | 'updateNodeData'
   | 'handleChangeLength'
+  | 'handleChangeCrossSection'
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
@@ -566,28 +568,28 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     });
   },
   updateNodeData: (id, data) =>
-    set((state) =>
-      withHistoryIfChanged(
+    set((state) => {
+      const applyPatch = (n: Node): Node => {
+        if (n.id !== id) return n;
+        const currentData = (n.data ?? {}) as Record<string, unknown>;
+        const syncedLabel = syncDefaultNodeLabel(n.type, currentData, data as Record<string, unknown>);
+        const nextData =
+          syncedLabel !== undefined && syncedLabel !== currentData.label
+            ? { ...currentData, ...data, label: syncedLabel }
+            : { ...currentData, ...data };
+        return { ...n, data: nextData };
+      };
+      return withHistoryIfChanged(
         state,
         {
-          nodes: state.nodes.map((n) => {
-            if (n.id === id) {
-              return { ...n, data: { ...n.data, ...data } };
-            }
-            return n;
-          }),
-          waterNodes: state.waterNodes.map((n) => {
-            if (n.id === id) {
-              return { ...n, data: { ...n.data, ...data } };
-            }
-            return n;
-          }),
+          nodes: state.nodes.map(applyPatch),
+          waterNodes: state.waterNodes.map(applyPatch),
         },
         // N4 (Nachtest): Tippen in einem Feld = EIN Verlaufsschritt,
         // nicht einer pro Tastendruck (Schlüssel: Bauteil + Feldmenge).
         `node-data:${id}:${Object.keys(data).sort().join('+')}`
-      )
-    ),
+      );
+    }),
   handleChangeLength: (id, length) =>
     set((state) =>
       withHistoryIfChanged(
@@ -610,6 +612,19 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
           }),
         },
         `edge-length:${id}`
+      )
+    ),
+  handleChangeCrossSection: (id, crossSection) =>
+    set((state) =>
+      withHistoryIfChanged(
+        state,
+        {
+          edges:
+            Number.isFinite(crossSection) && crossSection > 0
+              ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, crossSection } } : e))
+              : state.edges,
+        },
+        `edge-cross-section:${id}`
       )
     ),
   handleChangeFuseSize: (id, fuseSize) =>

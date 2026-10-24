@@ -52,7 +52,7 @@
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
 
 import type { Node } from './domain/graph';
-import { DEFAULT_SYSTEM_VOLTAGE } from './vde-standards';
+import { DEFAULT_SYSTEM_VOLTAGE, LEAD_SYSTEM_VOLTAGE } from './vde-standards';
 
 /**
  * κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010).
@@ -142,7 +142,17 @@ export function internalResistanceMilliOhmOf(node: Node | undefined): number | n
   const ri100 =
     BATTERY_RI_MILLIOHM_AT_100AH[typeof chemistry === 'string' ? chemistry : 'LiFePO4'] ??
     BATTERY_RI_MILLIOHM_AT_100AH['LiFePO4']!;
-  return (ri100 * 100) / capacity;
+  // AUDIT H9: Die Chemie-Faustformel gilt für einen 12-V-Block (4s LiFePO4 = 12,8 V
+  // bzw. 6s Blei = 12,0 V). Ein 24-V- oder 48-V-Block gleicher Ah-Kapazität besteht
+  // aus 2× bzw. 4× so vielen Zellen in Reihe — sein Block-Innenwiderstand steigt
+  // proportional zum Spannungsverhältnis (Serienschaltung addiert Ri), sodass der
+  // Pol-Kurzschlussstrom U/Ri bei gleicher Zellgröße realistisch konstant bleibt,
+  // statt bei 24 V/48 V künstlich auf das 2-/4-Fache zu springen.
+  const baseReferenceVoltage =
+    chemistry === 'AGM' || chemistry === 'Gel' ? LEAD_SYSTEM_VOLTAGE : DEFAULT_SYSTEM_VOLTAGE;
+  const blockVoltage = finitePositive(dataOf(node)?.nominalVoltage) ?? baseReferenceVoltage;
+  const seriesFactor = Math.max(1, blockVoltage / baseReferenceVoltage);
+  return ((ri100 * 100) / capacity) * seriesFactor;
 }
 
 /** Nennspannung des Blocks (data.nominalVoltage), sonst Systemdefault. */

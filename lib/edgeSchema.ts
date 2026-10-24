@@ -64,6 +64,22 @@ function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {
   }
 }
 
+export const EDGE_FIELD_LABELS_DE: Record<string, string> = {
+  length: 'Kabellänge (m)',
+  crossSection: 'Querschnitt (mm²)',
+  fuseSize: 'Sicherung (A)',
+  edgeDomain: 'Spannungsebene',
+  fuseOffset: 'Sicherungsabstand zum Batteriepol (m)',
+  fuseType: 'Sicherungs-Bauform',
+  acProtection: '230-V-Schutzorgan',
+  fuseBreakingCapacity: 'Abschaltvermögen (A)',
+  intent: 'Verbindlichkeit',
+};
+
+export function describeEdgeFieldDe(field: string): string {
+  return EDGE_FIELD_LABELS_DE[field] ?? field;
+}
+
 /**
  * Prüft/entfernt bekannte Felder mit falschem Typ oder außerhalb `[min, max]` aus `edge.data`.
  * Rückgabe: bereinigte Datenkopie + Namen der entfernten Felder (für Logs/Tests).

@@ -76,7 +76,7 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
       type: 'string',
       enumValues: ['LiFePO4', 'AGM', 'Gel'],
     },
-    nominalVoltage: { type: 'number', allowZero: true, min: 0, max: 1_000 },
+    nominalVoltage: { type: 'number', allowZero: false, min: 1, max: 1_000 },
     role: { type: 'string', enumValues: ['starter', 'house'] },
     hasInternalBms: { type: 'boolean' },
     hasExternalBms: { type: 'boolean' },
@@ -140,6 +140,7 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
   inverter: {
     ...COMMON_FIELDS,
     hasRcd: { type: 'boolean' },
+    efficiency: { type: 'number', allowZero: true, min: 0, max: 100 },
     idleWatts: { type: 'number', allowZero: true, min: 0, max: 1_000 },
     hours: { type: 'number', allowZero: true, min: 0, max: 24 },
     /** Landstrom-Quelle am AC-Eingang (s. consumer230v.acSourceId). */
@@ -210,6 +211,153 @@ function fieldIsValid(value: unknown, spec: NodeDataFieldSpec): boolean {
 }
 
 /**
+ * Deutsche Anzeigenamen für bekannte Knoten-Datenfelder (AUDIT N15).
+ * Verhindert rohe JSON-Feldnamen wie `watts` oder `nominalVoltage` in Import-Warnungen.
+ */
+export const NODE_FIELD_LABELS_DE: Record<string, string> = {
+  label: 'Bezeichnung',
+  designator: 'Anlagenkennung',
+  watts: 'Leistung (W)',
+  continuousPower: 'Dauerleistung (W)',
+  idleWatts: 'Eigenverbrauch (W)',
+  hours: 'Nutzungsdauer (h/Tag)',
+  capacity: 'Kapazität (Ah)',
+  chemistry: 'Zellchemie',
+  nominalVoltage: 'Nennspannung (V)',
+  role: 'Rolle',
+  hasInternalBms: 'Internes BMS',
+  hasExternalBms: 'Externes BMS',
+  bmsContinuousDischarge: 'BMS-Dauerentladestrom (A)',
+  bmsPeakDischarge: 'BMS-Spitzenstrom (A)',
+  bmsContinuousCharge: 'BMS-Ladestrom (A)',
+  internalResistance: 'Innenwiderstand (mΩ)',
+  peukertExponent: 'Peukert-Exponent',
+  rating: 'Bemessungsstrom (A)',
+  amps: 'Strom (A)',
+  efficiency: 'Wirkungsgrad (%)',
+  maxPvVoltage: 'Max. PV-Eingangsspannung (V)',
+  voltage: 'Arbeitsspannung (V)',
+  voc: 'Leerlaufspannung Voc (V)',
+  isc: 'Kurzschlussstrom Isc (A)',
+  tempCoefficient: 'Temperaturkoeffizient Voc',
+  hasRcd: 'FI-Schutzschalter (RCD)',
+  prospectiveIkA: 'Kurzschlussstrom Ik (A)',
+  acCurrentA: 'AC-Strom (A)',
+  width: 'Breite',
+  height: 'Länge',
+  conduitType: 'Rohrtyp',
+  assignedEdges: 'Zugewiesene Leitungen',
+  concurrentDevices: 'Gleichzeitige Geräte',
+};
+
+/** Deutsche Anzeigenamen für Bauteiltypen (AUDIT N15). */
+export const NODE_TYPE_LABELS_DE: Record<string, string> = {
+  battery: 'Batterie',
+  solar: 'Solarmodul',
+  mpptController: 'MPPT-Solarladeregler',
+  dcdcCharger: 'Ladebooster (DC-DC)',
+  acBatteryCharger: '230-V-Ladegerät',
+  charger: 'Ladegerät',
+  inverter: 'Wechselrichter',
+  shorePower: 'Landstromanschluss',
+  consumer: '12-V-Verbraucher',
+  consumer230v: '230-V-Verbraucher',
+  fuse: 'Sicherung / Sicherungskasten',
+  busbar: 'Sammelschiene',
+  shunt: 'Messshunt',
+  ground: 'Massepunkt',
+  conduit: 'Leerrohr',
+  roofSolar: 'Dach-Solarmodul',
+  roofWindow: 'Dachluke',
+  freshWaterTank: 'Frischwassertank',
+  grayWaterTank: 'Abwassertank',
+  pump: 'Wasserpumpe',
+  accumulator: 'Druckausgleichsgefäß',
+  preFilter: 'Vorfilter',
+  sink: 'Spüle',
+  shower: 'Dusche',
+};
+
+export function describeNodeFieldDe(field: string): string {
+  return NODE_FIELD_LABELS_DE[field] ?? field;
+}
+
+/**
+ * Synchronisiert automatische Standardbezeichnungen („100Ah Lithium“, „150W Solar“,
+ * „500W Inverter“, „Solarmodul 200 W“) mit geänderten Zahlenwerten, ohne frei
+ * vergebene Nutzernamen („Aufbaubatterie Sitzbank“, „MultiPlus“) zu überschreiben
+ * (AUDIT M7 + N13).
+ */
+export function syncDefaultNodeLabel(
+  nodeType: string | null | undefined,
+  currentData: Record<string, unknown>,
+  patch?: Record<string, unknown>
+): string | undefined {
+  // Wenn der Aufrufer im selben Schritt explizit ein neues Label übergibt, gewinnt dieses.
+  if (patch && typeof patch.label === 'string') return patch.label;
+
+  const merged = patch ? { ...currentData, ...patch } : currentData;
+  const rawLabel = typeof merged.label === 'string' ? merged.label.trim() : '';
+  if (!rawLabel) return undefined;
+
+  if (nodeType === 'inverter') {
+    const power = Number(merged.continuousPower ?? merged.watts);
+    if (!Number.isFinite(power) || power <= 0) return undefined;
+    const rounded = Math.round(power);
+    const leading = rawLabel.match(/^(\d+(?:[.,]\d+)?)(\s*)W\s+(Inverter|Wechselrichter)$/i);
+    if (leading?.[3]) return `${rounded}${leading[2] ?? ''}W ${leading[3]}`;
+    const trailing = rawLabel.match(/^(Inverter|Wechselrichter)(\s+)(\d+(?:[.,]\d+)?)(\s*)W$/i);
+    if (trailing?.[1]) return `${trailing[1]}${trailing[2] ?? ' '}${rounded}${trailing[4] ?? ''}W`;
+    return undefined;
+  }
+
+  if (nodeType === 'battery') {
+    const cap = Number(merged.capacity);
+    if (!Number.isFinite(cap) || cap <= 0) return undefined;
+    const rounded = Math.round(cap);
+    const chem = typeof merged.chemistry === 'string' ? merged.chemistry : undefined;
+    const mapChemWord = (word: string): string => {
+      if (!chem) return word;
+      if (/^(lithium|lifepo4|agm|gel)$/i.test(word)) {
+        if (chem === 'LiFePO4') return /^lithium$/i.test(word) ? 'Lithium' : 'LiFePO4';
+        return chem;
+      }
+      return word;
+    };
+    const leading = rawLabel.match(
+      /^(\d+(?:[.,]\d+)?)(\s*)Ah\s+(Lithium|LiFePO4|AGM|Gel|Batterie|Aufbaubatterie|Starterbatterie)$/i
+    );
+    if (leading?.[3]) {
+      return `${rounded}${leading[2] ?? ''}Ah ${mapChemWord(leading[3])}`;
+    }
+    const trailing = rawLabel.match(
+      /^(Batterie|Aufbaubatterie|Starterbatterie|Lithium|LiFePO4|AGM|Gel)(\s+)(\d+(?:[.,]\d+)?)(\s*)Ah$/i
+    );
+    if (trailing?.[1]) {
+      return `${mapChemWord(trailing[1])}${trailing[2] ?? ' '}${rounded}${trailing[4] ?? ''}Ah`;
+    }
+    return undefined;
+  }
+
+  if (nodeType === 'solar' || nodeType === 'roofSolar') {
+    const watts = Number(merged.watts);
+    if (!Number.isFinite(watts) || watts <= 0) return undefined;
+    const rounded = Math.round(watts);
+    const leading = rawLabel.match(/^(\d+(?:[.,]\d+)?)(\s*)W(p?)\s+(Solar(?:modul|panel)?)$/i);
+    if (leading?.[4]) {
+      return `${rounded}${leading[2] ?? ''}W${leading[3] ?? ''} ${leading[4]}`;
+    }
+    const trailing = rawLabel.match(/^(Solar(?:modul|panel)?)(\s+)(\d+(?:[.,]\d+)?)(\s*)W(p?)$/i);
+    if (trailing?.[1]) {
+      return `${trailing[1]}${trailing[2] ?? ' '}${rounded}${trailing[4] ?? ''}W${trailing[5] ?? ''}`;
+    }
+    return undefined;
+  }
+
+  return undefined;
+}
+
+/**
  * Prüft/entfernt bekannte Felder mit falschem Typ oder außerhalb `[min, max]` aus node.data.
  * Rückgabe: bereinigte Datenkopie + Namen der entfernten Felder (für Logs/Tests).
  * Unbekannte Felder und unbekannte Bauteiltypen bleiben unangetastet.
@@ -229,6 +377,10 @@ export function sanitizeNodeDataBySchema(
       continue;
     }
     out[key] = value;
+  }
+  const syncedLabel = syncDefaultNodeLabel(nodeType, out);
+  if (syncedLabel !== undefined && syncedLabel !== out.label) {
+    out.label = syncedLabel;
   }
   return { data: out, removedFields };
 }

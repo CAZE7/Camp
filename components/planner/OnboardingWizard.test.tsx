@@ -56,5 +56,24 @@ describe('recommendedTemplateId', () => {
     expect(recommendedTemplateId({}, {})).toBe('minimalist');
     expect(recommendedTemplateId({}, { a: true, b: true, c: true })).toBe('kastenwagen');
     expect(recommendedTemplateId({ solar: true }, { a: true, b: true, c: true, d: true })).toBe('autark');
+    expect(recommendedTemplateId({}, { heizung: true })).toBe('autark');
+    expect(recommendedTemplateId({}, { laptop: true })).toBe('kastenwagen');
+  });
+
+  it('N18: ergänzt angekreuzte Geräte (z. B. Laptop-Ladegerät), wenn sie in der Vorlage fehlen', () => {
+    useAppStore.setState({ hasOnboarded: false });
+    usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [] });
+    render(<OnboardingWizard />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Landstrom vom Campingplatz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Laptop-Ladegerät' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: /Großes Autark-Setup/ }));
+
+    const state = usePlannerStore.getState();
+    expect(state.nodes.some((n) => n.type === 'acBatteryCharger')).toBe(true);
+    expect(
+      state.nodes.some((n) => String((n.data as { label?: string })?.label ?? '').includes('Laptop'))
+    ).toBe(true);
   });
 });

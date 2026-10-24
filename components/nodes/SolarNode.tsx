@@ -1,7 +1,12 @@
 'use client';
 import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { type SolarNodeData, type PlannerNodeProps } from './types';
+import {
+  formatNodeNumberDe,
+  isSanitizedFieldMissing,
+  type SolarNodeData,
+  type PlannerNodeProps,
+} from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
@@ -37,8 +42,12 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
         </div>
       )}
       <div className="measure flex flex-col gap-1 text-xs text-muted-foreground">
-        {data.watts !== undefined && (
-          <div className="font-semibold text-copper">Leistung: {data.watts} W</div>
+        {isSanitizedFieldMissing(data, 'watts') ? (
+          <div className="font-semibold text-copper">Leistung: – (bitte eintragen)</div>
+        ) : (
+          data.watts !== undefined && (
+            <div className="font-semibold text-copper">Leistung: {formatNodeNumberDe(data.watts, 0)} W</div>
+          )
         )}
         {editingField === 'voltage' ? (
           <div className="flex items-center gap-1">
@@ -56,7 +65,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('voltage', data.voltage || 0)}>
-            Spannung: {data.voltage || 0} V
+            Spannung: {formatNodeNumberDe(data.voltage, 0)} V
           </div>
         )}
         {editingField === 'amps' ? (
@@ -75,7 +84,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('amps', data.amps || 0)}>
-            Strom: {data.amps || 0} A
+            Strom: {formatNodeNumberDe(data.amps, 0)} A
           </div>
         )}
       </div>

@@ -50,6 +50,7 @@ interface InspectorProps {
   onDelete?: (nodeId?: string) => void;
   onUpdateNodeData?: (nodeId: string, data: NodeDataPatch) => void;
   onChangeLength?: (id: string, length: number) => void;
+  onChangeCrossSection?: (id: string, crossSection: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
   /** AUDIT ELE-004: Sicherungsabstand (m) vom Leitungsanfang pflegbar. */
   onChangeFuseOffset?: (id: string, offset: number) => void;
@@ -149,6 +150,8 @@ const EmptySelection = ({ viewMode }: { viewMode: PlannerViewMode }) => (
 function TypeSpecificInspector({
   node,
   onUpdateNodeData,
+  onChangeCrossSection,
+  onChangeFuseSize,
   nodes,
   edges,
   chargingTimeStr,
@@ -156,6 +159,8 @@ function TypeSpecificInspector({
 }: {
   node: PlannerFlowNode;
   onUpdateNodeData?: (id: string, patch: NodeDataPatch) => void;
+  onChangeCrossSection?: (id: string, crossSection: number) => void;
+  onChangeFuseSize?: (id: string, fuseSize: number) => void;
   nodes?: PlannerFlowNode[];
   edges?: Edge[];
   chargingTimeStr?: string;
@@ -188,6 +193,9 @@ function TypeSpecificInspector({
           node={typedAs(node, 'inverter')}
           onUpdateNodeData={onUpdateNodeData}
           nodes={nodes}
+          edges={edges}
+          onChangeCrossSection={onChangeCrossSection}
+          onChangeFuseSize={onChangeFuseSize}
         />
       );
     case 'consumer230v':
@@ -224,6 +232,8 @@ const NodeInspector = ({
   node,
   onDelete,
   onUpdate,
+  onChangeCrossSection,
+  onChangeFuseSize,
   nodes,
   edges,
   chargingTimeStr,
@@ -232,6 +242,8 @@ const NodeInspector = ({
   node: PlannerFlowNode;
   onDelete: (nodeId: string) => void;
   onUpdate?: (nodeId: string, data: NodeDataPatch) => void;
+  onChangeCrossSection?: (id: string, crossSection: number) => void;
+  onChangeFuseSize?: (id: string, fuseSize: number) => void;
   nodes?: PlannerFlowNode[];
   edges?: Edge[];
   chargingTimeStr?: string;
@@ -278,6 +290,8 @@ const NodeInspector = ({
       <TypeSpecificInspector
         node={node}
         onUpdateNodeData={onUpdate}
+        onChangeCrossSection={onChangeCrossSection}
+        onChangeFuseSize={onChangeFuseSize}
         nodes={nodes}
         edges={edges}
         chargingTimeStr={chargingTimeStr}
@@ -311,6 +325,7 @@ export default function Inspector({
   onDelete,
   onUpdateNodeData,
   onChangeLength,
+  onChangeCrossSection,
   onChangeFuseSize,
   onChangeFuseOffset,
   onChangeFuseType,
@@ -346,6 +361,8 @@ export default function Inspector({
             if (onUpdateNode) return onUpdateNode(id, data);
             if (onUpdateNodeData) return onUpdateNodeData(id, data);
           }}
+          onChangeCrossSection={onChangeCrossSection}
+          onChangeFuseSize={onChangeFuseSize}
           nodes={nodes}
           edges={edges}
           chargingTimeStr={chargingTimeStr}
@@ -359,6 +376,7 @@ export default function Inspector({
             <EdgeInspector
               edge={selectedEdge}
               onChangeLength={onChangeLength || (() => {})}
+              onChangeCrossSection={onChangeCrossSection}
               onChangeFuseSize={onChangeFuseSize}
               onChangeFuseOffset={onChangeFuseOffset}
               onChangeFuseType={onChangeFuseType}

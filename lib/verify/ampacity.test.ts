@@ -351,18 +351,18 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
   });
 
   it('schlägt beim letzten Normquerschnitt keinen größeren mehr vor', () => {
-    // 70 mm² ist der größte Eintrag BEIDER Tabellen: Die Abhilfe kann nur
-    // noch den Strom senken — ein „nächster Normquerschnitt“ existiert nicht.
-    const plan = withEdge(withLoadWatts(basePlan(), 2000), 'e-fuse-load', { crossSection: 70, length: 3 });
+    // 120 mm² ist der größte Eintrag BEIDER Tabellen (I_z = 239 × 0,7 = 167,3 A):
+    // Bei 2200 W (183,3 A) kann die Abhilfe nur noch den Strom senken.
+    const plan = withEdge(withLoadWatts(basePlan(), 2200), 'e-fuse-load', { crossSection: 120, length: 3 });
     const amp1 = checkIbInIz(contextOf(plan));
     const overload = amp1.events.find(
       (event) =>
         event.message.includes('überschreitet die korrigierte Belastbarkeit') &&
         typeof event.allowedLimit === 'number' &&
-        Math.abs(event.allowedLimit - 172 * 0.7) < 1e-6
+        Math.abs(event.allowedLimit - 239 * 0.7) < 1e-6
     );
     expect(overload).toBeDefined();
-    expect(overload?.allowedLimit).toBeCloseTo(172 * 0.7, 6);
+    expect(overload?.allowedLimit).toBeCloseTo(239 * 0.7, 6);
     expect(overload?.autoFixRemedy).not.toContain('mm² erhöhen');
   });
 
@@ -502,10 +502,10 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
   });
 
   it('schlägt die Vergrößerung vor, wenn die vorgelagerte Leitung sie trägt', () => {
-    // 100 A nachgelagert, vorgelagert auf 95 mm²: 95 mm² steht nicht in
+    // 100 A nachgelagert, vorgelagert auf 150 mm²: 150 mm² steht nicht in
     // VDE_AMPACITY ⇒ I_z nicht bestimmbar ⇒ die Grenze ist UNBEKANNT und wird
     // nicht erfunden; die Vorgabe bleibt die reine Verhältnisrechnung.
-    const unknown = checkSelectivity(contextOf(equalCascade(95)));
+    const unknown = checkSelectivity(contextOf(equalCascade(150)));
     expect(unknown.events[0]?.autoFixRemedy).toContain('mindestens 160,0 A');
     expect(unknown.events[0]?.autoFixRemedy).toContain('nicht zugeordnet');
   });
@@ -555,12 +555,12 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
  * des §433.1, die die Karte gerade prüft.
  */
 describe('lib/verify/ampacity — Abhilfe bei thermischer Sättigung', () => {
-  /** 70 mm², 2000 W am 12-V-Strang: I_b = 166,7 A > I_z = 120,4 A, Sicherung 160 A. */
+  /** 120 mm², 2200 W am 12-V-Strang: I_b = 183,3 A > I_z = 167,3 A, Sicherung 200 A. */
   const saturatedPlan = (): FixturePlan =>
-    withEdge(withLoadWatts(basePlan(), 2000), 'e-fuse-load', {
-      crossSection: 70,
+    withEdge(withLoadWatts(basePlan(), 2200), 'e-fuse-load', {
+      crossSection: 120,
       length: 3,
-      fuseSize: 160,
+      fuseSize: 200,
       fuseType: 'anl',
     });
 
@@ -579,10 +579,8 @@ describe('lib/verify/ampacity — Abhilfe bei thermischer Sättigung', () => {
 
   it('nennt bei I_n > I_z keine Sicherung unter dem Betriebsstrom', () => {
     const remedy = remedyOf(saturatedPlan(), 'I_n > I_z');
-    // Der Altbefund: „Sicherung auf ≤ 100 A verringern“ bei I_b = 166,7 A —
-    // I_b > I_n, im Betrieb eine auslösende Anlage.
-    expect(remedy).not.toContain('Sicherung auf ≤ 100 A verringern');
-    expect(remedy).toContain('I_b = 166,7 A');
+    expect(remedy).not.toContain('Sicherung auf ≤ 160 A verringern');
+    expect(remedy).toContain('I_b = 183,3 A');
     expect(remedy).toContain('Bedingung (1)');
   });
 
@@ -598,7 +596,7 @@ describe('lib/verify/ampacity — Abhilfe bei thermischer Sättigung', () => {
 
   it('nennt im Sättigungsfall einen Zielwert und die drei Auswege', () => {
     const overload = remedyOf(saturatedPlan(), 'I_b ≤ I_n');
-    expect(overload).toContain('≤ 120,4 A');
+    expect(overload).toContain('≤ 167,3 A');
     for (const exit of ['Systemspannung erhöhen', 'höher gespannten Strang verlagern', 'parallele Abgänge']) {
       expect(overload, exit).toContain(exit);
     }

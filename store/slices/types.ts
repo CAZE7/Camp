@@ -173,6 +173,7 @@ export interface PlannerState {
   deleteSelected: () => void;
   updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
+  handleChangeCrossSection: (id: string, crossSection: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
   handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
   /**

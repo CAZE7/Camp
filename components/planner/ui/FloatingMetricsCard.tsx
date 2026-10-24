@@ -75,11 +75,22 @@ export function FloatingMetricsCard() {
             </div>
             <div className="border-t border-rule/50 pt-2" />
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
+              <dt className="text-sm text-ink-soft">Ladezeit 0–100 % (Volllast)</dt>
               <dd className="text-right text-sm font-bold text-oxide">
                 {(metrics.chargingTimeStr ?? '').replace('.', ',')}
               </dd>
             </div>
+            {metrics.solarChargeDaysStr && (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-sm text-ink-soft">Solar allein (real)</dt>
+                <dd className="text-right text-sm font-bold text-ink">
+                  {metrics.solarChargeDaysStr}
+                  <span className="text-muted-ink block text-xs font-normal">
+                    ≈ {(metrics.dailySolarYieldAh ?? 0).toFixed(0)} Ah/Tag
+                  </span>
+                </dd>
+              </div>
+            )}
             {(calculatedSolarWatts > 0 || metrics.solarNodesCount > 0) && (
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-sm text-ink-soft">Solarleistung</dt>

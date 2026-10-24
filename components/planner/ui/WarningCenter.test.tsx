@@ -212,11 +212,11 @@ describe('nextStep — der Lösungshinweis muss zum Befund passen', () => {
     expect(exceeded).toContain('Anzahl der Panels');
   });
 
-  it('thermische Überlast → nennt keine Normstufe über 70 mm²', () => {
+  it('thermische Überlast → nennt keine Normstufe über 120 mm²', () => {
     const text = nextStep(warning({ id: 'thermal-overload-e-1' }));
 
-    expect(text).not.toContain('über 70 mm² wählen');
-    expect(text).toContain('oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt');
+    expect(text).not.toContain('über 120 mm² wählen');
+    expect(text).toContain('oberhalb von 120 mm² kennt der Planer keinen Normquerschnitt');
     expect(text).toContain('parallel');
   });
 

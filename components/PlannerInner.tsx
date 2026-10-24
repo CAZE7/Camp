@@ -368,7 +368,12 @@ function PlannerShell() {
               <div
                 role={entryNotice.type === 'error' ? 'alert' : 'status'}
                 aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-popover flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
+                data-notice-type={entryNotice.type}
+                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-popover flex items-start gap-2 rounded border px-3 py-2 text-sm text-foreground ${
+                  entryNotice.type === 'error'
+                    ? 'border-oxide/60 bg-surface-panel'
+                    : 'border-border bg-surface-panel'
+                } ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
               >
                 <button
                   type="button"
@@ -387,7 +392,7 @@ function PlannerShell() {
                     setExpandedNotice(null);
                     dismissEntryNotice();
                   }}
-                  className="cad-btn pointer-events-auto shrink-0 px-1"
+                  className="cad-btn pointer-events-auto min-h-11 min-w-11 shrink-0 justify-center px-1"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>

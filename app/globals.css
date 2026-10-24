@@ -855,11 +855,12 @@
      Wechselrichter) und der Status-Rand bleiben unberührt (Rule F). */
   .planner-detail-overview .node-card .measure {
     visibility: hidden;
+    pointer-events: none;
   }
 
   .planner-detail-overview .de-node-card > .node-symbol,
   .planner-detail-overview .de-node-card > .node-symbol + div {
-    transform: translateY(14px);
+    transform: translateY(22px);
     transition: transform 150ms ease;
   }
 
@@ -4753,12 +4754,22 @@ html.planner-root-active body {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .planner-minimap.planner-minimap--open {
-    left: 0.5rem !important;
-    bottom: calc(var(--cad-nav-h, 44px) + var(--cad-statusbar-h, 22px) + 3.25rem) !important;
+    right: 0.5rem !important;
+    left: auto !important;
+    bottom: 3.5rem !important;
     width: 7.5rem !important;
     height: 5.25rem !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .planner-minimap.planner-minimap--open {
+    left: 4.25rem !important;
+    bottom: 0.75rem !important;
+    width: 8.5rem !important;
+    height: 5.75rem !important;
   }
 }
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import simplePlan from '../../knownPlans/simple.json';
+import simplePlan from '../../knownPlans/simple.json' with { type: 'json' };
 import { openPlanner, showCanvas } from './helpers';
 
 /**

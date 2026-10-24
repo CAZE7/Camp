@@ -4,10 +4,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 120,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 100,
+          "fuseSize": 160,
           "fuseType": "mrbf",
           "fuseWarning": false,
           "length": 0.2,
@@ -271,13 +271,13 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:plus-schiene": 0.01,
+      "auto:0:plus-schiene": 0.006,
       "auto:1:minus-schiene": 0.034,
-      "auto:2:12v-sicherungskasten": 0.048,
+      "auto:2:12v-sicherungskasten": 0.044,
       "auto:3:smart-shunt": 0.01,
       "battery-1": 0,
       "cons-230v": 0,
-      "cons-light": 0.163,
+      "cons-light": 0.159,
       "inverter-1": 0.083
     },
     "edgeCurrents": {

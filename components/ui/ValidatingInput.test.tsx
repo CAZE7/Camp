@@ -272,4 +272,30 @@ describe('ValidatingInput', () => {
     fireEvent.blur(input);
     expect(input.value).toBe('500');
   });
+
+  it('AUDIT H8: zeigt geladene Nachkommastellen mit deutschem Komma an („1,125“) und verhindert den ×1000-Sprung', () => {
+    const onValidChange = vi.fn();
+    render(
+      <ValidatingInput
+        value={1.125}
+        isFloat
+        onValidChange={onValidChange}
+        rules={[COMMON_RULES.strictlyPositive, COMMON_RULES.maxPower]}
+        aria-label="test-input"
+      />
+    );
+    const input = screen.getByLabelText('test-input') as HTMLInputElement;
+
+    // Nach Reload steht „1,125“ im Feld — das Ändern der letzten Stelle ergibt 1,128 statt 1128.
+    expect(input.value).toBe('1,125');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '1,128' } });
+    expect(onValidChange).toHaveBeenLastCalledWith(1.128);
+
+    // Eine mehrdeutige Punkt-Eingabe „1.128“ wird ausdrücklich abgelehnt statt als 1128 geraten.
+    onValidChange.mockClear();
+    fireEvent.change(input, { target: { value: '1.128' } });
+    expect(screen.getByText(INPUT_ERROR_MESSAGES.ambiguousDecimal)).toBeInTheDocument();
+    expect(onValidChange).toHaveBeenLastCalledWith(1.125);
+  });
 });

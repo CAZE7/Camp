@@ -199,9 +199,11 @@ describe('M11-1: maxFuseForDisplay — Anzeige-Klemmung statt Render-Crash', () 
 
   it('klemmt Nicht-Normquerschnitte auf die größte Normstufe darunter ein', () => {
     expect(maxFuseForDisplay(2.75)).toBe(calculateMaxFuse(2.5));
-    expect(maxFuseForDisplay(95)).toBe(calculateMaxFuse(70)); // Import-Fall
+    expect(maxFuseForDisplay(95)).toBe(calculateMaxFuse(95)); // H2: 95 mm² ist jetzt Normstufe (125 A)
+    expect(maxFuseForDisplay(120)).toBe(calculateMaxFuse(120)); // H2: 120 mm² ist jetzt Normstufe (160 A)
+    expect(maxFuseForDisplay(150)).toBe(calculateMaxFuse(120)); // Import-Fall oberhalb 120 mm²
     expect(maxFuseForDisplay(0.5)).toBe(calculateMaxFuse(1.5)); // unter Minimum
-    expect(() => calculateMaxFuse(95)).toThrow(RangeError); // strikt bleibt strikt
+    expect(() => calculateMaxFuse(150)).toThrow(RangeError); // strikt bleibt strikt
   });
 });
 

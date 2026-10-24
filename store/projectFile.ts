@@ -34,8 +34,13 @@
  *    leer. Jede künftige Schemaänderung ergänzt hier einen Schritt `n → n+1`.
  */
 import type { Edge, Node } from '@xyflow/react';
-import { sanitizeEdgeDataBySchema } from '../lib/edgeSchema';
-import { isKnownNodeType, sanitizeNodeDataBySchema } from '../lib/nodeSchema';
+import { describeEdgeFieldDe, sanitizeEdgeDataBySchema } from '../lib/edgeSchema';
+import {
+  NODE_TYPE_LABELS_DE,
+  describeNodeFieldDe,
+  isKnownNodeType,
+  sanitizeNodeDataBySchema,
+} from '../lib/nodeSchema';
 import { isEdgeShape, isNodeShape, stripNodeMeasurement } from './slices/persistence';
 
 export const PROJECT_FILE_FORMAT = 'camp-elektroplaner-projekt';
@@ -88,7 +93,18 @@ export function serializePlannerProject(
   return `${JSON.stringify(document, null, 2)}\n`;
 }
 
-/** Dateiname für den Export, z. B. `camp-plan-2026-10-12.json`. */
+/**
+ * Bereitet Import-Warnungen für die sichtbare Nutzermeldung auf, ohne technische
+ * Feldnamen (`[watts]`) oder rohe Knoten-IDs (`cons-light`) durchzureichen (N15).
+ */
+export function formatImportWarningsForUser(warnings: readonly string[]): string[] {
+  return warnings.map((line) =>
+    line
+      .replace(/\s*\[[a-zA-Z0-9_.:-]+\]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
+}
 export function projectFileName(now: Date = new Date()): string {
   const iso = now.toISOString().slice(0, 10);
   return `camp-plan-${iso}.json`;
@@ -261,11 +277,33 @@ export function parsePlannerProject(text: string): ProjectParseResult {
     return { keptNodes, keptEdges };
   };
 
+  const describeImportedNode = (node: Node): string => {
+    const typeLabel = NODE_TYPE_LABELS_DE[node.type ?? ''] ?? 'Bauteil';
+    const rawLabel =
+      node.data && typeof (node.data as { label?: unknown }).label === 'string'
+        ? (node.data as { label: string }).label.trim()
+        : '';
+    return rawLabel ? `${typeLabel} „${rawLabel}“ [${node.id}]` : `${typeLabel} [${node.id}]`;
+  };
+
+  const nodeDisplayMap = new Map<string, string>();
+  for (const n of [...(nodes as Node[]), ...(wNodes as Node[])]) {
+    const rawLabel =
+      n.data && typeof (n.data as { label?: unknown }).label === 'string'
+        ? (n.data as { label: string }).label.trim()
+        : '';
+    nodeDisplayMap.set(n.id, rawLabel || (NODE_TYPE_LABELS_DE[n.type ?? ''] ?? n.id));
+  }
+
   const sanitizeNode = (node: Node): Node => {
     const raw = (node.data ?? {}) as Record<string, unknown>;
     const { data, removedFields } = sanitizeNodeDataBySchema(node.type, raw);
     if (removedFields.length > 0) {
-      warnings.push(`Knoten „${node.id}“: ungültige Werte in ${removedFields.join(', ')} wurden verworfen.`);
+      const humanFields = removedFields.map((f) => `${describeNodeFieldDe(f)} [${f}]`).join(', ');
+      warnings.push(
+        `${describeImportedNode(node)}: ungültige Werte in ${humanFields} wurden verworfen — bitte im Inspektor prüfen.`
+      );
+      data.sanitizedMissingFields = removedFields;
     }
     return stripNodeMeasurement({ ...node, data } as Node);
   };
@@ -273,7 +311,12 @@ export function parsePlannerProject(text: string): ProjectParseResult {
     const raw = (edge.data ?? {}) as Record<string, unknown>;
     const { data, removedFields } = sanitizeEdgeDataBySchema(raw);
     if (removedFields.length > 0) {
-      warnings.push(`Leitung „${edge.id}“: ungültige Werte in ${removedFields.join(', ')} wurden verworfen.`);
+      const fromName = nodeDisplayMap.get(edge.source) ?? edge.source;
+      const toName = nodeDisplayMap.get(edge.target) ?? edge.target;
+      const humanFields = removedFields.map((f) => `${describeEdgeFieldDe(f)} [${f}]`).join(', ');
+      warnings.push(
+        `Leitung ${fromName} → ${toName}: ungültige Werte in ${humanFields} wurden verworfen — bitte prüfen.`
+      );
     }
     return { ...edge, data } as Edge;
   };

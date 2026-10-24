@@ -44,5 +44,10 @@ describe('toPlainGerman', () => {
     expect(amp002).not.toMatch(/bolt-down|I_2/i);
     expect(amp002).toContain('MIDI-Sicherung');
     expect(amp002).toContain('Hersteller-Datenblatt');
+
+    // N16: keine Doppelung „Prüfstrom … als Prüfstrom“
+    const remedy = toPlainGerman('Prüfstrom I_2 im Feld `i2A` eintragen.');
+    expect(remedy).not.toMatch(/Prüfstrom.*Prüfstrom/);
+    expect(remedy).toContain('Hersteller-Datenblatt');
   });
 });

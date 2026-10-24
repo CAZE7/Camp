@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChargerInspector, InverterInspector, ShorePowerInspector, SolarInspector } from './NodeInspectors';
+import {
+  BatteryInspector,
+  ChargerInspector,
+  InverterInspector,
+  ShorePowerInspector,
+  SolarInspector,
+} from './NodeInspectors';
 import { type NodeDataPatch } from '../nodes/types'; // AUDIT T1: Mock-Signatur
 import { closeTo } from '../../test-helpers/matchers'; // AUDIT T1
 import type { InspectorNode } from './NodeInspectors';
@@ -39,7 +45,7 @@ describe('SolarInspector — Temperaturkoeffizient Voc (AUDIT S1)', () => {
     vi.clearAllMocks();
   });
 
-  it('zeigt den gespeicherten Bruch als %/K an', () => {
+  it('zeigt den gespeicherten Bruch als %/K mit deutschem Komma an (H8)', () => {
     render(
       <SolarInspector
         node={solarNode({ voc: 22, tempCoefficient: -0.0035 })}
@@ -47,7 +53,7 @@ describe('SolarInspector — Temperaturkoeffizient Voc (AUDIT S1)', () => {
       />
     );
     const input = screen.getByLabelText(LABEL) as HTMLInputElement;
-    expect(Number(input.value)).toBeCloseTo(-0.35, 10);
+    expect(input.value).toBe('-0,35');
   });
 
   it('zeigt einen Altwert in Prozent-Schreibweise ebenfalls als %/K an', () => {
@@ -59,13 +65,13 @@ describe('SolarInspector — Temperaturkoeffizient Voc (AUDIT S1)', () => {
       />
     );
     const input = screen.getByLabelText(LABEL) as HTMLInputElement;
-    expect(Number(input.value)).toBeCloseTo(-0.35, 10);
+    expect(input.value).toBe('-0,35');
   });
 
   it('ohne Datenblattwert steht der Default (−0,35 %/K) im Feld', () => {
     render(<SolarInspector node={solarNode({ voc: 22 })} onUpdateNodeData={onUpdateNodeData} />);
     const input = screen.getByLabelText(LABEL) as HTMLInputElement;
-    expect(Number(input.value)).toBeCloseTo(-0.35, 10);
+    expect(input.value).toBe('-0,35');
   });
 
   it('schreibt den Bruch, wenn %/K eingegeben werden', () => {
@@ -305,6 +311,41 @@ describe('InverterInspector — Leistungs-Label & 100-A-Modellgrenze (H2 / M7 / 
     expect(onUpdateNodeData).toHaveBeenCalledWith('inv-1', {
       continuousPower: 1200,
       watts: 1200,
+    });
+  });
+
+  it('N13 + M14: aktualisiert Standard-Labels für Batterie/Solar und blockt Nennspannung 0 V', () => {
+    const onUpdateNodeData = vi.fn<(id: string, patch: NodeDataPatch) => void>();
+    const batNode: InspectorNode<'battery'> = {
+      id: 'bat-1',
+      type: 'battery',
+      position: { x: 0, y: 0 },
+      data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4' },
+    };
+    const { unmount } = render(<BatteryInspector node={batNode} onUpdateNodeData={onUpdateNodeData} />);
+    fireEvent.change(screen.getByLabelText(/Kapazität \(Ah\)/), { target: { value: '200' } });
+    expect(onUpdateNodeData).toHaveBeenCalledWith('bat-1', {
+      capacity: 200,
+      label: '200Ah Lithium',
+    });
+
+    onUpdateNodeData.mockClear();
+    fireEvent.change(screen.getByLabelText(/Nennspannung \(V\)/), { target: { value: '0' } });
+    expect(onUpdateNodeData).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/zwischen 6 und 60 V/);
+    unmount();
+
+    const solNode: InspectorNode<'solar'> = {
+      id: 'sol-1',
+      type: 'solar',
+      position: { x: 0, y: 0 },
+      data: { label: '150W Solar', watts: 150, voltage: 18, amps: 8.3 },
+    };
+    render(<SolarInspector node={solNode} onUpdateNodeData={onUpdateNodeData} />);
+    fireEvent.change(screen.getByLabelText(/Leistung \(W\)/), { target: { value: '300' } });
+    expect(onUpdateNodeData).toHaveBeenCalledWith('sol-1', {
+      watts: 300,
+      label: '300W Solar',
     });
   });
 });

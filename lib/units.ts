@@ -253,10 +253,12 @@ function splitDecimalBody(body: string): { intPart: string; fracPart: string | n
     return intPart === null ? null : { intPart, fracPart: null };
   }
 
-  // Fall 2: ein Trenner genau einmal — Dezimalzeichen, außer bei eindeutiger
-  // deutscher Tausendergruppierung („1.000“, „2.500“, „12.000“: 1–3 Ziffern
-  // ohne führende Null + Punkt + exakt 3 Ziffern). „0.350“ (führende 0),
-  // „2.5“ (1 Nachkommastelle) und „12.34“ (2 Nachkommastellen) bleiben Dezimalzahlen.
+  // Fall 2: ein Trenner genau einmal — Dezimalzeichen, außer bei mehrdeutiger
+  // dreistelliger Punkt-Schreibweise („1.125“, „1.000“, „2.500“: 1–3 Ziffern
+  // ohne führende Null + Punkt + exakt 3 Ziffern). Im Deutschen ist unklar,
+  // ob Nachkommastellen (1,125) oder Tausender (1125) gemeint sind — stilles
+  // Raten erzeugt einen Faktor-1000-Fehler (AUDIT H8). „0.350“ (führende 0),
+  // „2.5“ (1 Nachkommastelle) und „12.34“ (2 Nachkommastellen) bleiben eindeutig.
   if (commas === 1 || dots === 1) {
     const pair = splitOnce(body, commas === 1 ? ',' : '.');
     if (!pair) return null;
@@ -264,12 +266,41 @@ function splitDecimalBody(body: string): { intPart: string; fracPart: string | n
     if (!isDigits(fracPart)) return null;
     if (intPart !== '' && !isDigits(intPart)) return null;
     if (dots === 1 && commas === 0 && /^[1-9]\d{0,2}$/.test(intPart) && /^\d{3}$/.test(fracPart)) {
-      return { intPart: `${intPart}${fracPart}`, fracPart: null };
+      return null;
     }
     return { intPart, fracPart };
   }
 
   return isDigits(body) ? { intPart: body, fracPart: null } : null;
+}
+
+/**
+ * Formatiert eine Zahl für Text-Eingabefelder in deutscher Dezimalschreibweise
+ * (`1.125` → `"1,125"`), damit ein Neuladen der Seite Nachkommastellen nicht
+ * mit englischem Punkt anzeigt (AUDIT H8).
+ */
+export function formatDecimalForInput(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '';
+    // IEEE-754-Artefakte wie `-0.0035 * 100 === -0.35000000000000003` bereinigen,
+    // ohne echte Nachkommastellen (z. B. `1,125`) zu verlieren.
+    const clean = Math.abs(value) > 0 && Math.abs(value) < 1e12 ? Number(value.toPrecision(12)) : value;
+    return String(clean).replace('.', ',');
+  }
+  return String(value);
+}
+
+/**
+ * Erkennt mehrdeutige Einzelpunkt-Schreibweisen mit exakt drei Ziffern hinter
+ * dem Punkt (`"1.125"`, `"1.000"`, `"2.500"`), damit Eingabefelder dem Nutzer
+ * gezielt erklären können, ob Komma oder ungruppierte Zahl gemeint war (AUDIT H8).
+ */
+export function isAmbiguousDecimalString(input: string): boolean {
+  const normalized = input.replace(/\u2212/g, '-').replace(/\s+/g, '');
+  if (normalized === '') return false;
+  const body = normalized.startsWith('-') || normalized.startsWith('+') ? normalized.slice(1) : normalized;
+  return /^[1-9]\d{0,2}\.\d{3}$/.test(body);
 }
 
 /**

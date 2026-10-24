@@ -1,6 +1,7 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
-import { TEMPLATE_MINIMALIST, TEMPLATE_AUTARK } from '../../components/planner/templates';
+import camperFixture from '../../knownPlans/camper.json' with { type: 'json' };
+import complexFixture from '../../knownPlans/complex.json' with { type: 'json' };
 
 /**
  * WP-0b (#402): Eingabepläne des Golden Masters.
@@ -157,11 +158,65 @@ const ACDC: GoldenPlanInput = {
   edges: [],
 };
 
+// Eingefrorene Original-Reihenfolge der historischen Referenzpläne `camper`
+// und `complex` (vor H1/H6/M13-Template-Anpassungen), damit ELK-Layout- und
+// Routing-Baselines (`complex-measured-geometry.json`, `lib/routing/invariants.test.ts`)
+// deterministisch identisch bleiben.
+const CAMPER_NODE_ORDER = ['battery-1', 'ground-1', 'fusebox-1', 'cons-light', 'cons-usb', 'cons-cool'];
+const CAMPER_EDGE_ORDER = ['e-batt-fuse', 'e-batt-gnd', 'e-fuse-light', 'e-fuse-usb', 'e-fuse-cool'];
+const COMPLEX_NODE_ORDER = [
+  'solar-1',
+  'starter-1',
+  'shore-1',
+  'battery-1',
+  'charger-1',
+  'charger-2',
+  'busbar-plus',
+  'busbar-minus',
+  'fusebox-1',
+  'inverter-1',
+  'cons-fridge',
+  'cons-heat',
+  'cons-fan',
+  'cons-induct',
+];
+const COMPLEX_EDGE_ORDER = [
+  'e-batt-plus',
+  'e-batt-minus',
+  'e-solar-charger',
+  'e-charger-busbar',
+  'e-starter-dcdc',
+  'e-dcdc-busbar',
+  'e-busbar-fuse',
+  'e-fuse-fridge',
+  'e-fuse-heat',
+  'e-fuse-fan',
+  'e-busbar-inv-plus',
+  'e-busbar-inv-minus',
+  'e-inv-induct',
+  'e-shore-inv',
+];
+
+function orderByIds<T extends { id: string }>(items: readonly T[], order: readonly string[]): T[] {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return order.map((id) => byId.get(id)).filter((item): item is T => item !== undefined);
+}
+
+const CAMPER_FROZEN: GoldenPlanInput = {
+  nodes: orderByIds(camperFixture.input.nodes as unknown as Node[], CAMPER_NODE_ORDER),
+  edges: orderByIds(camperFixture.input.edges as unknown as Edge<CableEdgeData>[], CAMPER_EDGE_ORDER),
+};
+
+const COMPLEX_FROZEN: GoldenPlanInput = {
+  nodes: orderByIds(complexFixture.input.nodes as unknown as Node[], COMPLEX_NODE_ORDER),
+  edges: orderByIds(complexFixture.input.edges as unknown as Edge<CableEdgeData>[], COMPLEX_EDGE_ORDER),
+};
+
 export const GOLDEN_PLANS: Record<string, GoldenPlanInput> = {
   simple: SIMPLE,
-  camper: TEMPLATE_MINIMALIST as GoldenPlanInput,
+  camper: CAMPER_FROZEN,
   solar: SOLAR,
   inverter: INVERTER,
   acdc: ACDC,
-  complex: TEMPLATE_AUTARK as GoldenPlanInput,
+  complex: COMPLEX_FROZEN,
 };

@@ -29,7 +29,7 @@ export interface PlannerStatusBarProps {
 export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
   const coordsRef = useRef<HTMLSpanElement>(null);
   const { screenToFlowPosition } = useReactFlow();
-  const { nodeCount, edgeCount, viewMode, dcLabel, criticalCount, warningCount } = usePlannerStore(
+  const { nodeCount, edgeCount, viewMode, dcLabel, criticalCount, warningCount, infoCount } = usePlannerStore(
     useShallow((state) => {
       const vClass = classifySystemVoltage(getSystemVoltage(state.nodes));
       const resolvedDcLabel = vClass === '24V' ? '24 V' : vClass === '48V' ? '48 V' : '12 V';
@@ -38,13 +38,14 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
         edgeCount: state.viewMode === 'water' ? state.waterEdges.length : state.edges.length,
         viewMode: state.viewMode,
         dcLabel: `${resolvedDcLabel} / 230 V`,
-        // „kritisch“ umfasst beide harten Stufen der Domäne (`error`, `critical`).
+        // „kritisch“ umfasst beide harten Stufen der Domäne (`error`, `critical`),
+        // während echte Warnungen (`warning`) und Datenlücken (`info` = Hinweise)
+        // denselben Wortlaut wie die Warnzentrale führen (M17/N16).
         criticalCount: state.plannerErrors.filter(
           (error) => error.severity === 'error' || error.severity === 'critical'
         ).length,
-        warningCount: state.plannerErrors.filter(
-          (error) => error.severity !== 'error' && error.severity !== 'critical'
-        ).length,
+        warningCount: state.plannerErrors.filter((error) => error.severity === 'warning').length,
+        infoCount: state.plannerErrors.filter((error) => error.severity === 'info').length,
       };
     })
   );
@@ -116,14 +117,36 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
       {criticalCount > 0 ? (
         <span className="cad-statusbar__signal">
           {criticalCount} kritisch
-          <span className="hidden md:inline"> · {warningCount} Warnungen</span>
+          {warningCount + infoCount > 0 && (
+            <span className="hidden md:inline">
+              {' · '}
+              {[
+                warningCount > 0 ? (warningCount === 1 ? '1 Warnung' : `${warningCount} Warnungen`) : null,
+                infoCount > 0 ? (infoCount === 1 ? '1 Hinweis' : `${infoCount} Hinweise`) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
         </span>
       ) : warningCount > 0 ? (
         <span className="text-warning">
-          {warningCount} Warnungen<span className="hidden md:inline"> · kein kritischer Fehler</span>
+          {warningCount === 1 ? '1 Warnung' : `${warningCount} Warnungen`}
+          {infoCount > 0 && (
+            <span className="hidden sm:inline">
+              {' · '}
+              {infoCount === 1 ? '1 Hinweis' : `${infoCount} Hinweise`}
+            </span>
+          )}
+          <span className="hidden md:inline"> · kein kritischer Fehler</span>
+        </span>
+      ) : infoCount > 0 ? (
+        <span className="text-muted-foreground">
+          {infoCount === 1 ? '1 Hinweis' : `${infoCount} Hinweise`}
+          <span className="hidden md:inline"> · kein kritischer Fehler</span>
         </span>
       ) : (
-        <span className="cad-statusbar__ok">Keine Fehler</span>
+        <span className="cad-statusbar__ok">Keine Hinweise</span>
       )}
     </div>
   );

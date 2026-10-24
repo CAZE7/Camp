@@ -1,7 +1,12 @@
 'use client';
 import React, { useContext } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { type BatteryNodeData, type PlannerNodeProps } from './types';
+import {
+  formatNodeNumberDe,
+  isSanitizedFieldMissing,
+  type BatteryNodeData,
+  type PlannerNodeProps,
+} from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
@@ -56,7 +61,9 @@ const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNode
             className="cursor-text"
             onDoubleClick={() => handleDoubleClick('capacity', data.capacity || 0)}
           >
-            Kapazität: {data.capacity || 0} Ah
+            {isSanitizedFieldMissing(data, 'capacity')
+              ? 'Kapazität: – (bitte eintragen)'
+              : `Kapazität: ${formatNodeNumberDe(data.capacity, 0)} Ah`}
           </div>
         )}
         {editingField === 'chemistry' ? (

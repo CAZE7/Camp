@@ -5,6 +5,7 @@ import {
   BOM_CSV_HEADER,
   bomToCsv,
   bomToJson,
+  bomToPlainText,
   buildBom,
   csvCell,
   edgeLengthOf,
@@ -249,5 +250,59 @@ describe('CSV-Export', () => {
     const bom = buildBom({ nodes: [], edges: [], waterNodes: [], waterEdges: [] }, noRoute);
     const csv = bomToCsv(bom, { planFingerprint: 'x', documentStatus: 'Entwurf' });
     expect(csv.charCodeAt(0)).toBe(0xfeff);
+  });
+
+  it('M15: schreibt deutsches Dezimalkomma und gefüllte Menge bei Leitungen', () => {
+    const bom = buildBom(
+      {
+        nodes: [battery, consumer],
+        edges: [cable('e1', { crossSection: 1.5, length: 10 })],
+        waterNodes: [],
+        waterEdges: [],
+      },
+      noRoute
+    );
+    const csv = bomToCsv(bom, { planFingerprint: 'fp-15', documentStatus: 'Entwurf' });
+    const leitungLine = csv.split('\r\n').find((line) => line.startsWith('Leitung;'));
+    expect(leitungLine).toBeDefined();
+    const cols = leitungLine!.split(';');
+    expect(cols[2]).toBe('10,0');
+    expect(cols[4]).toBe('1,5');
+    expect(cols[5]).toBe('10,0');
+  });
+
+  it('N17 + N14: trennt Starter- und Aufbaubatterie und erzeugt deutschen Einkaufstext statt JSON', () => {
+    const starter: Node = {
+      id: 'starter-battery-1',
+      type: 'battery',
+      position: { x: 0, y: 0 },
+      data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
+    };
+    const house: Node = {
+      id: 'battery-1',
+      type: 'battery',
+      position: { x: 200, y: 0 },
+      data: { label: 'Aufbaubatterie', role: 'house', capacity: 100, chemistry: 'LiFePO4' },
+    };
+    const bom = buildBom(
+      {
+        nodes: [starter, house, consumer],
+        edges: [cable('e1', { crossSection: 2.5, length: 4.5 })],
+        waterNodes: [],
+        waterEdges: [],
+      },
+      noRoute
+    );
+    const labels = (bom.componentItems ?? []).map((item) => item.label);
+    expect(labels).toContain('Starterbatterie (90 Ah AGM)');
+    expect(labels).toContain('Aufbaubatterie (100 Ah LiFePO4)');
+
+    const text = bomToPlainText(bom);
+    expect(text).toContain('Stückliste aus dem Camper-Elektroplaner');
+    expect(text).toContain('1 × Starterbatterie (90 Ah AGM)');
+    expect(text).toContain('1 × Aufbaubatterie (100 Ah LiFePO4)');
+    expect(text).toContain('2,5 mm²');
+    expect(text).not.toContain('```json');
+    expect(text).not.toContain('"cableLengths"');
   });
 });

@@ -43,7 +43,22 @@ export interface CommonNodeData {
    * keine doppelten Kürzel trägt.
    */
   designator?: string;
+  /** Beim Import bereinigte ungültige Felder (N15: als fehlend statt „0 W“ kennzeichnen). */
+  sanitizedMissingFields?: string[];
   [key: string]: unknown;
+}
+
+/** Formatiert Zahlen auf Bauteilkarten mit deutschem Dezimalkomma (N1). */
+export function formatNodeNumberDe(value: number | string | undefined | null, fallback = 0): string {
+  const num =
+    typeof value === 'number' ? value : value !== undefined && value !== null ? Number(value) : fallback;
+  if (!Number.isFinite(num)) return String(fallback).replace('.', ',');
+  return String(num).replace('.', ',');
+}
+
+/** Prüft, ob ein Feld beim Import wegen ungültiger Daten verworfen wurde (N15). */
+export function isSanitizedFieldMissing(data: CommonNodeData | undefined, field: string): boolean {
+  return Boolean(data?.sanitizedMissingFields?.includes(field) && data?.[field] === undefined);
 }
 
 export interface BatteryNodeData extends CommonNodeData {
@@ -161,6 +176,8 @@ export type GroundNodeData = CommonNodeData;
 export interface InverterNodeData extends CommonNodeData {
   /** Dauerleistung in W (Basis der DC-Eingangsstrom-Berechnung, ELE-006). */
   continuousPower?: number;
+  /** Wirkungsgrad (0..1 oder Prozent, z. B. 0,92 bzw. 92 %). */
+  efficiency?: number;
   /** Eigenverbrauch / Leerlaufaufnahme des Wechselrichters im Betrieb in W (M3). */
   idleWatts?: number;
   /** Tägliche Einschaltdauer des Wechselrichters in h/Tag (Standard: aktive 230-V-Zeit bzw. 24 h). */

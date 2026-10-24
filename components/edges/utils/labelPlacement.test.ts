@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import complexPlan from '../../../knownPlans/complex.json';
-import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json';
+import complexPlan from '../../../knownPlans/complex.json' with { type: 'json' };
+import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json' with { type: 'json' };
 import { placeLabelClearOfLabels, routeAllCables, type RouteEdgeRef } from './routeAll';
 import { LABEL_BOX_HEIGHT, LABEL_BOX_WIDTH, boxesOverlap, labelBoundingBox } from './pathUtils';
 import {

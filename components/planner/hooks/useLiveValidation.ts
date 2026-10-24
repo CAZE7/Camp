@@ -290,11 +290,19 @@ export function useLiveValidation(
         const cls = classifySystemVoltage(volts(v));
         return cls === 'unknown' ? `${v}V` : cls;
       };
+      const resolveBatteryVoltage = (data: Record<string, unknown> | undefined): number => {
+        const explicit = Number(data?.nominalVoltage);
+        if (Number.isFinite(explicit) && explicit > 0) return explicit;
+        const chemistry = typeof data?.chemistry === 'string' ? data.chemistry : '';
+        if (chemistry === 'LiFePO4') return 12.8;
+        if (chemistry === 'AGM' || chemistry === 'GEL' || chemistry === 'FLA') return 12;
+        return NaN;
+      };
       const declaredEntries = batteries
         .map((b) => ({
           node: b,
           isHouse: isHouseBattery(b),
-          voltage: Number((b.data as Record<string, unknown> | undefined)?.nominalVoltage),
+          voltage: resolveBatteryVoltage(b.data as Record<string, unknown> | undefined),
         }))
         .filter((entry) => Number.isFinite(entry.voltage) && entry.voltage > 0);
       const hasUnknownVoltage = declaredEntries.length < batteries.length;

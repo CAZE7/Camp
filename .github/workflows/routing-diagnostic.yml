@@ -22,7 +22,8 @@ jobs:
   regression-check:
     name: Routing Quality Regression Check
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -40,6 +41,7 @@ jobs:
         run: npm ci
 
       - name: Download Golden Master Baseline
+        id: cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: golden-master/
@@ -64,7 +66,7 @@ jobs:
       - name: Run regression check
         id: regression
         run: |
-          node scripts/ci/diagnostic-regression-check.ts \
+          npx tsx scripts/ci/diagnostic-regression-check.ts \
             --baseline=golden-master/baseline.json \
             --current=current-diagnostic.json \
             --output=regression-report.md
@@ -92,9 +94,10 @@ jobs:
   update-golden-master:
     name: Update Golden Master Baseline
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: regression-check
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -123,10 +126,8 @@ jobs:
           path: golden-master/
           key: golden-master-${{ hashFiles('lib/routing/**/*.ts', 'components/edges/**/*.ts') }}
 
-      - name: Commit Golden Master
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git add golden-master/
-          git diff --staged --quiet || git commit -m "chore: update golden master baseline [skip ci]"
-          git push
+      - name: Upload Golden Master Artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: golden-master-baseline
+          path: golden-master/baseline.json

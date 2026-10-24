@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAppStore } from '../../../lib/store';
 import { decodeSharePlan } from '../../../store/sharePlan';
+import { formatImportWarningsForUser } from '../../../store/projectFile';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { PlannerFlowNode, PlannerWaterEdge } from '../../../store/slices/types';
 import type { Edge } from '@xyflow/react';
@@ -163,9 +164,13 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       if (!window.location.hash.includes('plan=')) return false;
       const result = await decodeSharePlan(window.location.hash);
       if (!result.ok) {
+        const joinedErrors = result.errors.join(' ');
+        const suffix = /bleibt unverändert/i.test(joinedErrors)
+          ? ''
+          : ' Dein aktueller Plan bleibt unverändert.';
         setNotice({
           type: 'error',
-          message: `Geteilter Plan konnte nicht geladen werden: ${result.errors.join(' ')} Dein aktueller Plan bleibt unverändert.`,
+          message: `Geteilter Plan konnte nicht geladen werden: ${joinedErrors}${suffix}`,
         });
         clearEntryFromUrl();
         return true;
@@ -200,11 +205,12 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       }
       setHasOnboarded(true);
       scheduleFit();
+      const cleanWarnings = formatImportWarningsForUser(result.warnings);
       setNotice({
         type: 'success',
         message:
-          result.warnings.length > 0
-            ? `Geteilter Plan geladen. ${result.warnings.length} Hinweis(e) zur Bereinigung stehen im Plan.`
+          cleanWarnings.length > 0
+            ? `Geteilter Plan geladen. ${cleanWarnings.length === 1 ? '1 Hinweis zur Bereinigung' : `${cleanWarnings.length} Hinweise zur Bereinigung`}: ${cleanWarnings.slice(0, 2).join(' ')}`
             : 'Geteilter Plan geladen — du kannst ihn direkt anpassen und den neuen Link zurückschicken.',
       });
       return true;
@@ -232,8 +238,11 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         return;
       }
 
-      if (rawTemplateParam !== null && rawTemplateParam.trim() !== '') {
+      if (rawTemplateParam !== null) {
+        const trimmedParam = rawTemplateParam.trim();
+        const label = trimmedParam !== '' ? `„${trimmedParam}“` : '(leer)';
         clearEntryFromUrl();
+        setHasOnboarded(true);
         const current = usePlannerStore.getState();
         if (
           shouldLoadStarterPlan({
@@ -246,13 +255,13 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
           current.applyTemplate(STARTER_TEMPLATE_ID);
           scheduleFit();
           setNotice({
-            type: 'info',
-            message: `Unbekannte Vorlage „${rawTemplateParam.trim()}“ — stattdessen wurde das Standard-Beispiel geladen. Über „Vorlage laden“ kannst du wählen.`,
+            type: 'error',
+            message: `Unbekannte Vorlage ${label} — stattdessen wurde das Standard-Beispiel geladen. Über „Vorlage laden“ kannst du wählen.`,
           });
         } else {
           setNotice({
             type: 'error',
-            message: `Vorlage „${rawTemplateParam.trim()}“ wurde nicht gefunden. Dein aktueller Plan bleibt unverändert.`,
+            message: `Vorlage ${label} wurde nicht gefunden. Dein aktueller Plan bleibt unverändert.`,
           });
         }
         return;

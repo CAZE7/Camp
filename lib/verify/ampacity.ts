@@ -453,8 +453,9 @@ export function checkIbInIz(context: PassContext): CheckResult {
           entity,
           kind: 'UNVERIFIABLE',
           message: `Kabel ${label}: Querschnitt fehlt — I_z ist nicht bestimmbar, die Leitung ist damit nicht bewertbar.`,
-          autoFixRemedy:
-            'Querschnitt in mm² im Kabel-Inspektor eintragen (Normreihe 1,5/2,5/4/6/10/16/25/35/50/70 mm²).',
+          autoFixRemedy: `Querschnitt in mm² im Kabel-Inspektor eintragen (Normreihe ${VDE_SIZES.map((s) =>
+            String(s).replace('.', ',')
+          ).join('/')} mm²).`,
         })
       );
       continue;

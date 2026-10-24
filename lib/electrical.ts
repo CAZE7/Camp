@@ -1,19 +1,18 @@
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
 import { edgeDomainOf, handleDomain, type HandleDomainValue } from './domain/handleDomains';
 
-export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
+export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0];
 
 /**
  * Strombelastbarkeit (A) je Querschnitt — Kupfer, PVC.
  *
- * Werte-Referenz: veröffentlichte Belastbarkeitstabellen nach DIN VDE 0298-4,
- * Verlegeart B2 (im Rohr auf Wand), 2 belastete Adern, 30 °C — die Werte
- * {16.5, 23, 30, 38, 52, 69, 90, 111} decken sich mit den veröffentlichten
- * B2-Reihen; 50/70 mm² (136/172) weichen von einer verbreiteten Referenz
- * (133/168) leicht ab und sind unverändert übernommen (bestehende Pläne
- * und Golden Master). KEINE Klausel-Referenz — der Fahrzeugkontext
- * (FLRY, DIN EN 1648-2 / ISO 6722) ist NICHT modelliert; das ist eine
- * dokumentierte, konservative Annahme (AUDIT NORM-003).
+ * Werte-Referenz: veröffentlichte Belastbarkeitstabellen nach DIN VDE 0298-4 /
+ * IEC 60364-5-52 Tab. B.52.2, Verlegeart B2 (im Rohr auf Wand), 2 belastete
+ * Adern, 30 °C — {16.5, 23, 30, 38, 52, 69, 90, 111, 136, 172, 207, 239}.
+ * 95/120 mm² erweitern den Modellbereich für starke 12-V-Wechselrichter
+ * (AUDIT H2). KEINE Klausel-Referenz — der Fahrzeugkontext (FLRY, DIN EN
+ * 1648-2 / ISO 6722) ist NICHT modelliert; das ist eine dokumentierte,
+ * konservative Annahme (AUDIT NORM-003).
  */
 export const VDE_AMPACITY: Record<number, number> = {
   1.5: 16.5,
@@ -26,6 +25,8 @@ export const VDE_AMPACITY: Record<number, number> = {
   35.0: 111.0,
   50.0: 136.0,
   70.0: 172.0,
+  95.0: 207.0,
+  120.0: 239.0,
 };
 
 /**
@@ -398,11 +399,10 @@ export const calculateCrossSection = (
   // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
   const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
 
-  // Aufgerundet auf die nächste VDE-Normgröße. Über 70 mm² hinaus gibt es in
-  // der Normreihe keine Stufe mehr; ein vorhandener Nutzer-/importierter
-  // Querschnitt (z. B. 95 mm²) darf dabei nie auf 70 mm² heruntergerundet
-  // werden — das würde eine bereits größere Leitung stillschweigend schwächen.
-  const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : 70.0;
+  // Aufgerundet auf die nächste VDE-Normgröße. Über die größte Stufe der
+  // Normreihe hinaus bleibt ein größerer Nutzer-/importierter Querschnitt
+  // (z. B. 150 mm²) erhalten und wird nie heruntergerundet.
+  const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : MAX_MODELED_CROSS_SECTION_MM2;
   return VDE_SIZES.find((size) => size >= rawMax) || fallback;
 };
 

@@ -42,12 +42,12 @@ describe('EdgeInspector Component', () => {
     expect(screen.queryByText(/Planungsannahme aus der Vorlage/i)).not.toBeInTheDocument();
   });
 
-  it('renders correctly with provided length', () => {
+  it('renders correctly with provided length (German decimal comma, H8)', () => {
     const edgeWithLength = { ...defaultEdge, data: { length: 5.5 } };
     render(<EdgeInspector edge={edgeWithLength} onChangeLength={mockOnChangeLength} />);
 
     const input = screen.getByLabelText(/Länge/i) as HTMLInputElement;
-    expect(input.value).toBe('5.5');
+    expect(input.value).toBe('5,5');
   });
 
   it('calls onChangeLength when input value changes to a valid number', () => {

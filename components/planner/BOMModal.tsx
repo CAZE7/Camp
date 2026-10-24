@@ -12,10 +12,10 @@ import { assessRelease, type ReleaseAssessment } from './utils/releaseStatus';
 import {
   buildBom,
   bomToCsv,
-  bomToJson,
+  bomToPlainText,
   formatCrossSectionDe,
   LENGTH_DIVERGENCE_TOLERANCE,
-  componentTypeInfo,
+  resolvedComponentItems,
   sortedCableEntries,
   type BomData,
   type LengthAssumption,
@@ -72,7 +72,7 @@ export function BOMModal() {
     return subscribeToBomModalOpen(handleShowBom);
   }, []);
 
-  const componentEntries = useMemo(() => Object.entries(bomData.counts), [bomData.counts]);
+  const componentEntries = useMemo(() => resolvedComponentItems(bomData), [bomData]);
   const cableEntries = useMemo(() => sortedCableEntries(bomData.cableLengths), [bomData.cableLengths]);
   const acCableEntries = useMemo(
     () => (bomData.acCableLengths ? sortedCableEntries(bomData.acCableLengths) : []),
@@ -95,7 +95,7 @@ export function BOMModal() {
   const planFingerprint = assessment?.planFingerprintHash ?? 'kein-planstand';
   const generatedTimestamp = useMemo(() => (snapshot ? formatReportTimestamp(new Date()) : ''), [snapshot]);
 
-  const bomJson = useMemo(() => bomToJson(bomData), [bomData]);
+  const bomPlainText = useMemo(() => bomToPlainText(bomData), [bomData]);
 
   const exportCsv = () => {
     if (!assessment?.canExportDocument) return;
@@ -122,9 +122,9 @@ export function BOMModal() {
     }
   };
 
-  // Kopiert die Stückliste als JSON in die Zwischenablage.
+  // N14: Kopiert die Stückliste als lesbare deutsche Einkaufsliste statt rohem JSON.
   const copyBomToClipboard = async () => {
-    const message = `Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\``;
+    const message = bomPlainText;
     try {
       if (!navigator.clipboard) {
         throw new Error('Clipboard API steht in diesem Browser/Kontext nicht zur Verfügung.');
@@ -189,18 +189,15 @@ export function BOMModal() {
                   Bauteile
                 </h3>
                 <ul className="divide-y divide-border rounded-lg border border-border">
-                  {componentEntries.map(([type, count]) => {
-                    const info = componentTypeInfo(type);
-                    return (
-                      <li key={type} className="flex min-w-0 gap-3 p-3">
-                        <span className="min-w-10 shrink-0 font-mono font-bold">{count} ×</span>
-                        <span className="min-w-0 break-words">
-                          <strong>{info.label}</strong>
-                          <span className="block text-sm text-muted-foreground">{info.purpose}</span>
-                        </span>
-                      </li>
-                    );
-                  })}
+                  {componentEntries.map((item) => (
+                    <li key={item.key} className="flex min-w-0 gap-3 p-3">
+                      <span className="min-w-10 shrink-0 font-mono font-bold">{item.count} ×</span>
+                      <span className="min-w-0 break-words">
+                        <strong>{item.label}</strong>
+                        <span className="block text-sm text-muted-foreground">{item.purpose}</span>
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               </section>
             )}
@@ -398,7 +395,7 @@ export function BOMModal() {
             <textarea
               id="bom-json-fallback"
               readOnly
-              value={`Stückliste aus dem Schaltplan:\n${bomJson}`}
+              value={bomPlainText}
               rows={4}
               onFocus={(e) => e.currentTarget.select()}
               className="mt-1 w-full rounded border border-border bg-card p-2 font-mono text-xs"

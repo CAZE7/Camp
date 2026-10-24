@@ -267,6 +267,21 @@ export const clearCableRoutes = (): void => {
 
 export const getCableRoute = (id: string): PathResult | undefined => current.get(id);
 
+/** Liefert alle aktuell gerouteten Leitungssegmente (z. B. für kollisionsfreie Bauteil-Ablage, M16). */
+export function getRoutedSegmentsSnapshot(): Array<{ x1: number; y1: number; x2: number; y2: number }> {
+  const out: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+  for (const route of current.values()) {
+    const pts = route.waypoints;
+    if (!pts || pts.length < 2) continue;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      out.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+    }
+  }
+  return out;
+}
+
 const subscribe = (cb: () => void): (() => void) => {
   listeners.add(cb);
   return () => {
@@ -519,16 +534,21 @@ export function CableRouteSync() {
   // Presentation-Signatur, aber nur mit aktivierter Diagnose.
   const signatureState = useStore(
     (s) => {
-      const { routable } = collectRoutableNodes(s.nodeLookup.values());
+      const values = [...s.nodeLookup.values()];
+      const { routable } = collectRoutableNodes(values);
+      const isDraggingLargeGraph =
+        routable.length >= 30 && values.some((n) => Boolean((n as { dragging?: boolean }).dragging));
       return {
         routing: `${nodeLayoutSignature(routable)}#${edgeTopologySignature(s.edges)}`,
+        isDraggingLargeGraph,
         diagnosticGeometry: routingDebugEnabled()
-          ? routingDebugGeometrySignature(s.nodeLookup.values() as Iterable<RoutingDebugNode>)
+          ? routingDebugGeometrySignature(values as Iterable<RoutingDebugNode>)
           : '',
       };
     },
     (before, after) =>
       before.routing === after.routing &&
+      before.isDraggingLargeGraph === after.isDraggingLargeGraph &&
       (!routingDebugEnabled() || before.diagnosticGeometry === after.diagnosticGeometry)
   );
 
@@ -641,9 +661,14 @@ export function CableRouteSync() {
 
   useLayoutEffect(() => {
     const runner = runnerRef.current;
+    // M12: Bei großen Plänen (≥ 30 Bauteile) blockiert vollständiges A*-Routing
+    // auf jedem Mausframe die Haupt-Thread-Framerate. Während des aktiven Ziehens
+    // wird aufgeschoben; beim Loslassen (`isDraggingLargeGraph === false`) läuft
+    // sofort die kanonische Neu-Berechnung auf den Endkoordinaten.
+    if (signatureState.isDraggingLargeGraph) return;
     if (runner) runner.schedule();
     return () => runner?.cancel();
-  }, [signatureState.routing]);
+  }, [signatureState.routing, signatureState.isDraggingLargeGraph]);
 
   // Optimierung ist eine explizite Nutzeraktion: sie startet immer von der
   // kanonischen Erstroutung und veröffentlicht nur einen validierten Stand.

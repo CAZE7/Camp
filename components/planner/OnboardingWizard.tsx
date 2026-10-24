@@ -46,12 +46,72 @@ export function recommendedTemplateId(
 ): string {
   const totalSelected =
     Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
-  if (sources.landstrom) return 'autark';
+  if (sources.landstrom || consumers.heizung) return 'autark';
   if (totalSelected >= 5) return 'autark';
   // „allrounder“ ist auf main der Alias von „kastenwagen“ (die mittlere Vorlage).
-  if (sources.solar || sources.booster || totalSelected >= 3) return 'kastenwagen';
+  if (sources.solar || sources.booster || consumers.laptop || consumers.wasser || totalSelected >= 3) {
+    return 'kastenwagen';
+  }
   return 'minimalist';
 }
+
+interface ExtraConsumerPreset {
+  matchTokens: readonly string[];
+  nodeId: string;
+  label: string;
+  watts: number;
+  hours: number;
+  crossSection: number;
+  fuseSize: number;
+}
+
+const ONBOARDING_CONSUMER_PRESETS: Record<string, ExtraConsumerPreset> = {
+  kuehlschrank: {
+    matchTokens: ['kühl', 'kuehl', 'fridge', 'cool'],
+    nodeId: 'cons-onboard-fridge',
+    label: 'Kompressorkühlschrank',
+    watts: 60,
+    hours: 8,
+    crossSection: 4,
+    fuseSize: 10,
+  },
+  licht: {
+    matchTokens: ['led', 'licht', 'beleuchtung', 'light'],
+    nodeId: 'cons-onboard-light',
+    label: 'LED-Beleuchtung',
+    watts: 20,
+    hours: 4,
+    crossSection: 1.5,
+    fuseSize: 5,
+  },
+  heizung: {
+    matchTokens: ['heiz', 'heat', 'autoterm'],
+    nodeId: 'cons-onboard-heat',
+    label: 'Standheizung',
+    watts: 40,
+    hours: 3,
+    crossSection: 4,
+    fuseSize: 15,
+  },
+  wasser: {
+    matchTokens: ['wasser', 'pump'],
+    nodeId: 'cons-onboard-pump',
+    label: 'Wasserpumpe',
+    watts: 40,
+    hours: 0.5,
+    crossSection: 2.5,
+    fuseSize: 10,
+  },
+  laptop: {
+    matchTokens: ['laptop', 'usb-c', 'notebook'],
+    nodeId: 'cons-onboard-laptop',
+    label: 'Laptop-Ladegerät (USB-C)',
+    watts: 65,
+    hours: 3,
+    crossSection: 4,
+    fuseSize: 10,
+  },
+};
 
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
@@ -102,6 +162,73 @@ export function OnboardingWizard() {
     )
       return;
     applyTemplate(templateId);
+
+    // N18: Angekreuzte Geräte aus Schritt 2 dürfen beim Laden einer Vorlage
+    // nicht still verschwinden (z. B. Laptop-Ladegerät oder Wasserpumpe im
+    // Autark-Setup). Fehlende 12-V-Verbraucher werden kollisionsfrei unterhalb
+    // der Verbraucherspalte ergänzt und am Sicherungskasten angeschlossen.
+    const selectedConsumerKeys = Object.entries(consumers)
+      .filter(([, checked]) => Boolean(checked))
+      .map(([key]) => key);
+    if (selectedConsumerKeys.length > 0) {
+      const current = usePlannerStore.getState();
+      const existingLabels = current.nodes.map((node) =>
+        String((node.data as { label?: string } | undefined)?.label ?? '').toLowerCase()
+      );
+      const fusebox = current.nodes.find((node) => node.type === 'fuse');
+      const consumerNodes = current.nodes.filter(
+        (node) => node.type === 'consumer' || node.type === 'consumer230v'
+      );
+      const colX =
+        consumerNodes.length > 0
+          ? Math.max(...consumerNodes.map((node) => node.position.x))
+          : (fusebox?.position.x ?? 400) + 336;
+      let nextY =
+        consumerNodes.length > 0 ? Math.max(...consumerNodes.map((node) => node.position.y)) + 208 : 48;
+
+      const addedNodes = [...current.nodes];
+      const addedEdges = [...current.edges];
+      let changed = false;
+
+      for (const key of selectedConsumerKeys) {
+        const preset = ONBOARDING_CONSUMER_PRESETS[key];
+        if (!preset) continue;
+        const alreadyPresent = existingLabels.some((lbl) =>
+          preset.matchTokens.some((token) => lbl.includes(token))
+        );
+        if (alreadyPresent) continue;
+
+        addedNodes.push({
+          id: preset.nodeId,
+          type: 'consumer',
+          position: { x: colX, y: nextY },
+          data: { label: preset.label, watts: preset.watts, hours: preset.hours },
+        } as never);
+        if (fusebox) {
+          addedEdges.push({
+            id: `e-fuse-${preset.nodeId}`,
+            source: fusebox.id,
+            sourceHandle: 'plus',
+            target: preset.nodeId,
+            targetHandle: 'plus',
+            type: 'cableEdge',
+            data: {
+              length: 3,
+              crossSection: preset.crossSection,
+              fuseSize: preset.fuseSize,
+              fuseType: 'ato',
+            },
+          } as never);
+        }
+        nextY += 208;
+        changed = true;
+      }
+
+      if (changed) {
+        usePlannerStore.setState({ nodes: addedNodes, edges: addedEdges });
+      }
+    }
+
     setHasOnboarded(true);
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('planner-fit-view')), 50);
   };

@@ -2,7 +2,7 @@
 
 - **Status:** Angenommen
 - **Datum:** 2026-10-23
-- **Bezug:** `AGENTS.md` M11-7, Audit N11, `app/layout.tsx`, `public/_headers`
+- **Bezug:** `AGENTS.md` M11-7, Audit N11, `app/layout.tsx`, `docs/deployment/_headers`
 
 ## Kontext
 
@@ -19,10 +19,11 @@ Wir setzen eine zweischichtige Strategie ein, die ohne Backend-Server sowohl auf
    - `metadata.referrer = 'strict-origin-when-cross-origin'` erzeugt `<meta name="referrer" content="strict-origin-when-cross-origin">`.
    - `frame-ancestors` steht **bewusst nicht** im `<meta>`-Element, da die CSP-Spezifikation (W3C CSP3 §6.2.1) `frame-ancestors` in `<meta>`-Elementen ignoriert und Browser dazu eine Konsolenwarnung ausgeben.
 
-2. **HTTP-Header-Manifest (`public/_headers`) — wirksam auf Cloudflare Pages, Netlify und kompatiblen CDNs:**
+2. **Referenz-HTTP-Header-Manifest (`docs/deployment/_headers`) — für Cloudflare Pages, Netlify und kompatible CDNs:**
+   - Liegt außerhalb von `public/`, damit GitHub Pages die Datei nicht wirkungslos als öffentliches Text-Artefakt unter `/_headers` ausliefert (Audit N11); bei Deployment auf Cloudflare/Netlify wird sie ins Ausgabeverzeichnis kopiert.
    - Setzt `Content-Security-Policy` inklusive `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` und `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
 
 ## Konsequenzen
 
 - **Positiv:** Jede ausgelieferte HTML-Seite im statischen Export (`out/**/index.html`) bringt ihre CSP- und Referrer-Policy selbst mit; kein externer Script- oder Object-Ursprung kann nachgeladen werden.
-- **Grenze auf GitHub Pages:** Reine HTTP-Header (`X-Content-Type-Options`, `X-Frame-Options`, `frame-ancestors`) können auf GitHub Pages technisch erst durch einen vorgelagerten Reverse-Proxy/CDN oder Wechsel auf `public/_headers`-fähiges Hosting erzwungen werden.
+- **Grenze auf GitHub Pages:** Reine HTTP-Header (`X-Content-Type-Options`, `X-Frame-Options`, `frame-ancestors`) können auf GitHub Pages technisch erst durch einen vorgelagerten Reverse-Proxy/CDN oder Wechsel auf `_headers`-fähiges Hosting erzwungen werden.

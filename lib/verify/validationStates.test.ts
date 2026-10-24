@@ -103,13 +103,13 @@ describe('Phase 12 (10) — Koordination I_b ≤ I_n ≤ I_z', () => {
 });
 
 describe('Phase 12 (11/12) — Modellgrenze der Belastbarkeitstabelle', () => {
-  it('meldet oberhalb der größten Tabellenstufe `outside-model` statt „70 mm² genügt“', () => {
+  it('meldet oberhalb der größten Tabellenstufe `outside-model` statt „120 mm² genügt“', () => {
     const boundary = thermalCrossSectionFor(174.6);
     expect(boundary.status).toBe('outside-model');
     if (boundary.status !== 'outside-model') throw new Error('unerwartet');
     expect(boundary.maximumModeledCurrentA).toBeCloseTo(MAX_MODELED_AMPACITY_A * DERATE_FACTOR, 10);
     expect(boundary.requiredCurrentA).toBeCloseTo(174.6, 10);
-    expect(MAX_MODELED_CROSS_SECTION_MM2).toBe(70);
+    expect(MAX_MODELED_CROSS_SECTION_MM2).toBe(120);
   });
 
   it('innerhalb der Tabelle bleibt die Aussage konkret', () => {
@@ -117,29 +117,29 @@ describe('Phase 12 (11/12) — Modellgrenze der Belastbarkeitstabelle', () => {
     expect(thermalCrossSectionFor(40)).toEqual({ status: 'within-model', crossSectionMm2: 16 });
     // 60 A ⇒ 85,7 A gefordert ⇒ 25 mm² (90 A).
     expect(thermalCrossSectionFor(60)).toEqual({ status: 'within-model', crossSectionMm2: 25 });
-    // 100 A ⇒ 142,9 A gefordert: die Reihe endet bei 172 A (70 mm²) — die
-    // Aussage bleibt innerhalb des Modells, aber am Rand.
+    // 100 A ⇒ 142,9 A gefordert ⇒ 70 mm² (172 A); 150 A ⇒ 214,3 A ⇒ 120 mm² (239 A, H2).
     expect(thermalCrossSectionFor(100)).toEqual({ status: 'within-model', crossSectionMm2: 70 });
+    expect(thermalCrossSectionFor(150)).toEqual({ status: 'within-model', crossSectionMm2: 120 });
   });
 
   it('`assessCableSelection` weist die Modellgrenze aus, statt eine Empfehlung zu behaupten', () => {
     const selection = assessCableSelection(174.6, 3, undefined, 'DC_12V');
     expect(selection.beyondModeledRange).toBe(true);
     expect(selection.requiredTableCurrentA).toBeCloseTo(174.6, 10);
-    expect(selection.maximumModeledCurrentA).toBeCloseTo(120.4, 10);
+    expect(selection.maximumModeledCurrentA).toBeCloseTo(167.3, 10);
 
     const normal = assessCableSelection(30, 5, undefined, 'DC_12V');
     expect(normal.beyondModeledRange).toBe(false);
     expect(normal.requiredTableCurrentA).toBeNull();
   });
 
-  it('12 — ein importierter Querschnitt über 70 mm² bleibt erhalten und wird nicht auf 70 mm² gekürzt', () => {
-    const selection = assessCableSelection(200, 2, 95, 'DC_12V');
-    expect(selection.installedCrossSection).toBe(95);
+  it('12 — ein importierter Querschnitt über 120 mm² bleibt erhalten und wird nicht auf 120 mm² gekürzt', () => {
+    const selection = assessCableSelection(200, 2, 150, 'DC_12V');
+    expect(selection.installedCrossSection).toBe(150);
     expect(selection.crossSectionIsStored).toBe(true);
     expect(selection.undersized).toBe(false);
-    // 95 mm² kennt die Tabelle nicht: Die Aussage bleibt ausdrücklich offen.
-    expect(selection.recommendedCrossSection).toBe(70);
+    // 150 mm² kennt die Tabelle nicht: Die Aussage bleibt ausdrücklich offen.
+    expect(selection.recommendedCrossSection).toBe(120);
   });
 
   it('12b — die Anzeige nennt den fehlenden Tabellenwert als Datenlücke (Info, nicht Critical)', () => {
