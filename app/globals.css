@@ -1500,6 +1500,25 @@
   white-space: nowrap;
 }
 
+/* Rückmeldung („Plan gespeichert“, Fehler): unten mittig über der
+   Statuszeile. Vorher lag sie mit `fixed top-20` auf Titel-/Werkzeugleiste,
+   dem offenen ⋯-Menü und dem Schließen der Einstiegsmeldung (gemessen
+   2026-10-24). Die Menü-Blätter (`--z-sheet`) liegen über ihr
+   (`--z-chrome`); auf dem Handy sitzt sie oberhalb der Undo-Leiste. */
+.planner-action-feedback {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--cad-statusbar-h, 28px) + 0.75rem);
+  z-index: var(--z-chrome);
+  transform: translateX(-50%);
+}
+
+@media (max-width: 767px), (max-height: 500px) {
+  .planner-action-feedback {
+    bottom: calc(var(--cad-nav-h, 3.5rem) + var(--cad-statusbar-h, 22px) + 4.25rem);
+  }
+}
+
 /* ==========================================================================
    CAD-ARBEITSFLÄCHE — eigenständige Application Shell des Planers
    ==========================================================================
@@ -1710,6 +1729,13 @@
   top: 100%;
   z-index: var(--z-popover);
   min-width: 15rem;
+  /* Die Breite folgt dem Inhalt: Eine feste 240-px-Spalte presste
+     „Auto-verbinden — Vorschlag prüfen“ neben den 150-px-Hinweis auf fünf
+     Zeilen (gemessen 2026-10-24, 375 px und 1440 px). Die Obergrenze hält
+     jedes Menü im Fenster; auf den Blättern (≤ 767 px) setzen die
+     `planner-*-sheet`-Regeln Breite und Ränder ohnehin absolut. */
+  width: max-content;
+  max-width: calc(100vw - 1rem);
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
   background: var(--surface-raised);
@@ -1832,6 +1858,16 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 0.25rem;
+}
+/* Bereichswechsel (Elektrik/Wasser) sitzt im festgenagelten Statusfeld,
+   nicht mehr in der scrollenden Aktionsgruppe. Dort lag „Wasser“ bei 768 px
+   hinter dem Speicherzustand (gemessen: Tab 373–417, Statusfeld ab 280). */
+@media (min-width: 768px) {
+  .cad-toolbar__views {
+    margin-inline-end: 0.25rem;
+    padding-inline-end: 0.375rem;
+    border-inline-end: 1px solid var(--rule);
+  }
 }
 /* Die Werkzeugleiste bekommt auf groben Zeigern etwas mehr Zeilenhöhe;
    die 44-px-Mindestgröße der einzelnen Knöpfe gilt bereits für alle Geräte. */
@@ -3036,6 +3072,16 @@ html.planner-root-active body {
   .planner-shell[data-panel-open='true'] .planner-mobile-feedback {
     display: none;
   }
+
+  /* Dasselbe für die Menü-Blätter: Werkzeug-/Menüleisten-Blatt und das
+     Telefon-Menü hängen am `body` (Portal). Die Undo-Leiste liegt im
+     Canvas-Stapel und malte sonst über die unteren Zeilen des Blattes
+     (gemessen 375 px: „Stückliste“/„Export“ verdeckt). */
+  body:has(.planner-toolbar-sheet) .planner-mobile-history,
+  body:has(.planner-menubar-sheet) .planner-mobile-history,
+  body:has(.planner-phone-menu-sheet) .planner-mobile-history {
+    display: none !important;
+  }
 }
 
 /* --- 3. Blatt hinter einer geöffneten Werkzeugleiste ---------------------- */
@@ -3235,6 +3281,18 @@ html.planner-root-active body {
 @media (min-width: 480px) {
   .cad-toolbar [data-testid='save-indicator'] .cad-tb-explain {
     display: inline;
+  }
+}
+
+/* Am Tablet ist das Statusfeld breiter als in der Messung von 2026-10-14
+   (478 px statt 338 px: „Ungespeichert“ + „Optimieren“). Damit der
+   Bereichswechsel dort sichtbar bleibt, entfallen die beiden redundanten
+   Text-/Aktionsflächen: Der Speicherzustand trägt seinen Satz weiter im
+   `aria-label`, „Kabel optimieren“ bleibt im `⋯`-Menü erreichbar. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .cad-toolbar [data-testid='save-indicator'] .cad-tb-explain,
+  .cad-toolbar__status .cad-status-optimize {
+    display: none;
   }
 }
 
@@ -4241,6 +4299,51 @@ html.planner-root-active body {
   }
 }
 
+/* Vorlage-Menü: am `body` (siehe PlannerToolbar), damit die Werkzeugleiste
+   es nicht abschneidet. Ab 768 px hängt es unter seinem Auslöser; die Lage
+   liefert die Komponente als CSS-Variablen, die Breite folgt dem Inhalt. */
+@media (min-width: 768px) and (min-height: 501px) {
+  .cad-menu.planner-template-sheet {
+    position: fixed;
+    top: var(--planner-template-top, calc(var(--cad-menubar-h, 45px) + var(--cad-toolbar-h, 45px) + 0.25rem));
+    left: var(--planner-template-left, 0.5rem);
+    right: auto;
+    width: max-content;
+    min-width: min(18rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - var(--planner-template-top, 6rem) - 0.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: var(--z-sheet);
+    box-shadow: var(--cad-shadow-overlay);
+  }
+}
+
+/* Bei 768 px ist die Zeichenfläche 512 px breit: Die mittig gesetzte
+   Moduszeile (306 px) und „Ansicht“ (96 px) überschnitten sich um 10 px
+   (gemessen: Modus 361–667, Ansicht 657–753). Bis 1023 px sitzt die
+   Moduszeile deshalb links; „Ansicht“ behält ihren Platz rechts. */
+@media (min-width: 768px) and (max-width: 1023.98px) and (min-height: 501px) {
+  .planner-mode-switch-panel {
+    left: 0.5rem !important;
+    right: 8.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0.5rem 0 0 0 !important;
+    transform: none !important;
+    overflow: hidden;
+  }
+
+  .planner-mode-switch-panel [role='group'] {
+    width: 100%;
+  }
+
+  .planner-mode-switch-panel .cad-btn {
+    flex: 1 1 0;
+  }
+}
+
 @media (max-width: 767px), (max-height: 700px) {
   .planner-dialog-backdrop {
     align-items: stretch;
@@ -4285,7 +4388,7 @@ html.planner-root-active body {
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
-  .planner-canvas-column:has(.planner-entry-notice)
+  [data-testid='planner-canvas-column']:has(.planner-entry-notice)
     .react-flow__panel:has([data-testid='circuit-trace-info']) {
     top: 6.35rem !important;
   }
@@ -4595,6 +4698,21 @@ html.planner-root-active body {
     white-space: normal;
   }
 
+  /* Der Hinweis stand neben der Beschriftung und quetschte
+     „Auto-verbinden — Vorschlag prüfen“ auf fünf Zeilen (gemessen 375 px).
+     In den Blättern steht er deshalb unter dem Text; die Beschriftung
+     behält die volle Breite. */
+  .planner-phone-menu-sheet__menu .cad-menu__item {
+    flex-wrap: wrap;
+  }
+
+  .planner-phone-menu-sheet__menu .cad-menu__hint {
+    flex-basis: 100%;
+    margin-left: 1.5rem;
+    padding-left: 0;
+    white-space: normal;
+  }
+
   .planner-phone-menu-sheet__menu .cad-menu__item span {
     overflow-wrap: anywhere;
     white-space: normal;
@@ -4666,19 +4784,42 @@ html.planner-root-active body {
     overflow: auto;
   }
 
-  .planner-canvas-column:has(.planner-entry-notice) .de-hud-card {
+  [data-testid='planner-canvas-column']:has(.planner-entry-notice) .de-hud-card {
     margin-top: 8.5rem;
   }
 }
 
 /* Hochformat: dieselbe Freigabe. Die Modusknöpfe sind 44 px, der Hinweis
-   darunter zwei Zeilen. Die frühere Lage (3,25 rem) schnitt den Hinweis. */
+   darunter zwei Zeilen. Die frühere Lage (3,25 rem) schnitt den Hinweis.
+   Der Text war zusätzlich in einer 44-px-Box scrollbar (scrollHeight 136 px
+   bei 375 px). Statt eines winzigen Scrollstreifens: zwei Zeilen mit
+   Auslassung, Antippen klappt die Meldung auf. */
 @media (max-width: 767px) and (orientation: portrait) {
   .planner-entry-notice {
     top: 7.25rem;
+    max-height: none;
+    overflow: visible;
   }
 
-  .planner-canvas-column:has(.planner-entry-notice)
+  .planner-entry-notice__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .planner-entry-notice--expanded {
+    max-height: min(40dvh, 14rem);
+    overflow-y: auto;
+  }
+
+  .planner-entry-notice--expanded .planner-entry-notice__text {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+  }
+
+  [data-testid='planner-canvas-column']:has(.planner-entry-notice)
     .react-flow__panel:has([data-testid='circuit-trace-info']) {
     top: 10.35rem !important;
   }

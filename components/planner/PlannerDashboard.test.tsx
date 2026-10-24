@@ -265,6 +265,29 @@ describe('PlannerDashboard - Core Interactions', () => {
     expect(mockSetViewMode).toHaveBeenCalledWith('electric');
   });
 
+  it('hält den Planbereichswechsel im festen Statusbereich statt im scrollenden Aktionsbereich', () => {
+    // UI-Audit 2026-10-24: Am Ende der scrollenden Aktionsgruppe verschwand
+    // „Wasser“ bei 768 px hinter dem Speicherzustand.
+    render(<PlannerDashboard />);
+
+    const status = screen.getByTestId('planner-toolbar-status');
+    const actions = screen.getByTestId('planner-toolbar').querySelector('.cad-toolbar__actions');
+    expect(actions).not.toBeNull();
+    expect(within(status).getByTestId('viewmode-water')).toBeInTheDocument();
+    expect(actions!.contains(screen.getByTestId('viewmode-water'))).toBe(false);
+  });
+
+  it('schreibt in der Kopfzeile den Singular bei genau einem Bauteil und einer Leitung', () => {
+    mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
+    mockEdges.push({ id: 'edge-1', source: 'battery-1', target: 'battery-1', data: {} });
+    try {
+      render(<PlannerDashboard />);
+      expect(screen.getByText('1 Bauteil · 1 Leitung')).toBeInTheDocument();
+    } finally {
+      mockEdges.splice(0);
+    }
+  });
+
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
@@ -507,6 +530,20 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
     expect(mockClearPlan).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('feedback-action'));
     expect(mockUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('lagert die Aktionsmeldung aus dem Dokumentfluss aus (fest über der Statuszeile)', () => {
+    // UI-Audit 2026-10-24: Als `fixed top-20` lag die Meldung mitten im Bild
+    // und deckte Modusleiste bzw. Planungsprüfung ab. Die Lage kommt jetzt aus
+    // `.planner-action-feedback` (unterhalb von Werkzeugleiste und Blättern).
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
+
+    const feedback = screen.getByTestId('action-feedback');
+    expect(feedback.className).toContain('planner-action-feedback');
+    expect(feedback.className).not.toMatch(/\b(absolute|top-20)\b/);
   });
 });
 

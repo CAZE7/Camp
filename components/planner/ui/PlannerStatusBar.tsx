@@ -91,7 +91,8 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
             `PlannerStatusBar.test.tsx` (Testing Library findet auch
             ausgeblendete Elemente), die kurze ist eine Anzeige-Variante. */}
         <span className="cad-statusbar__long">
-          {nodeCount} Bauteile · {edgeCount} Leitungen
+          {nodeCount} {nodeCount === 1 ? 'Bauteil' : 'Bauteile'} · {edgeCount}{' '}
+          {edgeCount === 1 ? 'Leitung' : 'Leitungen'}
         </span>{' '}
         <span className="cad-statusbar__short">
           {nodeCount} Bt · {edgeCount} Lt
@@ -116,11 +117,15 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
       {criticalCount > 0 ? (
         <span className="cad-statusbar__signal">
           {criticalCount} kritisch
-          <span className="hidden md:inline"> · {warningCount} Warnungen</span>
+          <span className="hidden md:inline">
+            {' '}
+            · {warningCount} {warningCount === 1 ? 'Warnung' : 'Warnungen'}
+          </span>
         </span>
       ) : warningCount > 0 ? (
         <span className="text-warning">
-          {warningCount} Warnungen<span className="hidden md:inline"> · kein kritischer Fehler</span>
+          {warningCount} {warningCount === 1 ? 'Warnung' : 'Warnungen'}
+          <span className="hidden md:inline"> · kein kritischer Fehler</span>
         </span>
       ) : (
         <span className="cad-statusbar__ok">Keine Fehler</span>

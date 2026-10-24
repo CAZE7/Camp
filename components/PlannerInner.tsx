@@ -110,6 +110,19 @@ function PlannerShell() {
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
   const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
   const entryNoticeExpanded = entryNotice?.message != null && expandedNotice === entryNotice.message;
+  const plannerNodeCount = usePlannerStore((state) => state.nodes.length);
+  const plannerWaterNodeCount = usePlannerStore((state) => state.waterNodes.length);
+
+  // „Beispiel geladen“ beschreibt den Plan auf der Fläche. Wird er geleert
+  // (Assistent, Datei → Neuer Plan), ist die Aussage falsch — sie lag dann
+  // als 44-px-Streifen über dem leeren Zustand und verdeckte dessen Text.
+  // Fehlermeldungen bleiben stehen, bis sie geschlossen werden.
+  useEffect(() => {
+    if (!entryNotice || entryNotice.type === 'error') return;
+    if (plannerNodeCount === 0 && plannerWaterNodeCount === 0) {
+      dismissEntryNotice();
+    }
+  }, [entryNotice, plannerNodeCount, plannerWaterNodeCount, dismissEntryNotice]);
 
   // „Clear site data“ leert localStorage, während der Plan noch im Speicher
   // der offenen Seite liegt. Ohne diese Wache schreibt der Flush ihn zurück
