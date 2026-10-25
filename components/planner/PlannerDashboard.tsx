@@ -273,6 +273,8 @@ export function PlannerDashboard() {
   const hasOnboarded = useAppStore((state) => state.hasOnboarded);
   const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
   const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
+  const planNodeCount = viewMode === 'water' ? waterNodes.length : nodes.length;
+  const planEdgeCount = viewMode === 'water' ? waterEdges.length : edges.length;
   const planRevision = [nodes, edges, waterNodes, waterEdges];
 
   return (
@@ -288,9 +290,8 @@ export function PlannerDashboard() {
             {/* B-12 (QA-Bericht): Die Kopfzeile zählt die Ansicht, die offen ist —
                 im Wasser-Tab keine Elektrik-Zähler und keine Elektrik-Warnungen. */}
             <span className="text-muted-foreground">
-              {viewMode === 'water'
-                ? `${waterNodes.length} Bauteile · ${waterEdges.length} Leitungen`
-                : `${nodes.length} Bauteile · ${edges.length} Leitungen`}
+              {planNodeCount} {planNodeCount === 1 ? 'Bauteil' : 'Bauteile'} · {planEdgeCount}{' '}
+              {planEdgeCount === 1 ? 'Leitung' : 'Leitungen'}
             </span>
             {viewMode !== 'water' && criticalCount > 0 && (
               <span className="text-destructive">{criticalCount} kritisch</span>
@@ -386,7 +387,7 @@ export function PlannerDashboard() {
           role={feedback.type === 'error' ? 'alert' : 'status'}
           aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
           data-testid="action-feedback"
-          className={`fixed top-20 left-1/2 z-toast flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
+          className={`planner-action-feedback flex w-11/12 max-w-md items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
             feedback.type === 'error'
               ? 'border-l-destructive'
               : feedback.type === 'success'
