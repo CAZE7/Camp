@@ -1513,6 +1513,17 @@
   transform: translateX(-50%);
 }
 
+/* Ein offener Dialog bzw. ein Blatt ist die aktive Ebene. Die Meldung lag im
+   kurzen Querformat (852×393) über „Planungsprüfung“ und „Hilfe & Fachwissen“
+   und verdeckte deren Inhalt (gemessen 2026-10-25, `nachtest.spec.ts`). Sie
+   erscheint wieder, sobald das Blatt geschlossen ist — der Zustand bleibt. */
+body:has([role='dialog']) .planner-action-feedback,
+body:has(.planner-expert-panel--open) .planner-action-feedback,
+body:has(.planner-verification-panel) .planner-action-feedback,
+body:has(.de-warning-center [role='dialog']) .planner-action-feedback {
+  display: none;
+}
+
 @media (max-width: 767px), (max-height: 500px) {
   .planner-action-feedback {
     bottom: calc(var(--cad-nav-h, 3.5rem) + var(--cad-statusbar-h, 22px) + 4.25rem);

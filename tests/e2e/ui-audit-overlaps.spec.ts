@@ -205,4 +205,21 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
       expect(overlaps(toastBox, await boxOf(control)), id).toBe(false);
     }
   });
+
+  test('Aktionsmeldung weicht einem geöffneten Dialog', async ({ page }) => {
+    await openFreshExample(page);
+    await clearPlan(page);
+    const toast = page.getByTestId('action-feedback');
+    await expect(toast).toBeVisible();
+
+    await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await page.getByRole('menuitem', { name: /^Stückliste/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Stückliste' });
+    await expect(dialog).toBeVisible();
+    // Der Dialog ist die aktive Ebene; die Meldung darf ihn nicht verdecken.
+    await expect(toast).toBeHidden();
+
+    await dialog.getByRole('button', { name: 'Dialog schließen' }).click();
+    await expect(dialog).toBeHidden();
+  });
 });
