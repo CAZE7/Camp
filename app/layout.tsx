@@ -1,4 +1,5 @@
 import './globals.css';
+import './ladebooster-vergleich.css';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/outfit';
 import '@fontsource/ibm-plex-mono/400.css';

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { metadataFor } from '@/app/seoMetadata';
+import { LadeboosterVergleich } from '@/components/seo/LadeboosterVergleich';
 import { SeoPage } from '@/components/seo/SeoPage';
 import { CONTENT_PAGES } from '@/lib/seo/content';
 import type { SeoPageContent } from '@/lib/seo/types';
@@ -46,5 +47,5 @@ export default async function Themenseite({ params }: { params: Promise<{ slug: 
   const page = THEMEN.find((entry) => entry.slug === slug);
   if (!page) notFound();
 
-  return <SeoPage page={page} />;
+  return <SeoPage page={page}>{slug === 'ladebooster' ? <LadeboosterVergleich /> : null}</SeoPage>;
 }
