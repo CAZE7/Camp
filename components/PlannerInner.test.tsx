@@ -27,6 +27,17 @@ vi.mock('./planner/OnboardingWizard', () => ({
   OnboardingWizard: () => <div data-testid="onboarding" />,
 }));
 
+// Einstiegsmeldung: Der echte Hook würde den Beispielplan laden. Für die
+// Layout-Suite genügt ein steuerbarer Zustand — der Dismiss-Aufruf ist der
+// Regressionstest für „Meldung bleibt nach dem Leeren stehen“.
+const entryPlanMock = vi.hoisted(() => ({
+  notice: null as null | { type: string; message: string },
+  dismissNotice: vi.fn(),
+}));
+vi.mock('./planner/hooks/usePlannerEntryPlan', () => ({
+  usePlannerEntryPlan: () => ({ notice: entryPlanMock.notice, dismissNotice: entryPlanMock.dismissNotice }),
+}));
+
 // --- Stores -------------------------------------------------------------
 const setInspectorOpen = vi.fn();
 const setSidebarOpen = vi.fn();
@@ -83,6 +94,8 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.viewMode = 'electric';
     plannerState.canUndo = false;
     plannerState.canRedo = false;
+    entryPlanMock.notice = null;
+    entryPlanMock.dismissNotice.mockClear();
   });
 
   it('A1 (375 px): Bottom-Tabs mit ≥44 px Touch-Targets und Safe-Area', () => {
@@ -281,6 +294,18 @@ describe('PlannerInner — responsives Layout', () => {
     // verschobenes fixed-Element würde am Tablet horizontales Scrollen erzeugen.
     expect(aside.className).toContain('md:hidden');
     expect(aside.className).toContain('xl:w-0');
+  });
+
+  it('entfernt die Einstiegsmeldung, sobald der Plan leer ist — lässt sie bei Inhalt stehen', () => {
+    entryPlanMock.notice = { type: 'example', message: 'Beispielplan geladen.' };
+    const { rerender } = render(<PlannerInner />);
+    expect(entryPlanMock.dismissNotice).toHaveBeenCalledTimes(1);
+
+    // Mit einem Bauteil beschreibt die Meldung weiterhin die Fläche.
+    entryPlanMock.dismissNotice.mockClear();
+    plannerState.nodes = [{ id: 'battery-1' }];
+    rerender(<PlannerInner />);
+    expect(entryPlanMock.dismissNotice).not.toHaveBeenCalled();
   });
 
   it('fängt Strg+S ab und meldet stattdessen den Autosave-Status', () => {

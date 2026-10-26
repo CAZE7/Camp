@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Camera,
   Frame,
-  LayoutGrid,
   Loader2,
   Minimize2,
   MoreHorizontal,
@@ -42,7 +42,6 @@ export interface PlannerToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onAutoWire: () => void;
-  onTidy: () => void;
   onCheck: () => void;
   onBom: () => void;
   onExport: () => void;
@@ -181,14 +180,56 @@ function OverflowMenu({
 function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  const close = React.useCallback((restoreFocus = false) => {
+    setOpen(false);
+    if (restoreFocus) buttonRef.current?.focus();
+  }, []);
+
+  // Die Werkzeugleiste schneidet ihre Kinder an beiden Achsen ab
+  // (`overflow: hidden`, `__actions` scrollt waagerecht). Ein Dropdown im
+  // Baum war deshalb unsichtbar, obwohl es im DOM stand. Es hängt jetzt am
+  // `body`; die Lage kommt aus den gemessenen Koordinaten des Auslösers.
+  // Unter 768 px übernimmt `planner-toolbar-sheet` (Blatt über der Fußleiste).
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const trigger = buttonRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+      const rect = trigger.getBoundingClientRect();
+      const margin = 8;
+      const maxLeft = Math.max(margin, window.innerWidth - menu.offsetWidth - margin);
+      menu.style.setProperty('--planner-template-top', `${Math.round(rect.bottom + 4)}px`);
+      menu.style.setProperty(
+        '--planner-template-left',
+        `${Math.round(Math.min(Math.max(rect.left, margin), maxLeft))}px`
+      );
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open]);
 
   return (
-    <div
-      className="relative"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
-      }}
-    >
+    <div className="relative">
       <button
         ref={buttonRef}
         type="button"
@@ -196,7 +237,8 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         aria-label="Vorlage laden"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        aria-controls={open ? 'planner-template-menu' : undefined}
+        onClick={() => setOpen((value) => !value)}
         className="cad-btn cad-btn--primary"
         data-tooltip="Fertiges Setup laden und anpassen"
         title="Fertiges Setup laden und anpassen"
@@ -206,28 +248,39 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
         <span className="tb-label tb-label--mittel">Vorlage laden</span>
         <ChevronDown className="cad-template-chevron h-3.5 w-3.5" aria-hidden="true" />
       </button>
-      {open && (
-        <div className="cad-menu right-auto left-0" role="menu" aria-label="Vorlage laden">
-          <p className="cad-menu__label">Fertiges Setup als Startpunkt</p>
-          {PLANNER_TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              type="button"
-              role="menuitem"
-              data-testid={`toolbar-template-${template.id}`}
-              onClick={() => {
-                onLoadTemplate(template.id);
-                setOpen(false);
-                buttonRef.current?.focus();
-              }}
-              className="cad-menu__item"
-            >
-              <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="flex-1 truncate">{template.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id="planner-template-menu"
+            className="cad-menu planner-toolbar-sheet planner-template-sheet right-auto left-0"
+            role="menu"
+            aria-label="Vorlage laden"
+            onKeyDown={(event) => handleMenuKeyDown(event, close)}
+            onBlur={(event) => {
+              if (!menuRef.current?.contains(event.relatedTarget as Node | null)) close();
+            }}
+          >
+            <p className="cad-menu__label">Fertiges Setup als Startpunkt</p>
+            {PLANNER_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                role="menuitem"
+                data-testid={`toolbar-template-${template.id}`}
+                onClick={() => {
+                  onLoadTemplate(template.id);
+                  close(true);
+                }}
+                className="cad-menu__item"
+              >
+                <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="flex-1 truncate">{template.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -284,7 +337,6 @@ export function PlannerToolbar({
   onUndo,
   onRedo,
   onAutoWire,
-  onTidy,
   onCheck,
   onBom,
   onExport,
@@ -380,23 +432,23 @@ export function PlannerToolbar({
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
 
             <div className="cad-toolbar__group">
-              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
+              {/*
+                GENAU EIN Automatik-Einstieg in der Leiste (Nutzer-Rückmeldung
+                2026-10-26: „Knöpfe, die doppelt sind, wie Optimieren und
+                dieser andere Automatik-Knopf“).
 
-              <button
-                type="button"
-                data-testid="action-tidy"
-                onClick={onTidy}
-                disabled={busy !== null}
-                className="cad-btn cad-toolbar__desktop-tidy"
-                title="Plan ordnen: Bauteile automatisch übersichtlich anordnen. Rückgängig ist möglich."
-              >
-                {busy === 'layoutV2' ? (
-                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                ) : (
-                  <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-                )}
-                <span>Plan automatisch ordnen</span>
-              </button>
+                Vorher standen hier drei Aktionen, die den Plan von selbst
+                verändern: „Vorschlag prüfen“, „Plan automatisch ordnen“ (ab
+                1024 px, ab 1024–1279 px nur als Raster-Symbol ohne Text) und
+                rechts im Statusfeld „Kabel optimieren“ — für den Nutzer zwei
+                bis drei gleichrangige Automatiken ohne erkennbare Reihenfolge.
+                Sichtbar bleibt die Primäraktion des Expertenmodus; die
+                nachgelagerten Schritte (Ordnen, Kabel optimieren) stehen
+                gemeinsam in der Menügruppe „Automatik“
+                (`usePlannerActions.menus.werkzeuge`) und sind damit über
+                Menüleiste → Werkzeuge UND `⋯` erreichbar.
+              */}
+              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
             </div>
 
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
@@ -430,48 +482,50 @@ export function PlannerToolbar({
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
           </>
         )}
-
-        <div className="cad-toolbar__group">
-          <div className="hidden items-center gap-0.5 md:flex" role="tablist" aria-label="Planbereich wählen">
-            {/* Symbole plus Beschriftung ab 1536 px: Die Wörter kosten
-                zusammen 103 px. Gemessen bei 1920 px lief die Leiste damit
-                20 px über, *solange* gleichzeitig die langen Statuszusätze
-                sichtbar waren — deshalb erscheinen die Zusätze erst ab
-                1980 px (§7a) und die Beschriftung bleibt im DOM, wie der
-                Komponententest (`getByText('Elektrik')`) sie verlangt. */}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'electric'}
-              aria-label="Elektrikplan anzeigen"
-              title="Elektrikplan anzeigen"
-              data-testid="viewmode-electric"
-              onClick={() => onSelectViewMode('electric')}
-              className={`cad-btn ${viewMode === 'electric' ? 'cad-btn--active' : ''}`}
-            >
-              <Zap className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden 2xl:inline">Elektrik</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'water'}
-              aria-label="Wasserplan anzeigen"
-              title="Wasserplan anzeigen"
-              data-testid="viewmode-water"
-              onClick={() => onSelectViewMode('water')}
-              className={`cad-btn ${viewMode === 'water' ? 'cad-btn--active' : ''}`}
-            >
-              <Droplets className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden 2xl:inline">Wasser</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Rechts festgenagelt: Status und der Zugang zu allen sekundären
-          Aktionen. Dieses Feld kennt kein `overflow-x` — es bleibt sichtbar. */}
+          Aktionen. Dieses Feld kennt kein `overflow-x` — es bleibt sichtbar.
+          Der Bereichswechsel liegt aus demselben Grund hier: Am Ende der
+          scrollenden Aktionsgruppe verschwand „Wasser“ bei 768 px hinter dem
+          Speicherzustand (gemessen: Tab 373–417, Statusfeld ab 280). */}
       <div className="cad-toolbar__status" data-testid="planner-toolbar-status">
+        <div
+          className="cad-toolbar__views hidden items-center gap-0.5 md:flex"
+          role="tablist"
+          aria-label="Planbereich wählen"
+        >
+          {/* Symbole plus Beschriftung ab 1536 px: Die Wörter kosten
+              zusammen 103 px. Deshalb erscheinen sie erst ab 1536 px; die
+              Beschriftung bleibt im DOM, wie der Komponententest
+              (`getByText('Elektrik')`) sie verlangt. */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'electric'}
+            aria-label="Elektrikplan anzeigen"
+            title="Elektrikplan anzeigen"
+            data-testid="viewmode-electric"
+            onClick={() => onSelectViewMode('electric')}
+            className={`cad-btn ${viewMode === 'electric' ? 'cad-btn--active' : ''}`}
+          >
+            <Zap className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden 2xl:inline">Elektrik</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'water'}
+            aria-label="Wasserplan anzeigen"
+            title="Wasserplan anzeigen"
+            data-testid="viewmode-water"
+            onClick={() => onSelectViewMode('water')}
+            className={`cad-btn ${viewMode === 'water' ? 'cad-btn--active' : ''}`}
+          >
+            <Droplets className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden 2xl:inline">Wasser</span>
+          </button>
+        </div>
         {statusArea}
         <ToolButton
           label={focusMode ? 'Fokusmodus verlassen' : 'Vollbild (Fokusmodus)'}

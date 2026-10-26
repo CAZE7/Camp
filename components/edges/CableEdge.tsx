@@ -794,7 +794,7 @@ const CableEdge = function ({
   return (
     <>
       {/* R9: Routing-Ausnahmen pro Leitung sichtbar, nicht nur aggregiert im
-          RoutingStatusBadge. `fallbackHitsObstacles` = Fallback unterschreitet
+          Berichtsteil „Kabeltrassen“ (`routingStatusView`). `fallbackHitsObstacles` = Fallback unterschreitet
           die normale Bauteil-Reserve (rot, gepunktet); `tightMarginUsed` =
           verringerte Reserve an einer Engstelle (orange). Ob auch der
           verbindliche Mindestabstand verletzt ist, prüft das Final-Gate (I3).

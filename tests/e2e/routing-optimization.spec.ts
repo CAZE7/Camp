@@ -1,12 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 import simplePlan from '../../knownPlans/simple.json';
-import { openPlanner, showCanvas } from './helpers';
+import { openCheckEntry, openPlanner, showCanvas } from './helpers';
 
 /**
- * Unter 768 px nimmt die Werkzeugleiste den Knopf aus der Statusgruppe
- * (`globals.css`, `.cad-status-optimize`). Dieselbe Aktion bleibt im
- * Überlaufmenü (`action-optimize-routing`). Die Zusicherung — Geräte
- * bleiben stehen, ein zweiter Lauf bleibt gesperrt — gilt auf beiden Wegen.
+ * Seit 2026-10-26 steht „Kabel optimieren“ NICHT mehr als eigener Chip in der
+ * Werkzeugleiste (Nutzer-Rückmeldung: dort lagen zwei widersprüchliche
+ * Automatikknöpfe nebeneinander). Der einzige Weg ist der Eintrag
+ * `action-optimize-routing` in der Menügruppe „Automatik“ — in Menüleiste →
+ * Werkzeuge und im `⋯`-Überlauf derselbe Datensatz. Der Helfer toleriert
+ * weiterhin einen sichtbaren Knopf, damit ein künftiger zweiter Zugang die
+ * Suite nicht bricht; die Zusicherung selbst — Geräte bleiben stehen, ein
+ * zweiter Lauf bleibt gesperrt — gilt unabhängig vom Weg.
  */
 async function runOptimize(page: Page): Promise<void> {
   const button = page.getByRole('button', { name: 'Kabel optimieren', exact: true });
@@ -46,16 +50,16 @@ test('explicit optimization leaves device positions unchanged', async ({ page })
       );
   const before = await positions();
   await runOptimize(page);
-  const viewport = page.viewportSize();
-  const statusHiddenByLayout =
-    viewport !== null &&
-    (viewport.width < 768 || (viewport.height <= 480 && viewport.width > viewport.height));
-  if (!statusHiddenByLayout) {
+  // Der Routing-Zustand steht seit 2026-10-26 im gemeinsamen Prüf-Einstieg
+  // (eine Zahl für Planungs- UND Trassenbefunde). Er ist dort zu sehen,
+  // sobald der Bericht offen ist — auf jeder Breite derselbe Weg.
+  if (await openCheckEntry(page)) {
     await expect(
       page.locator(
         '[data-testid="routing-status-partial"], [data-testid="routing-status-optimized"], [data-testid="routing-status-retained"], [data-testid="routing-status-stale"], [data-testid="routing-status-invalid"]'
       )
     ).toBeVisible();
+    await page.keyboard.press('Escape');
   }
   expect(await positions()).toEqual(before);
   // Der Live-Pfad rechnet in `cableRouteStore` auf dem Hauptthread.

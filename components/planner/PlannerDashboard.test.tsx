@@ -265,6 +265,29 @@ describe('PlannerDashboard - Core Interactions', () => {
     expect(mockSetViewMode).toHaveBeenCalledWith('electric');
   });
 
+  it('hält den Planbereichswechsel im festen Statusbereich statt im scrollenden Aktionsbereich', () => {
+    // UI-Audit 2026-10-24: Am Ende der scrollenden Aktionsgruppe verschwand
+    // „Wasser“ bei 768 px hinter dem Speicherzustand.
+    render(<PlannerDashboard />);
+
+    const status = screen.getByTestId('planner-toolbar-status');
+    const actions = screen.getByTestId('planner-toolbar').querySelector('.cad-toolbar__actions');
+    expect(actions).not.toBeNull();
+    expect(within(status).getByTestId('viewmode-water')).toBeInTheDocument();
+    expect(actions!.contains(screen.getByTestId('viewmode-water'))).toBe(false);
+  });
+
+  it('schreibt in der Kopfzeile den Singular bei genau einem Bauteil und einer Leitung', () => {
+    mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
+    mockEdges.push({ id: 'edge-1', source: 'battery-1', target: 'battery-1', data: {} });
+    try {
+      render(<PlannerDashboard />);
+      expect(screen.getByText('1 Bauteil · 1 Leitung')).toBeInTheDocument();
+    } finally {
+      mockEdges.splice(0);
+    }
+  });
+
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
@@ -428,17 +451,37 @@ describe('PlannerDashboard - Action Buttons', () => {
 
   /**
    * UX-Reset 2026-09: Die Toolbar darf nicht drei Layout-Begriffe
-   * gleichzeitig anbieten („Übersicht / Aufräumen / Strukturieren (ELK)").
-   * Sichtbar bleibt EIN „Plan ordnen"; die Einzelaktionen leben im ⋯-Menü.
+   * gleichzeitig anbieten („Übersicht / Aufräumen / Strukturieren (ELK)“).
+   * Sichtbar bleibt EIN „Plan ordnen“; die Einzelaktionen leben im ⋯-Menü.
+   *
+   * Nutzer-Rückmeldung 2026-10-26: Trotzdem standen drei Aktionen in der
+   * Leiste, die den Plan von selbst verändern — „Vorschlag prüfen“, „Plan
+   * automatisch ordnen“ und „Kabel optimieren“. Für den Nutzer waren das zwei
+   * widersprüchliche Automatikknöpfe. Sichtbar ist jetzt genau eine
+   * Automatikaktion; Ordnen und Kabel-Optimieren liegen in der Menügruppe
+   * „Automatik“ (Menüleiste → Werkzeuge und ⋯).
    */
-  it('bietet genau eine Layout-Aktion in der Toolbar an und ordnet den Plan', async () => {
+  it('bietet in der Leiste genau eine Automatikaktion an und ordnet den Plan über das Menü', async () => {
     mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
-    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan automatisch ordnen');
+    // Nutzer-Rückmeldung 2026-10-26: „Vorschlag prüfen“, „Plan automatisch
+    // ordnen“ und „Kabel optimieren“ standen gleichzeitig in der Leiste — für
+    // den Nutzer zwei bis drei gleichrangige Automatiken. Sichtbar ist genau
+    // eine; die nachgelagerten Schritte stehen in der Menügruppe „Automatik“.
+    const toolbar = screen.getByTestId('planner-toolbar');
+    expect(within(toolbar).getByTestId('action-autowire')).toBeInTheDocument();
+    expect(
+      within(toolbar).queryByRole('button', { name: /Plan automatisch ordnen/ })
+    ).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole('button', { name: 'Kabel optimieren' })).not.toBeInTheDocument();
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('action-tidy'));
+    openMoreMenu();
+    expect(screen.getByTestId('action-layout-v2-menu')).toHaveTextContent('Plan automatisch ordnen');
+    expect(screen.getByTestId('action-optimize-routing')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
@@ -507,6 +550,20 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
     expect(mockClearPlan).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('feedback-action'));
     expect(mockUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('lagert die Aktionsmeldung aus dem Dokumentfluss aus (fest über der Statuszeile)', () => {
+    // UI-Audit 2026-10-24: Als `fixed top-20` lag die Meldung mitten im Bild
+    // und deckte Modusleiste bzw. Planungsprüfung ab. Die Lage kommt jetzt aus
+    // `.planner-action-feedback` (unterhalb von Werkzeugleiste und Blättern).
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
+
+    const feedback = screen.getByTestId('action-feedback');
+    expect(feedback.className).toContain('planner-action-feedback');
+    expect(feedback.className).not.toMatch(/\b(absolute|top-20)\b/);
   });
 });
 
@@ -728,5 +785,36 @@ describe('PlannerDashboard · Befund-Dedupe (B-04)', () => {
     const key = warningDedupeKey(warning as never);
     expect(key).toBe(warningDedupeKey({ ...warning, id: 'b' } as never));
     expect(key).not.toBe(warningDedupeKey({ ...warning, focusId: 'n2' } as never));
+  });
+});
+
+/**
+ * Nutzer-Rückmeldung 2026-10-26 (zweiter Teil): Rechts in der Leiste standen
+ * zwei Zahl-Plaketten mit Warndreieck — „2 Regelverl.“ (Kabeltrassen) und „20“
+ * (Planungsprüfung). Jetzt gibt es EINEN Prüf-Einstieg; die Trassen-Befunde
+ * zählen in dieselbe Zahl und stehen als Abschnitt im Bericht.
+ */
+describe('PlannerDashboard — ein Prüf-Einstieg in der Leiste', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('zeigt genau eine Prüf-Plakette statt zweier Zahlen', () => {
+    render(<PlannerDashboard />);
+    const status = screen.getByTestId('planner-toolbar-status');
+
+    expect(within(status).getAllByRole('button', { name: /Planungsprüfung öffnen/ })).toHaveLength(1);
+    // Keine eigene Routing-Plakette mehr in der Leiste: Die Kennungen leben im
+    // Bericht (Prüf-Einstieg), nicht in der Werkzeugleiste.
+    expect(status.querySelector('[data-testid^="routing-status"]')).toBeNull();
+  });
+
+  it('lässt die Trassenprüfung im Wasserplan außen vor', () => {
+    mockState.viewMode = 'water';
+    mockWaterWarning = null;
+    render(<PlannerDashboard />);
+    const status = screen.getByTestId('planner-toolbar-status');
+
+    expect(within(status).queryByRole('button', { name: /Planungsprüfung öffnen/ })).toBeNull();
   });
 });

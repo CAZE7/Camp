@@ -1,5 +1,79 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-26 (2) — Ein Prüf-Einstieg statt zweier Zahl-Plaketten
+
+**Anlass:** Fortsetzung der Nutzer-Rückmeldung zur Werkzeugleiste. Nach dem
+Entflechten der Automatikknöpfe blieben rechts zwei Plaketten mit Warndreieck
+und je einer Zahl: „2 Regelverl.“ (Final-Validation des Kabelroutings) und „20“
+(Planungsprüfung). Beides sind Prüfbefunde, beide sahen gleich aus, keine sagte,
+was sie zählt.
+
+**Verhalten:** Die Werkzeugleiste hat jetzt EINEN Prüf-Einstieg. Der Chip zählt
+Planungsbefunde und Kabeltrassen-Regelverletzungen in einer Zahl; das Abzeichen
+nennt weiter die kritische Zahl zuerst („1 von 3 kritisch“) und bei reinen
+Trassenbefunden „{n} Befunde“. Der Bericht („Planungsprüfung“) zeigt oben den
+Abschnitt **Kabeltrassen** mit Zustand, Ursachen und nächstem Schritt, darunter
+unverändert die Planungsbefunde. Die Kennungen `routing-status-*` bleiben
+erhalten, hängen aber am Berichtsteil statt am Chip. Die Routing-Logik lebt als
+Ansichtsmodell in
+`components/planner/ui/routingStatusView.ts` (vorher `RoutingStatusBadge.tsx`),
+gerendert von `RoutingStatusSummary.tsx` **innerhalb** von `WarningCenter`.
+
+Damit einhergehend:
+
+- „Keine Hinweise“ erscheint nur noch, wenn WIRKLICH nichts offen ist — vorher
+  hätte ein Plan mit 0 Warnungen und 2 Trassenverletzungen „Keine Hinweise“
+  gemeldet.
+- Im Wasserplan bleibt die elektrische Trassenprüfung außen vor
+  (`includeRouting={false}`), wie vorher die elektrik-only Plakette.
+- Zwei Toolbar-Regeln (`globals.css` §7a) entfallen, weil die Kennungen dort
+  nicht mehr vorkommen.
+
+Keine Änderung an Querschnitt, Sicherung, Strom, Routing oder Normgrenzen;
+Gerätepositionen und Kabelgeometrie bleiben unberührt.
+
+**Validierung:** `tsc` (App + Tests) fehlerfrei, ESLint/Prettier grün, Vitest
+vollständig grün; Warnzentrale und Ansichtsmodell haben neue Regressionen
+(gemeinsamer Zähler, Trassen-Abschnitt, „Keine Hinweise“ erst bei wirklich
+null Befunden, Wasserplan ohne Trassen). Playwright wurde in dieser Umgebung nicht ausgeführt
+(kein Browser) — die Specs `routing-optimization` und `routing-stability` öffnen
+den Prüf-Einstieg jetzt über den neuen Helper `openCheckEntry`, bevor sie
+`routing-status-*` prüfen.
+
+## LEDGER 2026-10-26 — Ein Automatik-Einstieg statt drei
+
+**Anlass:** Nutzer-Rückmeldung zum Planer: „Die obere Leiste ist immer noch
+unübersichtlich. Da gibt es Knöpfe, die doppelt sind, wie Optimieren und dieser
+andere Automatik-Knopf.“ In der Werkzeugleiste standen gleichzeitig drei
+Aktionen, die den Plan von selbst verändern: „Vorschlag prüfen“ (Auto-Wire),
+„Plan automatisch ordnen“ (ab 1024 px, unter 1280 px nur als Raster-Symbol ohne
+Text) und der Chip „Kabel optimieren“ im Statusfeld. Rechts standen zusätzlich
+fünf Statusflächen nebeneinander.
+
+**Verhalten:** Sichtbar bleibt genau EINE Automatikaktion: „Vorschlag prüfen“.
+„Plan automatisch ordnen“ und „Kabel optimieren“ liegen gemeinsam in der neuen
+Menügruppe „Automatik“ — erreichbar über Menüleiste → Werkzeuge und über `⋯`,
+auf jeder Breite über denselben Datensatz (`usePlannerActions.menus.werkzeuge`).
+Der Leistenknopf `action-tidy` und der Chip `cad-status-optimize` entfallen
+samt ihrer Sonderregeln (`globals.css` §7a); die Sperrbedingung für „Kabel
+optimieren“ liegt weiter in genau einem Modul
+(`components/planner/ui/optimizeRoutingCommand.ts`). Das Statusfeld zeigt
+dadurch nur noch Speicherzustand, Routing-Status, Prüfsiegel und
+Warnzentrale. Keine Änderung an Querschnitt, Sicherung, Strom, Routing oder
+Normgrenzen — Gerätepositionen und Kabelgeometrie bleiben unberührt.
+
+**Validierung:** `tsc -p tsconfig.typecheck.json` und
+`tsc -p tsconfig.tests.json` fehlerfrei; Vitest vollständig grün (3761 Tests,
+1 übersprungen); ESLint und Prettier über die geänderten Dateien grün. Neue
+Regressionen: `PlannerToolbar.test.tsx` („genau eine Automatikaktion“),
+`PlannerDashboard.test.tsx` (Ordnen über die Menügruppe),
+`optimizeRoutingCommand.test.tsx` (Sperrbedingung),
+`RoutingStatusBadge.test.tsx` (Lebenszyklus-Zustände, verschoben aus der
+gelöschten `OptimizeRoutingButton.test.tsx`). Die Playwright-Suite wurde in
+dieser Umgebung nicht ausgeführt (kein Browser installiert); die betroffenen
+Specs (`routing-optimization`, `mobile-geometry`) erreichen die Aktion
+unverändert über `action-optimize-routing`.
+
 ## LEDGER 2026-10-22 — Trefferziele im Planer und redaktionelle Startseite
 
 **Umfang:** Visuelle/UI-Anpassung; keine Änderungen an Routing, API-Aufrufen,
