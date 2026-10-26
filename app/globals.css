@@ -3338,13 +3338,6 @@ html.planner-root-active body {
     margin-inline: 2px;
   }
 
-  .cad-toolbar
-    [data-testid^='routing-status']:not([data-testid='routing-status-invalid']):not(
-      [data-testid='routing-status-not-converged']
-    ):not([data-testid='routing-status-error']) {
-    display: none;
-  }
-
   .cad-toolbar__status {
     gap: 0.15rem;
     padding-inline-start: 0.15rem;
@@ -3780,16 +3773,11 @@ html.planner-root-active body {
   }
 }
 
-/* Auf kleinen Screens bleiben die drei Prüf-Zugänge im sichtbaren Statusfeld:
-   Warnungszahl, Prüfbericht und das Menü mit „Plan prüfen“/Stückliste. */
-@media (max-width: 767px) {
-  .cad-toolbar__status
-    > [data-testid^='routing-status-']:not([data-testid='routing-status-invalid']):not(
-      [data-testid='routing-status-not-converged']
-    ):not([data-testid='routing-status-error']) {
-    display: none !important;
-  }
-}
+/* Auf kleinen Screens bleiben die zwei Prüf-Zugänge im sichtbaren Statusfeld:
+   Prüf-Einstieg (alle Befunde in EINER Zahl) und Prüfsiegel. Die frühere
+   Regel, die hier die Routing-Plakette ausblendete, ist am 2026-10-26 mit der
+   Plakette entfallen: Die Kabeltrassen-Befunde zählen jetzt in den
+   Prüf-Einstieg und stehen als Abschnitt im Bericht. */
 
 @media (orientation: landscape) and (max-height: 500px) {
   .planner-shell:not(.planner-shell--focus) .planner-verification-panel {
@@ -3803,10 +3791,6 @@ html.planner-root-active body {
     /* Auch der Prüfbericht nutzt die volle Höhe (vorher 150 px sichtbar). */
     max-height: none !important;
     overscroll-behavior: contain;
-  }
-
-  .cad-toolbar__status > [data-testid^='routing-status-'] {
-    display: none !important;
   }
 }
 
@@ -4505,8 +4489,7 @@ html.planner-root-active body {
   }
 
   .cad-toolbar [data-testid='save-indicator'] svg,
-  .cad-toolbar [data-testid='verification-seal-toggle'] svg,
-  .cad-toolbar [data-testid^='routing-status'] svg {
+  .cad-toolbar [data-testid='verification-seal-toggle'] svg {
     color: var(--text-high);
   }
 

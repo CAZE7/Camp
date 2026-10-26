@@ -1,5 +1,45 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-26 (2) — Ein Prüf-Einstieg statt zweier Zahl-Plaketten
+
+**Anlass:** Fortsetzung der Nutzer-Rückmeldung zur Werkzeugleiste. Nach dem
+Entflechten der Automatikknöpfe blieben rechts zwei Plaketten mit Warndreieck
+und je einer Zahl: „2 Regelverl.“ (Final-Validation des Kabelroutings) und „20“
+(Planungsprüfung). Beides sind Prüfbefunde, beide sahen gleich aus, keine sagte,
+was sie zählt.
+
+**Verhalten:** Die Werkzeugleiste hat jetzt EINEN Prüf-Einstieg. Der Chip zählt
+Planungsbefunde und Kabeltrassen-Regelverletzungen in einer Zahl; das Abzeichen
+nennt weiter die kritische Zahl zuerst („1 von 3 kritisch“) und bei reinen
+Trassenbefunden „{n} Befunde“. Der Bericht („Planungsprüfung“) zeigt oben den
+Abschnitt **Kabeltrassen** mit Zustand, Ursachen und nächstem Schritt, darunter
+unverändert die Planungsbefunde. Die Kennungen `routing-status-*` bleiben
+erhalten, hängen aber am Berichtsteil statt am Chip. Die Routing-Logik lebt als
+Ansichtsmodell in
+`components/planner/ui/routingStatusView.ts` (vorher `RoutingStatusBadge.tsx`),
+gerendert von `RoutingStatusSummary.tsx` **innerhalb** von `WarningCenter`.
+
+Damit einhergehend:
+
+- „Keine Hinweise“ erscheint nur noch, wenn WIRKLICH nichts offen ist — vorher
+  hätte ein Plan mit 0 Warnungen und 2 Trassenverletzungen „Keine Hinweise“
+  gemeldet.
+- Im Wasserplan bleibt die elektrische Trassenprüfung außen vor
+  (`includeRouting={false}`), wie vorher die elektrik-only Plakette.
+- Zwei Toolbar-Regeln (`globals.css` §7a) entfallen, weil die Kennungen dort
+  nicht mehr vorkommen.
+
+Keine Änderung an Querschnitt, Sicherung, Strom, Routing oder Normgrenzen;
+Gerätepositionen und Kabelgeometrie bleiben unberührt.
+
+**Validierung:** `tsc` (App + Tests) fehlerfrei, ESLint/Prettier grün, Vitest
+vollständig grün; Warnzentrale und Ansichtsmodell haben neue Regressionen
+(gemeinsamer Zähler, Trassen-Abschnitt, „Keine Hinweise“ erst bei wirklich
+null Befunden, Wasserplan ohne Trassen). Playwright wurde in dieser Umgebung nicht ausgeführt
+(kein Browser) — die Specs `routing-optimization` und `routing-stability` öffnen
+den Prüf-Einstieg jetzt über den neuen Helper `openCheckEntry`, bevor sie
+`routing-status-*` prüfen.
+
 ## LEDGER 2026-10-26 — Ein Automatik-Einstieg statt drei
 
 **Anlass:** Nutzer-Rückmeldung zum Planer: „Die obere Leiste ist immer noch

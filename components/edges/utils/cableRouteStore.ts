@@ -726,8 +726,9 @@ export function CableRouteSync() {
             ...kept,
             // Nur ein tatsächlich gültiger Vorstand darf „retained“ („vorheriger
             // gültiger Stand“) heißen. War der gehaltene Plan bereits ungültig,
-            // bleibt `state: 'invalid'`, damit `RoutingStatusBadge` weiterhin
-            // ehrlich die offenen Regelverletzungen nennt.
+            // bleibt `state: 'invalid'`, damit `routingStatusView` (Berichtsteil
+            // „Kabeltrassen“ im Prüf-Einstieg) weiterhin ehrlich die offenen
+            // Regelverletzungen nennt.
             state: keptIsInvalid ? 'invalid' : generationBefore ? 'retained' : 'optimized',
             reason: feedback,
             optimization: {

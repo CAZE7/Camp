@@ -14,10 +14,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
 import { toPlainGerman } from '../utils/plainGerman';
+import { useRoutingStatusView } from './routingStatusView';
+import { RoutingStatusSummary } from './RoutingStatusSummary';
 
 interface WarningCenterProps {
   warnings: ValidationWarning[];
   onFix?: (warning: ValidationWarning) => void;
+  /**
+   * Kabeltrassen-Befunde mitzählen und im Bericht zeigen (Elektrikplan).
+   *
+   * Vorher war das eine eigene Plakette neben dieser: „2 Regelverl.“ und „20“
+   * standen als zwei gleich aussehende Zahl-Plaketten mit Warndreieck
+   * nebeneinander (Nutzer-Rückmeldung 2026-10-26). Beides sind Prüfbefunde —
+   * jetzt EIN Einstieg mit EINER Zahl und zwei Abschnitten im Bericht.
+   */
+  includeRouting?: boolean;
 }
 
 const TYPE_STYLES: Record<
@@ -447,7 +458,16 @@ function groupCounts(warnings: ValidationWarning[]) {
   return { safety, planning, gaps };
 }
 
-export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
+export function WarningCenter({ warnings, onFix, includeRouting = true }: WarningCenterProps) {
+  // Kabeltrassen-Befunde kommen aus derselben Prüfung wie alles andere: Der
+  // Router veröffentlicht seinen Final-Validation-Report, dieses Modul liest
+  // ihn. Keine zweite Rechnung, keine zweite Zahl-Plakette.
+  const routingStatus = useRoutingStatusView();
+  // Im Wasserplan gilt die elektrische Trassenprüfung nicht — dort bleibt der
+  // Bericht bei den Planungsbefunden (vorher war auch die Plakette
+  // elektrik-only).
+  const routingView = includeRouting ? routingStatus : null;
+  const routingFindings = routingView?.findingCount ?? 0;
   const [open, setOpen] = useState(false);
   const [expandedRuleGroups, setExpandedRuleGroups] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -498,6 +518,17 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     return value;
   }, [warnings]);
   const groups = useMemo(() => groupCounts(warnings), [warnings]);
+  /**
+   * Gemeinsamer Zähler: Planungsbefunde + Kabeltrassen-Befunde.
+   *
+   * `criticalTotal` zählt nur Zustände, die wirklich „kritisch“ heißen dürfen:
+   * Der Ton `bad` steht für eine gescheiterte oder abgebrochene
+   * Routing-Berechnung — nicht für eine Layout-Regelverletzung (`warn`).
+   */
+  const criticalTotal = counts.critical + (routingView?.tone === 'bad' ? 1 : 0);
+  const warningishTotal = counts.warning + (routingView?.tone === 'warn' ? 1 : 0);
+  const totalFindings = warnings.length + routingFindings;
+  const hasRoutingFinding = routingFindings > 0;
   /**
    * Ursachengruppen der Meldungen (Auftrag Phase 10/11): Die Anzeige ordnet
    * gleichartige Befunde zusammen, ohne sie zu verstecken — jeder Befund
@@ -559,15 +590,18 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   // wechseln.
   const liveRegion = (
     <span className="sr-only" role="status" aria-live="polite">
-      {warnings.length === 0
+      {warnings.length === 0 && !hasRoutingFinding
         ? 'Keine Prüfhinweise im Plan.'
         : `${warnings.length} Prüfhinweise im Plan${
             counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
-          }.`}
+          }${hasRoutingFinding ? `, ${routingFindings} im Kabelrouting` : ''}.`}
     </span>
   );
 
-  if (warnings.length === 0) {
+  // „Keine Hinweise“ gilt nur, wenn wirklich NICHTS offen ist — auch keine
+  // Kabeltrassen-Regelverletzung. Vorher hätte ein Plan mit 0 Warnungen und 2
+  // Trassenverletzungen hier „Keine Hinweise“ gezeigt.
+  if (warnings.length === 0 && !hasRoutingFinding) {
     return (
       <>
         {liveRegion}
@@ -580,7 +614,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   }
 
   const topType: ValidationWarning['type'] =
-    counts.critical > 0 ? 'critical' : counts.warning > 0 ? 'warning' : 'info';
+    criticalTotal > 0 ? 'critical' : warningishTotal > 0 ? 'warning' : 'info';
 
   /**
    * A5 (Schwere ohne Farbe) bleibt: Die Schwere steht als Wort da.
@@ -593,18 +627,24 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
    * Zahl und dahinter die Gesamtzahl, und nur wenn nichts kritisch ist, steht
    * dort die Gesamtzahl mit der Schwere-Wortwahl der schwersten Stufe.
    */
-  const badgeLabel =
-    counts.critical > 0
-      ? warnings.length > counts.critical
-        ? `${counts.critical} von ${warnings.length} kritisch`
-        : `${counts.critical} kritisch`
-      : topType === 'warning'
-        ? warnings.length === 1
-          ? '1 Warnung'
-          : `${warnings.length} Warnungen`
-        : warnings.length === 1
-          ? '1 Hinweis'
-          : `${warnings.length} Hinweise`;
+  const badgeLabel = (() => {
+    if (criticalTotal > 0) {
+      return criticalTotal < totalFindings
+        ? `${criticalTotal} von ${totalFindings} kritisch`
+        : `${criticalTotal} kritisch`;
+    }
+    // Sobald Kabeltrassen-Befunde mitzählen, nennt das Abzeichen die
+    // Gesamtzahl als „Befunde“ — „20 Warnungen“ wäre falsch, sobald darunter
+    // Layout-Verletzungen sind, und „Warnungen + Regelverletzungen“ passt nicht
+    // in die Leiste. Die Aufteilung steht im `aria-label` und im Bericht.
+    if (hasRoutingFinding) {
+      return totalFindings === 1 ? '1 Befund' : `${totalFindings} Befunde`;
+    }
+    if (topType === 'warning') {
+      return warnings.length === 1 ? '1 Warnung' : `${warnings.length} Warnungen`;
+    }
+    return warnings.length === 1 ? '1 Hinweis' : `${warnings.length} Hinweise`;
+  })();
 
   return (
     <div className="de-warning-center relative" ref={containerRef}>
@@ -620,7 +660,13 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         // sichtbare Beschriftung bleibt im Namen enthalten — sonst ließe sich
         // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
         // (WCAG 2.5.3 „Label in Name").
-        aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
+        aria-label={`${badgeLabel} — Planungsprüfung öffnen${
+          hasRoutingFinding
+            ? `, davon ${routingFindings} im Kabelrouting`
+            : routingView
+              ? `; ${routingView.label}`
+              : ''
+        }`}
         // Ghost-Knopf (Designkonzept 2026-10, Planer-Regel 3): Zahl in
         // --text-high, Symbol in der Statusfarbe, keine gefüllte Pille.
         className="flex min-h-11 items-center gap-1.5 rounded border border-control-border bg-surface-raised px-2 text-xs font-semibold text-ink shadow-none transition-colors duration-150 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-oxide focus-visible:ring-offset-2 focus-visible:outline-none md:px-3"
@@ -643,7 +689,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             `WarningCenter.test.tsx` festhält („2 von 3 kritisch“). */}
         <span
           className="cad-warn-chip__count whitespace-nowrap tabular-nums"
-          data-compact={counts.critical > 0 ? counts.critical : warnings.length}
+          data-compact={criticalTotal > 0 ? criticalTotal : totalFindings}
           aria-hidden="true"
         />
         <ChevronDown
@@ -693,9 +739,18 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                   („verletzt“, „ohne ausreichende Angaben“) verwirrten mehr,
                   als sie erklärten. Eine Zeile, Klartext, dieselben Zahlen
                   wie die Karten darunter. */}
-              <p className="text-xs text-muted-foreground">
-                {groups.safety + groups.planning} Probleme · {groups.gaps}× Angaben fehlen
-              </p>
+              {warnings.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {groups.safety + groups.planning} Probleme · {groups.gaps}× Angaben fehlen
+                </p>
+              ) : (
+                // Kein Planungsbefund, aber eine Trassen-Regelverletzung: Die
+                // Zeile „0 Probleme · 0× Angaben fehlen“ wäre eine Aussage über
+                // die falsche Hälfte des Berichts.
+                <p className="text-xs text-muted-foreground">
+                  {routingView?.label ?? 'Keine Planungsbefunde'}
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -706,6 +761,12 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          {routingView && (
+            <div className="border-b border-rule px-3 py-2">
+              <RoutingStatusSummary view={routingView} />
+            </div>
+          )}
 
           <ul
             data-testid="warning-sheet-body"

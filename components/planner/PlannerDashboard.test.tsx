@@ -787,3 +787,34 @@ describe('PlannerDashboard · Befund-Dedupe (B-04)', () => {
     expect(key).not.toBe(warningDedupeKey({ ...warning, focusId: 'n2' } as never));
   });
 });
+
+/**
+ * Nutzer-Rückmeldung 2026-10-26 (zweiter Teil): Rechts in der Leiste standen
+ * zwei Zahl-Plaketten mit Warndreieck — „2 Regelverl.“ (Kabeltrassen) und „20“
+ * (Planungsprüfung). Jetzt gibt es EINEN Prüf-Einstieg; die Trassen-Befunde
+ * zählen in dieselbe Zahl und stehen als Abschnitt im Bericht.
+ */
+describe('PlannerDashboard — ein Prüf-Einstieg in der Leiste', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('zeigt genau eine Prüf-Plakette statt zweier Zahlen', () => {
+    render(<PlannerDashboard />);
+    const status = screen.getByTestId('planner-toolbar-status');
+
+    expect(within(status).getAllByRole('button', { name: /Planungsprüfung öffnen/ })).toHaveLength(1);
+    // Keine eigene Routing-Plakette mehr in der Leiste: Die Kennungen leben im
+    // Bericht (Prüf-Einstieg), nicht in der Werkzeugleiste.
+    expect(status.querySelector('[data-testid^="routing-status"]')).toBeNull();
+  });
+
+  it('lässt die Trassenprüfung im Wasserplan außen vor', () => {
+    mockState.viewMode = 'water';
+    mockWaterWarning = null;
+    render(<PlannerDashboard />);
+    const status = screen.getByTestId('planner-toolbar-status');
+
+    expect(within(status).queryByRole('button', { name: /Planungsprüfung öffnen/ })).toBeNull();
+  });
+});

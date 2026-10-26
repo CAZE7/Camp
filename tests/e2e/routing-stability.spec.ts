@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import complexPlan from '../../knownPlans/complex.json';
-import { openPlanner, showCanvas } from './helpers';
+import { openCheckEntry, openPlanner, showCanvas } from './helpers';
 
 const plan = complexPlan.autoWire as {
   nodes: Array<Record<string, unknown>>;
@@ -83,19 +83,16 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
 
   await openPlanner(page);
   await showCanvas(page);
-  // Unter 768 px und im flachen Querformat nimmt die Werkzeugleiste die
-  // Routing-Plakette aus der Statusgruppe (Platz). Die Spur bleibt die
-  // Prüfung, dass das Routing fertig und danach stabil ist. Ab Tabletbreite
-  // muss die Plakette sichtbar sein.
+  // Seit 2026-10-26 gibt es keine eigene Routing-Plakette mehr in der
+  // Werkzeugleiste: Der Zustand steht im gemeinsamen Prüf-Einstieg als
+  // Abschnitt „Kabeltrassen“. Deshalb erst den Bericht öffnen, dann prüfen.
+  // Die Spur bleibt die Prüfung, dass das Routing fertig und danach stabil ist.
   const status = page.locator(
     '[data-testid="routing-status-valid"], [data-testid="routing-status-invalid"], [data-testid="routing-status-not-converged"], [data-testid="routing-status-error"]'
   );
-  const viewport = page.viewportSize();
-  const statusHiddenByLayout =
-    viewport !== null &&
-    (viewport.width < 768 || (viewport.height <= 480 && viewport.width > viewport.height));
-  if (!statusHiddenByLayout) {
+  if (await openCheckEntry(page)) {
     await expect(status).toBeVisible();
+    await page.keyboard.press('Escape');
   }
   await waitForRoutingTraceToSettle(page);
 
