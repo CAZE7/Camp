@@ -3,10 +3,14 @@ import simplePlan from '../../knownPlans/simple.json';
 import { openPlanner, showCanvas } from './helpers';
 
 /**
- * Unter 768 px nimmt die Werkzeugleiste den Knopf aus der Statusgruppe
- * (`globals.css`, `.cad-status-optimize`). Dieselbe Aktion bleibt im
- * Überlaufmenü (`action-optimize-routing`). Die Zusicherung — Geräte
- * bleiben stehen, ein zweiter Lauf bleibt gesperrt — gilt auf beiden Wegen.
+ * Seit 2026-10-26 steht „Kabel optimieren“ NICHT mehr als eigener Chip in der
+ * Werkzeugleiste (Nutzer-Rückmeldung: dort lagen zwei widersprüchliche
+ * Automatikknöpfe nebeneinander). Der einzige Weg ist der Eintrag
+ * `action-optimize-routing` in der Menügruppe „Automatik“ — in Menüleiste →
+ * Werkzeuge und im `⋯`-Überlauf derselbe Datensatz. Der Helfer toleriert
+ * weiterhin einen sichtbaren Knopf, damit ein künftiger zweiter Zugang die
+ * Suite nicht bricht; die Zusicherung selbst — Geräte bleiben stehen, ein
+ * zweiter Lauf bleibt gesperrt — gilt unabhängig vom Weg.
  */
 async function runOptimize(page: Page): Promise<void> {
   const button = page.getByRole('button', { name: 'Kabel optimieren', exact: true });

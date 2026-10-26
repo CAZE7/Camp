@@ -2953,7 +2953,6 @@ summary:active {
 
 .cad-toolbar__desktop-tool,
 .cad-toolbar__desktop-group,
-.cad-toolbar__desktop-tidy,
 .cad-toolbar__desktop-sep {
   display: none;
 }
@@ -2987,12 +2986,6 @@ summary:active {
 @media (min-width: 1280px) {
   .cad-toolbar__desktop-group {
     display: flex;
-  }
-}
-
-@media (min-width: 1024px) {
-  .cad-toolbar__desktop-tidy {
-    display: inline-flex;
   }
 }
 
@@ -3280,7 +3273,16 @@ html.planner-root-active body {
    ab 1536 px gleichzeitig volle Statuszusätze und alle Aktionsgruppen: In der
    Messung war die Aktionsgruppe dort 883 px breit bei 513 px Platz, d. h. die
    Ansichts-Tabs („Wasserplan anzeigen“) lagen außerhalb des sichtbaren
-   Bereichs — auf 1536–1919 px breiten Notebooks unbedienbar. */
+   Bereichs — auf 1536–1919 px breiten Notebooks unbedienbar.
+
+   Stand 2026-10-26 (Entflechtung der Automatikknöpfe): Der Chip „Kabel
+   optimieren“ (in der Tabelle oben mit 81 px geführt) und der Knopf „Plan
+   automatisch ordnen“ (ab 1024 px sichtbar) sind aus der Leiste entfallen;
+   beide Aktionen stehen in der Menügruppe „Automatik“ (Menüleiste →
+   Werkzeuge und `⋯`). Die Tabelle bleibt als Messprotokoll von 2026-10-14
+   stehen; die Ist-Breiten sind seither kleiner, nicht größer. Neue
+   Breitenregeln sind deshalb nicht nötig — die früheren Sonderregeln für
+   beide Knöpfe sind mit ihnen entfallen. */
 .tb-label,
 .cad-tb-explain {
   display: none;
@@ -3297,12 +3299,13 @@ html.planner-root-active body {
 
 /* Am Tablet ist das Statusfeld breiter als in der Messung von 2026-10-14
    (478 px statt 338 px: „Ungespeichert“ + „Optimieren“). Damit der
-   Bereichswechsel dort sichtbar bleibt, entfallen die beiden redundanten
-   Text-/Aktionsflächen: Der Speicherzustand trägt seinen Satz weiter im
-   `aria-label`, „Kabel optimieren“ bleibt im `⋯`-Menü erreichbar. */
+   Bereichswechsel dort sichtbar bleibt, entfällt die redundante Textfläche:
+   Der Speicherzustand trägt seinen Satz weiter im `aria-label`. Der damals
+   zweite Grund — der Chip „Kabel optimieren“ — ist am 2026-10-26 aus der
+   Leiste entfallen (Menügruppe „Automatik“), die Regel bleibt für den
+   Speichertext und gewinnt dadurch 81 px Luft. */
 @media (min-width: 768px) and (max-width: 1023.98px) {
-  .cad-toolbar [data-testid='save-indicator'] .cad-tb-explain,
-  .cad-toolbar__status .cad-status-optimize {
+  .cad-toolbar [data-testid='save-indicator'] .cad-tb-explain {
     display: none;
   }
 }
@@ -3335,7 +3338,6 @@ html.planner-root-active body {
     margin-inline: 2px;
   }
 
-  .cad-toolbar .cad-status-optimize,
   .cad-toolbar
     [data-testid^='routing-status']:not([data-testid='routing-status-invalid']):not(
       [data-testid='routing-status-not-converged']
@@ -3406,16 +3408,6 @@ html.planner-root-active body {
   }
   .cad-toolbar .cad-warn-chip__count {
     display: inline-block;
-  }
-}
-
-/* Kleinste Handybreite (320 px): „Optimieren“ (81 px) passt nicht mehr neben
-   die Hauptaktion. Der Knopf verschwindet aus der Leiste, die Aktion selbst
-   bleibt im `⋯`-Menü erreichbar (`action-optimize-routing`) — kein
-   unsichtbares Element, keine tote Aktion. */
-@media (max-width: 359.98px) {
-  .cad-toolbar__status .cad-status-optimize {
-    display: none;
   }
 }
 
@@ -3794,8 +3786,7 @@ html.planner-root-active body {
   .cad-toolbar__status
     > [data-testid^='routing-status-']:not([data-testid='routing-status-invalid']):not(
       [data-testid='routing-status-not-converged']
-    ):not([data-testid='routing-status-error']),
-  .cad-toolbar__status > .cad-status-optimize {
+    ):not([data-testid='routing-status-error']) {
     display: none !important;
   }
 }
@@ -3814,8 +3805,7 @@ html.planner-root-active body {
     overscroll-behavior: contain;
   }
 
-  .cad-toolbar__status > [data-testid^='routing-status-'],
-  .cad-toolbar__status > .cad-status-optimize {
+  .cad-toolbar__status > [data-testid^='routing-status-'] {
     display: none !important;
   }
 }

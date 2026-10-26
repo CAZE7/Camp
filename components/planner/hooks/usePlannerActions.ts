@@ -41,7 +41,7 @@ import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
 import { requestBomModalOpen } from '../utils/bomModalEvents';
 import { requestConfirm } from '../../ui/ConfirmDialog';
-import { useOptimizeRoutingCommand } from '../ui/OptimizeRoutingButton';
+import { useOptimizeRoutingCommand } from '../ui/optimizeRoutingCommand';
 import { downloadTextFile, pickTextFile } from '../utils/fileIO';
 import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
 import { buildShareUrl } from '../../../store/sharePlan';
@@ -490,6 +490,12 @@ export function usePlannerActions({
     });
   }, [onFeedback]);
 
+  /* Eine Beschreibung der Sperrbedingung für „Kabel optimieren“ (ein Modul,
+     eine Wahrheit). Sie wird im Menümodell gebraucht und deshalb VOR `menus`
+     gelesen — der `⋯`-Eintrag und der Menüleisten-Eintrag sind derselbe
+     Datensatz und dürfen nie unterschiedlich gesperrt sein. */
+  const { disabled: optimizeRoutingDisabled, run: runOptimizeRouting } = useOptimizeRoutingCommand();
+
   const menus = useMemo<PlannerMenus>(
     () => ({
       datei: [
@@ -654,6 +660,15 @@ export function usePlannerActions({
       ],
       werkzeuge: [
         {
+          /* Alle Aktionen, die den Plan von selbst verändern, stehen in EINER
+             Gruppe — dieselbe Gruppe rendert auch der `⋯`-Überlauf. In der
+             Werkzeugleiste sichtbar bleibt nur „Vorschlag prüfen“ (der
+             Auto-Wire-Vorschlag, die Primäraktion des Expertenmodus); Ordnen
+             und Kabel-Optimieren sind nachgelagerte Automatikschritte und
+             stehen hier statt als eigene Knöpfe in der Leiste. Nutzer-Befund
+             2026-10-26: „Optimieren“ und der zweite Automatikknopf nebeneinander
+             in der Leiste lasen sich wie zwei widersprüchliche Automatiken. */
+          label: 'Automatik',
           items: [
             {
               label: 'Auto-verbinden — Vorschlag prüfen',
@@ -662,13 +677,25 @@ export function usePlannerActions({
               testId: 'action-autowire-menu',
               run: runAutoWire,
             },
-            { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
             {
               label: 'Plan automatisch ordnen',
               icon: Network,
               testId: 'action-layout-v2-menu',
               run: () => void runLayoutV2(),
             },
+            {
+              label: 'Kabel optimieren',
+              icon: Route,
+              hint: 'Geräte bleiben stehen',
+              testId: 'action-optimize-routing',
+              disabled: optimizeRoutingDisabled,
+              run: runOptimizeRouting,
+            },
+          ],
+        },
+        {
+          items: [
+            { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
             { label: 'Aufräumen (Raster)', icon: LayoutGrid, testId: 'action-layout', run: onLayout },
           ],
         },
@@ -807,10 +834,12 @@ export function usePlannerActions({
       openCatalog,
       openShortcuts,
       openWarnings,
+      optimizeRoutingDisabled,
       redo,
       runAutoWire,
       runCheck,
       runLayoutV2,
+      runOptimizeRouting,
       season,
       setBackboneGrouping,
       setDetailLevel,
@@ -834,30 +863,13 @@ export function usePlannerActions({
    * nur ein Menü (die Chrome-Leiste hält genau ein offenes Menü), deshalb gibt es
    * nie zwei Elemente mit derselben Kennung.
    */
-  // Dieselbe Sperrbedingung wie der Knopf in der Werkzeugleiste (ein Modul,
-  // eine Wahrheit): Der `⋯`-Eintrag darf nicht anklickbar sein, während der
-  // Knopf gesperrt ist.
-  const optimizeRouting = useOptimizeRoutingCommand();
-
+  // Dieselbe Sperrbedingung wie der Menüleisten-Eintrag (ein Modul, eine
+  // Wahrheit): `menus.werkzeuge` enthält „Kabel optimieren“ bereits, der
+  // Überlauf rendert dieselben Datensätze.
   const overflow = useMemo<PlannerMenuGroup[]>(
     () => [
-      { items: menus.werkzeuge[0]!.items },
-      {
-        /* Zugang zur Kabel-Optimierung, wenn der Knopf auf 320 px aus der
-           Werkzeugleiste weicht (globals.css §7a). Dieselbe Aktion, dieselbe
-           Sperrbedingung (`useOptimizeRoutingCommand`) — nur ein anderer Weg
-           dorthin. */
-        label: 'Kabelrouting',
-        items: [
-          {
-            label: 'Kabel optimieren',
-            icon: Route,
-            testId: 'action-optimize-routing',
-            disabled: optimizeRouting.disabled,
-            run: optimizeRouting.run,
-          },
-        ],
-      },
+      { label: 'Automatik', items: menus.werkzeuge[0]!.items },
+      { items: menus.werkzeuge[1]!.items },
       {
         label: 'Ausgabe',
         items: [
@@ -935,7 +947,6 @@ export function usePlannerActions({
       guidedMode,
       menus,
       onRequestReset,
-      optimizeRouting,
       season,
       setDetailLevel,
       setGuidedMode,

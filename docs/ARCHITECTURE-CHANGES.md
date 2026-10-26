@@ -1,5 +1,39 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-26 — Ein Automatik-Einstieg statt drei
+
+**Anlass:** Nutzer-Rückmeldung zum Planer: „Die obere Leiste ist immer noch
+unübersichtlich. Da gibt es Knöpfe, die doppelt sind, wie Optimieren und dieser
+andere Automatik-Knopf.“ In der Werkzeugleiste standen gleichzeitig drei
+Aktionen, die den Plan von selbst verändern: „Vorschlag prüfen“ (Auto-Wire),
+„Plan automatisch ordnen“ (ab 1024 px, unter 1280 px nur als Raster-Symbol ohne
+Text) und der Chip „Kabel optimieren“ im Statusfeld. Rechts standen zusätzlich
+fünf Statusflächen nebeneinander.
+
+**Verhalten:** Sichtbar bleibt genau EINE Automatikaktion: „Vorschlag prüfen“.
+„Plan automatisch ordnen“ und „Kabel optimieren“ liegen gemeinsam in der neuen
+Menügruppe „Automatik“ — erreichbar über Menüleiste → Werkzeuge und über `⋯`,
+auf jeder Breite über denselben Datensatz (`usePlannerActions.menus.werkzeuge`).
+Der Leistenknopf `action-tidy` und der Chip `cad-status-optimize` entfallen
+samt ihrer Sonderregeln (`globals.css` §7a); die Sperrbedingung für „Kabel
+optimieren“ liegt weiter in genau einem Modul
+(`components/planner/ui/optimizeRoutingCommand.ts`). Das Statusfeld zeigt
+dadurch nur noch Speicherzustand, Routing-Status, Prüfsiegel und
+Warnzentrale. Keine Änderung an Querschnitt, Sicherung, Strom, Routing oder
+Normgrenzen — Gerätepositionen und Kabelgeometrie bleiben unberührt.
+
+**Validierung:** `tsc -p tsconfig.typecheck.json` und
+`tsc -p tsconfig.tests.json` fehlerfrei; Vitest vollständig grün (3761 Tests,
+1 übersprungen); ESLint und Prettier über die geänderten Dateien grün. Neue
+Regressionen: `PlannerToolbar.test.tsx` („genau eine Automatikaktion“),
+`PlannerDashboard.test.tsx` (Ordnen über die Menügruppe),
+`optimizeRoutingCommand.test.tsx` (Sperrbedingung),
+`RoutingStatusBadge.test.tsx` (Lebenszyklus-Zustände, verschoben aus der
+gelöschten `OptimizeRoutingButton.test.tsx`). Die Playwright-Suite wurde in
+dieser Umgebung nicht ausgeführt (kein Browser installiert); die betroffenen
+Specs (`routing-optimization`, `mobile-geometry`) erreichen die Aktion
+unverändert über `action-optimize-routing`.
+
 ## LEDGER 2026-10-22 — Trefferziele im Planer und redaktionelle Startseite
 
 **Umfang:** Visuelle/UI-Anpassung; keine Änderungen an Routing, API-Aufrufen,

@@ -451,17 +451,37 @@ describe('PlannerDashboard - Action Buttons', () => {
 
   /**
    * UX-Reset 2026-09: Die Toolbar darf nicht drei Layout-Begriffe
-   * gleichzeitig anbieten („Übersicht / Aufräumen / Strukturieren (ELK)").
-   * Sichtbar bleibt EIN „Plan ordnen"; die Einzelaktionen leben im ⋯-Menü.
+   * gleichzeitig anbieten („Übersicht / Aufräumen / Strukturieren (ELK)“).
+   * Sichtbar bleibt EIN „Plan ordnen“; die Einzelaktionen leben im ⋯-Menü.
+   *
+   * Nutzer-Rückmeldung 2026-10-26: Trotzdem standen drei Aktionen in der
+   * Leiste, die den Plan von selbst verändern — „Vorschlag prüfen“, „Plan
+   * automatisch ordnen“ und „Kabel optimieren“. Für den Nutzer waren das zwei
+   * widersprüchliche Automatikknöpfe. Sichtbar ist jetzt genau eine
+   * Automatikaktion; Ordnen und Kabel-Optimieren liegen in der Menügruppe
+   * „Automatik“ (Menüleiste → Werkzeuge und ⋯).
    */
-  it('bietet genau eine Layout-Aktion in der Toolbar an und ordnet den Plan', async () => {
+  it('bietet in der Leiste genau eine Automatikaktion an und ordnet den Plan über das Menü', async () => {
     mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
-    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan automatisch ordnen');
+    // Nutzer-Rückmeldung 2026-10-26: „Vorschlag prüfen“, „Plan automatisch
+    // ordnen“ und „Kabel optimieren“ standen gleichzeitig in der Leiste — für
+    // den Nutzer zwei bis drei gleichrangige Automatiken. Sichtbar ist genau
+    // eine; die nachgelagerten Schritte stehen in der Menügruppe „Automatik“.
+    const toolbar = screen.getByTestId('planner-toolbar');
+    expect(within(toolbar).getByTestId('action-autowire')).toBeInTheDocument();
+    expect(
+      within(toolbar).queryByRole('button', { name: /Plan automatisch ordnen/ })
+    ).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole('button', { name: 'Kabel optimieren' })).not.toBeInTheDocument();
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('action-tidy'));
+    openMoreMenu();
+    expect(screen.getByTestId('action-layout-v2-menu')).toHaveTextContent('Plan automatisch ordnen');
+    expect(screen.getByTestId('action-optimize-routing')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());

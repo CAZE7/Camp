@@ -1,7 +1,11 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RoutingStatusBadge } from './RoutingStatusBadge';
-import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import {
+  clearCableRoutes,
+  publishCableRouteFinalValidation,
+  publishCableRouteGeneration,
+} from '../../edges/utils/cableRouteStore';
 import { validateFinalRouting } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
@@ -87,4 +91,30 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     expect(ok).toBeInTheDocument();
     expect(ok.getAttribute('aria-label')).toBe('Routing verifiziert');
   });
+});
+
+/**
+ * Lebenszyklus-Zustände des Routings (verschoben aus der gelöschten
+ * `OptimizeRoutingButton.test.tsx`, 2026-10-26): Jeder Zwischenzustand nennt
+ * eine eigene Kennung und behauptet NICHT, das Routing sei verifiziert.
+ */
+describe('RoutingStatusBadge — Lebenszyklus', () => {
+  it.each(['pending', 'routing', 'retained', 'stale', 'error', 'partial', 'optimized'] as const)(
+    'kennzeichnet den Zustand %s ohne „verifiziert“ zu behaupten',
+    (state) => {
+      act(() =>
+        publishCableRouteGeneration({
+          hash: 'h',
+          generation: 1,
+          revision: 1,
+          allowed: true,
+          converged: true,
+          state,
+        })
+      );
+      render(<RoutingStatusBadge />);
+      expect(screen.getByTestId(`routing-status-${state}`)).toBeInTheDocument();
+      expect(screen.queryByTestId('routing-status-valid')).not.toBeInTheDocument();
+    }
+  );
 });

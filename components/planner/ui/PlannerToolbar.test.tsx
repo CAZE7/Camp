@@ -8,7 +8,7 @@
  */
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { PlannerToolbar, type PlannerToolbarProps } from './PlannerToolbar';
 
 const baseProps: PlannerToolbarProps = {
@@ -18,7 +18,6 @@ const baseProps: PlannerToolbarProps = {
   onUndo: vi.fn(),
   onRedo: vi.fn(),
   onAutoWire: vi.fn(),
-  onTidy: vi.fn(),
   onCheck: vi.fn(),
   onBom: vi.fn(),
   onExport: vi.fn(),
@@ -84,5 +83,30 @@ describe('Vorlagenmenü der Werkzeugleiste', () => {
     expect(onLoadTemplate).toHaveBeenCalledWith('kastenwagen');
     expect(screen.queryByRole('menu', { name: 'Vorlage laden' })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+});
+
+/**
+ * Nutzer-Rückmeldung 2026-10-26: „Die obere Leiste ist unübersichtlich — es
+ * gibt Knöpfe, die doppelt sind, wie Optimieren und dieser andere
+ * Automatik-Knopf.“ Im Expertenmodus standen drei Aktionen nebeneinander, die
+ * den Plan von selbst verändern („Vorschlag prüfen“, das Ordnen-Symbol ab
+ * 1024 px, „Kabel optimieren“ im Statusfeld). Diese Suite hält fest, dass die
+ * Leiste genau EINE Automatikaktion anbietet und die nachgelagerten Schritte
+ * nur noch im Menü liegen.
+ */
+describe('Werkzeugleiste — genau eine Automatikaktion', () => {
+  it('zeigt im Expertenmodus nur „Vorschlag prüfen“ als Automatikaktion', () => {
+    renderToolbar({ guidedMode: false });
+
+    const toolbar = screen.getByTestId('planner-toolbar');
+    expect(within(toolbar).getByTestId('action-autowire')).toBeInTheDocument();
+    // Kein zweiter Automatikknopf in der Leiste.
+    expect(
+      within(toolbar).queryByRole('button', { name: /Plan automatisch ordnen/ })
+    ).not.toBeInTheDocument();
+    expect(within(toolbar).queryByRole('button', { name: 'Kabel optimieren' })).not.toBeInTheDocument();
+    // Die Primäraktion bleibt sprechend beschriftet (kein nacktes Symbol).
+    expect(within(toolbar).getByTestId('action-autowire')).toHaveTextContent('Vorschlag prüfen');
   });
 });
