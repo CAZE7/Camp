@@ -1,235 +1,125 @@
 # Elektrikplaner — Agentenleitfaden
 
-Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-Elektrik.
-Tests: Vitest (Unit/Property) + Playwright (E2E).
+Statischer Next.js-Planer (TypeScript, Tailwind, @xyflow/react, Zustand) für
+Camper-Elektrik (12 V / 230 V / Solar). Diese Datei enthält nur: Task-Routing,
+Verbote, Gates. Alle Details stehen in [`docs/ai/`](docs/ai/).
 
-Dieses Projekt hat ein **zweistufiges Handbuch**: diese Datei als Routing-Tabelle und
-[`docs/ai/README.md`](docs/ai/README.md) als Einstieg in die Detaildokumentation.
-**Beginne jede Aufgabe mit diesen beiden Dateien.**
+## 1. Vor Code-Änderungen lesen
 
----
+1. [`docs/ai/ARCHITECTURE-RULES.md`](docs/ai/ARCHITECTURE-RULES.md) (Regeln A–N,
+   jede mit erzwingendem Test)
+2. Das Kontextdokument des Themas (§2) +
+   [`docs/ai/CHANGE-WORKFLOW.md`](docs/ai/CHANGE-WORKFLOW.md)
+3. Bei Symptomen in [`docs/ai/KNOWN-PROBLEMS.md`](docs/ai/KNOWN-PROBLEMS.md)
+   **nach ID suchen** (v. a. ROUTE-001, ELE-003) — nicht komplett lesen.
+   Routing-Altbestand: [`docs/ai/LEGACY.md`](docs/ai/LEGACY.md)
 
-## 1. Vor jeder Code-Änderung lesen
+Orientierung: [`docs/ai/CODE-MAP.md`](docs/ai/CODE-MAP.md),
+[`docs/ai/SYMBOL-INDEX.md`](docs/ai/SYMBOL-INDEX.md), Modul-READMEs in `lib/`,
+`lib/routing/`, `lib/autoWire/`, `components/edges/utils/`.
 
-| #   | Pflichtlektüre                                                   | Warum                                         |
-| --- | ---------------------------------------------------------------- | --------------------------------------------- |
-| 1   | [`docs/ai/README.md`](docs/ai/README.md)                         | Einstieg + Aufgaben-Routing                   |
-| 2   | [`docs/ai/ARCHITECTURE-RULES.md`](docs/ai/ARCHITECTURE-RULES.md) | Regeln A–N, jede mit erzwingendem Test        |
-| 3   | Das Kontextdokument deines Themas (siehe §2)                     | echte Namen, echte Werte                      |
-| 4   | [`docs/ai/CHANGE-WORKFLOW.md`](docs/ai/CHANGE-WORKFLOW.md)       | Verstehen → Planen → Umsetzen → Prüfen        |
-| 5   | [`docs/ai/KNOWN-PROBLEMS.md`](docs/ai/KNOWN-PROBLEMS.md)         | echte Fallen, vor allem ROUTE-001 und ELE-003 |
-| 6   | [`docs/ai/LEGACY.md`](docs/ai/LEGACY.md)                         | zwei Routing-Generationen, Spec vs. Code      |
+## 2. Thema → Dokument
 
-Zur **Orientierung im Code**: [`docs/ai/CODE-MAP.md`](docs/ai/CODE-MAP.md) (Modulkarte) und
-[`docs/ai/SYMBOL-INDEX.md`](docs/ai/SYMBOL-INDEX.md) (A–Z aller wichtigen Symbole).
+- Routing (Pfad, Stub, Lane, Kollision, Crossing, ELK, A\*, SVG-Geometrie) → [`ROUTING-CONTEXT.md`](docs/ai/ROUTING-CONTEXT.md)
+- Elektro (Strom, Querschnitt, Sicherung, Spannungsfall, Batterie, Solar, AC, RCD) → [`ELECTRICAL-CONTEXT.md`](docs/ai/ELECTRICAL-CONTEXT.md)
+- AutoWire (`performAutoWiring`, Rails, Heilung, Sizing) → [`AUTOWIRE-CONTEXT.md`](docs/ai/AUTOWIRE-CONTEXT.md)
+- Datenmodell (`PlannerNode/Edge`, Ports, `ComponentKind`, Persistenz) → [`DOMAIN-CONTEXT.md`](docs/ai/DOMAIN-CONTEXT.md)
+- Validierung (`isConnectionAllowed`, `collectEdgeErrors`, Rule-IDs) → [`VALIDATION-CONTEXT.md`](docs/ai/VALIDATION-CONTEXT.md)
+- Tests (Vitest, fast-check, Playwright, Coverage-/Perf-Gates) → [`TESTING-CONTEXT.md`](docs/ai/TESTING-CONTEXT.md)
+- Golden Plans / Golden Master → [`GOLDEN-PLANS.md`](docs/ai/GOLDEN-PLANS.md) · Beispiele → [`docs/ai/examples/`](docs/ai/examples/)
+- Design → [`DESIGN-KONZEPT-2026-10.md`](docs/DESIGN-KONZEPT-2026-10.md) (Wächter: `lib/designTokens.test.ts`)
 
-Modul-READMEs (jeweils: Was ist es · Public API · Besitz · Verbote · schützende Tests):
-[`lib/README.md`](lib/README.md) (Elektro/Domain) ·
-[`lib/routing/README.md`](lib/routing/README.md) ·
-[`lib/autoWire/README.md`](lib/autoWire/README.md) ·
-[`components/edges/utils/README.md`](components/edges/utils/README.md).
+Nichts davon → UI/Store/Tooling: nachfragen statt raten.
 
-## 2. Aufgaben-Routing: Thema → Dokument
+## 3. Routing ändern
 
-| Die Aufgabe enthält …                                                                                                                                                                                                                                                                                                                                                                | → Dokument                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| Pfad, Wegpunkte, Stub, Kehre, Kurzsegment, Treppe, Kollision, Überlappung, Crossing, Lane, Korridor, Hop, Bogen, ELK, A*, Hanan-Grid, Raster/Snap, Bounds/Overflow, Kabelgeometrie, SVG-Pfad                                                                                                                                                                                         | [`docs/ai/ROUTING-CONTEXT.md`](docs/ai/ROUTING-CONTEXT.md)       |
-| Spannung, Strom, Leistung, Widerstand, Querschnitt, Ampacity, Derating, Spannungsfall, Kabellänge, Batterie, Ah, Bank, BMS, Sammelschiene, Solar, MPPT/PWM, Wechselrichter, Ladegerät, DC-DC/Booster, Lichtmaschine, Landstrom, AC/230 V, Gleichstrom/12 V, Polarität, Sicherung, FI/RCD, Schutzleiter, Abschaltbedingung, Kurzschluss, Abschaltvermögen, Leerrohr, Domänenzuordnung | [`docs/ai/ELECTRICAL-CONTEXT.md`](docs/ai/ELECTRICAL-CONTEXT.md) |
-| `performAutoWiring`, automatisch verdrahten, Rails, Heilung, Platzierung von Auto-Knoten, Sizing/Querschnitt wählen, AC-Sizing                                                                                                                                                                                                                                                       | [`docs/ai/AUTOWIRE-CONTEXT.md`](docs/ai/AUTOWIRE-CONTEXT.md)     |
-| `PlannerNode`, `PlannerEdge`, `PlannerConnection`, Port/Handle, `ComponentKind`, Bauteilregistrierung, `node.data`, Schema, Persistenz, Migration                                                                                                                                                                                                                                    | [`docs/ai/DOMAIN-CONTEXT.md`](docs/ai/DOMAIN-CONTEXT.md)         |
-| `isConnectionAllowed`, Live-Validierung, collectEdgeErrors, Warnzentrale, Severity, Regel-ID                                                                                                                                                                                                                                                                                         | [`docs/ai/VALIDATION-CONTEXT.md`](docs/ai/VALIDATION-CONTEXT.md) |
-| „Welchen Test brauche ich?“, Vitest/fast-check/Playwright, Coverage-Gates, Perfgate, Regression                                                                                                                                                                                                                                                                                      | [`docs/ai/TESTING-CONTEXT.md`](docs/ai/TESTING-CONTEXT.md)       |
-| Golden Plans, Referenzpläne, Golden Master, Byte-Vergleich, Fixtures                                                                                                                                                                                                                                                                                                                 | [`docs/ai/GOLDEN-PLANS.md`](docs/ai/GOLDEN-PLANS.md)             |
-| Konkrete Beispieleingaben                                                                                                                                                                                                                                                                                                                                                            | [`docs/ai/examples/`](docs/ai/examples/)                         |
+- Betroffen: `routeAll.ts` (produktiv) — `orthogonalRouting.ts` ist Legacy.
+- Betroffene Invariante I1–I10 benennen. Neue Größen nur in
+  `lib/routing/tokens.ts` (nie inline). Kollisionen nur über
+  `lib/routing/rules/collision.ts`. Deterministisch: kein `Math.random`,
+  keine ungeordnete Iteration.
+- Gates (alle grün): `npm run routing:audit` (I1–I7 = 0, Fallback = 0) ·
+  `npm run perf:edge-routing` (Render-Pfad Median ≤ 16 ms; Live-Pfad
+  Ratchet ≤ 300 ms — `LIVE_PATH_RATCHET_MS` nur begründet per ADR ändern) ·
+  `npm run test:regression` (byte-exakte SVGs; Abweichung ⇒ begründen +
+  Recapture im PR).
+- Routing schreibt nie `crossSection`, `fuseSize`, `edgeDomain`, `length`.
 
-**Mehrere Themen?** Erst `ARCHITECTURE-RULES.md`, dann je Thema das Kontextdokument.
-**Nichts davon?** Dann ist es wahrscheinlich UI/Store/Tooling — frage nach, statt zu raten.
-Für Design-Änderungen gilt zusätzlich das verbindliche
-[Designkonzept 2026-10](docs/DESIGN-KONZEPT-2026-10.md) (ein Akzent Oxid, 12-px-Untergrenze,
-PageShell, Knopf- und Ebenen-Regeln); Wächter ist `lib/designTokens.test.ts`.
+## 4. Elektro ändern
 
-## 3. Wenn du Routing änderst
-
-1. `docs/ai/ROUTING-CONTEXT.md` lesen (§4.2 Pipeline, §4.3 Regeln, §4.5 Invarianten).
-2. Feststellen, **welcher** Router betroffen ist (`routeAll.ts` produktiv,
-   `orthogonalRouting.ts` Legacy — [LEGACY.md](docs/ai/LEGACY.md)).
-3. Betroffene Invariante benennen: **I1–I10**.
-4. Prüfen, ob die Änderung eine **Größe** einführt → sie gehört in
-   `lib/routing/tokens.ts` (nie inline; Test verbietet das).
-5. Kollisionen nur über `lib/routing/rules/collision.ts` — nie neu erfinden.
-6. Determinismus erhalten: kein `Math.random`, keine ungeordnete Iteration.
-7. `npx tsx scripts/routing/audit.ts` → I1–I7 müssen **0** bleiben, Fallback **0**.
-8. `npm run perf:edge-routing` → **zwei** Gates, beide grün (Exit-Code 1 bei Überschreitung):
-   - Render-Pfad (Einzelkante, Frame-Cache, ADR 0012): Median **≤ 16 ms** —
-     gemessen 2,3–3,1 ms (drei Isolationsläufe, 2026-09-28; p90 3,3–4,4 ms).
-   - Live-Pfad (`routeAllCables`, kompletter Plan in einem Pass, AUDIT P1): Median **≤ 300 ms**
-     als **Ratchet** — gemessen 223–234 ms (2026-10-06, nach den ergebnisidentischen
-     Optimierungen des Trenngangs; davor 342 ms, ohne Trenngang 47 ms). Das Ratchet hält den
-     Ist-Zustand und verbietet Rückfall; Ziel bleibt 16 ms, wer den Pfad schneller macht, zieht
-     `LIVE_PATH_RATCHET_MS` in `benchmarks/edgeRoutingPerf.bench.ts` nach unten.
-     Der Wert kommt daher, dass der Live-Pfad seit ADR 0033 eine **neue Zusicherung** trägt
-     (Kabel-Freigabe I3 = 0, `separateCableClearance`) — der Ratchet wurde deshalb am
-     2026-10-06 begründet von 60 auf 300 ms nachgezogen, nicht stillschweigend (ADR 0033/0034).
-     Nächster ausgewiesener Hebel: „lokale statt globale Berechnung" (ADR 0033, „Offene Punkte").
-     Vorher stand hier nur „Median ≤ 16 ms" — für denselben Befehl, dessen zweites Gate
-     bewusst mit einem eigenen Ratchet läuft (AUDIT N3: eine Doku-Zahl, die das eigene Gate
-     nicht beschreibt, wird zur falschen Zusage an den nächsten Beitragenden).
-9. `npm run test:regression` → Layout, Metriken und **byte-exakte SVGs** unverändert
-   (Abweichung ⇒ bewusste Entscheidung + Recapture + Begründung im PR).
-10. Kein Routing-Fix darf `crossSection`, `fuseSize`, `edgeDomain` oder `length` anfassen.
-
-Ausführlich: [CHANGE-WORKFLOW §21](docs/ai/CHANGE-WORKFLOW.md).
-
-## 4. Wenn du Elektro änderst
-
-1. `docs/ai/ELECTRICAL-CONTEXT.md` lesen (§5.1 Einheiten … §5.7 Kette).
-2. **Eine** Stromquelle verwenden: `calculateEdgeCurrent` (DC, vde-standards.ts)
-   bzw. `acCurrentA` (AC, autoWire/sizing.ts, per Kante) — nie einen zweiten
-   Strompfad bauen. (Die frühere `calculateAcEdgeCurrent` hatte null
-   Produkt-Consumenten und ist entfernt, AUDIT ELE-009.)
-3. `I_B ≤ I_n ≤ I_z` durch Konstruktion: Sizing und Sicherungsgrenze nutzen
-   denselben `DERATE_FACTOR`.
-4. Längen nur über `PX_PER_METER` umrechnen, nie über eine eigene Konstante.
-5. Domänen nur über `getEdgeDomain` / `getHandleDomain` bestimmen.
-6. Goldene Pläne neu berechnen und **jede** Abweichung einzeln begründen
-   (`npm run goldenmaster:capture`, dann `npm run test:goldenmaster`).
-7. `npx vitest run lib/` grün, inkl. `vde-properties.test.ts` (G1–G7) und
-   `vde-consistency.test.ts`.
-8. Keine Warnung „wegoptimieren“ — stattdessen die Datenlage klären
-   (`fuseType`, `fuseBreakingCapacity`, `maxPvVoltage`, `hasRcd`).
-9. Anzeige folgt der Rechnung (`components/planner/utils/voltage.ts`), nie umgekehrt.
-10. **Nie** eine VDE-/Normaussage erfinden. Unbewiesen ⇒ `UNVERIFIED` im Kommentar und
-    `UNKNOWN` im Dokument.
-
-Ausführlich: [CHANGE-WORKFLOW §22](docs/ai/CHANGE-WORKFLOW.md).
+- **Eine** Stromquelle: `calculateEdgeCurrent` (DC) bzw. `acCurrentA` (AC) —
+  nie einen zweiten Strompfad bauen. `I_B ≤ I_n ≤ I_z` per Konstruktion
+  (ein `DERATE_FACTOR` für Sizing + Sicherung).
+- Längen nur über `PX_PER_METER`. Domänen nur über `getEdgeDomain` /
+  `getHandleDomain`. Anzeige folgt der Rechnung, nie umgekehrt.
+- Gates: `npx vitest run lib/` (inkl. `vde-properties` G1–G7,
+  `vde-consistency`) · Golden Plans neu rechnen
+  (`npm run goldenmaster:capture` → `npm run test:goldenmaster`), jede
+  Abweichung begründen.
+- Warnung nie „wegoptimieren“ — Datenlage klären. Keine VDE-/Normaussage
+  erfinden; unbewiesen ⇒ `UNVERIFIED` (Kommentar) / `UNKNOWN` (Doku).
 
 ## 5. Niemals tun
 
-- VDE-Regeln, Grenzwerte oder Normabschnitte **erfinden**.
-- Elektrische Semantik ändern, um ein **visuelles** Problem zu lösen.
-- `crossSection`, `fuseSize`, `edgeDomain` oder `length` aus dem Routing heraus schreiben.
+- VDE-Regeln, Grenzwerte oder Normabschnitte erfinden.
+- Elektrische Semantik ändern, um ein visuelles Problem zu lösen.
 - Abstands-Zahlen im Routing hardcoden (→ `lib/routing/tokens.ts`).
-- Unbekannte elektrische Daten als „gültig“ behandeln oder Sicherheitsurteile raten.
-- Validierung umgehen, „nur für den Test“ deaktivieren oder Fälle ausblenden.
-- Still auf einen Default zurückfallen (Regel M: „kein stiller Fallback“).
-- Fehlgeschlagene Tests löschen oder `skip`en, um CI grün zu bekommen.
+- Unbekannte elektrische Daten als „gültig“ behandeln; Sicherheitsurteile raten.
+- Validierung umgehen oder „nur für den Test“ deaktivieren.
+- Still auf einen Default zurückfallen (Regel M).
+- Fehlgeschlagene Tests löschen/`skip`en, um CI grün zu bekommen.
 - `edge.data.geometry` lesen/schreiben (Architekturtest verbietet es).
-- Golden-Fixtures „reparieren“, ohne den Grund zu dokumentieren (→ ELE-003).
-- Den Legacy-Router (`orthogonalRouting.ts`) so tunen, als würde er gerendert.
+- Golden-Fixtures „reparieren“ ohne dokumentierten Grund (→ ELE-003).
+- Den Legacy-Router (`orthogonalRouting.ts`) tunen, als würde er gerendert.
 
 ## 6. DO NOT TOUCH (nur mit Tests + expliziter Review)
 
-| Bereich                                                                                                     | Warum                     |
-| ----------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `lib/electrical.ts` Sicherungsgrenzen, `lib/vde-standards.ts`, `lib/shortCircuit.ts`, `lib/acProtection.ts` | sicherheitskritisch       |
-| `lib/routing/invariants.ts` (I1–I7), `lib/routing/rules/collision.ts`                                       | Routing-Garantien         |
-| `lib/routing/tokens.ts`                                                                                     | ändert alle Referenz-SVGs |
-| `scripts/goldenmaster/snapshots/*`, `knownPlans/*`, `scripts/regression/__snapshots__/*`                    | eingefrorene Wahrheit     |
-| `store/slices/persistence.ts`, `lib/nodeSchema.ts`                                                          | echte Nutzerdaten         |
-
-Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
-[KNOWN-PROBLEMS.md](docs/ai/KNOWN-PROBLEMS.md).
+- **Sicherheitskritisch:** `lib/electrical.ts` (Sicherungsgrenzen), `lib/vde-standards.ts`, `lib/shortCircuit.ts`, `lib/acProtection.ts`
+- **Routing-Garantien:** `lib/routing/invariants.ts` (I1–I7), `lib/routing/rules/collision.ts`
+- **`lib/routing/tokens.ts`** — ändert alle Referenz-SVGs.
+- **Eingefrorene Wahrheit:** `scripts/goldenmaster/snapshots/*`, `knownPlans/*`, `scripts/regression/__snapshots__/*`
+- **Echte Nutzerdaten:** `store/slices/persistence.ts`, `lib/nodeSchema.ts`
 
 ## 7. Befehle
 
-- `npm run dev` · `npm run build` · `npm test` (Vitest) · `npm run typecheck` · `npm run lint`
-- `npm run lint` läuft **typbewusst** (`recommendedTypeChecked` + ProjectService,
-  react-hooks v7 `recommended-latest`, ARCH-001 und Determinismus als
-  `no-restricted-*`): ~30 s statt 8 s, dafür sieht das Gate `any` hinter
-  Assertions, verworfene Promises und `[object Object]` in Nutzertexten.
-  `tsc` bleibt autoritativ für Signaturen — Einzelheiten und die eine
-  begründet ausgeschaltete Regel: `eslint.config.mjs`,
-  [ARCHITECTURE-CHANGES.md](docs/ARCHITECTURE-CHANGES.md) „Siebte Fassung".
+- `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` · `npm run lint`
 - E2E: einmalig `npm run e2e:install`, dann `npm run e2e`
-- Routing: `npm run routing:audit` (I1–I7 über 6 Pläne; `-- --shifts` = Versatz-Gate,
-  Plan-Translation) · `npm run routing:domain-probe`
-  (Wirksamkeit der Domänen-Trennregeln) · `npm run routing:gallery`
-- Elektrik/Routing eingefroren: `npm run goldenmaster:capture` → `npm run test:goldenmaster`
-- Regression: `npm run regression:capture` → `npm run test:regression`
-- Performance: `npm run perf:edge-routing` (Gate) · `npm run perf:route-scaling`
-- **Gate vor jedem Commit:** `npm run check` (lint + format + 2× typecheck + Coverage) grün.
-  CI-Reihenfolge: [CI.md](docs/CI.md).
+- **Gate vor jedem Commit: `npm run check` grün** (lint + format + 2×
+  typecheck + Coverage). CI-Reihenfolge: [`docs/CI.md`](docs/CI.md).
 
-## 8. Arbeitsweise
+## 8. Harte Regeln
 
-- Aufgaben der Reihe nach abarbeiten; ein PR pro Aufgabe.
-- Nach Merge das Häkchen `[x]` in dieser Datei setzen und mitcommitten.
-- Neue Erkenntnisse als neue IDs unten anhängen, bestehende Texte nicht umschreiben.
-- Diese Datei ≤ 1.500 Tokens halten; Erledigtes zeitnah ins Git-Log verlagern.
+- Responsive 375 / 768 / 1440 px. Touch = Maus (Drag-Handle, Long-Press,
+  Tap-to-Connect). Inspector: Slide-over < 1280 px, Docking ≥ 1280 px
+  (288 px, ab 1536 px 320 px).
+- Keine neuen Features ohne Freigabe (kein PWA, kein Export/Import, keine
+  Energiebilanz, kein Multi-Plan).
+- Ein PR/Commit pro Aufgabe; jeder Bugfix mit Regressionstest. Nach Merge
+  Aufgabe hier abhaken bzw. streichen — Erledigtes gehört ins Git-Log, nicht
+  in diese Datei. Diese Datei ≤ ~2.000 Tokens halten.
 
-## 9. Harte Regeln
+## 9. Offene Arbeit
 
-- Responsive: alles funktioniert auf 375 / 768 / 1440 px.
-- Touch First-Class: was per Maus geht, geht auch per Finger (Drag-Handle, Long-Press,
-  Tap-to-Connect).
-- Inspector: Slide-over < 1280 px; Docking ≥ 1280 px (288 px bis 1535, 320 px ab 1536).
-- Keine neuen Features ohne Freigabe (kein PWA, kein Export/Import, keine Energiebilanz,
-  kein Multi-Plan).
-- Ein Commit pro Aufgabe; jeder Bugfix mit Regressionstest.
-- Trade-offs aus PR #314 bleiben, bis ein reproduzierbarer Fehler sie widerlegt.
-
-## 10. Auftragsbuch (unverändert übernommen)
-
-### Abgeschlossen
-
-- M1–M8 komplett, M9-1-Security (Next 16.3.3 gepinnt), M9-3, M10-1/M10-2: PRs #346/#348/#365
-  (27.–29.08.). Details: Git-Log, ADR 0005/0006.
-
-### Restposten (aus M9/M10)
-
-- [ ] R-1 Dependabot-Triage: #354 (dev-Gruppe) bei grünem CI mergen; Majors (#356 TS 7,
-      #360 Tailwind 4, #357 lucide, #358 jsdom, #359 jest-dom, #361 knip) einzeln prüfen oder
-      schließen — nie blind mergen.
-- [ ] R-2 Jules-PRs #332 + #345 nach PR #348/#365 auf Überschneidungen prüfen, rebasen oder
-      schließen.
-- [ ] R-3 `main` zum Default-Branch machen, Feature-Branch einmergen; danach 254 verifiziert
-      gemergte Branches löschen (`docs/merged-branch-candidates.txt`).
-- [ ] R-4 Visuelles Gate (M10-3): Playwright-Screenshot-Baseline des Referenzplans
-      (375 + 1280 px, hell+dunkel) mit Diff-Schwelle im CI — blockiert, bis PNG-Baselines
-      existieren; UI-PRs mit Vorher/Nachher-Bildern.
-
-### Mission 11: Profi-Niveau
-
-- [ ] M11-1 DESIGN-SPRUNG (Top-Prio, Nutzer-Vorgabe): Planner visuell auf CAD-Niveau polieren
-      — Node-Cards, Toolbar, Panels, Handles neu gestaltet (token-basiert, hell+dunkel).
-      PFLICHT: Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach optischer
-      Freigabe durch den Nutzer.
-- [ ] M11-2 AutoWire-Platzierung: Bauteile werden aktuell ungünstig gesetzt → Kabel laufen
-      Umwege. Fix: AutoWire platziert Knoten in Flussrichtung (Quellen → Verteilung →
-      Verbraucher), auf dem 16-px-Grid, mit konsistenten Abständen; optional Auto-Layout
-      (dagre) direkt nach dem Verdrahten. Metrik als Test: Gesamtkabellänge im Referenzplan
-      ≤ 1,3× Manhattan-Optimum, keine Kante mit > 2 Richtungswechseln ohne Grund.
-- [ ] M11-3 Tastatur-First wie CAD: Canvas komplett ohne Maus bedienbar (Bauteil
-      bewegen/verbinden/löschen per Tastatur) + Shortcut-Overlay per `?`. Abnahme: E2E baut
-      Mini-Plan nur per Tastatur.
-- [ ] M11-4 `prefers-reduced-motion` global respektieren (tokenbasiert, nicht pro Komponente).
-- [ ] M11-5 Performance-Gate: Lighthouse Performance ≥ 90 im CI + Bundle-Budget (ADR);
+- [ ] **R-1** Dependabot-Triage (laufend): Majors einzeln prüfen, nie blind mergen.
+- [ ] **R-3 (Rest)** Gemergte Branches löschen (`docs/merged-branch-candidates.txt`);
+      `main` ist bereits Default-Branch.
+- [ ] **M11-3 (Rest)** Canvas komplett per Tastatur bedienbar — `?`-Overlay
+      existiert; Abnahme offen: E2E baut Mini-Plan nur per Tastatur.
+- [ ] **M11-5** Lighthouse Performance ≥ 90 im CI + Bundle-Budget (ADR);
       React Compiler evaluieren (ADR).
-- [ ] M11-6 Fonts: Inter + IBM Plex Mono subsetten (latin), kritische Schnitte preloaden;
-      LCP vorher/nachher im PR.
-- [ ] M11-7 Security-Headers fürs Static Hosting: CSP, X-Content-Type-Options,
-      Referrer-Policy, frame-ancestors; CSP-Strategie als ADR.
-- [ ] M11-8 Touch-E2E echt: Pinch-Zoom, Long-Press, Tap-to-Connect, Drag-Handle als
-      Playwright-Gesten (bisher nur Unit-Ebene).
-- [ ] M11-9 Stress-Budget: 100 Bauteile / 300 Kanten — Pan/Drag/Auto-Wire ≤ 16 ms/Frame;
-      Benchmark-ADR.
-- [ ] M11-10 Fehler-Monitoring-ADR: ErrorBoundary → Reporting evaluieren
-      (privacy-konform) oder begründet ablehnen.
+- [ ] **M11-6** Fonts (Inter, IBM Plex Mono) subsetten (latin), kritische
+      Schnitte preloaden; LCP vorher/nachher im PR.
+- [ ] **M11-9** Stress-Budget: 100 Bauteile / 300 Kanten — Pan/Drag/Auto-Wire
+      ≤ 16 ms/Frame (Benchmark-ADR).
+- [ ] **M11-10** Fehler-Monitoring-ADR: ErrorBoundary → Reporting
+      privacy-konform evaluieren oder begründet ablehnen.
 
-## 11. Rechte-Übergabe
+Aufgaben, die GitHub-Admin-/`workflows:write`-Rechte brauchen (A-3, S- und
+P-Track): [`agent.md`](agent.md).
 
-- Offene Aufgaben, die GitHub-Admin- oder `workflows:write`-Rechte benötigen, stehen in
-  `agent.md`.
-- Der kopierfertige Übergabe-Prompt liegt in `docs/ci/pages-deploy-handoff-prompt.md`.
+## 10. Kontext
 
-## 12. Kontext
-
-- Detaillierte Arbeitsdokumentation: [`docs/ai/`](docs/ai/).
-- **ADRs 0001–0036:** Übersicht mit Kurzfassung je Entscheidung im
-  [`README.md`](README.md#architektur-entscheidungen-adrs) (Abschnitt
-  „Architektur-Entscheidungen“); die Volltexte liegen in `docs/adr/`.
-  **ADR 0026 fehlt** (Nummer nicht vergeben — keine Datei, kein Verweis); ADR 0021
-  ist **vorgeschlagen** und offen.
-- Historische Audits: `docs/AUDIT-ROUTING-2026.md`, `docs/AUDIT-AUTOWIRE.md`,
-  `docs/AUDIT-CAMP-ELEKTROPLANER.md`, `docs/AUDIT-EXTREM-2026-09.md` sowie weitere
-  `docs/` (ADRs, CI-Referenzen). Historie: Git-Log.
+- ADRs: Index im [`README.md`](README.md#architektur-entscheidungen-adrs),
+  Volltexte in `docs/adr/`. **ADR 0026 wurde nie vergeben** (keine Datei,
+  kein Verweis); ADR 0021 ist vorgeschlagen/offen.
+- Historie: Git-Log. Altdaten/Audits in `docs/` sind Archiv, keine Vorgabe.

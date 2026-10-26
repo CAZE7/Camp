@@ -328,12 +328,12 @@ keine Daten an einen Server gesendet.
 Aufgaben-Routing in `docs/ai/`, harte Verbote, Befehle und die
 [Definition of Done](docs/ai/CHANGE-WORKFLOW.md) (§ 24, je Bereich).
 `agent.md` (kleingeschrieben) ist dagegen die **Übergabe-Liste für Aufgaben, die
-Repo-Admin-Rechte brauchen** (GitHub-Settings: Default-Branch, Pages-Quelle,
-Environment-Policy) plus die abgeschlossenen Erlass-Tracks (Design-Relaunch,
-Routing-Qualität, Stack, Performance) mit ihren Metriken. Beide Dateien sind
-bewusst keine Duplikate — `agent.md` wird zudem von Code-Kommentaren und ADRs
-namentlich zitiert („agent.md Erlass R-1“) und bleibt deshalb als eigenständige
-Datei bestehen. Der Einstieg für Agents ist immer `AGENTS.md`.
+Repo-Admin-Rechte brauchen** (GitHub-Settings) plus die noch offenen Stack-/
+Performance-Restposten. Erledigte Erlass-Tracks (Design-Relaunch,
+Routing-Qualität) stehen dort nur noch als ID-Liste — die Details sind im
+Git-Log. `agent.md` wird von Code-Kommentaren und ADRs namentlich zitiert
+(„agent.md Erlass R-1“) und bleibt deshalb als eigenständige Datei bestehen.
+Der Einstieg für Agents ist immer `AGENTS.md`.
 
 ## Lizenz
 
