@@ -65,3 +65,12 @@ test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScr
     /\/elektrik-planung\/?$/
   );
 });
+
+test('Ladebooster-Vergleich liefert Inhalt ohne JavaScript', async ({ page }) => {
+  await page.goto('/camper-elektrik/ladebooster/');
+  await expect(page.locator('main h1')).toHaveCount(1);
+  await expect(page.locator('main h1')).toHaveText(h1Of('/camper-elektrik/ladebooster/'));
+  await expect(page.locator('main')).toContainText('Ladebooster im Vergleich: 30, 60 oder 90 A?');
+  await expect(page.locator('main')).toContainText('Die Kurzentscheidung');
+  await expect(page.locator('main')).toContainText('Geräteüberblick');
+});

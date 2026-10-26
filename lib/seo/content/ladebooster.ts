@@ -95,11 +95,11 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
   slug: 'ladebooster',
   topicId: 'ladebooster',
   kind: 'cluster',
-  title: 'Ladebooster im Camper: Trennrelais oder 30 A?',
+  title: 'Ladebooster im Camper: Vergleich 30–90 A',
   description:
-    'Ladebooster im Camper auslegen: Wann ein Trennrelais genügt, wann ein DC-DC-Lader nötig ist und welcher Kabelquerschnitt zu 30 A oder 50 A Ladestrom gehört.',
+    'Ladebooster auslegen und vergleichen: 30, 60 oder 90 A, Victron, Votronic, ECTIVE, Schaudt, Renogy und Sterling – mit Preisen, Forenwissen und Rechenweg.',
   h1: 'Ladebooster im Camper auslegen',
-  lead: 'Der Ladebooster löst ein Problem, das ein Trennrelais offen lässt: Er lädt die Bordbatterie während der Fahrt mit geregeltem Strom und passender Kennlinie — auch dann, wenn die Lichtmaschine oder eine lange Leitung es sonst nicht zulassen. Diese Seite zeigt, wann welcher Ladestrom passt und welcher Querschnitt dazugehört.',
+  lead: 'Der Ladebooster löst ein Problem, das ein Trennrelais offen lässt: Er lädt die Bordbatterie während der Fahrt mit geregeltem Strom und passender Kennlinie — auch dann, wenn die Lichtmaschine oder eine lange Leitung es sonst nicht zulassen. Diese Seite zeigt, wann welcher Ladestrom passt, welcher Querschnitt dazugehört — und welches Gerät in welcher Klasse sinnvoll ist. Der Gerätevergleich weiter unten ordnet 30, 60 und 90 A sowie die wichtigsten Geräte ein.',
   priority: 'P2',
   changeFrequency: 'monthly',
   sitemapPriority: 0.7,
@@ -310,6 +310,26 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
         'Für eine leere 100-Ah-Batterie braucht ein 30-A-Booster rechnerisch gut drei Stunden Ladestrom — in der Praxis etwa vier, weil die Konstantspannungsphase am Ende langsamer füllt; mit 50 A sind es rechnerisch zwei, praktisch gut zweieinhalb Stunden. 30 A liegt im sicheren Bereich üblicher Datenblattangaben (0,3 C), 50 A am oberen Rand (0,5 C). Wer nur kurze Strecken fährt, gewinnt mit Solar und einem kleineren Booster mehr als mit dem größten Gerät.',
     },
     {
+      question: 'Kann man zwei Ladebooster parallel schalten?',
+      answer:
+        'Victron erlaubt den Parallelbetrieb für die Orion-Tr-Smart-Reihe ausdrücklich. In der Praxis verteilt sich die Last aber nicht automatisch: Der Booster regelt seine Ausgangsspannung, kleine Toleranzen entscheiden, welches Gerät zuerst in die Strombegrenzung läuft. Gleiche Leitungslängen, ein gemeinsamer Abgreifpunkt, ausreichender Querschnitt und eine stillgelegte EBL-Ladung sind Pflicht. Außerdem verdoppelt sich der Eingangsstrom — die Lichtmaschine muss das dauerhaft tragen.',
+    },
+    {
+      question: 'Welcher Ladebooster für 300 Ah LiFePO4?',
+      answer:
+        'Nach der Faustregel von 0,3 bis 0,5 C wären das 90 bis 150 A. Praktisch ist die Klasse mit 60 bis 90 A relevant: ECTIVE BB 60, Schaudt WA 121545 und Votronic VCC 1212-70 oder -90. Entscheidend sind zusätzlich die vom Hersteller empfohlene Batteriekapazität, der maximale Ladestrom deines BMS und die Lichtmaschine. Ein 90-A-Booster zieht eingangsseitig rund 100 A plus Fahrzeuglast; eine 90-A-Lima ist damit überfordert.',
+    },
+    {
+      question: 'Braucht man bei Euro 6 unbedingt D+?',
+      answer:
+        'Nicht bei jedem Fahrzeug, aber bei einer intelligenten Lichtmaschine ist D+ oder ein Zündsignal die zuverlässigere Steuerung. Reine Spannungserkennung kann den Booster abschalten lassen, obwohl der Motor läuft, und beim Rekuperieren wieder zuschalten. Der Victron Orion-Tr Smart hat keinen D+-Eingang und erkennt den Motor über die Eingangsspannung. Schaudt und ECTIVE verlangen D+, Votronic kann D+, Zündung oder Spannung. Für Euro 6 ist D+ die sichere Wahl, wenn dein Fahrzeug es hergibt.',
+    },
+    {
+      question: 'Was kostet ein guter Ladebooster?',
+      answer:
+        'Grob gerechnet: 25–30 A ab etwa 150 €, 60 A ab etwa 260 €, 90 A ab etwa 500 €, 100–120 A ab etwa 711 €. Dazu kommen je nach Fahrzeug 100–300 € für Kabel, Sicherungen, Kabelschuhe und Halterungen. Das ist eine Orientierung, keine Kaufberatung: Die Preise schwanken stark, und ein günstigeres Gerät mit falschem Querschnitt oder fehlendem D+ wird schnell teurer als die Differenz zum nächstgrößeren Modell.',
+    },
+    {
       question: 'Wird die Lichtmaschine durch einen Ladebooster stärker belastet?',
       answer:
         'Die Leistung, die in die Bordbatterie fließt, muss die Lichtmaschine liefern — plus Verluste, die als Wärme im Booster bleiben. Die Belastung wird aber berechenbar und begrenzt: Ohne Booster zieht eine leere LiFePO4-Batterie je nach Spannungsabfall einen Strom, den die Lichtmaschine nicht regelt; mit Booster steht der Ladestrom fest und die Lichtmaschine liefert nur die zugehörige Eingangsleistung. Ein Blick auf die Leistungsdaten der Lichtmaschine (üblich 120 bis 180 A bei modernen Fahrzeugen) gehört trotzdem zum Vorhaben.',
@@ -341,6 +361,11 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
   ],
   sources: [
     {
+      label: 'Gerätevergleich',
+      detail:
+        'Herstellerdatenblätter, Handbücher, Forenthreads und Preisstände: siehe Quellen im Abschnitt „Ladebooster im Vergleich“. Preise sind Momentaufnahmen vom 23.10.2026.',
+    },
+    {
       label: 'DIN VDE 0298-4',
       detail:
         'Strombelastbarkeit der Leitungen — die Tabelle dieser Seite rechnet mit dem Modellwert der Auslieferung (Verlegeart B2, Derating für Bündelung und Umgebung).',
@@ -366,7 +391,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
     'Derating 0,7 und Planungsgrenze 3 % Spannungsfall sind Modellannahmen, keine Herstellerangaben.',
   ],
   limits: [
-    'Keine Produktnennung und kein Markenvergleich — die Seite beschreibt Bauformen und Rechenwege, keine Geräte.',
+    'Der Rechenteil nennt keine Produkte; der Vergleichsabschnitt nennt Geräte, Preise und Forenstimmen als redaktionelle Einordnung. Er ersetzt keine Messung am Fahrzeug.',
     'Wirkungsgrad, Temperaturregelung und Kennlinien konkreter Geräte sind Datenblattangaben und nicht im Modell.',
     'Fahrzeugspezifische Anschlüsse (D+-Signal, Klemmenbelegung, Absicherung ab Werk) stehen hier nicht.',
   ],

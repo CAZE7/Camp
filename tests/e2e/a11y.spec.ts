@@ -30,6 +30,7 @@ const PAGES: Array<{ path: string; name: string }> = [
   // unbemerkt bleibt. Weitere Themen nutzen dieselben Bausteine.
   { path: '/camper-elektrik/', name: 'Elektrik-Pillar' },
   { path: '/camper-elektrik/kabelquerschnitt/', name: 'Kabelquerschnitt' },
+  { path: '/camper-elektrik/ladebooster/', name: 'Ladebooster-Vergleich' },
   { path: '/rechner/spannungsabfall-12v/', name: 'Spannungsabfall-Rechner' },
   { path: '/ueber-elektroplaner/', name: 'Über Elektroplaner' },
 ];
@@ -129,5 +130,34 @@ test.describe('axe: Planer-Blätter auf dem Handy', () => {
       .analyze();
     const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
     expect(blocking, blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`).join('\n')).toEqual([]);
+  });
+});
+
+test.describe('axe: Ladebooster-Vergleich im dunklen Schema', () => {
+  test.use({ colorScheme: 'dark' });
+
+  test('ohne kritische/schwere Verstöße', async ({ page }) => {
+    await page.goto('/camper-elektrik/ladebooster/');
+    await expect(page.locator('body')).not.toBeEmpty();
+    await page.waitForLoadState('networkidle');
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    const blocking = results.violations.filter(
+      (violation) => violation.impact === 'critical' || violation.impact === 'serious'
+    );
+
+    expect(
+      blocking,
+      blocking
+        .map(
+          (violation) =>
+            `${violation.id} (${violation.impact}): ${violation.help}\n  → ${violation.nodes
+              .map((node) => String(node.target).slice(0, 120))
+              .join('\n  → ')}`
+        )
+        .join('\n')
+    ).toEqual([]);
   });
 });
