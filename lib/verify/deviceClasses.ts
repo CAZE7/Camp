@@ -12,7 +12,8 @@
  *   | IEC 60269-1 gG         | 1,6 … 2,1 × In (stromabhängig) | Produktnorm  |
  *   | IEC 60898-1 LS-Schalter| 1,45 × In | Produktnorm                               |
  *   | ISO 8820-3 Kfz-Flachsicherung | 1,35 × In | Hersteller-Datenblatt/ISO-Prüfung |
- *   | Bolzensicherung (MIDI/MEGA/ANL/MRBF), Class T | NICHT BELEGT | Datenblatt nötig |
+ *   | UL 248-15 Class T      | 1,35 × In | Produktnorm (135 %/1 h)                   |
+ *   | Bolzensicherung (MIDI/MEGA/ANL/MRBF) | NICHT BELEGT | Datenblatt nötig       |
  *   | RCD                    | entfällt (kein Überstromschutz) | —                      |
  *
  * Die Zeile „NICHT BELEGT“ ist der wichtigste Teil dieser Tabelle: Für
@@ -30,6 +31,9 @@
  *   - ISO 8820-3 (Blade): 110 % → 100 h ohne Auslösung, 135 % → Auslösung
  *     zwischen 0,75 s und 600 s (Datenblätter Eaton/Bussmann ATM-Serie,
  *     ISO 8820-3-konform).
+ *   - UL 248-15 (Class T): 135 % × In muss innerhalb von 1 h auslösen
+ *     (UL-Fuseology: „Verification of Overload Operation: 135 % (60 minutes
+ *     maximum clearing time)“; Produktnorm UL 248-15).
  */
 
 import {
@@ -58,6 +62,7 @@ const GG_TABLE_SOURCE =
 const MCB_SOURCE = 'IEC 60898-1 (LS-Schalter), konventioneller Auslösestrom 1,45 × In';
 const BLADE_SOURCE =
   'ISO 8820-3 / Hersteller-Datenblatt (Blade): 135 % × In löst in ≤ 600 s aus, 110 % × In über 100 h nicht';
+const UL248_CLASS_T_SOURCE = 'UL 248-15 (Class T): 135 % × In muss innerhalb von 1 h auslösen (UL-Fuseology)';
 const DATASHEET_REMEDY =
   'Konventionellen Auslösestrom I₂ (bzw. I²t-Kennlinie) des konkreten Produkts aus dem Datenblatt eintragen (Feld `i2A`).';
 
@@ -162,8 +167,19 @@ export function conventionalOperatingCurrentI2(device: ProtectionDevice): Conven
         provenance: 'VERIFIED_DATASHEET',
         remedy: null,
       };
-    case 'bolt-down':
     case 'ul248-classT':
+      // UL 248-15 definiert den Überlastprüfstrom mit 135 % des Nennstroms
+      // und einer maximalen Auslösezeit von 1 h. Der Wert ist damit — wie
+      // bei IEC 60269/60898 — ein Produktnormwert und keine Annahme; er ist
+      // konservativer als der gG-Faktor 1,6.
+      return {
+        i2A: 1.35 * device.ratedCurrentA,
+        ratio: 1.35,
+        source: UL248_CLASS_T_SOURCE,
+        provenance: 'VERIFIED_NORM',
+        remedy: null,
+      };
+    case 'bolt-down':
       return {
         i2A: null,
         ratio: null,

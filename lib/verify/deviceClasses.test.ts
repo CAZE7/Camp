@@ -64,7 +64,7 @@ describe('lib/verify/deviceClasses — konventioneller Auslösestrom I₂', () =
     expect(result.provenance).toBe('VERIFIED_DATASHEET');
   });
 
-  it('nutzt die Produktnorm, wo sie belegt ist (LS 1,45 × In, Blade 1,35 × In)', () => {
+  it('nutzt die Produktnorm, wo sie belegt ist (LS 1,45 × In, Blade/Class T 1,35 × In)', () => {
     const mcb = conventionalOperatingCurrentI2({ type: 'mcb', characteristic: 'B', ratedCurrentA: 16 });
     expect(mcb.i2A).toBeCloseTo(1.45 * 16, 9);
     expect(mcb.ratio).toBe(1.45);
@@ -73,16 +73,24 @@ describe('lib/verify/deviceClasses — konventioneller Auslösestrom I₂', () =
     const blade = conventionalOperatingCurrentI2(fuse({ ratedCurrentA: 10 }));
     expect(blade.i2A).toBeCloseTo(13.5, 9);
     expect(blade.ratio).toBe(1.35);
+
+    const classT = conventionalOperatingCurrentI2(
+      fuse({ productClass: 'ul248-classT', variant: 'classT', ratedCurrentA: 100 })
+    );
+    expect(classT.i2A).toBeCloseTo(135, 9);
+    expect(classT.ratio).toBe(1.35);
+    expect(classT.provenance).toBe('VERIFIED_NORM');
+    expect(classT.source).toContain('UL 248-15');
   });
 
-  it('meldet für Bolzen-/Class-T-Sicherungen UNPROVABLE statt zu schätzen', () => {
-    for (const productClass of ['bolt-down', 'ul248-classT'] as const) {
-      const result = conventionalOperatingCurrentI2(fuse({ productClass, variant: null }));
-      expect(result.i2A).toBeNull();
-      expect(result.ratio).toBeNull();
-      expect(result.provenance).toBe('UNVERIFIED');
-      expect(result.remedy).toBeTruthy();
-    }
+  it('meldet für Bolzensicherungen UNPROVABLE statt zu schätzen', () => {
+    const result = conventionalOperatingCurrentI2(
+      fuse({ productClass: 'bolt-down', variant: 'midi', ratedCurrentA: 40 })
+    );
+    expect(result.i2A).toBeNull();
+    expect(result.ratio).toBeNull();
+    expect(result.provenance).toBe('UNVERIFIED');
+    expect(result.remedy).toBeTruthy();
   });
 
   it('wendet §433.1 nicht auf den RCD an', () => {
@@ -168,9 +176,12 @@ describe('lib/verify/deviceClasses — Datenblatt schlägt Produktnorm', () => {
     expect(boltDown.provenance).toBe('UNVERIFIED');
     expect(boltDown.remedy).toContain('i2A');
 
-    const classT = conventionalOperatingCurrentI2(fuse({ productClass: 'ul248-classT', variant: 'classT' }));
-    expect(classT.i2A).toBeNull();
-    expect(classT.remedy).toBe(boltDown.remedy);
+    // Class T ist seit UL 248-15 belegt (135 %/1 h) — kein Datenblattzwang.
+    const classT = conventionalOperatingCurrentI2(
+      fuse({ productClass: 'ul248-classT', variant: 'classT', ratedCurrentA: 100 })
+    );
+    expect(classT.i2A).toBeCloseTo(135, 9);
+    expect(classT.remedy).toBeNull();
   });
 
   it('weist unbekannte Produktklassen und Bauformen zurück', () => {

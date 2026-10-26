@@ -21,6 +21,7 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
       fuseWarning: true,
       fuseOffset: 0.2,
       fuseType: 'MEGA',
+      i2A: 54,
       acProtection: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
       fuseBreakingCapacity: 2000,
       autoWired: true,
@@ -42,6 +43,7 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
       dropWarning: 'nein',
       fuseOffset: null,
       fuseBreakingCapacity: Number.NaN,
+      i2A: 0,
       autoWired: 1,
       notiz: 'unbekannt bleibt',
     });
@@ -55,6 +57,7 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
         'fuseBreakingCapacity',
         'fuseOffset',
         'fuseSize',
+        'i2A',
         'length',
       ].sort()
     );

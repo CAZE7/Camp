@@ -24,6 +24,8 @@ export interface EdgeInspectorProps {
   onChangeFuseOffset?: (id: string, fuseOffset: number) => void;
   /** AUDIT DOM-002: Bauform der Sicherung (Abschaltvermögens-Check). */
   onChangeFuseType?: (id: string, fuseType: string | undefined) => void;
+  /** Konventioneller Auslösestrom I₂ (A) aus dem Datenblatt des Produkts. */
+  onChangeFuseI2?: (id: string, i2A: number) => void;
   /** AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, Charakteristik, Icn). */
   onChangeAcProtection?: (id: string, acProtection: AcProtectionDescriptor | undefined) => void;
   /** V2-INTENT-002: Verbindlichkeit der Leitung gegenüber der Automatik. */
@@ -61,6 +63,7 @@ export function EdgeInspector({
   onChangeFuseSize,
   onChangeFuseOffset,
   onChangeFuseType,
+  onChangeFuseI2,
   onChangeAcProtection,
   onChangeIntent,
 }: EdgeInspectorProps) {
@@ -279,6 +282,35 @@ export function EdgeInspector({
                 Abschaltvermögen der Bauform nach Hersteller-Datenblatt (Littelfuse/Blue Sea; MRBF
                 spannungsabhängig). Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom
                 der Batteriebank trennen kann.
+              </p>
+            </div>
+          )}
+          {/* I₂-Koordination nach IEC 60364-4-43 §433.1: Für Bauformen ohne
+          belegte Produktnorm (MIDI/MEGA/ANL/MRBF) ist der Datenblattwert die
+          einzige ehrliche Grundlage — ohne ihn bleibt der Punkt offen. */}
+          {!isAc && onChangeFuseI2 && edge.data?.fuseSize !== undefined && (
+            <div className="flex flex-col">
+              <label
+                className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                htmlFor="fuse-i2-input"
+              >
+                Prüfstrom I₂ (A, Datenblatt)
+              </label>
+              <ValidatingInput
+                isFloat
+                id="fuse-i2-input"
+                min="0"
+                allowEmpty
+                value={edge.data?.i2A ?? ''}
+                rules={[COMMON_RULES.positive]}
+                onValidChange={(val) => onChangeFuseI2(edge.id, val)}
+                onEmptyChange={() => onChangeFuseI2(edge.id, 0)}
+                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Konventioneller Auslösestrom aus dem Datenblatt. Leer bzw. 0 = Produktnorm der Bauform (ATO
+                und Class T sind belegt). Für MIDI/MEGA/ANL/MRBF ohne Datenblatt bleibt die I₂-Prüfung offen —
+                der Planer erfindet keinen Wert.
               </p>
             </div>
           )}

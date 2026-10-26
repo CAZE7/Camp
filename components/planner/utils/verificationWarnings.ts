@@ -101,6 +101,12 @@ export function verificationWarning(event: AuditEvent, index: number): Validatio
 
   const focusType =
     event.entity.kind === 'node' || event.entity.kind === 'edge' ? event.entity.kind : undefined;
+  // Wechselrichter-Ausgänge sind eine benannte Modellgrenze, keine
+  // Plan-Datenlücke: Der Titel sagt das, damit der Nutzer den Hinweis nicht
+  // als „fehlende Angabe im Plan“ liest und vergeblich nach einem Feld sucht.
+  const inverterLimited =
+    event.ruleId === 'RCD-005-loop-impedance' && event.message.includes('inverter-limited');
+  const title = inverterLimited ? 'Wechselrichter-Ausgang: Modellgrenze' : spec.title;
   // Kein Symbol-Präfix: Die Schwere trägt der Titel („Kritisch“) und die
   // Farbe in der Oberfläche. Ein Zeichen davor wäre Dekoration (Auftrag §24).
   const prefix = type === 'critical' ? 'Kritisch: ' : type === 'warning' ? 'Warnung: ' : 'Hinweis: ';
@@ -114,7 +120,7 @@ export function verificationWarning(event: AuditEvent, index: number): Validatio
     id: `verify-${event.ruleId}-${event.entity.kind}-${event.entity.id}-${index}`,
     category,
     type,
-    title: spec.title,
+    title,
     ...(focusType ? { focusId: event.entity.id, focusType } : {}),
     ruleId: event.ruleId,
     // Nutzer-Vokabular (Auftrag Phase 9): Schwere und Zustand kommen aus der

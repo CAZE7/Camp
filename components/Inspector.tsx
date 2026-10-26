@@ -55,6 +55,8 @@ interface InspectorProps {
   onChangeFuseOffset?: (id: string, offset: number) => void;
   /** AUDIT DOM-002: Bauform der Sicherung (Abschaltvermögens-Check). */
   onChangeFuseType?: (id: string, fuseType: string | undefined) => void;
+  /** Konventioneller Auslösestrom I₂ (A) aus dem Datenblatt des Produkts. */
+  onChangeFuseI2?: (id: string, i2A: number) => void;
   /** V2-INTENT-002: Verbindlichkeit der Leitung (Automatik/Nutzer/fixiert). */
   onChangeIntent?: (id: string, intent: 'auto' | 'user' | 'locked') => void;
   /** AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, Charakteristik, Icn). */
@@ -314,6 +316,7 @@ export default function Inspector({
   onChangeFuseSize,
   onChangeFuseOffset,
   onChangeFuseType,
+  onChangeFuseI2,
   onChangeIntent,
   onChangeAcProtection,
   edges,
@@ -362,6 +365,7 @@ export default function Inspector({
               onChangeFuseSize={onChangeFuseSize}
               onChangeFuseOffset={onChangeFuseOffset}
               onChangeFuseType={onChangeFuseType}
+              onChangeFuseI2={onChangeFuseI2}
               onChangeAcProtection={onChangeAcProtection}
               onChangeIntent={onChangeIntent}
             />
