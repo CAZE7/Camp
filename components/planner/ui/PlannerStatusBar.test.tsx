@@ -41,6 +41,41 @@ describe('PlannerStatusBar', () => {
     expect(container.querySelector('.planner-statusbar')).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('schreibt Singular bei genau einem Bauteil, einer Leitung und einer Warnung', () => {
+    // UI-Audit 2026-10-24: „1 Bauteile · 1 Leitungen“ und „1 Warnungen“.
+    const prev = usePlannerStore.getState();
+    try {
+      act(() => {
+        usePlannerStore.setState({
+          viewMode: 'electric',
+          nodes: [
+            {
+              id: 'battery-1',
+              type: 'battery',
+              position: { x: 0, y: 0 },
+              data: { label: 'Batterie', role: 'house', nominalVoltage: 12 },
+            },
+          ] as never,
+          edges: [{ id: 'edge-1', source: 'battery-1', target: 'battery-1', data: {} }] as never,
+          plannerErrors: [{ severity: 'warning', message: 'Testbefund' }] as never,
+        });
+      });
+      const { unmount } = render(<PlannerStatusBar zoom={1} />);
+      expect(screen.getByText('1 Bauteil · 1 Leitung')).toBeInTheDocument();
+      expect(screen.getByText(/^1 Warnung/)).toBeInTheDocument();
+      unmount();
+    } finally {
+      act(() => {
+        usePlannerStore.setState({
+          nodes: prev.nodes,
+          edges: prev.edges,
+          plannerErrors: prev.plannerErrors,
+          viewMode: prev.viewMode,
+        });
+      });
+    }
+  });
+
   it('M9: zeigt in einem 24-V-Aufbau „24 V / 230 V“ statt fest „12 V / 230 V“', () => {
     const prevNodes = usePlannerStore.getState().nodes;
     try {

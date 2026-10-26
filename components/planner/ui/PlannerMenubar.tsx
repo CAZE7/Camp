@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
@@ -102,6 +102,29 @@ function MenuDropdown({
   // technischen Anwendungen (Alt-unabhängig über die Menüleiste erreichbar).
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+  }, []);
+
+  // Die Menüs folgen mit ihrer Breite dem Inhalt (globals.css: `width:
+  // max-content`), damit lange Hinweise die Beschriftung nicht auf mehrere
+  // Zeilen quetschen. Ein Menü am rechten Rand („Werkzeuge“ bei 768 px:
+  // 385–918 px) ragt dadurch aus dem Fenster. Es wird nach dem Öffnen so
+  // weit nach links geschoben, dass seine rechte Kante im Bild bleibt.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const margin = 8;
+    const place = () => {
+      el.style.transform = '';
+      const rect = el.getBoundingClientRect();
+      const overflowRight = rect.right - (window.innerWidth - margin);
+      if (overflowRight > 0) el.style.transform = `translateX(-${Math.ceil(overflowRight)}px)`;
+      const shifted = el.getBoundingClientRect();
+      const overflowLeft = margin - shifted.left;
+      if (overflowLeft > 0) el.style.transform = `translateX(${Math.ceil(overflowLeft)}px)`;
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
   }, []);
 
   return (

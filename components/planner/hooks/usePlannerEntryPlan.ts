@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppStore } from '../../../lib/store';
 import { decodeSharePlan } from '../../../store/sharePlan';
@@ -282,5 +282,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
     };
   }, [setHasOnboarded]);
 
-  return { notice, dismissNotice: () => setNotice(null) };
+  const dismissNotice = useCallback(() => setNotice(null), []);
+
+  return { notice, dismissNotice };
 }
