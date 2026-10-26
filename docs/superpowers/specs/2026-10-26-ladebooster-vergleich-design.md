@@ -1,0 +1,444 @@
+# Vergleichs-Template und Umbau des Ladebooster-Vergleichs — Design
+
+Datum: 2026-10-26 · Branch: `feat/vergleichs-template` · Stand des Fundes: `353efd5`
+
+## 1. Ausgangslage, gemessen
+
+Die Seite `/camper-elektrik/ladebooster/` trägt einen Produktvergleich, der am
+2026-10-25 als Einzelbaustein ergänzt wurde (`908d344`). Er ist die mit Abstand
+unübersichtlichste Seite des Auftritts. Befund mit Belegen:
+
+| #   | Befund                                                                                                     | Beleg                                                                                                                                                 |
+| --- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Der Vergleich steht **unter** dem gesamten Ratgebertext                                                    | `components/seo/SeoPage.tsx:115-119` rendert erst `page.sections`, dann `children`; eingehängt in `app/camper-elektrik/[slug]/page.tsx:50`            |
+| 2   | Textvolumen: 3.038 Wörter im Vergleichsblock + 3.114 Wörter Artikelcontent (Quelltext-Zählung, Obergrenze) | `components/seo/LadeboosterVergleich.tsx`, `lib/seo/content/ladebooster.ts`                                                                           |
+| 3   | Nur **1 von 8** `h3`-Sektionen des „Vergleichs" ist ein Gerätevergleich                                    | `LadeboosterVergleich.tsx:38, 88, 199, 628, 753, 1034, 1128, 1184`                                                                                    |
+| 4   | 9 Geräte × **4 Darstellungen**, alle hartcodiert im JSX, keine Datendatei                                  | Leiter `97-194`, Tabelle `224-287`, Detailkarten `315-556`, Kompaktkarten `564-606`                                                                   |
+| 5   | Dieselben Fakten stehen dreimal fast wortgleich                                                            | Parallelbetrieb `116/566/645`, Sterling-Widerspruch `172/592/733`, Renogy 25 A `186/584/699`                                                          |
+| 6   | Die Entscheidungshilfe steht hinter Rechner und Foren, fast am Seitenende                                  | `h3` „Die Entscheidung in fünf Fragen" bei `1128`                                                                                                     |
+| 7   | Die C-Rate wird verwendet, bevor sie erklärt wird                                                          | verwendet `48`, erklärt `945`                                                                                                                         |
+| 8   | Der Filter wirkt nur auf die Karten, nicht auf die Tabelle — die Komponente weist selbst darauf hin        | Hinweis bei `311`                                                                                                                                     |
+| 9   | Kein `Product`-, `ItemList`- oder `Review`-Schema, obwohl 9 Produkte mit Preisen sichtbar sind             | `components/seo/SeoPage.tsx:34-74`, `lib/seo/inventory.ts:328-333`                                                                                    |
+| 10  | 19.846 Byte seiten-spezifisches CSS werden **global** geladen                                              | `app/ladebooster-vergleich.css`, importiert in `app/layout.tsx:2`                                                                                     |
+| 11  | Zahlen stehen in Mono — das Designkonzept verbietet das                                                    | `app/ladebooster-vergleich.css` 30× `var(--font-mono)`, `LadeboosterVergleich.tsx` 17× `IBM Plex Mono`; Regel: `docs/DESIGN-KONZEPT-2026-10.md:57-58` |
+| 12  | Sichtbare Unfertigkeit: Foto-Platzhalter „Eigenes Foto folgt"                                              | `LadeboosterVergleich.tsx:1009-1024`                                                                                                                  |
+| 13  | Die Seite hat **2 eingehende** interne Verweise — Schlusslicht im Cluster                                  | `docs/seo/AUDIT.md:25` (Spalte `ein/aus` = `2/16`); Vergleich: `sicherungen` 15/15, `batterie` 11/17                                                  |
+
+**Wichtig zur Zahlenlage:** `docs/seo/AUDIT.md` wurde zuletzt am 2026-10-15 erzeugt
+(`1c185a3`), der Vergleichsblock landete am 2026-10-25. Die Auditzahlen
+(2.371 Wörter, `H1/H2` = 1/11) beschreiben den Zustand **vor** dem Vergleich. Die
+Tabelle ist veraltet, weil sie nicht beim Bau entsteht: `npm run build` führt
+`scripts/seo/auditExport.ts` (prüft, schreibt aber keinen Bericht), die Zahlen
+liefert `npx tsx scripts/seo/measureExport.ts`, und die Dokumente schreibt
+`npx tsx scripts/seo/report.ts:569-574`. Der Kommentar in `report.ts:499`
+(„Diese Zahlen entstehen bei jedem Bau neu") beschreibt das nicht korrekt —
+dieselbe Klasse falscher Zusage, um die es in §8 geht.
+
+## 2. Ziel und Nicht-Ziel
+
+**Ziel**
+
+1. Auf Vergleichsseiten steht der Vergleich zuerst; der Ratgebertext folgt darunter.
+2. Ein Vergleich wird aus **einer** typisierten Datendatei gerendert — Tabelle,
+   Karten und strukturierte Daten lesen dieselbe Quelle.
+3. Die Seite wird kürzer und scanbarer: ~2.300 Wörter Autorentext in fünf klar
+   getrennten Zonen, keine Aussage doppelt. Der sichtbare Gesamttext ohne
+   JavaScript sinkt um mindestens 35 % gegenüber der Baseline aus Paket 0 (§11).
+4. Die Regeln dafür sind maschinenprüfbar (Test oder Gate), nicht vereinbart.
+5. Der Ladestrom-Rechner wird ein offizieller Rechner mit eigener Route.
+
+**Nicht-Ziel**
+
+- Keine Sterne, Noten, Testberichte oder Affiliate-Links (§13).
+- Keine neue Vergleichs-Route für Ladebooster (§3).
+- Kein zweiter Vergleich (Wechselrichter, LiFePO4) in diesem Auftrag — das Template
+  muss ihn nur ermöglichen.
+- Kein Umbau des Artikel-Gerüsts `SeoPage` über den neuen Slot hinaus.
+- Keine Änderung elektrischer Semantik (AGENTS.md §5).
+
+## 3. Entscheidung: Vergleich im Content-Modell, nicht als eigene Route
+
+Gewählt: **Der Vergleich wird Teil des Content-Modells.** `SeoPageContent` bekommt
+ein optionales Feld `comparison`, `SeoPage` rendert die Vergleichszone **vor** den
+Abschnitten. Eine eigene Route `/vergleich/ladebooster/` wird nicht gebaut.
+
+Begründung aus dem Bestand, nicht aus Präferenz:
+
+1. `lib/seo/opportunities.ts:417-435` bindet beide Vergleichs-Intents
+   („trennrelais oder ladebooster", „ladebooster 30a oder 50a") an
+   `/camper-elektrik/ladebooster/` mit `action: 'keine'`. Der
+   Wechselrichter-Vergleich (`:451-460`) bekommt `action: 'beispiel-ergaenzen'`.
+   **Kein** Vergleichs-Intent im Inventar hat `action: 'neue-seite'`.
+2. `docs/seo/ANALYSE-UND-VISION.md:84` nennt als Risiko „Überproduktion: Neue Seiten
+   entstehen nur für belegte oder klar benannte Intentionen."
+3. Die Seite hat 2 eingehende interne Verweise (`docs/seo/AUDIT.md:25`). Eine zweite
+   URL teilt diese Verlinkung, statt sie zu stärken.
+4. Die Anforderung lautet „Vergleich oben, Blogtext darunter" — eine Seite.
+
+Die Datenstruktur deckt den Fall einer eigenständigen Vergleichsseite trotzdem ab:
+Eine `ComparisonSpec` kann mit wenigen oder keinen `sections` die Hauptlast einer
+Seite tragen. Es wird dafür **keine** zweite Route, kein Flag und keine
+Kompatibilitätsschicht gebaut — es ist eine Eigenschaft des Datenmodells.
+
+Als Architektur-Entscheidung während der Umsetzung zu dokumentieren: **ADR 0039**
+(nächste freie Nummer, vgl. AGENTS.md §12; ADR 0026 ist bewusst ungenutzt).
+
+## 4. Datenmodell
+
+Neu in `lib/seo/comparisons/types.ts` — ohne React und ohne `app/`-Importe
+(Schichtenregel A, wie `lib/seo/types.ts:14-15`):
+
+```ts
+/** Ein Vergleichsmerkmal. Die Reihenfolge ist die Spalten- und Kartenreihenfolge. */
+export type ComparisonAttribute = {
+  id: string;
+  label: string;
+  unit?: string;
+  /** Spalte in der Rangliste? Sonst nur in der Produktkarte. */
+  inTable: boolean;
+  /** Erklärung des Merkmals — genau hier, nicht je Produkt wiederholt. */
+  legend?: RichText;
+  /** Sortierrichtung, falls sortierbar. */
+  better?: 'higher' | 'lower';
+};
+
+/** Wert eines Merkmals. `null` heißt „belegt unbekannt" und wird als Strich gerendert. */
+export type AttributeValue = string | number | null;
+
+export type ComparisonProduct = {
+  id: string; // Ankerziel: `#p-<id>`
+  brand: string;
+  name: string;
+  classId: string; // Zuordnung zu `ComparisonSpec.classes`
+  /** Muss jeden in `attributes` deklarierten `id` tragen (Gate G2). */
+  specs: Readonly<Record<string, AttributeValue>>;
+  /** „Passt für" — ein Chip, kein Urteil mit Note. */
+  fit: { label: string; tone: 'pick' | 'plain' };
+  /** „Haken" — Warnungen, die es nur hier gibt. */
+  caveats: readonly { text: RichText; tone: 'warn' | 'block' }[];
+  /** Beobachteter Straßenpreis in Euro; `null` = kein Preis belegt. */
+  priceEur: number | null;
+  /** ISO-Datum der Preisprüfung (Gate G5). */
+  priceChecked: string;
+  /** Langtext, eingeklappt gerendert. */
+  detail: readonly RichText[];
+  links: readonly { href: string; label: string; kind: 'datasheet' | 'price' | 'manual' }[];
+};
+
+export type ComparisonUseCase = {
+  id: string;
+  situation: RichText; // eine Zeile
+  pickId: string; // muss ein Produkt-`id` sein (Gate G2)
+  why: RichText; // ein Satz
+};
+
+export type ComparisonSpec = {
+  id: string;
+  /** `h2` der Vergleichszone. */
+  heading: string;
+  tableCaption: RichText;
+  /** Sichtbarer Hinweis, dass nicht mit Sternen bewertet wird. */
+  noRatingNote: RichText;
+  attributes: readonly ComparisonAttribute[];
+  classes: readonly { id: string; label: string }[];
+  products: readonly ComparisonProduct[];
+  useCases: readonly ComparisonUseCase[];
+  /** Stand der Preise als lesbare Zeile — genau einmal auf der Seite. */
+  priceAsOf: string;
+};
+```
+
+Erweiterung in `lib/seo/types.ts`:
+
+```ts
+export type SeoPageContent = {
+  // … bestehende Felder unverändert …
+  /** Produktvergleich, der VOR den Abschnitten gerendert wird. */
+  comparison?: ComparisonSpec;
+};
+```
+
+Die Daten des Ladeboosters ziehen nach `lib/seo/comparisons/ladebooster.ts` —
+eine Datei, neun Produkte, ein deklarierter Merkmals-Satz (welche Merkmale Spalten
+der Rangliste sind und welche nur in der Karte stehen, entscheidet `inTable`), vier
+Einsatzfälle. Die heutigen Quellen (`LadeboosterVergleich.tsx:224-287` für Tabelle,
+`315-556` für Detailkarten, `564-606` für Kompaktkarten, `97-194` für die Leiter)
+werden zusammengeführt; jede Tatsache steht einmal.
+
+## 5. Komponenten und Datei-Layout
+
+Deutsch benannt, wie die bestehenden Domänen-Bausteine (`RechnerLeiste.tsx`,
+`KabelquerschnittRechner.tsx`, `FaqAkkordeon`):
+
+| Datei                                        | Aufgabe                                                                                 | Zielgröße    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------- | ------------ |
+| `components/vergleich/Vergleichszone.tsx`    | komponiert Rangliste, Einsatzfälle, Karten aus einer `ComparisonSpec`; Server Component | ≤ 120 Zeilen |
+| `components/vergleich/Rangliste.tsx`         | Tabelle mit sticky Kopfzeile, Sortierung, Chips                                         | ≤ 180        |
+| `components/vergleich/Produktkarte.tsx`      | eine Karte; Attribut-Reihenfolge aus `attributes`                                       | ≤ 90         |
+| `components/vergleich/Einsatzfaelle.tsx`     | Use-Case-Zeilen: Situation → Gerät → Grund                                              | ≤ 60         |
+| `components/vergleich/vergleichBehavior.tsx` | `'use client'`: Filter + Sortierung über DOM, `aria-pressed`                            | ≤ 140        |
+
+`components/seo/LadeboosterVergleich.tsx` (1.391 Zeilen),
+`components/seo/LadeboosterVergleichBehavior.tsx` (186 Zeilen) und
+`app/ladebooster-vergleich.css` (1.036 Zeilen, 19.846 Byte) werden **entfernt**,
+der Import in `app/layout.tsx:2` ebenfalls.
+
+**Rendering ohne JavaScript.** Die Route wird von `tests/e2e/seo-nojs.spec.ts:69-76`
+geprüft. Deshalb: Rangliste, Chips, Einsatzfälle, Karten und alle `<details>` sind
+serverseitig vollständig. Filter und Sortierung sind progressive Verbesserung —
+ohne JavaScript gilt die Rangreihenfolge der Datendatei, und der Filterbereich wird
+nicht angeboten (statt ihn anzubieten und nichts zu tun).
+
+**Filtermechanik.** Ein clientseitiger Baustein setzt die Tailwind-Klasse `hidden`
+auf Zeilen **und** Karten, gesteuert über dasselbe `data-vergleich-klasse`-Attribut
+(Gate G6). Kein eigener CSS-Schalter wie das heutige `.is-hidden`, kein React-State
+und damit keine Hydration-Differenz.
+
+**Gestaltung.** Ausschließlich Design-Tokens und Tailwind-Utilities
+(`container-page`, `prose-measure`, `node-card`, `panel-title`, `caption-xs`).
+Zahlen in Inter mit `tabular-nums`, nie in Mono (`docs/DESIGN-KONZEPT-2026-10.md:57-58`,
+Wächter `lib/designTokens.test.ts:392-469`). Ein Akzent `--oxide` (#a34a24) nur für
+`fit.tone === 'pick'`; `warn` und `block` nutzen `--warn` (#8a5a0a) und `--error`
+(#b3261e), zusätzlich formcodiert (Chip-Text), nie farbe-only
+(`docs/DESIGN-KONZEPT-2026-10.md:31`, „Auswahl ≠ Farbe"). Schriftuntergrenze 12 px,
+Trefferflächen ≥ 44 × 44 px.
+
+**Breite.** Die Rangliste läuft auf die vollen 64 rem des `container-page`, der
+Ratgebertext bleibt in der 42-rem-Lesespalte (`docs/DESIGN-KONZEPT-2026-10.md:100`).
+Der Breitenwechsel ist die visuelle Zäsur zwischen „Vergleich" und „Ratgeber".
+
+**Responsiv.** ≥ 768 px: Rangliste als Tabelle. < 768 px: dieselbe Datendatei als
+Kartenstapel mit vier Kennzahlen, Einsatzfall-Chip und `<details>` für den Rest —
+nicht die heutige Quetsch-Tabelle mit `min-width: 46rem`
+(`app/ladebooster-vergleich.css:910-914`). Beide Darstellungen sind im DOM; welche
+sichtbar ist, entscheidet eine Media Query, nicht JavaScript.
+
+## 6. Seitenstruktur: fünf Zonen
+
+Neue Reihenfolge in `components/seo/SeoPage.tsx`:
+
+```
+Kopf (H1 + Lead)
+  → comparison        (neu: Vergleichszone, aus page.comparison)
+  → afterHeader       (bestehend: RechnerLeiste)
+  → page.sections     (Ratgeber)
+  → children          (bestehend, bleibt frei)
+  → FAQ → TrustBlock → Weiter im Thema → Planer-CTA
+```
+
+| Zone                     | Inhalt                                                                                               | Autorentext           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------- |
+| Kopf                     | H1, Lead: was verglichen wurde, Preisstand, kein Sternesystem                                        | ~50                   |
+| 1 · Rangliste            | 9 Geräte, sticky Kopf, sortierbar nach Ladestrom und Preis, Chips „Passt für" und „Haken", Legende   | ~330                  |
+| 2 · Welcher passt zu mir | 4 Einsatzfälle statt 7 „Wege": Situation → Gerät → ein Grund                                         | ~120                  |
+| 3 · Geräte im Detail     | 9 Karten mit den übrigen Merkmalen, Langtext und Datenblatt-Links in `<details>`, desktop zugeklappt | ~250 sichtbar         |
+| 4 · Ratgeber             | 4 `h2` statt 7 gemischter Artikel-Abschnitte plus 8 Vergleichs-Sektionen, siehe unten                | ~1.250 (Gate ≤ 1.300) |
+| 5 · FAQ + Quellen        | 7 Fragen à ≤ 40 Wörter, 34 Quellen in `<details>`, TrustBlock, interne Verweise                      | ~300                  |
+
+Die Summe ist 2.300 Wörter Autorentext. Gate G3 prüft die Teilbudgets: Zonen 1-3
+zusammen ≤ 700 (330 + 120 + 250), Ratgeber ≤ 1.300, FAQ-Antwort ≤ 40.
+
+**Zwei Schichten, keine Wiederholung.** Zone 1 ist die Schicht zum Scannen: nur
+Merkmale mit `inTable: true`, Werte ohne Prosa. Zone 3 ist die Schicht zur Tiefe:
+die übrigen Merkmale, `detail`-Text und `links`. Derselbe Wert darf in beiden
+stehen (er ist eine Zahl, kein Text), dieselbe Aussage nicht — Gate G1 zieht die
+Grenze bei 60 Zeichen. Heute gibt es vier Darstellungen derselben Geräte
+(Leiter `97-194`, Tabelle `224-287`, Detailkarten `315-556`, Kompaktkarten
+`564-606`); danach gibt es zwei mit getrennten Aufgaben.
+
+Unter 768 px entfällt die Tabelle, und Zone 3 trägt die vier Scan-Werte mit — mobil
+bleibt damit **eine** Darstellung.
+
+**Zone 4, die vier Abschnitte** (zusammengeführt aus den heutigen 7
+Artikel-Abschnitten `lib/seo/content/ladebooster.ts:110-297` und den
+Vergleichs-Sektionen `LadeboosterVergleich.tsx:628-1181`):
+
+1. **Ladebooster oder Trennrelais** — die Entscheidung, inkl. der heute in
+   „Sieben Wege" verstreuten Alternativen als Liste.
+2. **Welche Stromklasse: 30, 60 oder 90 A** — inkl. des Ladestrom-Rechners
+   (`section.calculator`, §7) und der C-Rate-Erklärung **vor** ihrer ersten
+   Verwendung (heute: verwendet `48`, erklärt `945`).
+3. **Kabel, Sicherung, D+** — Zusammenlegung der heutigen Sektionen
+   Kabelquerschnitt, Absicherung, Bauformen; das Schaltplan-SVG (`811-934`) wandert
+   hierher, die inline wiederholten `fontFamily`-Attribute (17×) entfallen.
+4. **Messen nach dem Einbau und typische Fehler** — beide heutigen Sektionen
+   zusammen.
+
+Die sechs Foren-Insights (`625-750`) und „Meine Rechnung" (`752-1031`) werden zu
+Callouts (`ContentCallout`) im jeweils passenden Abschnitt — sie sind Belege, keine
+Kapitel. Ihre Kernaussagen stehen damit einmal statt dreimal (Gate G1).
+
+Die Foto-Platzhalter (`1009-1024`) entfallen ersatzlos; echte Bilder nur, wenn sie
+geliefert werden.
+
+## 7. Ladestrom-Rechner als offizieller Rechner
+
+Der heute handgeschriebene Rechner (`LadeboosterVergleich.tsx:1033-1125` mit
+`LadeboosterVergleichBehavior.tsx:89-183`) wird ein Rechner wie die vier bestehenden.
+
+| Schritt       | Datei                                                                                                                     | Hinweis                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Domänenlogik  | neu `lib/boosterSizing.ts` + `lib/boosterSizing.test.ts`                                                                  | Rule D: UI rechnet nicht (`docs/ai/ARCHITECTURE-RULES.md:53`). Die Formel wird **zeichengetreu** aus `LadeboosterVergleichBehavior.tsx:112-127` übernommen, nicht neu erfunden                               |
+| Golden Values | `lib/boosterSizing.test.ts`                                                                                               | pinnt die sechs heute per e2e eingefrorenen Ausgaben: 330 Ah / 5 h / 180 A → `79 A · 0,24 C`, `90-A-Klasse`, `130 A · 72 %`; 100 Ah / 5 h / 180 A → `24 A · 0,24 C`, `30-A-Klasse`, `53 A · 30 %`            |
+| Kennung       | `lib/seo/types.ts:110`                                                                                                    | `CalculatorId` += `'ladestrom'`                                                                                                                                                                              |
+| Komponente    | neu `components/rechner/LadestromRechner.tsx`                                                                             | `'use client'`, `lazy`, eindeutige Input-IDs als Bundle-Marker, Eingaben 16 px, `min-h-11`, feste Ergebnishöhe gegen CLS — Muster aus `components/elektrik/KabelquerschnittRechner.tsx:74-96`                |
+| Zuordnung     | `components/rechner/CalculatorRenderer.tsx:8-29`                                                                          | `Record<CalculatorId, …>` ist erschöpfend, der Typecheck erzwingt den Eintrag                                                                                                                                |
+| Kategorie     | `components/seo/SeoPage.tsx:62-68`                                                                                        | `subCategory`-Mapping ergänzen, sonst fällt `ladestrom` auf „Leitungsbemessung"                                                                                                                              |
+| Bundle-Gate   | `scripts/seo/checks.ts:248-253`                                                                                           | neuer Eintrag in `CALCULATOR_BUNDLE_MARKERS`; **muss** `lazy` geladen werden, sonst landet der Code im SEO-Basischunk und jede Inhaltsseite wird rot (`rechner-bundle`, `severity: 'fehler'`)                |
+| Route         | neu `app/rechner/ladestrom/page.tsx` + `lib/seo/content/ladestrom.ts` + Registrierung in `lib/seo/content/index.ts:36-62` | Muster: `app/rechner/batteriekapazitaet/page.tsx:8-12`; `kind: 'rechner'`, `changeFrequency: 'monthly'`, `sitemapPriority: 0.9` wie Hub, Batteriekapazität und Solaranlage (`spannungsabfall-12v` trägt 0,8) |
+| Einbettung    | `lib/seo/content/ladebooster.ts`                                                                                          | `calculator: 'ladestrom'` in Zone-4-Abschnitt 2 — derselbe Rechner, dieselbe Logik                                                                                                                           |
+| Verlinkung    | `components/seo/RechnerLeiste.tsx:38-64`                                                                                  | sechster Eintrag; der Kommentar „Die fünf Rechner" wird mitgezogen                                                                                                                                           |
+| Pflicht-Link  | `lib/seo/content/ladebooster.ts` `related`                                                                                | Gate `rechner-ohne-planner-link` (`scripts/seo/linkGraph.ts:386-396`): jede Seite mit `calculators` braucht einen kontextuellen Verweis auf `/elektrik-planung/`                                             |
+
+Der `<noscript>`-Hinweis (`LadeboosterVergleich.tsx:1115-1120`) entfällt: Rechner
+sind im Bestand client-only, der No-JS-Inhalt kommt aus dem Seitentext
+(`tests/e2e/seo-nojs.spec.ts:69-76` verlangt dort Text, keinen Rechner).
+
+## 8. SEO-Layer
+
+**Strukturierte Daten.** `StructuredDataType` (`lib/seo/types.ts:42-50`) += `'ItemList' | 'Product'`.
+`structuredDataOf()` (`lib/seo/inventory.ts:328-333`) leitet beide aus
+`page.comparison` ab — das Inventar kann dadurch nicht von der Seite abweichen.
+Neue Bausteine in `lib/seo/jsonLd.ts`: `itemListNode()` und `productNode()`.
+
+Harte Grenzen, die das bestehende Gate setzt:
+
+- Keine fremde Adresse im Schema — `json-ld-adresse` meldet `severity: 'fehler'`
+  für jede URL mit anderem Ursprung (`scripts/seo/checks.ts:576-578`). Also **kein**
+  `sameAs` auf Herstellerseiten, **kein** `Offer` mit Händler-URL.
+- Jeder im Markup vorhandene Seitentyp muss im Inventar angekündigt sein und
+  umgekehrt: genau 1 Knoten je Typ (`json-ld-inventar`, `checks.ts:594-601`).
+
+Deshalb: `Product` mit `name`, `brand` (nur Name), `category` und
+`additionalProperty` aus denselben Daten wie die Tabelle. **Kein** `Offer`,
+**kein** `Review`, **keine** `aggregateRating`, **kein** Autor.
+
+**Präambel korrigieren.** `lib/seo/jsonLd.ts:11-16` behauptet „keine Bewertungen,
+keine Autoren, keine Preise — es gibt sie in Camp nicht". Preise gibt es seit
+`908d344` sichtbar auf der Seite. Der Kommentar wird zu: Preise sind sichtbar,
+stehen aber bewusst nicht im Schema, weil ein beobachteter Straßenpreis mit
+Stand-Datum als maschinelle Zusage veraltet. Eine Doku-Aussage, die den eigenen
+Zustand nicht beschreibt, ist eine falsche Zusage an den nächsten Beitragenden
+(vgl. AGENTS.md §3.8).
+
+**Metadaten.** Titel und Beschreibung werden auf den Vergleichs-Intent geschärft,
+innerhalb der Gates 15-65 bzw. 50-160 Zeichen (`scripts/seo/checks.ts:26-31`);
+Eindeutigkeit gegen alle anderen Seiten prüft `lib/seo/inventory.test.ts`.
+
+**Anker.** Jedes Produkt bekommt `#p-<id>` und `scroll-mt-20`; die Rangliste
+verlinkt auf die Karten. Deeplink-fähig für Antwortsysteme.
+
+**Interne Verlinkung.** Die Vergleichszone hat heute **null** interne Verweise
+(61 externe). Neu: kontextuelle Verweise auf Kabelquerschnitt-Rechner,
+`/camper-elektrik/lifepo4/`, `/camper-elektrik/sicherungen/`,
+`/camper-elektrik/laden/`. Zusätzlich wird die Eingangsverlinkung der Seite
+geprüft (Befund 13: nur 2 eingehende Verweise) — Kandidaten sind
+`app/camper-elektrik/page.tsx`, `lib/seo/content/laden.ts`, `batterie.ts`,
+`lifepo4.ts` über deren `related`.
+
+**Sitemap.** Die neue Rechner-Route kommt automatisch über `SITEMAP_ROUTES`
+(`lib/seo/inventory.ts:389-397`) in `app/sitemap.ts`; `app/sitemap.test.ts` prüft,
+dass jede indexierbare Seite genau einmal und ohne `noindex` vorkommt.
+
+## 9. Gates — erfüllbar heißt messbar
+
+| #   | Regel                                                                                                                                     | Prüfung                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| G1  | Kein Text ≥ 60 Zeichen steht zweimal auf der Seite                                                                                        | Unit-Test über `ComparisonSpec` + `SeoPageContent.sections`                                      |
+| G2  | Jedes Produkt trägt jeden deklarierten Merkmals-`id`; jede `pickId` und `fit`-Zuordnung zeigt auf ein existentes Produkt; `id`s eindeutig | Unit-Test                                                                                        |
+| G3  | Autorentext: Vergleichszone ≤ 700, Ratgeber ≤ 1.300, FAQ-Antwort ≤ 40 Wörter                                                              | Unit-Test; Gegenstück zur Mindestschwelle `THIN_WORDS = 300` (`scripts/seo/measureExport.ts:30`) |
+| G4  | Die Rangliste steht im DOM **vor** dem ersten Ratgeber-`h2`                                                                               | Render-Test gegen `SeoPage`                                                                      |
+| G5  | `priceChecked` älter als 180 Tage → Fehler, kein Hinweis                                                                                  | Unit-Test                                                                                        |
+| G6  | Ein Filter wirkt auf Rangliste **und** Produktkarten                                                                                      | Unit-Test gegen `vergleichBehavior`                                                              |
+| G7  | Keine `lb-*`-Klasse, kein `app/ladebooster-vergleich.css`, kein CSS-Import in `app/layout.tsx` außer `globals.css` und Schriften          | Test + `npm run audit:dead-code`                                                                 |
+| G8  | Kein `--font-mono`/`IBM Plex Mono` in `components/vergleich/**`; Zahlen mit `tabular-nums`                                                | Test, erweitert `lib/designTokens.test.ts:392-469`                                               |
+| G9  | Anzahl `ListItem` == Anzahl Produkte; kein fremder Ursprung im Schema                                                                     | `npm run seo:audit` (bestehende Regeln `json-ld-inventar`, `json-ld-adresse`)                    |
+| G10 | 375 / 768 / 1440 px: mobil Kartenstapel, desktop Tabelle, beides ohne horizontales Scrollen                                               | Playwright, erweitert `tests/e2e/responsive.spec.ts`                                             |
+| G11 | Rechner `ladestrom` ist `lazy` und nur auf Seiten mit deklarierter Kennung im Bündel                                                      | bestehendes `checkCalculatorBundles`                                                             |
+| G12 | Die sechs Golden Values des Rechners bleiben zeichenidentisch                                                                             | `lib/boosterSizing.test.ts`                                                                      |
+
+Pflicht vor jedem Commit: `npm run check` (AGENTS.md §7). Vor dem Merge:
+`npm run e2e` und `npm run seo:audit`.
+
+## 10. Umgang mit bestehenden Tests
+
+Bestehende Erwartungen werden **migriert, nicht gelöscht** — AGENTS.md §5 verbietet,
+fehlgeschlagene Tests zu entfernen oder zu `skip`en, um CI grün zu bekommen.
+
+| Test                                               | Erwartung heute                                                                  | Umgang                                                                                                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `components/seo/LadeboosterVergleich.test.tsx`     | H2-Text, Tabellen-Name `/Geräteüberblick/`, Karten-Headings, Filter `.is-hidden` | zieht in neue Tests unter `components/vergleich/`; `.is-hidden` wird durch die Tailwind-Klasse `hidden` ersetzt (G6), die Änderung wird im PR begründet            |
+| `tests/e2e/ladebooster-vergleich.spec.ts`          | Filter `60–70 A` mit `aria-pressed`, Rechnerwerte                                | bleibt als e2e; Rechner-Teil prüft dieselben sechs Werte nach dem Umzug (G12)                                                                                      |
+| `tests/e2e/seo-nojs.spec.ts:69-76`                 | `Die Kurzentscheidung`, `Geräteüberblick` ohne JS                                | „Geräteüberblick" bleibt als zugänglicher Name der Tabelle. „Die Kurzentscheidung" wird zu „Welcher passt zu mir" — Erwartung wird mit dieser Begründung angepasst |
+| `app/sitemap.test.ts`, `lib/seo/inventory.test.ts` | eindeutige Pfade, Titel, Beschreibungen; bekannte Themen                         | neue Rechner-Seite muss Titel/Beschreibung eindeutig und `topicId` existent halten                                                                                 |
+
+Kein Pixel-Baseline-Blocker: `/camper-elektrik/ladebooster/` ist nicht in
+`tests/e2e/visual.spec.ts:48-54` enthalten.
+
+## 11. Arbeitspakete
+
+Ein Commit pro Aufgabe (AGENTS.md §8). Pakete 1-3 sind der Kern, 4 ist unabhängig
+kürzbar, 5 ist die Abnahme.
+
+0. **Baseline messen.** `npm run build` und dann
+   `npx tsx scripts/seo/measureExport.ts`. Festgehalten werden für
+   `/camper-elektrik/ladebooster/`: Wörter ohne JavaScript, `H1/H2`, `ein/aus`,
+   `JS (KB)`. Diese vier Zahlen sind der Bezugspunkt der Abnahme. Die im Repo
+   liegende `docs/seo/AUDIT.md` trägt den Stand vom 2026-10-15 und beschreibt die
+   Seite **vor** dem Vergleichsblock; sie darf nicht als Baseline verwendet werden.
+   Die Zahlen werden als Kommentar im PR festgehalten, nicht als Commit —
+   `npx tsx scripts/seo/report.ts` schreibt drei Dokumente samt PDF neu
+   (`AUDIT`, `ANALYSE-UND-VISION`, `CAMP-SEO-GROWTH-REPORT`, `report.ts:569-574`)
+   und gehört deshalb in einen eigenen Commit in Paket 5.
+1. **Datenmodell + Gates.** `lib/seo/comparisons/types.ts`, `ladebooster.ts`,
+   `comparisonGates.test.ts` (G1, G2, G3, G5). Kein UI. `npm run check` grün.
+2. **Komponenten + Slot.** `components/vergleich/**`, `comparison?: ComparisonSpec`
+   in `lib/seo/types.ts`, Slot-Reihenfolge in `SeoPage.tsx`, G4-Test, G6-Test.
+3. **Migration Ladebooster.** Ratgeber auf vier Abschnitte verdichtet,
+   Wiederholungen entfernt, alte Komponente und `app/ladebooster-vergleich.css`
+   gelöscht, `layout.tsx`-Import entfernt, Tests migriert (§10), interne Verweise
+   ergänzt, G7/G8/G10.
+4. **Ladestrom-Rechner.** §7 vollständig: `lib/boosterSizing.ts` + Golden Test,
+   `CalculatorId`, Komponente, Route, `RechnerLeiste`, Bundle-Marker, Planner-Link.
+5. **Abnahme.** `npm run check` + `npm run e2e` + `npm run seo:audit`;
+   `npm run build` und `npx tsx scripts/seo/report.ts` in einem **eigenen** Commit
+   (schreibt `docs/seo/AUDIT.md`, `ANALYSE-UND-VISION.md` und
+   `CAMP-SEO-GROWTH-REPORT.md` samt PDFs neu); Vorher/Nachher-Screenshots in
+   375/768/1440 px, hell und dunkel (AGENTS.md M11-1 verlangt optische Freigabe);
+   ADR 0039.
+
+**Messbare Abnahmekriterien** — Bezug ist die in Paket 0 gemessene Baseline.
+
+| Kennzahl                                          | Heute (zu messen in Paket 0)                                                                       | Ziel                                                                                                                                                                                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Autorentext der Seite                             | ~2.300 Wörter Zielgröße aus §6                                                                     | ≤ 2.300, geprüft durch G3 auf Datenebene                                                                                                                                                                                  |
+| Sichtbarer Text ohne JavaScript (`measureExport`) | Baseline aus Paket 0                                                                               | mindestens −35 % und ≤ 3.500 Wörter                                                                                                                                                                                       |
+| `H1/H2`                                           | 1/12 (7 Artikel-Abschnitte + Vergleichs-`h2` + FAQ + „Weiter im Thema" + Planer-CTA + Transparenz) | 1/11 (3 Vergleichs-`h2` + 4 Ratgeber-`h2` + dieselben 4 Gerüst-`h2`). Die `h2`-Anzahl ist **kein** Ziel an sich — Ziele sind Wortzahl, Reihenfolge und doppelte Aussagen; sie steht hier nur, weil das Audit sie ausweist |
+| `ein/aus` interne Verweise                        | 2/16 laut veraltetem Audit, neu zu messen                                                          | eingehend ≥ 4                                                                                                                                                                                                             |
+| Seiten-CSS                                        | `app/ladebooster-vergleich.css`, 19.846 Byte global                                                | Datei existiert nicht; `app/layout.tsx` importiert nur `globals.css` und Schriften                                                                                                                                        |
+| Darstellungen desselben Geräts                    | 4                                                                                                  | 2 mit getrennten Aufgaben (Scan / Tiefe), mobil 1                                                                                                                                                                         |
+| Gates                                             | `npm run check`, `npm run e2e`, `npm run seo:audit`                                                | alle drei Exit-Code 0                                                                                                                                                                                                     |
+| Optische Abnahme                                  | —                                                                                                  | Screenshots 375/768/1440 hell+dunkel im PR, Freigabe durch den Betreiber                                                                                                                                                  |
+
+## 12. Risiken
+
+| Risiko                                                                 | Behandlung                                                                                                                          |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Rechner-Code landet im SEO-Basischunk und färbt alle Inhaltsseiten rot | `lazy` + `CALCULATOR_BUNDLE_MARKERS` + Gate `checkCalculatorBundles` (G11); Budget `initial-js-budget` 700 KiB im Blick             |
+| Preise veralten unsichtbar                                             | G5 macht `priceChecked` > 180 Tage zum Fehler                                                                                       |
+| Wortbudget wird beim Schreiben verfehlt                                | G3 prüft die Datendatei, nicht die Absicht; Kürzen ist Teil von Paket 3                                                             |
+| Die verdichteten Ratgebertexte verlieren Fachgenauigkeit               | Keine Norm- oder Grenzwert-Aussage wird umformuliert; Quellen bleiben verlinkt; `TrustBlock` (Annahmen, Grenzen) bleibt vollständig |
+| Zweite Darstellung (Tabelle/Karten) driftet auseinander                | beide lesen dieselbe `ComparisonSpec`; G1 verbietet doppelte Texte                                                                  |
+
+## 13. Bewusst nicht ändern
+
+- Keine Sterne, keine Noten, kein „Testsieger". Der Satz „Die Tabelle bewertet keine
+  Geräte mit Sternen" (`LadeboosterVergleich.tsx:290-294`) bleibt und wird
+  sichtbarer platziert — er ist ein Vertrauensargument.
+- Keine Affiliate-Links; es bleibt bei Hersteller-Datenblättern und neutralen
+  Preisportalen (`LadeboosterVergleich.tsx:1188-1190`).
+- Kein `Review`-, `Offer`- oder `aggregateRating`-Schema: nichts davon ist auf der
+  Seite belegt, und `lib/seo/jsonLd.ts:11-16` verbietet Schema ohne sichtbaren Beleg.
+- Die Rechenformel des Ladestrom-Rechners bleibt inhaltlich unverändert (G12).
+- Das Schaltplan-SVG bleibt, nur ohne inline wiederholte `fontFamily`-Attribute.
+- `SeoPage` behält seine bestehenden Slots `afterHeader` und `children`.
