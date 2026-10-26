@@ -18,6 +18,9 @@
 
 import type { RichText } from '../types';
 
+/** Numerische Achsen eines Produkts, nach denen die Rangliste sortiert. */
+export type Sortierschluessel = 'strom' | 'preis';
+
 /**
  * Ein Vergleichsmerkmal. Die Reihenfolge ist die Reihenfolge der Spalten in der
  * Rangliste und der Zeilen in der Produktkarte — beide Darstellungen lesen
@@ -36,8 +39,15 @@ export type ComparisonAttribute = {
    * je Produkt wiederholt.
    */
   legend?: RichText;
-  /** Sortierrichtung, falls nach diesem Merkmal sortiert werden kann. */
-  better?: 'higher' | 'lower';
+  /**
+   * Zahlenachse, über die diese Spalte sortiert.
+   *
+   * Der Anzeigewert eines Merkmals ist Text („45 / 55 / 63 / 70 A") und damit
+   * nicht sortierbar; sortiert wird über `ComparisonProduct.stromA` bzw.
+   * `priceEur`. Die Zuordnung steht hier, damit die Komponente nicht raten muss,
+   * welche Spalte zu welcher Zahl gehört.
+   */
+  sortierbar?: Sortierschluessel;
 };
 
 /**
@@ -65,6 +75,17 @@ export type ComparisonProduct = {
   fit: { label: string; tone: 'pick' | 'plain' };
   /** „Haken" — Einschränkungen, die es nur hier gibt. */
   caveats: readonly { text: RichText; tone: CaveatTone }[];
+  /**
+   * Nennstrom in Ampere als Zahl — Sortierschlüssel der Rangliste und Wert für
+   * `additionalProperty` in der strukturierten Beschreibung.
+   *
+   * `null` heißt „nicht belegt" und sortiert ans Ende. Das ist eine Entscheidung:
+   * Ein Importgerät mit „110–120 A (angeblich)" hätte sich sonst vor Geräte
+   * sortiert, deren Strom aus dem Handbuch steht. Bei widersprüchlichen Angaben
+   * gilt der kleinere belegte Wert — beim BB12120 also 110 A aus dem Handbuch,
+   * nicht 120 A von der Produktseite.
+   */
+  stromA: number | null;
   /** Beobachteter Straßenpreis in Euro; `null` = kein Preis belegt. */
   priceEur: number | null;
   /** ISO-Datum der Preisprüfung. Älter als `PREIS_MAX_TAGE` ist ein Fehler (G5). */

@@ -215,7 +215,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       id: 'ladestrom',
       label: 'Ladestrom',
       inTable: true,
-      better: 'higher',
+      sortierbar: 'strom',
       legend: 'Dauerstrom an die Bordbatterie — nicht der Eingangsstrom der Lichtmaschine.',
     },
     {
@@ -283,6 +283,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       },
       fit: { label: 'kleine Bank, kurze Fahrten', tone: 'plain' },
       caveats: [{ text: 'Die 16-mm²-Klemmen sind die harte Grenze.', tone: 'warn' }],
+      stromA: 30,
       priceEur: 150,
       priceChecked: '2026-10-23',
       detail: ['Spitze 40 A für 10 s, Leistung 430 W / 360 W. Bluetooth-Konfiguration.'],
@@ -316,6 +317,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       },
       fit: { label: '200–400 Ah LiFePO4', tone: 'pick' },
       caveats: [{ text: 'D+ muss vorhanden sein oder über einen Simulator kommen.', tone: 'warn' }],
+      stromA: 60,
       priceEur: 260,
       priceChecked: '2026-10-23',
       detail: [
@@ -351,6 +353,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       },
       fit: { label: 'Solar und Lima in einem Gerät', tone: 'plain' },
       caveats: [{ text: 'Im Hybridbetrieb liefert jede Quelle maximal 25 A.', tone: 'warn' }],
+      stromA: 50,
       priceEur: 169,
       priceChecked: '2026-10-23',
       detail: ['Beobachtet ab 169 €, der Herstellershop nannte am selben Stichtag 209,99 €.'],
@@ -386,6 +389,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       caveats: [
         { text: 'Lithium nur mit festen 14,4 V — wer 14,6 V braucht, ist hier falsch.', tone: 'warn' },
       ],
+      stromA: 70,
       priceEur: 575,
       priceChecked: '2026-10-23',
       detail: ['Eingang 12–15 V, Temperaturfühler im Lieferumfang. Preis pro Ampere: rund 8,20 € bei 70 A.'],
@@ -422,6 +426,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
         { text: '25/35 mm² und Luft für den Lüfter sind Pflicht.', tone: 'warn' },
         { text: 'Zum 90er gibt es Kurzberichte, aber keine unabhängige Messreihe.', tone: 'warn' },
       ],
+      stromA: 90,
       priceEur: 501,
       priceChecked: '2026-10-23',
       detail: [
@@ -462,6 +467,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       },
       fit: { label: '3-in-1 mit Netzteil', tone: 'plain' },
       caveats: [{ text: 'Kein 90-A-Modell; in Fahrzeugen mit EBL Einschränkungen.', tone: 'warn' }],
+      stromA: 60,
       priceEur: 702,
       priceChecked: '2026-10-23',
       detail: [
@@ -502,6 +508,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
           tone: 'block',
         },
       ],
+      stromA: 110,
       priceEur: 711,
       priceChecked: '2026-10-23',
       detail: [
@@ -537,6 +544,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       },
       fit: { label: 'gewachsenes Victron-System', tone: 'plain' },
       caveats: [{ text: 'Für eine einfache Nachrüstung zu teuer und zu komplex.', tone: 'warn' }],
+      stromA: 100,
       priceEur: 795,
       priceChecked: '2026-10-23',
       detail: ['Für 12- und 24-V-Systeme, im Victron-Verbund mit Monitoring.'],
@@ -575,6 +583,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
           tone: 'block',
         },
       ],
+      stromA: null,
       priceEur: 180,
       priceChecked: '2026-10-23',
       detail: [

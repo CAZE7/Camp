@@ -15,6 +15,8 @@
  * (ARCHITECTURE-RULES Rule A).
  */
 
+import type { ComparisonSpec } from './comparisons/types';
+
 /** Art der Seite — entscheidet über Mindestumfang und Rolle im Topic-Graph. */
 export type PageKind =
   | 'start'
@@ -129,8 +131,7 @@ export type ContentSource = {
  */
 export type SeoPageContent = {
   /** Pfad im Export, mit führendem und abschließendem Schrägstrich. */
-  path: string;
-  /** Ordnername innerhalb der Route (nur für datengetriebene Unterseiten). */
+  path: string; /** Ordnername innerhalb der Route (nur für datengetriebene Unterseiten). */
   slug: string;
   /** Thema im Topic-Graph (siehe `topics.ts`). */
   topicId: string;
@@ -146,6 +147,13 @@ export type SeoPageContent = {
   priority: PriorityTier;
   /** Abschnitt „Was will der Nutzer wissen?" — Reihenfolge ist die Leserichtung. */
   sections: readonly ContentSection[];
+  /**
+   * Produktvergleich dieser Seite. Steht im Export VOR den Abschnitten, weil
+   * eine Vergleichsseite zuerst vergleicht und danach erklärt — die Reihenfolge
+   * prüft Gate G4. Die Daten leben in `lib/seo/comparisons/`, und dieselbe
+   * Beschreibung erzeugt Rangliste, Produktkarten und `ItemList`-Schema.
+   */
+  comparison?: ComparisonSpec;
   faq?: readonly FaqEntry[];
   /** Verwandte Seiten — der Weg tiefer in das Thema (§11). */
   related: readonly ContentLink[];

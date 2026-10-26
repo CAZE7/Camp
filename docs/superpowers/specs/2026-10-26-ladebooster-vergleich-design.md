@@ -49,7 +49,7 @@ dieselbe Klasse falscher Zusage, um die es in §8 geht.
 
 **Nicht-Ziel**
 
-- Keine Sterne, Noten, Testberichte oder Affiliate-Links (§13).
+- Keine Sterne, Noten, Testberichte oder Affiliate-Links (§14).
 - Keine neue Vergleichs-Route für Ladebooster (§3).
 - Kein zweiter Vergleich (Wechselrichter, LiFePO4) in diesem Auftrag — das Template
   muss ihn nur ermöglichen.
@@ -173,7 +173,7 @@ Deutsch benannt, wie die bestehenden Domänen-Bausteine (`RechnerLeiste.tsx`,
 | Datei                                        | Aufgabe                                                                                 | Zielgröße    |
 | -------------------------------------------- | --------------------------------------------------------------------------------------- | ------------ |
 | `components/vergleich/Vergleichszone.tsx`    | komponiert Rangliste, Einsatzfälle, Karten aus einer `ComparisonSpec`; Server Component | ≤ 120 Zeilen |
-| `components/vergleich/Rangliste.tsx`         | Tabelle mit sticky Kopfzeile, Sortierung, Chips                                         | ≤ 180        |
+| `components/vergleich/Rangliste.tsx`         | Tabelle mit Sortierung, Filter und Chips                                                | ≤ 180        |
 | `components/vergleich/Produktkarte.tsx`      | eine Karte; Attribut-Reihenfolge aus `attributes`                                       | ≤ 90         |
 | `components/vergleich/Einsatzfaelle.tsx`     | Use-Case-Zeilen: Situation → Gerät → Grund                                              | ≤ 60         |
 | `components/vergleich/vergleichBehavior.tsx` | `'use client'`: Filter + Sortierung über DOM, `aria-pressed`                            | ≤ 140        |
@@ -229,7 +229,7 @@ Kopf (H1 + Lead)
 | Zone                     | Inhalt                                                                                               | Autorentext           |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------- |
 | Kopf                     | H1, Lead: was verglichen wurde, Preisstand, kein Sternesystem                                        | ~50                   |
-| 1 · Rangliste            | 9 Geräte, sticky Kopf, sortierbar nach Ladestrom und Preis, Chips „Passt für" und „Haken", Legende   | ~330                  |
+| 1 · Rangliste            | 9 Geräte, sortierbar nach Ladestrom und Preis, Chips „Passt für" und „Haken", Legende                | ~330                  |
 | 2 · Welcher passt zu mir | 4 Einsatzfälle statt 7 „Wege": Situation → Gerät → ein Grund                                         | ~120                  |
 | 3 · Geräte im Detail     | 9 Karten mit den übrigen Merkmalen, Langtext und Datenblatt-Links in `<details>`, desktop zugeklappt | ~250 sichtbar         |
 | 4 · Ratgeber             | 4 `h2` statt 7 gemischter Artikel-Abschnitte plus 8 Vergleichs-Sektionen, siehe unten                | ~1.250 (Gate ≤ 1.300) |
@@ -428,7 +428,23 @@ kürzbar, 5 ist die Abnahme.
 | Gates                                             | `npm run check`, `npm run e2e`, `npm run seo:audit` | alle drei Exit-Code 0                                                                                                                                                                                           |
 | Optische Abnahme                                  | —                                                   | Screenshots 375/768/1440 hell+dunkel im PR, Freigabe durch den Betreiber                                                                                                                                        |
 
-## 12. Risiken
+## 12. Abweichungen und Ergänzungen während der Umsetzung
+
+Der Entwurf oben ist die Absicht; hier steht, was beim Bauen anders wurde und
+warum. Eine Spec, die den gebauten Zustand nicht beschreibt, ist dieselbe Klasse
+falscher Zusage wie der Kommentar in `jsonLd.ts`.
+
+| Punkt                          | Entwurf                                           | Umgesetzt                                                                                             | Grund                                                                                                                                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sticky Kopfzeile der Rangliste | vorgesehen                                        | weggelassen                                                                                           | Der Seitenkopf ist bereits `sticky top-0` (Designkonzept §4). Eine zweite klebende Ebene bräuchte dessen exakte Höhe als Versatz — eine Kopplung, die bei jeder Kopfänderung bricht. Bei neun Zeilen und einem Zeilenkopf (`th scope="row"`) je Gerät bringt sie nichts |
+| Sortierbarkeit                 | `ComparisonAttribute.better: 'higher' \| 'lower'` | `sortierbar?: 'strom' \| 'preis'`                                                                     | Der Anzeigewert ist Text („45 / 55 / 63 / 70 A") und damit nicht sortierbar. `better` beschrieb eine Richtung ohne Zahl; `sortierbar` verweist auf `stromA` bzw. `priceEur`                                                                                             |
+| Nennstrom als Zahl             | nicht vorgesehen                                  | `ComparisonProduct.stromA: number \| null`                                                            | Sortierschlüssel und Wert für `additionalProperty` im Schema. `null` sortiert ans Ende — das Importgerät mit „110–120 A (angeblich)" steht damit hinter den Geräten, deren Strom im Handbuch steht                                                                      |
+| Rangreihenfolge                | Reihenfolge der Datendatei                        | `lib/seo/comparisons/rangfolge.ts`, aufsteigender Nennstrom, dann Preis, Gleichstand über die Kennung | Eine abgeleitete Ordnung kann nicht von der Sortierung im Browser abweichen; der dritte Schlüssel hält sie deterministisch (AGENTS.md §3.6)                                                                                                                             |
+| Quellenverzeichnis             | Zone 5                                            | `<details>` am Ende von Zone 3                                                                        | Die Belege gehören zum Vergleich, nicht zum Ratgeber. Eingeklappt, damit sie die Scan-Schicht nicht verlängern                                                                                                                                                          |
+| G1-Maß                         | „kein Text ≥ 60 Zeichen doppelt"                  | identische Aussage **oder** gemeinsame Wortfolge ab 6 Wörtern                                         | An den drei Wiederholungen des Bestands gemessen: Wortmengen-Ähnlichkeit (Jaccard) lag bei 0,43 und über 5er-Folgen bei 0,04 — beide unter jeder sinnvollen Schwelle. Die gemeinsame Wortfolge meldet alle drei; `gates.test.ts` prüft sie als Fixture                  |
+| Steuerknöpfe ohne JavaScript   | „Filterbereich wird nicht angeboten"              | serverseitig mit `hidden` ausgeliefert, Skript blendet ein                                            | Dasselbe Verhalten, aber ohne zweiten Renderpfad: `renderToString` liefert die Knöpfe mit `hidden`, ein Unit-Test prüft das                                                                                                                                             |
+
+## 13. Risiken
 
 | Risiko                                                                 | Behandlung                                                                                                                          |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -438,7 +454,7 @@ kürzbar, 5 ist die Abnahme.
 | Die verdichteten Ratgebertexte verlieren Fachgenauigkeit               | Keine Norm- oder Grenzwert-Aussage wird umformuliert; Quellen bleiben verlinkt; `TrustBlock` (Annahmen, Grenzen) bleibt vollständig |
 | Zweite Darstellung (Tabelle/Karten) driftet auseinander                | beide lesen dieselbe `ComparisonSpec`; G1 verbietet doppelte Texte                                                                  |
 
-## 13. Bewusst nicht ändern
+## 14. Bewusst nicht ändern
 
 - Keine Sterne, keine Noten, kein „Testsieger". Der Satz „Die Tabelle bewertet keine
   Geräte mit Sternen" (`LadeboosterVergleich.tsx:290-294`) bleibt und wird

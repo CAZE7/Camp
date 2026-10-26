@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
 import { PageShell } from '@/components/brand/PageShell';
+import { Vergleichszone } from '@/components/vergleich/Vergleichszone';
 import {
   breadcrumbNode,
   faqNode,
@@ -109,6 +110,15 @@ export function SeoPage({
             <RichText text={page.lead} />
           </p>
         </header>
+
+        {/*
+          Der Vergleich steht VOR den Abschnitten, und das ist eine Inhalts-
+          entscheidung, keine Geschmacksfrage: Wer „X Vergleich" sucht, will die
+          Geräte sehen und nicht erst 3.000 Wörter Auslegung lesen. Gate G4
+          (`components/vergleich/Vergleichszone.test.tsx`) prüft die Reihenfolge,
+          damit sie nicht bei der nächsten Umstellung versehentlich kippt.
+        */}
+        {page.comparison ? <Vergleichszone spec={page.comparison} /> : null}
 
         {afterHeader}
 

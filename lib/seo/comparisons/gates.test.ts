@@ -47,6 +47,7 @@ const produkt = (ueberschreiben: Partial<ComparisonProduct> = {}): ComparisonPro
   specs: { strom: '30 A', kabel: null },
   fit: { label: 'Einstieg', tone: 'plain' },
   caveats: [],
+  stromA: 30,
   priceEur: 100,
   priceChecked: '2026-10-23',
   detail: [],
