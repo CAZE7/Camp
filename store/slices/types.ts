@@ -176,6 +176,11 @@ export interface PlannerState {
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
   handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
   /**
+   * Konventioneller Auslösestrom I₂ (A) des konkreten Sicherungsprodukts.
+   * 0/ungültig setzt den Wert zurück; dann gilt die Produktnorm der Bauform.
+   */
+  handleChangeFuseI2: (id: string, i2A: number) => void;
+  /**
    * V2-INTENT-002: Verbindlichkeit einer Leitung setzen (Inspector).
    *
    * `'auto'` gibt die Leitung wieder an die Automatik zurück (Pin lösen),

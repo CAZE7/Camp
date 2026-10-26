@@ -76,6 +76,31 @@ describe('PlannerStatusBar', () => {
     }
   });
 
+  it('nennt reine Datenlücken nicht „Warnungen“, sondern „Keine Fehler · Hinweis“', () => {
+    const prev = usePlannerStore.getState();
+    try {
+      act(() => {
+        usePlannerStore.setState({
+          viewMode: 'electric',
+          plannerErrors: [{ severity: 'info', message: 'Datenlücke' }] as never,
+        });
+      });
+      const { container, unmount } = render(<PlannerStatusBar zoom={1} />);
+      const statusbar = container.querySelector('.planner-statusbar');
+      expect(statusbar?.textContent).toContain('Keine Fehler');
+      expect(statusbar?.textContent).toContain('1 Hinweis');
+      expect(statusbar?.textContent).not.toContain('Warnung');
+      unmount();
+    } finally {
+      act(() => {
+        usePlannerStore.setState({
+          plannerErrors: prev.plannerErrors,
+          viewMode: prev.viewMode,
+        });
+      });
+    }
+  });
+
   it('M9: zeigt in einem 24-V-Aufbau „24 V / 230 V“ statt fest „12 V / 230 V“', () => {
     const prevNodes = usePlannerStore.getState().nodes;
     try {

@@ -768,3 +768,23 @@ describe('useLiveValidation', () => {
     });
   });
 });
+
+/**
+ * Der große Standardplan ist die Referenz, die ein Erstbesucher sieht. Er
+ * darf keine Warnungen und keine behebbaren Datenlücken zeigen: Batterie-
+ * Nennspannungen, MIDI-I₂ und Class-T-I₂ sind in der Vorlage belegt. Übrig
+ * bleibt allein die benannte Modellgrenze am Wechselrichter-Ausgang — sie ist
+ * kein Planfehler und wird ausdrücklich als solche angezeigt.
+ */
+describe('Autark-Vorlage — großer Standardplan', () => {
+  it('zeigt keine Warnungen, sondern nur die Wechselrichter-Modellgrenze', () => {
+    const { result } = renderHook(() => useLiveValidation(TEMPLATE_AUTARK.nodes, TEMPLATE_AUTARK.edges));
+
+    expect(result.current.filter((warning) => warning.type !== 'info')).toEqual([]);
+    expect(result.current.some((warning) => warning.ruleId === 'AMP-002-i2-vs-iz')).toBe(false);
+    expect(result.current.some((warning) => warning.ruleId === 'ELE-008-voltage-unknown')).toBe(false);
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0]?.ruleId).toBe('RCD-005-loop-impedance');
+    expect(result.current[0]?.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
+  });
+});

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { verifyPlan } from '../../lib/verify';
+import { classifySystemVoltage } from '../../lib/electricalGraph/powerSystem';
+import { volts } from '../../lib/units';
 import {
   isStarterPlan,
   PLANNER_TEMPLATES,
@@ -121,7 +123,8 @@ describe('Vorlagen tragen vollständige Startwerte (Nachtest)', () => {
       }
     });
 
-    it(`${name}: Solarmodule haben Arbeitsspannung/-strom, Batterien eine Kapazität`, () => {
+    it(`${name}: Solarmodule haben Arbeitsspannung/-strom, Batterien eine Kapazität und klare Spannung`, () => {
+      const batteryVoltages: number[] = [];
       for (const node of template.nodes) {
         const data = node.data as Record<string, number | string | undefined>;
         if (node.type === 'solar') {
@@ -130,16 +133,37 @@ describe('Vorlagen tragen vollständige Startwerte (Nachtest)', () => {
           expect(Number(data.watts ?? 0), 'solar watts').toBeGreaterThan(0);
         }
         if (node.type === 'battery') {
-          // Keine erfundene Nennspannung in der Vorlage: Ohne Angabe nimmt
-          // die Engine den Chemie-Standard an (12,8 V LiFePO4 / 12,0 V
-          // Blei) — explizite 12 vs. 12,8 würden Starter- + Aufbaubatterie
-          // fälschlich als „Mischspannung“ melden.
-          expect(data.nominalVoltage, 'battery nominalVoltage bleibt Annahme').toBeUndefined();
+          // ELE-008: Eine fehlende Nennspannung macht die Mischspannungs-
+          // Prüfung unbewertbar. Die Vorlagen tragen die Werte deshalb
+          // ausdrücklich (12,0 V Blei, 12,8 V LiFePO4) — beide fallen in
+          // dieselbe 12-V-Ebene, ein Mischspannungsalarm entsteht nicht.
+          const nominalVoltage = Number(data.nominalVoltage);
+          expect(nominalVoltage, `battery nominalVoltage (${data.label})`).toBeGreaterThan(0);
+          batteryVoltages.push(nominalVoltage);
           expect(Number(data.capacity ?? 0), 'battery capacity').toBeGreaterThan(0);
         }
         if (node.type === 'mpptController') {
           expect(Number(data.maxPvVoltage ?? 0), 'mppt maxPvVoltage').toBeGreaterThan(0);
         }
+      }
+      const voltageClasses = new Set(batteryVoltages.map((voltage) => classifySystemVoltage(volts(voltage))));
+      expect(voltageClasses.size, 'Batterien liegen in einer Spannungsebene').toBe(1);
+      expect(voltageClasses.has('unknown'), 'keine unbekannte Spannungsebene').toBe(false);
+    });
+
+    it(`${name}: Bolzensicherungen tragen einen belegten Datenblatt-I₂`, () => {
+      const boltDown = new Set(['midi', 'mega', 'anl', 'mrbf']);
+      const fuseEntries = [
+        ...template.nodes
+          .filter((node) => node.type === 'fuse')
+          .map((node) => node.data as Record<string, unknown>),
+        ...template.edges.map((edge) => (edge.data ?? {}) as Record<string, unknown>),
+      ];
+      for (const data of fuseEntries) {
+        if (typeof data.fuseSize !== 'number' && typeof data.rating !== 'number') continue;
+        const fuseType = typeof data.fuseType === 'string' ? data.fuseType : null;
+        if (!fuseType || !boltDown.has(fuseType)) continue;
+        expect(Number(data.i2A), `i2A für ${fuseType}-Sicherung`).toBeGreaterThan(0);
       }
     });
 

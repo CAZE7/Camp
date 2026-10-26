@@ -147,6 +147,26 @@ describe('lib/verify/ampacity — AMP-002 (I_2 ≤ 1,45 · I_z)', () => {
     expect(check.events[0]?.kind).toBe('UNVERIFIABLE');
     expect(check.events[0]?.message).toContain('nicht belegt');
   });
+
+  it('nutzt den Datenblattwert am Kabel, wenn die Bauform allein nicht belegt ist', () => {
+    const plan = withEdge(basePlan(), 'e-fuse-load', { fuseType: 'midi', i2A: 1 });
+    const check = checkI2VsIz(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.events).toEqual([]);
+  });
+
+  it('wertet Class T nach UL 248-15 aus (135 %/1 h) statt UNPROVABLE', () => {
+    const plan = withEdge(basePlan(), 'e-fuse-load', {
+      fuseType: 'classT',
+      fuseSize: 20,
+      crossSection: 70,
+      i2A: undefined,
+    });
+    const check = checkI2VsIz(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.events).toEqual([]);
+    expect(check.evaluatedEntities).toBeGreaterThan(0);
+  });
 });
 
 describe('lib/verify/ampacity — AMP-003 (0,2 m ab Quelle)', () => {

@@ -186,6 +186,7 @@
           "fuseSize": 15,
           "fuseType": "midi",
           "fuseWarning": false,
+          "i2A": 54,
           "length": 1
         },
         "id": "e-busbar-fuse",
@@ -235,6 +236,7 @@
           "fuseSize": 25,
           "fuseType": "midi",
           "fuseWarning": false,
+          "i2A": 54,
           "length": 1
         },
         "id": "e-charger-busbar",
@@ -377,6 +379,7 @@
           "fuseSize": 25,
           "fuseType": "midi",
           "fuseWarning": false,
+          "i2A": 54,
           "length": 5
         },
         "id": "e-starter-dcdc",
@@ -406,6 +409,7 @@
           "hasInternalBms": true,
           "internalResistance": 15,
           "label": "200Ah Lithium",
+          "nominalVoltage": 12.8,
           "role": "house"
         },
         "id": "battery-1",
@@ -528,6 +532,7 @@
         "data": {
           "designator": "F1",
           "fuseType": "midi",
+          "i2A": 54,
           "label": "Sicherungskasten",
           "rating": 40
         },
@@ -593,6 +598,7 @@
           "chemistry": "AGM",
           "designator": "G1",
           "label": "Starterbatterie",
+          "nominalVoltage": 12,
           "role": "starter"
         },
         "id": "starter-1",
@@ -681,6 +687,7 @@
           "crossSection": 16,
           "fuseSize": 40,
           "fuseType": "midi",
+          "i2A": 54,
           "length": 1
         },
         "id": "e-busbar-fuse",
@@ -718,6 +725,7 @@
           "crossSection": 16,
           "fuseSize": 40,
           "fuseType": "midi",
+          "i2A": 54,
           "length": 1
         },
         "id": "e-charger-busbar",
@@ -835,6 +843,7 @@
           "crossSection": 16,
           "fuseSize": 40,
           "fuseType": "midi",
+          "i2A": 54,
           "length": 5
         },
         "id": "e-starter-dcdc",
@@ -853,6 +862,7 @@
           "hasInternalBms": true,
           "internalResistance": 15,
           "label": "200Ah Lithium",
+          "nominalVoltage": 12.8,
           "role": "house"
         },
         "id": "battery-1",
@@ -973,6 +983,7 @@
         "data": {
           "designator": "F1",
           "fuseType": "midi",
+          "i2A": 54,
           "label": "Sicherungskasten",
           "rating": 40
         },
@@ -1038,6 +1049,7 @@
           "chemistry": "AGM",
           "designator": "G1",
           "label": "Starterbatterie",
+          "nominalVoltage": 12,
           "role": "starter"
         },
         "id": "starter-1",

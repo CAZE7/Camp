@@ -78,6 +78,15 @@ export type CableEdgeData = {
    */
   fuseType?: string;
   /**
+   * Konventioneller Auslösestrom I₂ des KONKRETEN Sicherungsprodukts in A
+   * (Datenblatt). Die Verifikations-Engine prüft I₂ ≤ 1,45 × I_z nach
+   * IEC 60364-4-43 §433.1. Fehlt der Wert, gilt die Produktnorm der Bauform
+   * (ATO/Class T/LS) — für Bolzensicherungen (MIDI/MEGA/ANL/MRBF) ist keine
+   * Produktnorm belegt, dann meldet die Engine den Punkt als nicht
+   * entscheidbar statt einen Wert zu erfinden.
+   */
+  i2A?: number;
+  /**
    * AC-Schutzorgan (AUDIT DOM-001): Bauform/Charakteristik/Abschaltvermögen
    * des Leitungsschutzschalters nach IEC 60898-1 (LS/MCB oder FI/LS/RCBO).
    * `fuseSize` bleibt der Bemessungsstrom In. Bewertet wird damit die

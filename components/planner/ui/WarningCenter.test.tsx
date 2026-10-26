@@ -246,6 +246,20 @@ describe('nextStep — der Lösungshinweis muss zum Befund passen', () => {
     expect(text).not.toContain('Zeige die betroffene Stelle im Plan');
   });
 
+  it('Wechselrichter-Ausgang → Modellgrenze statt FI-Auftrag', () => {
+    const text = nextStep(
+      warning({
+        id: 'verify-RCD-005-loop-impedance-edge-e-inv-induct-5',
+        ruleId: 'RCD-005-loop-impedance',
+        message:
+          'Hinweis: Abschaltbedingung auf Leitung e-inv-induct nicht entscheidbar (inverter-limited): Wechselrichter-Ausgänge sind elektronisch strombegrenzt.',
+      })
+    );
+    expect(text).toContain('Kein Fehler im Plan');
+    expect(text).toContain('Datenblatt');
+    expect(text).not.toContain('FI/LS-Schutz durch eine Elektrofachkraft');
+  });
+
   it('jeder Altbefund hat eine eigene Vorgabe — der Auffangtext bleibt die Ausnahme', () => {
     const legacyIds = ['mixed-voltage-unknown', 'mixed-voltage-batteries', 'solar-overload'];
     for (const id of legacyIds) {
