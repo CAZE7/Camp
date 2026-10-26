@@ -17,9 +17,9 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
   title: 'Rechner für den Camper-Ausbau',
   absoluteTitle: true,
   description:
-    'Alle Rechner für den Camper-Ausbau an einer Stelle: Kabelquerschnitt, Spannungsabfall, Batteriekapazität, Solar, Heizlast und Dachbelegung.',
+    'Alle Rechner für den Camper-Ausbau an einer Stelle: Kabelquerschnitt, Spannungsabfall, Batterie, Ladestrom, Solar, Heizlast und Dach.',
   h1: 'Rechner für den Camper-Ausbau',
-  lead: 'Sechs Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom Kabelquerschnitt bis zur Heizlast. Jeder Rechner nennt seine Formel, seine Annahmen und die Grenzen seines Modells; die Zahlen sind dieselben, die der Elektroplaner verwendet.',
+  lead: 'Sieben Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom Kabelquerschnitt bis zur Heizlast. Jeder Rechner nennt seine Formel, seine Annahmen und die Grenzen seines Modells; die Zahlen sind dieselben, die der Elektroplaner verwendet.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.9,
@@ -27,9 +27,9 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
   sections: [
     {
       id: 'elektrik',
-      heading: 'Elektrik: Kabel, Spannung, Batterie, Solar',
+      heading: 'Elektrik: Kabel, Spannung, Batterie, Ladestrom, Solar',
       body: [
-        'Die vier elektrischen Rechner bauen aufeinander auf: Der Kabelquerschnitt folgt aus Strom und Länge, der Spannungsabfall bewertet eine gewählte Leitung, die Batterie folgt aus dem Tagesbedarf, die Solarinsel aus demselben Bedarf und dem Ertrag.',
+        'Die fünf elektrischen Rechner bauen aufeinander auf: Der Kabelquerschnitt folgt aus Strom und Länge, der Spannungsabfall bewertet eine gewählte Leitung, die Batterie folgt aus dem Tagesbedarf, der Ladestrom aus Batterie und Fahrzeit, die Solarinsel aus demselben Bedarf und dem Ertrag.',
       ],
       definitions: [
         {
@@ -48,6 +48,11 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
             'Rechnet Tagesbedarf, Autarkietage und Entladetiefe in eine Nennkapazität um — inklusive Peukert-Effekt.',
         },
         {
+          term: 'Ladestrom',
+          description:
+            'Nennt die Booster-Stromklasse aus Batteriekapazität, Fahrzeit und Lichtmaschine — und prüft, ob die Lichtmaschine das trägt.',
+        },
+        {
           term: 'Solaranlage',
           description:
             'Ermittelt Modulleistung und Panelanzahl aus Tagesbedarf, Ertrag und Jahreszeit — mit getrennter Winterrechnung.',
@@ -58,6 +63,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
         { href: '/rechner/spannungsabfall-12v/', label: 'Spannungsabfall-Rechner öffnen' },
         { href: '/camper-elektrik/spannungsabfall/', label: 'Spannungsabfall bei 12 V verstehen' },
         { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
+        { href: '/rechner/ladestrom/', label: 'Ladestrom für den Ladebooster berechnen' },
         { href: '/rechner/solaranlage/', label: 'Solaranlage berechnen' },
       ],
     },

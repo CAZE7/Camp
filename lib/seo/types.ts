@@ -109,7 +109,8 @@ export type ContentSection = {
 };
 
 /** Kennung der eingebauten Rechner (Zuordnung erfolgt in `components/rechner`). */
-export type CalculatorId = 'spannungsabfall' | 'batteriekapazitaet' | 'solaranlage' | 'kabelquerschnitt';
+export type CalculatorId =
+  'spannungsabfall' | 'batteriekapazitaet' | 'solaranlage' | 'kabelquerschnitt' | 'ladestrom';
 
 /** Frage/Antwort-Paar — dieselbe Zeichenkette für Anzeige und strukturierte Daten. */
 export type FaqEntry = {

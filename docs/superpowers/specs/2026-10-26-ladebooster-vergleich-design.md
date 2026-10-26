@@ -383,8 +383,10 @@ Kein Pixel-Baseline-Blocker: `/camper-elektrik/ladebooster/` ist nicht in
 
 ## 11. Arbeitspakete
 
-Ein Commit pro Aufgabe (AGENTS.md §8). Pakete 1-3 sind der Kern, 4 ist unabhängig
-kürzbar, 5 ist die Abnahme.
+Ein Commit pro Aufgabe (AGENTS.md §8). Pakete 1-4 sind der Kern, 5 ist die
+Abnahme. Umgesetzt wird in der Reihenfolge **0, 1, 2, 4, 3, 5**: Paket 4 ist
+nicht unabhängig kürzbar, sondern Voraussetzung für Paket 3 — dieses löscht die
+Datei, in der der heutige Rechner steht (§12).
 
 0. **Baseline messen.** Erledigt am 2026-10-26 auf `e1b02a3`: `npm run build`
    (40 Seiten geprüft, Export grün) und `npx tsx scripts/seo/measureExport.ts`.
@@ -443,6 +445,12 @@ falscher Zusage wie der Kommentar in `jsonLd.ts`.
 | Quellenverzeichnis             | Zone 5                                            | `<details>` am Ende von Zone 3                                                                        | Die Belege gehören zum Vergleich, nicht zum Ratgeber. Eingeklappt, damit sie die Scan-Schicht nicht verlängern                                                                                                                                                          |
 | G1-Maß                         | „kein Text ≥ 60 Zeichen doppelt"                  | identische Aussage **oder** gemeinsame Wortfolge ab 6 Wörtern                                         | An den drei Wiederholungen des Bestands gemessen: Wortmengen-Ähnlichkeit (Jaccard) lag bei 0,43 und über 5er-Folgen bei 0,04 — beide unter jeder sinnvollen Schwelle. Die gemeinsame Wortfolge meldet alle drei; `gates.test.ts` prüft sie als Fixture                  |
 | Steuerknöpfe ohne JavaScript   | „Filterbereich wird nicht angeboten"              | serverseitig mit `hidden` ausgeliefert, Skript blendet ein                                            | Dasselbe Verhalten, aber ohne zweiten Renderpfad: `renderToString` liefert die Knöpfe mit `hidden`, ein Unit-Test prüft das                                                                                                                                             |
+| Reihenfolge der Pakete         | 3 (Migration) vor 4 (Rechner)                     | 4 vor 3                                                                                               | Paket 3 löscht `LadeboosterVergleich.tsx` und damit den Rechner. Ohne seinen Nachfolger wäre ein Commit ohne Rechner ausgeliefert und die eingefrorene e2e rot                                                                                                          |
+| Zahlen im Ladestrom-Rechner    | Muster `KabelquerschnittRechner.tsx`              | Inter mit `tabular-nums`, kein Mono                                                                   | DESIGN-KONZEPT §2 reserviert Mono für Tastenkürzel und die CSV-Vorschau. Die vier älteren Rechner weichen davon ab; der neue sitzt auf derselben Seite neben der Vergleichszone, für die Gate G8 dasselbe verlangt                                                      |
+| `subCategory` der Anwendung    | Mapping ergänzen                                  | erschöpfendes `Record<CalculatorId, string>` in `components/seo/SeoPage.tsx`                          | Die Verzweigung endete in einem `else`, das jedem neuen Rechner stillschweigend „Leitungsbemessung" vererbt. Das Record macht einen fehlenden Eintrag zum Typecheck-Fehler                                                                                              |
+| Berechnen-Knopf                | Formular mit Submit (Bestand)                     | rechnet bei der Eingabe, kein Knopf                                                                   | Die vier bestehenden Rechner tun dasselbe; ein Knopf wäre ein zweiter Weg zur selben Zahl. Die e2e streicht den Klick beim Umzug (Paket 3)                                                                                                                              |
+| Rechner-Übersicht `/rechner/`  | nicht vorgesehen                                  | siebtes Werkzeug: Abschnittstext, Definition und Verweis ergänzt                                      | Die Seite erklärt abschließend, welche Rechner es gibt. Ein siebter ohne Eintrag wäre dieselbe Klasse falscher Zusage wie der Kommentar in `jsonLd.ts`                                                                                                                  |
+| Ergebnis im Roh-HTML           | nicht vorgesehen                                  | `renderToString`-Test in `LadestromRechner.test.tsx`                                                  | Der Rechner ist mit 330 Ah / 5 h / 180 A vorbelegt. Ohne Server-Rendering stünde im ersten Paint der Hinweistext und die Zahl käme erst nach der Hydration — die feste Mindesthöhe verhindert zwar Versatz, nicht aber den Inhaltswechsel                               |
 
 ## 13. Risiken
 

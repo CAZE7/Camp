@@ -250,6 +250,7 @@ export const CALCULATOR_BUNDLE_MARKERS: readonly { id: CalculatorId; markers: re
   { id: 'spannungsabfall', markers: ['spannung-strom', 'spannung-querschnitt'] },
   { id: 'batteriekapazitaet', markers: ['batterie-energie', 'batterie-tage'] },
   { id: 'solaranlage', markers: ['solar-energie', 'solar-ertrag'] },
+  { id: 'ladestrom', markers: ['ladestrom-kapazitaet', 'ladestrom-fahrzeit'] },
 ];
 
 /** Rechnerkomponenten, deren Code im initial geladenen Skriptbestand vorkommt. */

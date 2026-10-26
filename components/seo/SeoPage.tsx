@@ -14,7 +14,7 @@ import {
   webPageNode,
 } from '@/lib/seo/jsonLd';
 import { topicOf } from '@/lib/seo/topics';
-import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
+import type { CalculatorId, ContentSection, SeoPageContent } from '@/lib/seo/types';
 
 import { breadcrumbsFor } from './Breadcrumbs';
 import { RichText } from './RichText';
@@ -30,6 +30,19 @@ import { RichText } from './RichText';
  *
  * Der Inhalt kommt aus `lib/seo/content/` — hier steht nur, WIE er erscheint.
  */
+
+/**
+ * Fachgebiet des Rechners für `applicationSubCategory`. Als erschöpfendes
+ * `Record` statt einer Verzweigung: Ein neuer Rechner ohne Eintrag fällt dann
+ * im Typecheck auf, statt stillschweigend ein falsches Gebiet zu erben.
+ */
+const CALCULATOR_SUBCATEGORY: Record<CalculatorId, string> = {
+  kabelquerschnitt: 'Leitungsbemessung',
+  spannungsabfall: 'Spannungsfall',
+  batteriekapazitaet: 'Batterieauslegung',
+  solaranlage: 'Solarauslegung',
+  ladestrom: 'Ladeauslegung',
+};
 
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
 export function jsonLdFor(page: SeoPageContent) {
@@ -59,14 +72,7 @@ export function jsonLdFor(page: SeoPageContent) {
             path: page.path,
             name: page.h1,
             description: page.description,
-            subCategory:
-              calculatorId === 'batteriekapazitaet'
-                ? 'Batterieauslegung'
-                : calculatorId === 'solaranlage'
-                  ? 'Solarauslegung'
-                  : calculatorId === 'spannungsabfall'
-                    ? 'Spannungsfall'
-                    : 'Leitungsbemessung',
+            subCategory: CALCULATOR_SUBCATEGORY[calculatorId],
           }),
         ]
       : []),
