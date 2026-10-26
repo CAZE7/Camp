@@ -321,6 +321,12 @@ Stand-Datum als maschinelle Zusage veraltet. Eine Doku-Aussage, die den eigenen
 Zustand nicht beschreibt, ist eine falsche Zusage an den nächsten Beitragenden
 (vgl. AGENTS.md §3.8).
 
+**Zweite falsche Zusage.** Der Dateikopf von `lib/seo/content/ladebooster.ts:13-16`
+verspricht „Kein Markenvergleich. Die Seite nennt Bauformen, Ströme und
+Anschlussbedingungen". Seit `908d344` nennt die Seite neun Marken mit Preisen. Der
+Kommentar wird in Paket 3 an den tatsächlichen Zustand angepasst: Der Rechenteil
+nennt keine Produkte, der Vergleichsteil schon — und beide Teile sind getrennt.
+
 **Metadaten.** Titel und Beschreibung werden auf den Vergleichs-Intent geschärft,
 innerhalb der Gates 15-65 bzw. 50-160 Zeichen (`scripts/seo/checks.ts:26-31`);
 Eindeutigkeit gegen alle anderen Seiten prüft `lib/seo/inventory.test.ts`.
@@ -380,13 +386,14 @@ Kein Pixel-Baseline-Blocker: `/camper-elektrik/ladebooster/` ist nicht in
 Ein Commit pro Aufgabe (AGENTS.md §8). Pakete 1-3 sind der Kern, 4 ist unabhängig
 kürzbar, 5 ist die Abnahme.
 
-0. **Baseline messen.** `npm run build` und dann
-   `npx tsx scripts/seo/measureExport.ts`. Festgehalten werden für
-   `/camper-elektrik/ladebooster/`: Wörter ohne JavaScript, `H1/H2`, `ein/aus`,
-   `JS (KB)`. Diese vier Zahlen sind der Bezugspunkt der Abnahme. Die im Repo
-   liegende `docs/seo/AUDIT.md` trägt den Stand vom 2026-10-15 und beschreibt die
-   Seite **vor** dem Vergleichsblock; sie darf nicht als Baseline verwendet werden.
-   Die Zahlen werden als Kommentar im PR festgehalten, nicht als Commit —
+0. **Baseline messen.** Erledigt am 2026-10-26 auf `e1b02a3`: `npm run build`
+   (40 Seiten geprüft, Export grün) und `npx tsx scripts/seo/measureExport.ts`.
+   Gemessen für `/camper-elektrik/ladebooster/`: **5.828 Wörter** ohne JavaScript,
+   `H1/H2` **1/12**, `ein/aus` **3/16**, Tiefe 2, **602 KB** JS. Zum Vergleich:
+   die anderen Cluster liegen bei 944-1.445 Wörtern — die Seite ist das Vier- bis
+   Sechsfache ihrer Geschwister. Die im Repo liegende `docs/seo/AUDIT.md` trägt den
+   Stand vom 2026-10-15 (2.371 Wörter, 1/11) und beschreibt die Seite **vor** dem
+   Vergleichsblock; sie darf nicht als Baseline verwendet werden.
    `npx tsx scripts/seo/report.ts` schreibt drei Dokumente samt PDF neu
    (`AUDIT`, `ANALYSE-UND-VISION`, `CAMP-SEO-GROWTH-REPORT`, `report.ts:569-574`)
    und gehört deshalb in einen eigenen Commit in Paket 5.
@@ -407,18 +414,19 @@ kürzbar, 5 ist die Abnahme.
    375/768/1440 px, hell und dunkel (AGENTS.md M11-1 verlangt optische Freigabe);
    ADR 0039.
 
-**Messbare Abnahmekriterien** — Bezug ist die in Paket 0 gemessene Baseline.
+**Messbare Abnahmekriterien** — Bezug ist die am 2026-10-26 gemessene Baseline (Paket 0).
 
-| Kennzahl                                          | Heute (zu messen in Paket 0)                                                                       | Ziel                                                                                                                                                                                                                      |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Autorentext der Seite                             | ~2.300 Wörter Zielgröße aus §6                                                                     | ≤ 2.300, geprüft durch G3 auf Datenebene                                                                                                                                                                                  |
-| Sichtbarer Text ohne JavaScript (`measureExport`) | Baseline aus Paket 0                                                                               | mindestens −35 % und ≤ 3.500 Wörter                                                                                                                                                                                       |
-| `H1/H2`                                           | 1/12 (7 Artikel-Abschnitte + Vergleichs-`h2` + FAQ + „Weiter im Thema" + Planer-CTA + Transparenz) | 1/11 (3 Vergleichs-`h2` + 4 Ratgeber-`h2` + dieselben 4 Gerüst-`h2`). Die `h2`-Anzahl ist **kein** Ziel an sich — Ziele sind Wortzahl, Reihenfolge und doppelte Aussagen; sie steht hier nur, weil das Audit sie ausweist |
-| `ein/aus` interne Verweise                        | 2/16 laut veraltetem Audit, neu zu messen                                                          | eingehend ≥ 4                                                                                                                                                                                                             |
-| Seiten-CSS                                        | `app/ladebooster-vergleich.css`, 19.846 Byte global                                                | Datei existiert nicht; `app/layout.tsx` importiert nur `globals.css` und Schriften                                                                                                                                        |
-| Darstellungen desselben Geräts                    | 4                                                                                                  | 2 mit getrennten Aufgaben (Scan / Tiefe), mobil 1                                                                                                                                                                         |
-| Gates                                             | `npm run check`, `npm run e2e`, `npm run seo:audit`                                                | alle drei Exit-Code 0                                                                                                                                                                                                     |
-| Optische Abnahme                                  | —                                                                                                  | Screenshots 375/768/1440 hell+dunkel im PR, Freigabe durch den Betreiber                                                                                                                                                  |
+| Kennzahl                                          | Baseline, gemessen 2026-10-26 auf `e1b02a3`         | Ziel                                                                                                                                                                                                            |
+| ------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Autorentext der Seite                             | —                                                   | ≤ 2.300, geprüft durch G3 auf Datenebene                                                                                                                                                                        |
+| Sichtbarer Text ohne JavaScript (`measureExport`) | **5.828** Wörter                                    | ≤ 3.500 Wörter, das sind −40 %                                                                                                                                                                                  |
+| `H1/H2`                                           | **1/12**                                            | 1/11 (3 Vergleichs-`h2` + 4 Ratgeber-`h2` + 4 Gerüst-`h2`). Die `h2`-Anzahl ist **kein** Ziel an sich — Ziele sind Wortzahl, Reihenfolge und doppelte Aussagen; sie steht hier nur, weil das Audit sie ausweist |
+| `ein/aus` interne Verweise                        | **3/16**                                            | eingehend ≥ 5                                                                                                                                                                                                   |
+| `JS (KB)`                                         | **602**                                             | ≤ 602 — der Ladestrom-Rechner darf nur `lazy` dazukommen (G11)                                                                                                                                                  |
+| Seiten-CSS                                        | `app/ladebooster-vergleich.css`, 19.846 Byte global | Datei existiert nicht; `app/layout.tsx` importiert nur `globals.css` und Schriften                                                                                                                              |
+| Darstellungen desselben Geräts                    | 4                                                   | 2 mit getrennten Aufgaben (Scan / Tiefe), mobil 1                                                                                                                                                               |
+| Gates                                             | `npm run check`, `npm run e2e`, `npm run seo:audit` | alle drei Exit-Code 0                                                                                                                                                                                           |
+| Optische Abnahme                                  | —                                                   | Screenshots 375/768/1440 hell+dunkel im PR, Freigabe durch den Betreiber                                                                                                                                        |
 
 ## 12. Risiken
 
