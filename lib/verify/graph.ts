@@ -391,7 +391,7 @@ export function edgeOvercurrentDevice(data: CableEdgeData | undefined): Protecti
     productClass: variant ? productClassOfFuseType(variant) : null,
     variant,
     ratedCurrentA: size,
-    i2A: null,
+    i2A: numberField(data, 'i2A'),
     breakingCapacityA: typeof data?.fuseBreakingCapacity === 'number' ? data.fuseBreakingCapacity : null,
   };
 }

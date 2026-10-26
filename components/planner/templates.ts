@@ -3,6 +3,17 @@ import { type CableEdgeData } from '../edges/CableEdge';
 import { nodesWithUniqueDesignators } from '../nodes/designatorModel';
 
 /**
+ * Konventioneller Auslösestrom der in den Vorlagen verwendeten 40-A-MIDI-
+ * Sicherung. Quelle: Littelfuse „MIDI ISO Series“ (ISO 20934, 70 V DC),
+ * Zeit-Strom-Kennlinie 135 % → Öffnung 300–3600 s; 1,35 × 40 A = 54 A.
+ * Die Bauform „midi“ allein hat keine belegte Produktnorm (MIDI/MEGA/ANL/
+ * MRBF teilen sich „bolt-down“) — deshalb steht der Datenblattwert am
+ * konkreten Produkt der Vorlage. Ohne ihn meldet die Engine AMP-002
+ * „nicht entscheidbar“ statt einen Wert zu erfinden.
+ */
+const MIDI_ISO_40A_I2 = 54;
+
+/**
  * Vorlagen-Pläne (Wizard + Vorlagen-Seiten).
  *
  * Nachtest 2026-10-16: Die Vorlagen starteten mit 0 h/Tag an allen
@@ -20,7 +31,14 @@ export const TEMPLATE_MINIMALIST = {
       id: 'battery-1',
       type: 'battery',
       position: { x: 80, y: 160 },
-      data: { label: '12V Batterie', role: 'house', capacity: 100, chemistry: 'AGM', internalResistance: 15 },
+      data: {
+        label: '12V Batterie',
+        role: 'house',
+        capacity: 100,
+        chemistry: 'AGM',
+        nominalVoltage: 12,
+        internalResistance: 15,
+      },
     },
     { id: 'ground-1', type: 'ground', position: { x: 80, y: 360 }, data: { label: 'Massepunkt' } },
     {
@@ -112,7 +130,13 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
+      data: {
+        label: 'Starterbatterie',
+        role: 'starter',
+        capacity: 90,
+        chemistry: 'AGM',
+        nominalVoltage: 12,
+      },
     },
     {
       id: 'battery-1',
@@ -123,6 +147,7 @@ export const TEMPLATE_ALLROUNDER = {
         role: 'house',
         capacity: 100,
         chemistry: 'LiFePO4',
+        nominalVoltage: 12.8,
         hasInternalBms: true,
         internalResistance: 15,
       },
@@ -145,7 +170,7 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'fusebox-1',
       type: 'fuse',
       position: { x: 680, y: 200 },
-      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi' },
+      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'inverter-1',
@@ -222,7 +247,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-dcdc-busbar',
@@ -231,7 +256,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-busbar-fuse',
@@ -240,7 +265,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-fuse-fridge',
@@ -317,7 +342,13 @@ export const TEMPLATE_AUTARK = {
       id: 'starter-1',
       type: 'battery',
       position: { x: 80, y: 240 },
-      data: { label: 'Starterbatterie', role: 'starter', capacity: 90, chemistry: 'AGM' },
+      data: {
+        label: 'Starterbatterie',
+        role: 'starter',
+        capacity: 90,
+        chemistry: 'AGM',
+        nominalVoltage: 12,
+      },
     },
     {
       id: 'shore-1',
@@ -334,6 +365,7 @@ export const TEMPLATE_AUTARK = {
         role: 'house',
         capacity: 200,
         chemistry: 'LiFePO4',
+        nominalVoltage: 12.8,
         hasInternalBms: true,
         internalResistance: 15,
       },
@@ -356,7 +388,7 @@ export const TEMPLATE_AUTARK = {
       id: 'fusebox-1',
       type: 'fuse',
       position: { x: 680, y: 200 },
-      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi' },
+      data: { label: 'Sicherungskasten', rating: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     // AUDIT ELE-001 (2026-10 korrigiert): Die absicherbare Grenze des
     // Modells ist 70 mm² mit max. 100 A (FUSE_MAP). Der Batterie-Hauptstrang
@@ -431,7 +463,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-starter-dcdc',
@@ -440,7 +472,7 @@ export const TEMPLATE_AUTARK = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 5, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-dcdc-busbar',
@@ -458,7 +490,7 @@ export const TEMPLATE_AUTARK = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi' },
+      data: { length: 1, crossSection: 16, fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
     },
     {
       id: 'e-fuse-fridge',
@@ -568,9 +600,9 @@ const KASTENWAGEN_EDGE_DATA: Record<string, CableEdgeData> = {
   'e-batt-minus': { crossSection: 70 },
   'e-solar-charger': { fuseSize: 20, fuseType: 'ato' },
   'e-charger-busbar': { fuseSize: 30, fuseType: 'ato' },
-  'e-starter-dcdc': { fuseSize: 40, fuseType: 'midi' },
-  'e-dcdc-busbar': { fuseSize: 40, fuseType: 'midi' },
-  'e-busbar-fuse': { fuseSize: 40, fuseType: 'midi' },
+  'e-starter-dcdc': { fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
+  'e-dcdc-busbar': { fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
+  'e-busbar-fuse': { fuseSize: 40, fuseType: 'midi', i2A: MIDI_ISO_40A_I2 },
   'e-fuse-fridge': { fuseSize: 10, fuseType: 'ato' },
   'e-fuse-pump': { fuseSize: 10, fuseType: 'ato' },
   'e-fuse-light': { fuseSize: 5, fuseType: 'ato' },

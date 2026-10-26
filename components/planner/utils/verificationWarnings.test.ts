@@ -79,6 +79,21 @@ describe('verificationWarning — ein Ereignis, ein Befund', () => {
     expect(warning.message).toContain('Kritisch');
   });
 
+  it('nennt einen Wechselrichter-Ausgang Modellgrenze statt „fehlende Angabe“', () => {
+    const warning = verificationWarning(
+      event({
+        ruleId: 'RCD-005-loop-impedance',
+        kind: 'UNVERIFIABLE',
+        message:
+          'Abschaltbedingung auf Leitung e-inv nicht entscheidbar (inverter-limited): Wechselrichter-Ausgänge sind elektronisch strombegrenzt.',
+      }),
+      2
+    );
+    expect(warning.type).toBe('info');
+    expect(warning.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
+    expect(warning.unverified).toBe(true);
+  });
+
   it('stuft eine DATENLÜCKE als Hinweis ein — nicht als Verletzung', () => {
     const gap = verificationWarning(
       event({

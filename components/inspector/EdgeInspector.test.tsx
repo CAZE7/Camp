@@ -68,6 +68,37 @@ describe('EdgeInspector Component', () => {
 
     expect(mockOnChangeLength).not.toHaveBeenCalled();
   });
+
+  it('zeigt den Datenblatt-Prüfstrom I₂ und meldet Änderungen', () => {
+    const onChangeFuseI2 = vi.fn();
+    render(
+      <EdgeInspector
+        edge={{ ...defaultEdge, data: { fuseSize: 40, fuseType: 'midi', i2A: 54 } }}
+        onChangeLength={mockOnChangeLength}
+        onChangeFuseI2={onChangeFuseI2}
+      />
+    );
+
+    const input = screen.getByLabelText(/Prüfstrom I₂/i) as HTMLInputElement;
+    expect(input.value).toBe('54');
+
+    fireEvent.change(input, { target: { value: '60' } });
+    expect(onChangeFuseI2).toHaveBeenCalledWith('edge-1', 60);
+  });
+
+  it('leert den Prüfstrom, damit wieder die Produktnorm gilt', () => {
+    const onChangeFuseI2 = vi.fn();
+    render(
+      <EdgeInspector
+        edge={{ ...defaultEdge, data: { fuseSize: 40, fuseType: 'midi', i2A: 54 } }}
+        onChangeLength={mockOnChangeLength}
+        onChangeFuseI2={onChangeFuseI2}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Prüfstrom I₂/i), { target: { value: '' } });
+    expect(onChangeFuseI2).toHaveBeenCalledWith('edge-1', 0);
+  });
 });
 
 /**

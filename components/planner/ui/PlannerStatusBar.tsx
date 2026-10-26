@@ -29,7 +29,7 @@ export interface PlannerStatusBarProps {
 export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
   const coordsRef = useRef<HTMLSpanElement>(null);
   const { screenToFlowPosition } = useReactFlow();
-  const { nodeCount, edgeCount, viewMode, dcLabel, criticalCount, warningCount } = usePlannerStore(
+  const { nodeCount, edgeCount, viewMode, dcLabel, criticalCount, warningCount, hintCount } = usePlannerStore(
     useShallow((state) => {
       const vClass = classifySystemVoltage(getSystemVoltage(state.nodes));
       const resolvedDcLabel = vClass === '24V' ? '24 V' : vClass === '48V' ? '48 V' : '12 V';
@@ -42,9 +42,11 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
         criticalCount: state.plannerErrors.filter(
           (error) => error.severity === 'error' || error.severity === 'critical'
         ).length,
-        warningCount: state.plannerErrors.filter(
-          (error) => error.severity !== 'error' && error.severity !== 'critical'
-        ).length,
+        // Nur `warning` ist eine Warnung. `info` sind Datenlücken/Hinweise
+        // („Angaben fehlen“) — sie dürfen nicht als Warnung gezählt werden,
+        // sonst stand bei einem Plan ohne Fehler „7 Warnungen“.
+        warningCount: state.plannerErrors.filter((error) => error.severity === 'warning').length,
+        hintCount: state.plannerErrors.filter((error) => error.severity === 'info').length,
       };
     })
   );
@@ -120,12 +122,24 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
           <span className="hidden md:inline">
             {' '}
             · {warningCount} {warningCount === 1 ? 'Warnung' : 'Warnungen'}
+            {hintCount > 0 ? ` · ${hintCount} ${hintCount === 1 ? 'Hinweis' : 'Hinweise'}` : ''}
           </span>
         </span>
       ) : warningCount > 0 ? (
         <span className="text-warning">
           {warningCount} {warningCount === 1 ? 'Warnung' : 'Warnungen'}
-          <span className="hidden md:inline"> · kein kritischer Fehler</span>
+          <span className="hidden md:inline">
+            {hintCount > 0 ? ` · ${hintCount} ${hintCount === 1 ? 'Hinweis' : 'Hinweise'}` : ''} · kein
+            kritischer Fehler
+          </span>
+        </span>
+      ) : hintCount > 0 ? (
+        <span className="text-ink-soft">
+          Keine Fehler
+          <span className="hidden md:inline">
+            {' '}
+            · {hintCount} {hintCount === 1 ? 'Hinweis' : 'Hinweise'}
+          </span>
         </span>
       ) : (
         <span className="cad-statusbar__ok">Keine Fehler</span>

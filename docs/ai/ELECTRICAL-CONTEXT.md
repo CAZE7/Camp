@@ -215,6 +215,16 @@ Länge — die 0,2 m sind eine bewusste Planungsvorgabe. Position modelliert üb
 - Bank = reine Parallelschaltung; Serien-Strings nicht modelliert
   (Parallelschätzung ist konservativ = größerer Ik).
 
+**I₂-Koordination (IEC 60364-4-43 §433.1):** `conventionalOperatingCurrentI2`
+(`lib/verify/deviceClasses.ts`) nimmt den Datenblattwert `edge.data.i2A` vor jeder
+Produktnorm. Belegte Normwerte: IEC 60269-1 gG (1,6–2,1 × In), IEC 60898-1 LS
+(1,45 × In), ISO 8820-3 Blade (1,35 × In) und **UL 248-15 Class T (1,35 × In;
+135 % muss in ≤ 1 h auslösen)**. Für Bolzensicherungen (MIDI/MEGA/ANL/MRBF) ist
+keine Produktnorm belegt — dort braucht die Prüfung einen Datenblattwert `i2A`,
+sonst meldet die Engine AMP-002 „nicht entscheidbar“ statt zu schätzen. Die
+Vorlagen tragen für ihre 40-A-MIDI-Sicherung den MIDI-ISO-Wert (ISO 20934,
+135 %-Gate: 54 A).
+
 **AC-Schutzorgan (230 V):** `lib/acProtection.ts`
 
 - `AcProtectionDescriptor = { kind: 'mcb' | 'rcbo', characteristic: 'B' | 'C', breakingCapacityKA }`.

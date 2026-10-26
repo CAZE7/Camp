@@ -242,6 +242,7 @@
           "designator": "G1",
           "internalResistance": 15,
           "label": "12V Batterie",
+          "nominalVoltage": 12,
           "role": "house"
         },
         "id": "battery-1",
@@ -424,6 +425,7 @@
           "designator": "G1",
           "internalResistance": 15,
           "label": "12V Batterie",
+          "nominalVoltage": 12,
           "role": "house"
         },
         "id": "battery-1",
