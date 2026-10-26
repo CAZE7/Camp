@@ -12,8 +12,6 @@ import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions
 import { PlannerMenubar, PlannerPhoneMenu } from './ui/PlannerMenubar';
 import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
-import { OptimizeRoutingButton } from './ui/OptimizeRoutingButton';
-import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
 import { GuidedPlanRail } from './ui/GuidedPlanRail';
@@ -307,7 +305,6 @@ export function PlannerDashboard() {
         onUndo={undo}
         onRedo={redo}
         onAutoWire={actions.runAutoWire}
-        onTidy={() => void actions.runLayoutV2()}
         onCheck={actions.runCheck}
         onBom={actions.openBom}
         onExport={() => void actions.exportImage()}
@@ -332,13 +329,21 @@ export function PlannerDashboard() {
             in jeder Breite 100 % des Fensters breit.
               · Speicherzustand  — Symbol immer; Text ab 1980 px
                                    (`.cad-tb-explain`).
-              · Routing-Status   — Symbol immer; Text ab 1980 px.
-              · Kabel optimieren — „Optimieren“ bis 1979 px, ab 1980 px
-                                   „Kabel optimieren“; der zugängliche Name ist
-                                   in jeder Breite vollständig. Unter 360 px
-                                   weicht der Knopf aus der Leiste, die Aktion
-                                   steht dann im `⋯`-Menü
-                                   (`action-optimize-routing`).
+              · Prüf-Einstieg    — EINE Zahl für alle Befunde: Planungsprüfung
+                                   UND Kabeltrassen (Nutzer-Rückmeldung
+                                   2026-10-26: „2 Regelverl.“ und „20“ standen
+                                   als zwei gleich aussehende Zahl-Plaketten
+                                   nebeneinander). Der Bericht zeigt die
+                                   Trassen-Regelverletzungen als eigenen
+                                   Abschnitt; sie zählen in dieselbe Zahl.
+              · „Kabel optimieren“ steht NICHT mehr hier: Der Chip lag neben
+                                   „Vorschlag prüfen“ wie ein zweiter
+                                   Automatikknopf (Nutzer-Rückmeldung
+                                   2026-10-26). Die Aktion lebt in der
+                                   Menügruppe „Automatik“ (Menüleiste →
+                                   Werkzeuge und `⋯`, `action-optimize-routing`)
+                                   — auf jeder Breite derselbe Weg, deshalb
+                                   braucht sie keine Breitenregel mehr.
               · Prüfsiegel       — erst ab 768 px: Auf dem Handy ist der Weg zum
                                    Bericht der Prüfknopf in der Schrittleiste
                                    bzw. „Prüfbericht öffnen“ im `⋯`-Menü.
@@ -350,14 +355,12 @@ export function PlannerDashboard() {
           */
           <>
             <SaveIndicator revision={planRevision} />
-            {viewMode === 'electric' && <RoutingStatusBadge />}
-            {viewMode === 'electric' && nodes.length > 0 && <OptimizeRoutingButton />}
             {viewMode === 'electric' && nodes.length > 0 && (
               <span className="inline-flex" data-testid="verification-seal-mobile-access">
                 <VerificationSeal summary={verification} />
               </span>
             )}
-            <WarningCenter warnings={warnings} onFix={handleFix} />
+            <WarningCenter warnings={warnings} onFix={handleFix} includeRouting={viewMode === 'electric'} />
           </>
         }
       />

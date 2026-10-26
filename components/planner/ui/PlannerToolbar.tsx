@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import {
   Camera,
   Frame,
-  LayoutGrid,
   Loader2,
   Minimize2,
   MoreHorizontal,
@@ -43,7 +42,6 @@ export interface PlannerToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onAutoWire: () => void;
-  onTidy: () => void;
   onCheck: () => void;
   onBom: () => void;
   onExport: () => void;
@@ -339,7 +337,6 @@ export function PlannerToolbar({
   onUndo,
   onRedo,
   onAutoWire,
-  onTidy,
   onCheck,
   onBom,
   onExport,
@@ -435,23 +432,23 @@ export function PlannerToolbar({
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
 
             <div className="cad-toolbar__group">
-              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
+              {/*
+                GENAU EIN Automatik-Einstieg in der Leiste (Nutzer-Rückmeldung
+                2026-10-26: „Knöpfe, die doppelt sind, wie Optimieren und
+                dieser andere Automatik-Knopf“).
 
-              <button
-                type="button"
-                data-testid="action-tidy"
-                onClick={onTidy}
-                disabled={busy !== null}
-                className="cad-btn cad-toolbar__desktop-tidy"
-                title="Plan ordnen: Bauteile automatisch übersichtlich anordnen. Rückgängig ist möglich."
-              >
-                {busy === 'layoutV2' ? (
-                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                ) : (
-                  <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-                )}
-                <span>Plan automatisch ordnen</span>
-              </button>
+                Vorher standen hier drei Aktionen, die den Plan von selbst
+                verändern: „Vorschlag prüfen“, „Plan automatisch ordnen“ (ab
+                1024 px, ab 1024–1279 px nur als Raster-Symbol ohne Text) und
+                rechts im Statusfeld „Kabel optimieren“ — für den Nutzer zwei
+                bis drei gleichrangige Automatiken ohne erkennbare Reihenfolge.
+                Sichtbar bleibt die Primäraktion des Expertenmodus; die
+                nachgelagerten Schritte (Ordnen, Kabel optimieren) stehen
+                gemeinsam in der Menügruppe „Automatik“
+                (`usePlannerActions.menus.werkzeuge`) und sind damit über
+                Menüleiste → Werkzeuge UND `⋯` erreichbar.
+              */}
+              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
             </div>
 
             <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />

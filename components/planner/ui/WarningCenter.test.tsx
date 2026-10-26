@@ -1,8 +1,11 @@
 import React from 'react';
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WarningCenter, consequence, nextStep, valueWithUnit } from './WarningCenter';
 import type { ValidationWarning } from '../hooks/useLiveValidation';
+import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import { validateFinalRouting } from '../../../lib/routing/finalValidation';
+import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
 /**
  * AUDIT A5/A6 — die Warn-Zentrale muss auch ohne Sehen und ohne Maus lesbar sein.
@@ -295,5 +298,90 @@ describe('consequence — Folge-Zeile passt zum Befund', () => {
       expect(text, id).toContain('Stromschlaggefahr');
     }
     expect(consequence(warning({ id: 'battery-capacity', category: 'estimation' }))).toContain('Reichweite');
+  });
+});
+
+/**
+ * Nutzer-Rückmeldung 2026-10-26: Rechts in der Werkzeugleiste standen zwei
+ * Zahl-Plaketten mit Warndreieck — „2 Regelverl.“ (Kabeltrassen) und „20“
+ * (Planungsprüfung). Beides sind Prüfbefunde, beide sahen gleich aus, keine
+ * sagte, was sie zählt. Jetzt gibt es EINEN Einstieg: eine Zahl über beide
+ * Quellen und im Bericht zwei Abschnitte.
+ */
+describe('WarningCenter — gemeinsamer Prüf-Einstieg mit Kabeltrassen', () => {
+  const crossingNodes: NodeRect[] = [
+    { id: 'a', x: 0, y: 0, width: 100, height: 100 },
+    { id: 'b', x: 200, y: 0, width: 100, height: 100 },
+    { id: 'obstacle', x: 140, y: 0, width: 100, height: 100 },
+  ];
+  const routedEdge: RoutedEdge[] = [
+    {
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      waypoints: [
+        { x: 0, y: 70 },
+        { x: 300, y: 70 },
+      ],
+    },
+  ];
+
+  afterEach(() => {
+    cleanup();
+    clearCableRoutes();
+  });
+
+  const publishInvalidRouting = () =>
+    act(() => {
+      publishCableRouteFinalValidation(validateFinalRouting(routedEdge, crossingNodes));
+    });
+
+  it('zählt Trassen-Regelverletzungen in dieselbe Zahl wie die Planungsbefunde', () => {
+    publishInvalidRouting();
+    render(<WarningCenter warnings={[warning({ type: 'info', category: 'estimation' })]} />);
+
+    // 1 Planungshinweis + 1 Regelverletzung = EINE Zahl, ein Einstieg.
+    const chip = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    expect(chip).toHaveTextContent('2 Befunde');
+    expect(chip.getAttribute('aria-label')).toContain('davon 1 im Kabelrouting');
+    expect(chip.getAttribute('aria-label')).not.toContain('Regelverl.');
+  });
+
+  it('zeigt die Trassen-Regelverletzungen als eigenen Abschnitt im Bericht', () => {
+    publishInvalidRouting();
+    render(<WarningCenter warnings={[warning()]} />);
+    fireEvent.click(screen.getByRole('button', { name: /Planungsprüfung öffnen/ }));
+
+    const section = screen.getByTestId('routing-status-invalid');
+    expect(section).toHaveTextContent('Kabeltrassen');
+    expect(section).toHaveTextContent('Routing nicht verifiziert: 1 Regelverletzung');
+    expect(section).toHaveTextContent('I1 Bauteil-Kollisionen: 1');
+  });
+
+  it('zeigt den Einstieg auch ohne Planungsbefunde, wenn die Trassen Befunde haben', () => {
+    publishInvalidRouting();
+    render(<WarningCenter warnings={[]} />);
+
+    // Vorher stand hier „Keine Hinweise“ — ein Plan mit 2 Kabelfehlern hätte
+    // damit „alles in Ordnung“ gemeldet.
+    expect(screen.queryByText('Keine Hinweise')).not.toBeInTheDocument();
+    const chip = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    expect(chip).toHaveTextContent('1 Befund');
+  });
+
+  it('lässt die Trassen im Wasserplan außen vor (includeRouting=false)', () => {
+    publishInvalidRouting();
+    render(<WarningCenter warnings={[]} includeRouting={false} />);
+
+    expect(screen.getByText('Keine Hinweise')).toBeInTheDocument();
+    expect(screen.queryByTestId('routing-status-invalid')).not.toBeInTheDocument();
+  });
+
+  it('nennt bei kritischen Planungsbefunden weiter beide Zahlen', () => {
+    publishInvalidRouting();
+    render(<WarningCenter warnings={[warning(), warning({ id: 'w2', type: 'info' })]} />);
+
+    const chip = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    expect(chip).toHaveTextContent(/^1 von 3 kritisch$/);
   });
 });

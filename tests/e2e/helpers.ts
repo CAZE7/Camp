@@ -144,6 +144,24 @@ export async function edgeCount(page: Page): Promise<number> {
 }
 
 /**
+ * Öffnet den gemeinsamen Prüf-Einstieg (früher: zwei getrennte Zahl-Plaketten
+ * für Planungsprüfung und Kabeltrassen).
+ *
+ * Seit 2026-10-26 hängen die Kennungen `routing-status-*` am Berichtsteil
+ * „Kabeltrassen“ INNERHALB dieses Berichts — ein Blick auf den zugeklappten
+ * Chip zeigt sie nicht mehr. Wer den Routing-Zustand prüfen will, öffnet ihn
+ * hierüber. Gibt `false` zurück, wenn der Einstieg gar nicht da ist (alles
+ * sauber: dann gibt es auch keinen Routing-Befund zu sehen).
+ */
+export async function openCheckEntry(page: Page): Promise<boolean> {
+  const chip = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+  if ((await chip.count()) === 0 || !(await chip.isVisible())) return false;
+  await chip.click();
+  await expect(page.getByRole('dialog', { name: 'Planungsprüfung' })).toBeVisible();
+  return true;
+}
+
+/**
  * Startet Auto-Wire über den sichtbaren Werkzeugleisten-Knopf oder — im
  * geführten Modus ab 480 px — über das Mehr-Menü, und wartet auf die
  * entstandenen Kanten.
