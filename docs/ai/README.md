@@ -7,8 +7,6 @@ Dieses Verzeichnis ist die autoritative Einstiegsdokumentation für Coding-Agent
 **ausschließlich Dinge, die im Code nachweisbar sind**. Steht irgendwo `UNKNOWN` oder
 `NEEDS VERIFICATION`, ist die Frage offen und darf nicht durch Vermutung ersetzt werden.
 
-Gültigkeit: Branch `arena/01a08778-camp`, Stand 2026-09-09.
-
 ---
 
 ## 1. Der Weg in 60 Sekunden
