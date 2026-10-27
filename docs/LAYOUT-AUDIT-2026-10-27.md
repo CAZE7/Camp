@@ -12,26 +12,26 @@ Darstellungsfehler. An `lib/electrical.ts`, `lib/vde-standards.ts`,
 `lib/shortCircuit.ts`, `lib/acProtection.ts` und den Routing-Invarianten wurde
 nichts geändert.
 
-| ID  | Titel                                                                   | Prio    | Korrektur                                                                                                                                                                                                    |
-| --- | ----------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| L1  | Kabel-Labels stapeln sich an der Sammelschiene                          | Hoch    | `routeAll.ts` → `placeLabelClearOfLabels()` sucht **entlang der Leitung** (`LABEL_LINE_FRACTIONS`) statt nur senkrecht am festen x; ohne freien Platz `labelHidden` (kein Chip) statt deckungsgleichem Anker |
-| L2  | Inspector-Toggle liegt im Panel und verdeckt Felder                     | Hoch    | `globals.css`: `right: calc(var(--planner-inspector-w) - 1.375rem)` (Mitte auf der Kante); zusätzlich ausgeblendet, solange das Fachwissen-Panel offen ist                                                   |
-| L3  | Lange Namen schieben Karten übereinander, Bruch mitten im Wort          | Hoch    | `overflow-wrap: break-word` + `hyphens: auto` statt `anywhere`; Kartentitel auf zwei Zeilen geklemmt, voller Name als `title` an allen 13 Node-Titeln                                                        |
-| L4  | Mobil: Strompfad unter der Modus-Zeile, „React Flow“ darüber            | Mittel  | Strompfad-Kachel im Handy-Hochformat unter den Modus-Block (`top: 7rem`)                                                                                                                                     |
-| L5  | Stückliste: Footer unerreichbar bei wenig Höhe                          | Mittel  | Unter 520 px Höhe scrollt das ganze Blatt (`@media (max-height: 520px)`), Beschreibung auf zwei Zeilen geklemmt                                                                                              |
-| L6  | Mobil 360/390: Auto-verbinden-Knopf abgeschnitten                       | Mittel  | Statusfeld der Werkzeugleiste bekommt eine deckende Fläche (gescrollte Knöpfe malten sonst darunter weiter) + minimale Abstände unter 400 px                                                                 |
-| L7  | Tablet 768–1024: Wortmarke bricht zweizeilig                            | Mittel  | `.cad-menubar__brand { flex-shrink: 0 }`; Projektname zwischen 768 und 1099 px ausgeblendet                                                                                                                  |
-| L8  | Tablet 768: Modus-Hinweis von der Status-Karte verdeckt                 | Mittel  | Modus-Block rückt zwischen 768 und 1099 px nach links, Beschriftung bleibt schmaler als die Lücke zur Karte                                                                                                  |
-| L9  | Hinweis „Erster Anschluss gewählt…“ verdeckt Strompfad, Toast und Hilfe | Mittel  | Hinweis sitzt ab 768 px **über** der Meldungszeile (`bottom: Statuszeile + 7rem`) und bleibt auf die Canvas-Breite begrenzt                                                                                  |
-| L10 | Kabel-Labels liegen auf Karten; Warn-Labels zu breit                    | Mittel  | Prüfbox nutzt die **gemessene** Labelbreite (`estimateCableLabelWidth`), Warntext verkürzt („⚠“ statt „zu klein … (empf. 70)“), Notfall-Kurzform nur „16 mm²“                                                |
-| L11 | Zoom 200 %: Steuerelemente überdecken Text und Karten                   | Mittel  | Unter 700 px Breite bzw. 480 px Höhe bleibt die Kurzbeschriftung „Vorlage“ statt „Vorlage laden“                                                                                                             |
-| L12 | Gruppen-Label „HAUPTSTROMKREIS“ liegt unter der PV-Karte                | Mittel  | Label sitzt über der Rahmenkante (`bottom-full`) statt in der Ecke, in der die erste Karte steht                                                                                                             |
-| L13 | Rail-Text abgeschnitten ohne Tooltip                                    | Niedrig | `title={plan.activeStep.detail}` an `GuidedPlanRail`                                                                                                                                                         |
-| L14 | Browser-Druck druckt die Bedienoberfläche                               | Niedrig | Erste `@media print`-Regeln: Chrome und Blätter aus, Zeichenfläche auf eine Seite, Knöpfe auf hell (weiße Schrift auf Weiß)                                                                                  |
-| L15 | Undo/Redo doppelt im Querformat                                         | Niedrig | Schwebende Undo/Redo-Gruppe nur im Handy-**Hochformat**; sonst trägt sie die Werkzeugleiste                                                                                                                  |
-| L16 | Fachwissen-Knopf im Dark Mode hell                                      | Niedrig | `bg-ink text-bone` → `bg-surface-panel text-ink` (ink/bone kehren im Dunkelmodus um); Unterzeile und Infopunkt ebenfalls                                                                                     |
-| L17 | „1 Regel(n)“ in der Stückliste                                          | Niedrig | Einzahl/Mehrzahl in `releaseStatus.ts` (auch „Verletzung(en)“)                                                                                                                                               |
-| L18 | Zahlen auf Karten nicht deutsch formatiert                              | Niedrig | Neuer Anzeige-Helfer `components/nodes/formatNumber.ts` (`formatNumberDe`), an allen Zahlen der Bauteilkarten                                                                                                |
+| ID  | Titel                                                                   | Prio    | Korrektur                                                                                                                                                                                                                                      |
+| --- | ----------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L1  | Kabel-Labels stapeln sich an der Sammelschiene                          | Hoch    | `routeAll.ts` → `placeLabelClearOfLabels()` sucht **entlang der Leitung** (`LABEL_LINE_FRACTIONS`) statt nur senkrecht am festen x; ohne freien Platz `labelHidden` (kein Chip) statt deckungsgleichem Anker                                   |
+| L2  | Inspector-Toggle liegt im Panel und verdeckt Felder                     | Hoch    | `globals.css`: `right: calc(var(--planner-inspector-w) - 1.375rem)` (Mitte auf der Kante); zusätzlich ausgeblendet, solange das Fachwissen-Panel offen ist                                                                                     |
+| L3  | Lange Namen schieben Karten übereinander, Bruch mitten im Wort          | Hoch    | `overflow-wrap: break-word` + `hyphens: auto` statt `anywhere`; Kartentitel auf zwei Zeilen geklemmt, voller Name als `title` an allen 13 Node-Titeln                                                                                          |
+| L4  | Mobil: Strompfad unter der Modus-Zeile, „React Flow“ darüber            | Mittel  | Strompfad-Kachel im Handy-Hochformat unter den Modus-Block (`top: 7rem`)                                                                                                                                                                       |
+| L5  | Stückliste: Footer unerreichbar bei wenig Höhe                          | Mittel  | Unter 520 px Höhe scrollt das ganze Blatt (`@media (max-height: 520px)`), klebrige Fußzeile wird normaler Inhalt — **keine** Zeilenklemmung am Untertitel (E2E-Vertrag: unbeschnitten)                                                         |
+| L6  | Mobil 360/390: Auto-verbinden-Knopf abgeschnitten                       | Mittel  | Statusfeld der Werkzeugleiste bekommt eine deckende Fläche (gescrollte Knöpfe malten sonst darunter weiter) + minimale Abstände unter 400 px                                                                                                   |
+| L7  | Tablet 768–1024: Wortmarke bricht zweizeilig                            | Mittel  | `.cad-menubar__brand { flex-shrink: 0 }`; Projektname zwischen 768 und 1099 px ausgeblendet                                                                                                                                                    |
+| L8  | Tablet 768: Modus-Hinweis von der Status-Karte verdeckt                 | Mittel  | Modus-Block rückt zwischen 768 und 1099 px nach links, Beschriftung bleibt schmaler als die Lücke zur Karte                                                                                                                                    |
+| L9  | Hinweis „Erster Anschluss gewählt…“ verdeckt Strompfad, Toast und Hilfe | Mittel  | Hinweis sitzt ab 768 px **über** der Meldungszeile (`bottom: Statuszeile + 7rem`) und bleibt auf die Canvas-Breite begrenzt                                                                                                                    |
+| L10 | Kabel-Labels liegen auf Karten; Warn-Labels zu breit                    | Mittel  | Prüfbox nutzt die **gemessene** Labelbreite (`estimateCableLabelWidth`), Warntext verkürzt („⚠“ statt „zu klein … (empf. 70)“), Notfall-Kurzform nur „16 mm²“                                                                                  |
+| L11 | Zoom 200 %: Steuerelemente überdecken Text und Karten                   | Mittel  | Unter 700 px Breite bzw. 480 px Höhe bleibt die Kurzbeschriftung „Vorlage“ statt „Vorlage laden“                                                                                                                                               |
+| L12 | Gruppen-Label „HAUPTSTROMKREIS“ liegt unter der PV-Karte                | Mittel  | Label sitzt über der Rahmenkante (`bottom-full`) statt in der Ecke, in der die erste Karte steht                                                                                                                                               |
+| L13 | Rail-Text abgeschnitten ohne Tooltip                                    | Niedrig | `title={plan.activeStep.detail}` an `GuidedPlanRail`                                                                                                                                                                                           |
+| L14 | Browser-Druck druckt die Bedienoberfläche                               | Niedrig | Erste `@media print`-Regeln: Chrome und Blätter aus, Zeichenfläche auf eine Seite, Knöpfe auf hell (weiße Schrift auf Weiß)                                                                                                                    |
+| L15 | Undo/Redo doppelt im Querformat                                         | Niedrig | **Korrigiert gegen den Bericht:** nicht die schwebende Gruppe ausblenden, sondern die **Kopie in der Werkzeugleiste** — und nur im Band `(orientation: landscape) and (min-height: 360px) and (max-height: 480px)`, in dem beide sichtbar sind |
+| L16 | Fachwissen-Knopf im Dark Mode hell                                      | Niedrig | `bg-ink text-bone` → `bg-surface-panel text-ink` (ink/bone kehren im Dunkelmodus um); Unterzeile und Infopunkt ebenfalls                                                                                                                       |
+| L17 | „1 Regel(n)“ in der Stückliste                                          | Niedrig | Einzahl/Mehrzahl in `releaseStatus.ts` (auch „Verletzung(en)“)                                                                                                                                                                                 |
+| L18 | Zahlen auf Karten nicht deutsch formatiert                              | Niedrig | Neuer Anzeige-Helfer `components/nodes/formatNumber.ts` (`formatNumberDe`), an allen Zahlen der Bauteilkarten                                                                                                                                  |
 
 Zusätzlich aus dem Kurzstatus des PDFs: **M19** (Hinweis „Modellgrenze“ in zwei
 Spalten zerschnitten) — Ursache war, dass `.warn-card` eine Flex-Zeile ist und
@@ -78,6 +78,34 @@ kein Bildfehler, zwei deckungsgleiche schon.
 `npm run test:goldenmaster` (13) · `npm run test:regression` (68) ·
 `npm run routing:audit` (I1–I7 = 0, Fallback = 0 auf allen sechs
 Referenzplänen) · `npm run build` — alle grün auf diesem Branch.
+
+## Korrektur nach dem ersten CI-Lauf (E2E-Gate)
+
+Das Gate „End-to-End (Playwright)“ schlug bei **3 von 361** Tests fehl, alle im
+Viewport 852×393 (`tests/e2e/mobile-geometry.spec.ts`). Beide Ursachen lagen an
+dieser Runde; der Bericht selbst hätte die Regressionen nicht gezeigt, weil er
+nur Flächen misst:
+
+1. **L15 in der Fassung des Berichts bricht einen älteren Fix.** Der Bericht
+   schlägt vor, die schwebende Undo/Redo-Gruppe überall außer im
+   Handy-Hochformat auszublenden. Genau sie wird aber im flachen Querformat
+   (360–480 px Höhe, `globals.css` ~3989) **bewusst wieder eingeblendet**, weil
+   dort die Bottom-Tabs fehlen — `mobile-overview` und `mobile-undo` sind der
+   einzig erreichbare Weg und stehen im Testvertrag von
+   `mobile-geometry.spec.ts`, `touch.spec.ts`, `controls-overlap.spec.ts`.
+   Der Befund (doppelte Undo/Redo) bleibt richtig, nur die falsche der beiden
+   Kopien war zu entfernen: Es entfällt die Gruppe in der **Werkzeugleiste**,
+   genau in dem Band, in dem beide sichtbar sind.
+2. **L5 klemmte den Untertitel der Stückliste** auf zwei Zeilen
+   (`-webkit-line-clamp`). Der Prüfbericht verlangt einen unbeschnittenen
+   Untertitel (`scrollHeight > clientHeight` ist dort ein Fehler). Das
+   scrollende Blatt allein reicht, um „Druckbericht (PDF)“ erreichbar zu
+   machen — die Klemmung ist entfallen.
+
+Lehre für künftige Runden: Vor jedem „ausblenden“-Fix in `globals.css` prüfen,
+ob es für die Klasse einen älteren Kommentar mit Messwert gibt (hier:
+„`bottom: 0.25rem` lag in der Fußleiste (z-50) und die Übersicht war dort
+verdeckt“) und ob ein `data-testid` daran hängt.
 
 **Nicht** gelaufen: `npm run e2e` — in dieser Umgebung sind keine
 Playwright-Browser installiert. Die E2E-Verträge, die von den Änderungen

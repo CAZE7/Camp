@@ -4980,9 +4980,13 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
    Ursache: `max-h-[min(100dvh-1rem,90dvh)] overflow-hidden` am Dialog — bei
    390 px Höhe blieben ~140 px Inhalt, „Druckbericht (PDF)“ war abgeschnitten
    und nicht erreichbar, weil nur `bom-scroll-body` scrollte. Unter 520 px
-   Höhe scrollt deshalb das ganze Blatt; die vierzeilige Beschreibung wird
-   auf zwei Zeilen geklemmt (Text bleibt im Barrierefreiheitsbaum, der
-   Hinweis steht zusätzlich im `title` der Spalte). */
+   Höhe scrollt deshalb das ganze Blatt, die klebrige Fußzeile wird normaler
+   Inhalt (sie überdeckte sonst beim Scrollen Zeilen).
+   Keine Zeilenklemmung an `.planner-dialog__description`: der Prüfbericht
+   verlangt einen unbeschnittenen Untertitel
+   (`tests/e2e/mobile-geometry.spec.ts`: `scrollHeight > clientHeight` ist
+   dort ein Fehler), und das scrollende Blatt holt die Fußzeile auch mit
+   vollem Text. */
 @media (max-height: 520px) {
   .planner-dialog {
     overflow-y: auto !important;
@@ -4991,12 +4995,6 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
     flex: none !important;
     min-height: 0 !important;
     overflow: visible !important;
-  }
-  .planner-dialog__description {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
   }
   /* Mit scrollendem Blatt ist die klebrige Fußleiste wirkungslos und würde
      nur Inhalt überdecken. */
@@ -5146,10 +5144,16 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 
 /* L15 — Undo/Redo im Querformat doppelt: Der schwebende Griff war zusätzlich
    zur Werkzeugleiste sichtbar (Beleg lay_undo_dup.png, 844×390 und 932×430).
-   Die Gruppe gehört ausschließlich ans Handy im Hochformat — überall sonst
-   trägt die Werkzeugleiste die beiden Aktionen. */
-@media (min-width: 768px), (orientation: landscape) {
-  .planner-shell .planner-mobile-history {
+   Der Fix aus dem Bericht (schwebende Gruppe überall außer Handy-Hochformat
+   ausblenden) greift hier zu kurz und brach das E2E-Gate: Im flachen
+   Querformat (ab Zeile ~3989, 360–480 px Höhe) wird die schwebende Gruppe
+   bewusst WIEDER eingeblendet, weil die Bottom-Tabs dort fehlen und sie der
+   einzig erreichbare Weg zu Rückgängig/Übersicht ist — `mobile-overview` und
+   `mobile-undo` sind Testvertrag (tests/e2e/mobile-geometry.spec.ts,
+   touch.spec.ts). Es entfällt deshalb die KOPIE in der Werkzeugleiste, und
+   zwar genau in dem Band, in dem beide sichtbar sind. */
+@media (orientation: landscape) and (max-height: 480px) and (min-height: 360px) {
+  .cad-toolbar__group:has(> [data-testid='toolbar-undo']) {
     display: none !important;
   }
 }
