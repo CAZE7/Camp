@@ -748,8 +748,13 @@ export function ExpertPanel() {
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            'group relative flex items-center gap-2.5 rounded border border-copper bg-ink py-3 pr-4 pl-3',
-            'text-bone',
+            // L16 (Layout-Runde 27.10.2026): `bg-ink text-bone` kehrt im
+            // Dunkelmodus um — `--ink` ist dort die HELLE Textfarbe und
+            // `--bone` die dunkle Fläche, der Knopf leuchtete als helle
+            // Kachel aus dem dunklen Canvas (Beleg lay_dark_fab.png).
+            // `surface-panel` + `ink` sind in beiden Themes Fläche bzw. Text.
+            'group relative flex items-center gap-2.5 rounded border border-copper bg-surface-panel py-3 pr-4 pl-3',
+            'text-ink',
             'hover:border-copper hover:bg-surface-raised hover:text-ink',
             'transition-colors duration-200'
           )}
@@ -774,7 +779,10 @@ export function ExpertPanel() {
           </span>
           <span className="expert-fab__copy relative hidden flex-col items-start text-left sm:flex">
             <span className="text-sm leading-tight font-black">Hilfe &amp; Fachwissen</span>
-            <span className="text-xs leading-tight font-bold text-paper/80">
+            {/* Ebenfalls L16: `text-paper/80` ist im Dunkelmodus dunkle
+                  Schrift auf dunkler Fläche — `ink-soft` bleibt in beiden
+                  Themes die gedämpfte Textfarbe. */}
+            <span className="text-xs leading-tight font-bold text-ink-soft">
               {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Details und Normen'}
             </span>
           </span>
@@ -782,7 +790,7 @@ export function ExpertPanel() {
           {/* Notification dot */}
           {selectedNodes.length > 0 && (
             <span
-              className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-bone bg-oxide text-bone shadow-md"
+              className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface-panel bg-oxide text-on-signal shadow-md"
               aria-hidden="true"
             >
               <Info size={12} strokeWidth={2.5} />

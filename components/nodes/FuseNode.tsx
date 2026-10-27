@@ -39,6 +39,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Sicherungskasten')}
+          title={data.label || 'Sicherungskasten'}
         >
           {data.label || 'Sicherungskasten'}
         </div>

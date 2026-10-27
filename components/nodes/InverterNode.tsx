@@ -6,6 +6,7 @@ import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { type CommonNodeData } from './types';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<InverterNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -55,6 +56,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Wechselrichter')}
+          title={data.label || 'Wechselrichter'}
         >
           {data.label || 'Wechselrichter'}
         </div>
@@ -63,7 +65,9 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
         <div>12 V Eingang / 230 V Ausgang</div>
         <div className="measure text-xs text-muted-foreground">230-V-Eingang oben</div>
         <div>Effizienz: 85%</div>
-        {overloadStats.continuousPower > 0 && <div>Leistung: {overloadStats.continuousPower} W</div>}
+        {overloadStats.continuousPower > 0 && (
+          <div>Leistung: {formatNumberDe(overloadStats.continuousPower)} W</div>
+        )}
       </div>
 
       {overloadStats.isOverloaded && (

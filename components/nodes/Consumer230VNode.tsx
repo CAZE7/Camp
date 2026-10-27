@@ -5,6 +5,7 @@ import { type Consumer230VNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const Consumer230VNode = function ({
   id,
@@ -37,6 +38,7 @@ const Consumer230VNode = function ({
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || '230V Verbraucher')}
+          title={data.label || '230V Verbraucher'}
         >
           {data.label || '230V Verbraucher'}
         </div>
@@ -58,7 +60,7 @@ const Consumer230VNode = function ({
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('watts', data.watts || 0)}>
-            Leistung: {data.watts || 0} W
+            Leistung: {formatNumberDe(data.watts ?? 0)} W
           </div>
         )}
         {editingField === 'hours' ? (
@@ -77,7 +79,7 @@ const Consumer230VNode = function ({
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('hours', data.hours || 0)}>
-            Nutzung: {data.hours || 0} h/Tag
+            Nutzung: {formatNumberDe(data.hours ?? 0)} h/Tag
           </div>
         )}
       </div>

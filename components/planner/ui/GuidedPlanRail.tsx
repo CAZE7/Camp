@@ -163,7 +163,13 @@ export function GuidedPlanRail({
 
       {/* Ab md steht der Fortschritt in der Liste daneben — hier bleibt nur die
           Begründung, sonst stünde dieselbe Information zweimal in einer Zeile. */}
-      <p className="cad-rail__detail hidden min-w-0 truncate text-xs text-muted-foreground lg:block">
+      {/* L13 (Layout-Runde 27.10.2026): `truncate` schnitt den Satz ab
+          („Prüfbericht unvollständig belegt (fehl…“) und der Rest war nirgends
+          lesbar — der volle Text steht jetzt zusätzlich im `title`. */}
+      <p
+        className="cad-rail__detail hidden min-w-0 truncate text-xs text-muted-foreground lg:block"
+        title={plan.activeStep.detail}
+      >
         {plan.activeStep.detail}
       </p>
 

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import complexPlan from '../../../knownPlans/complex.json';
 import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json';
-import { placeLabelClearOfLabels, routeAllCables, type RouteEdgeRef } from './routeAll';
+import {
+  LABEL_COMPACT_MIN_WIDTH,
+  estimateCableLabelWidth,
+  placeLabelClearOfLabels,
+  routeAllCables,
+  type RouteEdgeRef,
+} from './routeAll';
 import { LABEL_BOX_HEIGHT, LABEL_BOX_WIDTH, boxesOverlap, labelBoundingBox } from './pathUtils';
 import {
   nodeHeight,
@@ -66,6 +72,14 @@ function buildPlan(): { nodes: RoutableNode[]; edges: RouteEdgeRef[] } {
   return { nodes, edges: complexPlan.autoWire.edges as unknown as RouteEdgeRef[] };
 }
 
+/**
+ * Breite der tatsächlich gezeichneten Beschriftung: Die Kurzform
+ * (`labelCompact`, nur „16 mm²") ist deutlich schmaler als der Umschlag.
+ */
+function drawnWidth(route: { labelCompact?: boolean }): number {
+  return route.labelCompact ? LABEL_COMPACT_MIN_WIDTH : LABEL_BOX_WIDTH;
+}
+
 describe('Label-Platzierung (Befund 2026-09-28)', () => {
   const { nodes, edges } = buildPlan();
   const routes = routeAllCables(nodes, edges);
@@ -80,28 +94,73 @@ describe('Label-Platzierung (Befund 2026-09-28)', () => {
   });
 
   /**
-   * Ratchet statt Null-Gate: In diesem dichten Plan (14 Karten auf ~1000 × 700)
-   * gibt es Trassen, die zwischen zwei Karten komplett unter einer Karte
-   * liegen — eine kartenfreie Stelle existiert dort nicht. Gemessen am
-   * 2026-09-28 nach dem Umbau: 8 solcher Labels. Sie sind seit dem
-   * Z-Order-Fix lesbar (die Label-Ebene liegt über den Karten), deshalb ist
-   * „0" hier kein sinnvolles Ziel — „nicht schlechter werden" schon.
+   * Gezeichnete Beschriftungen liegen nicht auf Bauteilkarten.
+   *
+   * Ratchet: Dieser dichte Plan (14 Karten auf ~1000 × 700) enthält Trassen,
+   * die zwischen zwei Karten komplett unter einer Karte liegen — eine
+   * kartenfreie Stelle existiert dort nicht. Gemessen am 2026-09-28 nach dem
+   * Umbau: 8 solcher Labels (mit dem alten, festen Umschlag gerechnet).
+   *
+   * Seit der Layout-Runde 27.10.2026 (L1/L10) rechnet die Prüfung mit der
+   * gemessenen Breite, sucht entlang der Leitung und zeichnet im Notfall die
+   * Kurzform bzw. gar nichts: Gemessen sind 0 Labels über Karten und 0
+   * Label-Überdeckungen (vorher 6 bzw. 4). Der Wert 1 bleibt als Reserve für
+   * künftige Planstände; mehr heißt „Platzierung verschlechtert".
    */
-  it('Label über Karte bleibt bei höchstens 8 (Ratchet)', () => {
-    let overlaps = 0;
+  it('gezeichnete Beschriftung liegt nicht auf einer Karte (Ratchet)', () => {
+    let onCard = 0;
     for (const [, route] of routes) {
-      const box = labelBoundingBox(route.labelX, route.labelY);
+      if (route.labelHidden) continue; // nicht gezeichnet — kein Bildfehler
+      const box = labelBoundingBox(route.labelX, route.labelY, drawnWidth(route));
       for (const rect of nodeRects) {
         if (boxesOverlap(box, rect)) {
-          overlaps += 1;
+          onCard += 1;
           break;
         }
       }
     }
     expect(
-      overlaps,
-      'Mehr Labels über Karten als beim Umbau gemessen — Platzierung verschlechtert'
-    ).toBeLessThanOrEqual(8);
+      onCard,
+      'Mehr Labels über Karten als bei der Layout-Runde gemessen — Platzierung verschlechtert'
+    ).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * L1 (Screenshot „Großes Autark-Setup“): Mehrere Leitungen auf demselben
+   * Trassenstück bekamen denselben Anker, weil nur senkrecht am festen x
+   * ausgewichen wurde — vier Chips lagen deckungsgleich übereinander.
+   * Zwei gezeichnete Beschriftungen dürfen sich nie überdecken: Sie lesen
+   * sich sonst als EIN Label mit vermischten Zahlen.
+   */
+  it('zwei gezeichnete Beschriftungen liegen nie aufeinander (L1)', () => {
+    const drawn = [...routes.entries()].filter(([, route]) => !route.labelHidden);
+    const boxes = drawn.map(([id, route]) => ({
+      id,
+      box: labelBoundingBox(route.labelX, route.labelY, drawnWidth(route)),
+    }));
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!;
+        const b = boxes[j]!;
+        expect(boxesOverlap(a.box, b.box), `Beschriftungen überdecken sich: ${a.id} / ${b.id}`).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * L1 (Fortsetzung): Wo weder die volle noch die kurze Beschriftung
+   * kollisionsfrei Platz findet, markiert der Pass `labelHidden` — kein
+   * zweiter Chip auf dem ersten. Der Plan `complex.json` ist dicht genug, um
+   * den Fall zu zeigen (gemessen: 4 von 23 Leitungen).
+   */
+  it('ohne freien Platz bleibt die Beschriftung aus (labelHidden), aber die Geometrie steht', () => {
+    const hidden = [...routes.values()].filter((route) => route.labelHidden);
+    expect(hidden.length).toBeGreaterThan(0);
+    for (const route of hidden) {
+      expect(Number.isFinite(route.labelX)).toBe(true);
+      expect(Number.isFinite(route.labelY)).toBe(true);
+      expect(route.path.length).toBeGreaterThan(0);
+    }
   });
 
   /**
@@ -137,17 +196,73 @@ describe('Label-Platzierung (Befund 2026-09-28)', () => {
     expect(positions(again)).toEqual(positions(routes));
   });
 
-  it('weicht vertikal in Spread-Stufen aus und bleibt sonst am Anker', () => {
+  it('weicht entlang der Leitung in Spread-Stufen aus und gibt null zurück, wenn nichts frei ist', () => {
     const card = { x: 0, y: 0, width: 400, height: 400 };
-    // Anker frei, keine Nachbarn ⇒ unverändert.
-    expect(placeLabelClearOfLabels({ x: 800, y: 800 }, [card], [])).toEqual({ x: 800, y: 800 });
-    // Ein Nachbar belegt den Anker ⇒ nächste Stufe.
+    const waypoints = [
+      { x: 600, y: 800 },
+      { x: 1000, y: 800 },
+    ];
     const anchor = { x: 800, y: 800 };
+    // Anker frei, keine Nachbarn ⇒ unverändert.
+    expect(placeLabelClearOfLabels(anchor, waypoints, [card], [])).toEqual(anchor);
+    // Ein Nachbar belegt den Anker ⇒ Ausweichen (senkrecht oder entlang der Leitung).
     const taken = [labelBoundingBox(800, 800)];
-    expect(placeLabelClearOfLabels(anchor, [card], taken)).not.toEqual(anchor);
-    // Ohne freien Platz bleibt der Anker (lieber überlappend als ohne Bezug).
+    expect(placeLabelClearOfLabels(anchor, waypoints, [card], taken)).not.toEqual(anchor);
+    // Ohne freien Platz: **kein** Label (`null`) statt eines zweiten Chips auf
+    // dem ersten — zwei deckungsgleiche Beschriftungen liest man als EINE.
     const blockEverything = [{ ...labelBoundingBox(800, 800), width: 1e6, height: 1e6, x: -1e5, y: -1e5 }];
-    expect(placeLabelClearOfLabels(anchor, [card], blockEverything)).toEqual(anchor);
+    expect(placeLabelClearOfLabels(anchor, waypoints, [card], blockEverything)).toBeNull();
+  });
+
+  /**
+   * L1, Kern des Screenshot-Falls: Vier Leitungen teilen sich ein
+   * Trassenstück und damit denselben Anker. Die alte Suche (nur senkrecht am
+   * festen x) fand dort keinen Platz und fiel auf den Anker zurück — vier
+   * deckungsgleiche Chips. Jetzt bekommt jede Leitung ihren eigenen Platz.
+   */
+  it('vier Beschriftungen auf derselben Trasse stapeln sich nicht', () => {
+    const waypoints = [
+      { x: 400, y: 400 },
+      { x: 800, y: 400 },
+    ];
+    const anchor = { x: 600, y: 400 };
+    const placed: ReturnType<typeof labelBoundingBox>[] = [];
+    for (let i = 0; i < 4; i++) {
+      const position = placeLabelClearOfLabels(anchor, waypoints, [], placed);
+      expect(position, `Beschriftung ${i + 1} fand keinen Platz`).not.toBeNull();
+      placed.push(labelBoundingBox(position!.x, position!.y));
+    }
+    expect(placed).toHaveLength(4);
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        expect(boxesOverlap(placed[i]!, placed[j]!), `Chips ${i} und ${j} überdecken sich`).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * L10: Die Prüfbox war fix 156 px breit, ein Warn-Label ist aber deutlich
+   * breiter. Deshalb wird die Breite aus dem Text geschätzt — mit dem
+   * Umschlag als Untergrenze, damit die Prüfung nie optimistischer wird als
+   * vorher.
+   */
+  it('Labelbreite folgt dem Text, Kurzform ist schmaler als die Langform', () => {
+    const edge = {
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'plus',
+      data: { edgeDomain: 'DC_12V', crossSection: 4 },
+    } as unknown as RouteEdgeRef;
+    const full = estimateCableLabelWidth(edge, 300);
+    const compact = estimateCableLabelWidth(edge, 300, true);
+    expect(full).toBeGreaterThanOrEqual(LABEL_BOX_WIDTH);
+    expect(compact).toBeLessThan(full);
+    // Ein langes Label (große Länge ⇒ mehr Zeichen) wird breiter als der Umschlag.
+    const long = estimateCableLabelWidth(edge, 100_000);
+    expect(long).toBeGreaterThan(full);
+    // Ohne Kantendaten: keine Ausnahme, nur der Umschlag.
+    expect(estimateCableLabelWidth(undefined, 300)).toBeGreaterThanOrEqual(LABEL_BOX_WIDTH);
   });
 
   it('Label-Box ist die gerenderte Größe, nicht die alte Schätzung', () => {

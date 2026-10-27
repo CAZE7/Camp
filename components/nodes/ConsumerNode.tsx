@@ -5,6 +5,7 @@ import { type ConsumerNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<ConsumerNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -32,6 +33,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Verbraucher')}
+          title={data.label || 'Verbraucher'}
         >
           {data.label || 'Verbraucher'}
         </div>
@@ -53,7 +55,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('watts', data.watts || 0)}>
-            Leistung: {data.watts || 0} W
+            Leistung: {formatNumberDe(data.watts ?? 0)} W
           </div>
         )}
         {editingField === 'hours' ? (
@@ -72,7 +74,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('hours', data.hours || 0)}>
-            Nutzung: {data.hours || 0} h/Tag
+            Nutzung: {formatNumberDe(data.hours ?? 0)} h/Tag
           </div>
         )}
       </div>

@@ -32,6 +32,7 @@ const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeP
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Sammelschiene')}
+          title={data.label || 'Sammelschiene'}
         >
           {data.label || 'Sammelschiene'}
         </div>

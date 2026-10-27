@@ -37,6 +37,7 @@ const ShorePowerNode = function ({
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Landstromanschluss')}
+          title={data.label || 'Landstromanschluss'}
         >
           {data.label || 'Landstromanschluss'}
         </div>

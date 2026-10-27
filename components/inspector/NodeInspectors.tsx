@@ -655,13 +655,19 @@ export function InverterInspector({
                 {sysVoltage.toFixed(1).replace(/\.0$/, '').replace('.', ',')} V Systemspannung)
               </span>
             )}
+            {/* M19 (Layout-Runde 27.10.2026): `.warn-card` ist eine Flex-Zeile
+                — jeder direkte Textknoten wird darin zum eigenen Flex-Item,
+                und der Hinweis zerfiel in zwei Spalten. Ein einziges `p` hält
+                den Absatz zusammen. */}
             {dcInputAmps > 100 && (
               <div className="warn-card warn-card-warning mt-2 p-2 text-xs leading-relaxed">
-                <strong>Modellgrenze Einzelader (max. 70 mm² / 100 A):</strong> Bei {dcInputAmps.toFixed(0)} A
-                DC-Strom reicht eine einzelne Leitung bis 70 mm² im Planermodell nicht aus. Lösung in der
-                Praxis: Aufbaubank auf <strong>24 V / 48 V</strong> auslegen (halbiert bzw. viertelt den
-                Strom), nach Herstellervorgabe <strong>parallele Zuleitungen</strong> gleicher Länge führen
-                oder Dauerleistung reduzieren.
+                <p>
+                  <strong>Modellgrenze Einzelader (max. 70 mm² / 100 A):</strong> Bei {dcInputAmps.toFixed(0)}{' '}
+                  A DC-Strom reicht eine einzelne Leitung bis 70 mm² im Planermodell nicht aus. Lösung in der
+                  Praxis: Aufbaubank auf <strong>24 V / 48 V</strong> auslegen (halbiert bzw. viertelt den
+                  Strom), nach Herstellervorgabe <strong>parallele Zuleitungen</strong> gleicher Länge führen
+                  oder Dauerleistung reduzieren.
+                </p>
               </div>
             )}
           </div>

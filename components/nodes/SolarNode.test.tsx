@@ -40,7 +40,7 @@ describe('SolarNode Component', () => {
   it('renders custom voltage and amps when provided in data', () => {
     render(<SolarNode id="1" data={{ voltage: 12, amps: 5.5 }} />);
     expect(screen.getByText('Spannung: 12 V')).toBeInTheDocument();
-    expect(screen.getByText('Strom: 5.5 A')).toBeInTheDocument();
+    expect(screen.getByText('Strom: 5,5 A')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true', () => {

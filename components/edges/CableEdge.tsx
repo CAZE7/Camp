@@ -791,6 +791,32 @@ const CableEdge = function ({
   const physicalMode = usePlannerStore((state) => state.plannerMode) === 'physisch';
   const labelVisible = !isCompact || selected || tapRevealed || physicalMode;
 
+  /**
+   * L1/L10 (Layout-Runde 27.10.2026): Der Routing-Pass meldet, wenn für die
+   * volle Beschriftung kein Platz war, der nicht auf einer Karte oder einer
+   * fremden Beschriftung liegt. `labelCompact` ⇒ nur der Querschnitt (~60 px
+   * statt 156 px); `labelHidden` ⇒ gar keine Beschriftung, weil auch die
+   * Kurzform keinen freien Platz gefunden hat. Zwei deckungsgleiche Chips
+   * lesen sich als EIN Label mit vermischten Zahlen — das ist der Fehler, den
+   * die beiden Marken verhindern. Die Werte stehen unverändert im Inspector,
+   * und ein Klick auf die Leitung wählt sie.
+   */
+  const labelCompact = globalRoute?.labelCompact === true;
+  const labelHidden = globalRoute?.labelHidden === true;
+
+  const crossSectionToken = String(crossSection).replace('.', ',');
+  const lengthToken = length.toFixed(1).replace('.', ',');
+  const recommendedToken = String(recommendedCrossSection).replace('.', ',');
+  // Der ausgeschriebene Warnsatz wanderte aus dem Chip in den `title` (L10):
+  // „zu klein · … (empf. 70)“ machte das Label rund 270 px breit und damit
+  // breiter als jede Prüfbox — der Chip lag auf Karten und Nachbar-Labels.
+  const undersizedTitle = crossSectionUndersized
+    ? `Querschnitt zu klein: verlegt ${crossSectionToken} mm², gefordert ${recommendedToken} mm² (Spannungsfall/Thermik)`
+    : undefined;
+  const labelTitle = labelCompact
+    ? [undersizedTitle, `Länge ${lengthToken} m`].filter(Boolean).join(' · ')
+    : undersizedTitle;
+
   return (
     <>
       {/* R9: Routing-Ausnahmen pro Leitung sichtbar, nicht nur aggregiert im
@@ -857,8 +883,10 @@ const CableEdge = function ({
 
       {/* Label: compact auf der Zeichenfläche, mit Messwerten bei Auswahl/Touch.
           Der opaque Labelgrund und die Domain-Markierung passen zu den orthogonalen
-          Trassen, ohne in deren Routing-Geometrie einzugreifen. */}
-      {labelVisible && (
+          Trassen, ohne in deren Routing-Geometrie einzugreifen.
+          `labelHidden` (L1): keine Beschriftung zeichnen, wenn der Pass keinen
+          kollisionsfreien Platz gefunden hat. */}
+      {labelVisible && !labelHidden && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -882,30 +910,29 @@ const CableEdge = function ({
             } ${hasDropError ? 'edge-label--error' : ''}`}
           >
             {/* Kernlabel zeigt den VERLEGTEN Querschnitt; eine unterschrittene
-                Empfehlung bleibt direkt an der betroffenen Leitung sichtbar. */}
+                Empfehlung bleibt als ⚠ direkt an der betroffenen Leitung
+                sichtbar (der Satz dazu steht in `title`, im Prüfbericht und im
+                Inspector). In der Kurzform (`labelCompact`) bleibt nur der
+                Querschnitt — Länge und Domain stehen dann im `title`. */}
             <span className="edge-label-main">
-              <span className="edge-label__domain">
-                {edgeDomain === 'AC_230V'
-                  ? '230 V'
-                  : edgeDomain === 'Solar'
-                    ? 'SOLAR'
-                    : isPlus
-                      ? 'DC +'
-                      : 'DC −'}
-              </span>
+              {!labelCompact && (
+                <span className="edge-label__domain">
+                  {edgeDomain === 'AC_230V'
+                    ? '230 V'
+                    : edgeDomain === 'Solar'
+                      ? 'SOLAR'
+                      : isPlus
+                        ? 'DC +'
+                        : 'DC −'}
+                </span>
+              )}
               <span
                 className={`edge-label__spec ${crossSectionUndersized ? 'edge-label__spec--error' : ''}`}
-                title={
-                  crossSectionUndersized
-                    ? `Verlegt: ${crossSection} mm² — gefordert: ${recommendedCrossSection} mm² (Spannungsfall/Thermik)`
-                    : undefined
-                }
+                title={labelTitle}
               >
-                {crossSectionUndersized ? 'zu klein · ' : '· '}
-                {String(crossSection).replace('.', ',')} mm² · {length.toFixed(1).replace('.', ',')} m
-                {crossSectionUndersized
-                  ? ` (empf. ${String(recommendedCrossSection).replace('.', ',')})`
-                  : ''}
+                {labelCompact
+                  ? `${crossSectionUndersized ? '⚠ ' : ''}${crossSectionToken} mm²`
+                  : `${crossSectionUndersized ? '⚠ · ' : '· '}${crossSectionToken} mm² · ${lengthToken} m`}
               </span>
             </span>
             {emphasized && routeInvalid && (
