@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
@@ -102,10 +103,14 @@ export function SeoPage({
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLdFor(page)) }}
       />
       <div className="container-page space-y-14">
-        <header className="prose-measure">
+        {/* Kopf mit Einordnung: Thema, eine H1, die Einleitung darunter. Die
+            Linie schließt den Kopf ab, damit Einleitung und erster Abschnitt
+            nicht zu einem Block verschmelzen (vorher standen sie 56 px
+            auseinander, ohne dass eine Kante sie trennte). */}
+        <header className="prose-measure border-b border-rule pb-6">
           <p className="kicker">{topic.label}</p>
-          <h1 className="h1 mt-3">{page.h1}</h1>
-          <p className="mt-4 text-md leading-relaxed text-ink-soft">
+          <h1 className="h1 mt-4">{page.h1}</h1>
+          <p className="mt-5 text-md leading-relaxed text-ink-soft md:text-lg">
             <RichText text={page.lead} />
           </p>
         </header>
@@ -120,7 +125,7 @@ export function SeoPage({
 
         {(page.faq?.length ?? 0) > 0 && (
           <section aria-labelledby="faq-titel" className="scroll-mt-20">
-            <h2 id="faq-titel" className="font-display text-xl font-semibold text-ink">
+            <h2 id="faq-titel" className="h2 border-b border-rule pb-3">
               Häufige Fragen
             </h2>
             <div className="mt-5 max-w-3xl">
@@ -132,20 +137,34 @@ export function SeoPage({
         <TrustBlock page={page} />
 
         <section aria-labelledby="weiter-titel">
-          <h2 id="weiter-titel" className="font-display text-xl font-semibold text-ink">
+          <h2 id="weiter-titel" className="h2 border-b border-rule pb-3">
             Weiter im Thema
           </h2>
-          <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
+          {/* Karten statt nackter Verweisliste: Die Ziele bleiben dieselben
+              (die Linkgraph-Prüfung liest die Ziele, nicht die Form), aber die
+              Beschreibung steht sichtbar daneben — vorher hing sie als
+              Fließtext am Verweis und war auf dem Handy vom nächsten Ziel
+              kaum zu trennen. */}
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {page.related.map((link) => (
-              <li key={link.href} className="border-t border-rule pt-2">
-                <Link href={link.href} className="font-medium text-ink underline-offset-2 hover:underline">
-                  <RichText text={link.label} />
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="node-card group flex h-full flex-col gap-1 rounded p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+                >
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-ink">
+                    <RichText text={link.label} />
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-copper transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  {link.description && (
+                    <span className="text-sm leading-relaxed text-ink-soft">
+                      <RichText text={link.description} />
+                    </span>
+                  )}
                 </Link>
-                {link.description && (
-                  <p className="mt-1 text-base text-ink-soft">
-                    <RichText text={link.description} />
-                  </p>
-                )}
               </li>
             ))}
           </ul>
@@ -205,7 +224,10 @@ function Section({ section }: { section: ContentSection }) {
 
   return (
     <section id={section.id} aria-labelledby={headingId} className="scroll-mt-20">
-      <h2 id={headingId} className="font-display text-xl font-semibold text-ink">
+      {/* Dieselbe Überschriftenform wie auf den Markenseiten (.h2) statt einer
+          eigenen Größe: Eine Abschnittsüberschrift soll überall gleich groß
+          sein, damit die Ebene trägt und nicht die Schriftgröße. */}
+      <h2 id={headingId} className="h2 border-b border-rule pb-3">
         {section.heading}
       </h2>
 
@@ -365,7 +387,7 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
 
   return (
     <section aria-labelledby="transparenz-titel" className="scroll-mt-20">
-      <h2 id="transparenz-titel" className="font-display text-xl font-semibold text-ink">
+      <h2 id="transparenz-titel" className="h2 border-b border-rule pb-3">
         Grundlage, Annahmen und Grenzen
       </h2>
       <div className="mt-4 grid gap-8 md:grid-cols-3">

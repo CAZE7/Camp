@@ -179,7 +179,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'die Reihenfolge der Gewerke beim Camper-Ausbau kennen.',
     topicId: 'ausbau',
     priority: 'P2',
-    structuredData: ['WebPage'],
+    structuredData: ['WebPage', 'BreadcrumbList'],
     ogImage: {
       path: '/og/ausbau-fahrplan.png',
       width: 1200,
@@ -201,7 +201,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Wissen zu Karosserie, Dämmung, Elektrik, Gas und TÜV nachlesen.',
     topicId: 'ausbau',
     priority: 'P1',
-    structuredData: ['WebPage'],
+    structuredData: ['WebPage', 'BreadcrumbList'],
     ogImage: {
       path: '/og/camper-guide.png',
       width: 1200,
@@ -223,7 +223,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Möbelbau im Camper in sechs Schritten umsetzen.',
     topicId: 'ausbau',
     priority: 'P3',
-    structuredData: ['WebPage'],
+    structuredData: ['WebPage', 'BreadcrumbList'],
     ogImage: {
       path: '/og/holzausbau.png',
       width: 1200,
@@ -232,6 +232,22 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.5 },
     source: 'app/guides/holzausbau/page.tsx',
+  },
+  {
+    path: '/guides/',
+    label: 'Guides',
+    kind: 'pillar',
+    indexability: 'index',
+    h1: 'Guides für den Camper-Ausbau',
+    title: 'Guides für den Camper-Ausbau: Reihenfolge',
+    description:
+      'Alle Leitfäden für den Camper-Ausbau: Reihenfolge der Gewerke, Technik mit Normbezug und Möbelbau — in der Reihenfolge, in der du sie brauchst.',
+    searchIntent: 'die passenden Leitfäden für den Camper-Ausbau finden.',
+    topicId: 'ausbau',
+    priority: 'P1',
+    structuredData: ['WebPage', 'BreadcrumbList'],
+    sitemap: { changeFrequency: 'monthly', priority: 0.7 },
+    source: 'app/guides/page.tsx',
   },
   {
     path: '/impressum/',

@@ -3,11 +3,15 @@ import type { Metadata } from 'next';
 import { metadataForPage } from '@/app/seoMetadata';
 import React from 'react';
 import Link from 'next/link';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { breadcrumbsFor } from '@/components/seo/Breadcrumbs';
+import { pageByPath } from '@/lib/seo/inventory';
 
 export const metadata: Metadata = metadataForPage('/guides/ausbau-fahrplan/');
+
+/** Hauptüberschrift und Brotkrumen kommen aus dem Inventar. */
+const PAGE = pageByPath('/guides/ausbau-fahrplan/');
 
 interface StepData {
   id: string;
@@ -30,7 +34,7 @@ interface StepData {
 
 const StepModule = ({ step }: { step: StepData }) => (
   <section id={step.id} className="scroll-mt-24 border-t border-rule py-12 first:border-t-0 first:pt-0">
-    <h2 className="mb-6 text-lg font-semibold text-ink">{step.title}</h2>
+    <h2 className="h2 mb-6 border-b border-rule pb-3">{step.title}</h2>
 
     <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
       <div>
@@ -321,11 +325,16 @@ const stepsData: StepData[] = [
 ];
 
 export default function AusbauFahrplanPage() {
+  if (!PAGE) throw new Error('SEO-Inventar: /guides/ausbau-fahrplan/ fehlt.');
+  const crumbs = breadcrumbsFor(PAGE);
+
   return (
-    <div className="flex min-h-dvh flex-col bg-paper text-ink">
-      <PageStructuredData path="/guides/ausbau-fahrplan/" />
-      <SiteHeader />
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
+    // Dieselbe Basis wie alle Inhaltsseiten (PageShell): Kopf, Brotkrumen,
+    // Fuß aus einem Stück. Vorher baute die Seite ihr Gerüst selbst und
+    // trug damit einen eigenen Fuß und eine eigene Breite.
+    <PageShell variant="article" breadcrumbs={crumbs} mainClassName="flex flex-col">
+      <PageStructuredData path="/guides/ausbau-fahrplan/" breadcrumbItems={crumbs} />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-5 py-8 md:flex-row md:gap-10 md:px-5 md:py-10">
         <aside
           className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-r md:border-b-0"
           aria-label="Kapitel"
@@ -333,7 +342,7 @@ export default function AusbauFahrplanPage() {
           {/* 48 px = Höhe des klebenden Website-Kopfs. Mit `top-0` verschwand
               die Überschrift „Inhalt“ beim Scrollen hinter dem Kopf
               (Designkonzept 2026-10, Befund Ausbau-Fahrplan). */}
-          <div className="sticky top-12 p-5">
+          <div className="sticky top-12 md:pt-1 md:pr-5">
             <h2 className="text-sm font-medium">Inhalt</h2>
             <nav className="mt-3 space-y-1" aria-label="Sprungmarken">
               {stepsData.map((step) => (
@@ -346,31 +355,33 @@ export default function AusbauFahrplanPage() {
                 </a>
               ))}
             </nav>
-            <Link
-              href="/guides/holzausbau"
-              className="mt-6 inline-flex min-h-11 items-center text-sm text-copper"
-            >
+            <Link href="/guides/" className="mt-6 inline-flex min-h-11 items-center text-sm text-copper">
+              Alle Guides
+            </Link>
+            <Link href="/guides/holzausbau/" className="mt-2 flex min-h-11 items-center text-sm text-copper">
               Holzausbau →
             </Link>
-            <Link href="/planer" className="mt-2 flex min-h-11 items-center text-sm text-copper">
+            <Link href="/planer/" className="mt-2 flex min-h-11 items-center text-sm text-copper">
               Schaltplan zeichnen →
             </Link>
           </div>
         </aside>
 
-        <main id="main" className="flex-1 px-5 py-8 md:px-10 md:py-10">
-          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-2xl">Ausbau-Fahrplan</h1>
-          <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-            Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
-          </p>
+        <div className="min-w-0 flex-1 md:pl-5">
+          <header className="border-b border-rule pb-6">
+            <p className="kicker">LEITFADEN // REIHENFOLGE</p>
+            <h1 className="h1 mt-4">{PAGE.h1}</h1>
+            <p className="prose-measure mt-5 text-base leading-relaxed text-ink-soft md:text-lg">
+              Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
+            </p>
+          </header>
           <div className="mt-8">
             {stepsData.map((step) => (
               <StepModule key={step.id} step={step} />
             ))}
           </div>
-        </main>
+        </div>
       </div>
-      <SiteFooter />
-    </div>
+    </PageShell>
   );
 }

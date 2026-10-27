@@ -1,12 +1,30 @@
 import type { Metadata } from 'next';
-import React from 'react';
 import Link from 'next/link';
-import { PageShell } from '@/components/brand/PageShell';
-import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { ArrowRight, Ruler } from 'lucide-react';
 
 import { metadataForPage } from '@/app/seoMetadata';
+import { breadcrumbsFor } from '@/components/seo/Breadcrumbs';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { PageShell } from '@/components/brand/PageShell';
+import { buttonVariants } from '@/components/ui/button';
+import { pageByPath } from '@/lib/seo/inventory';
+
+/**
+ * /guides/holzausbau/ — der Möbelbau in sechs Schritten.
+ *
+ * Die Überschrift kommt aus dem Inventar (`PAGE.h1`): Der Export-Audit
+ * vergleicht sichtbare H1, Titel und Beschreibung mit dem Inventar — zwei
+ * Quellen würden auseinanderlaufen.
+ *
+ * Die sechs Schritte sind die einzigen H2 der Seite (Vertrag:
+ * `page.test.tsx`). Ein Abschnittslabel darüber ist deshalb bewusst KEIN
+ * heading, sondern eine beschriftete Kante — die Gliederung bleibt: eine H1,
+ * sechs H2, keine Überschrift dazwischen.
+ */
 
 export const metadata: Metadata = metadataForPage('/guides/holzausbau/');
+
+const PAGE = pageByPath('/guides/holzausbau/');
 
 const STEPS = [
   {
@@ -48,40 +66,74 @@ const STEPS = [
 ];
 
 export default function HolzausbauGuide() {
-  return (
-    <>
-      <PageStructuredData path="/guides/holzausbau/" />
-      <PageShell variant="article" mainClassName="container-page prose-measure">
-        <Link
-          href="/guides/ausbau-fahrplan"
-          className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
-        >
-          ← Ausbau-Fahrplan
-        </Link>
-        <Link
-          href="/planer"
-          className="ml-4 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
-        >
-          Schaltplan zeichnen →
-        </Link>
-        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-2xl">
-          Holzausbau im Camper: sechs Schritte
-        </h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz.
-        </p>
+  if (!PAGE) throw new Error('SEO-Inventar: /guides/holzausbau/ fehlt.');
+  const crumbs = breadcrumbsFor(PAGE);
 
-        <div className="mt-8">
-          {STEPS.map((step) => (
-            <section key={step.n} className="border-t border-rule py-6">
-              <h2 className="text-base font-semibold">
-                {step.n} {step.de}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{step.body}</p>
-            </section>
-          ))}
-        </div>
-      </PageShell>
-    </>
+  return (
+    <PageShell
+      variant="article"
+      breadcrumbs={crumbs}
+      mainClassName="container-page w-full px-4 pb-12 md:px-5"
+    >
+      <PageStructuredData path="/guides/holzausbau/" breadcrumbItems={crumbs} />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+        <header className="border-b border-rule pb-6">
+          <p className="kicker">LEITFADEN // MÖBELBAU</p>
+          <h1 className="h1 mt-4 max-w-3xl">{PAGE.h1}</h1>
+          <p className="prose-measure mt-5 text-base leading-relaxed text-ink-soft md:text-lg">
+            Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz.
+          </p>
+        </header>
+
+        <section aria-labelledby="schritte-titel">
+          {/* Kein <h2>: die sechs Schritte tragen die Ebenen dieser Seite. */}
+          <p id="schritte-titel" className="panel-title border-b border-rule pb-3">
+            SECHS SCHRITTE // 01—06
+          </p>
+          <ol className="mt-5 grid gap-3 md:grid-cols-2">
+            {STEPS.map((step) => (
+              <li key={step.n} className="node-card flex flex-col gap-2 rounded p-5">
+                <h2 className="font-display text-lg leading-snug font-semibold text-ink">
+                  {/* Leerzeichen bewusst als Text, nicht als Abstand: Die
+                      Ordnungszahl ist Teil des Verweistextes (Vertrag:
+                      page.test.tsx erwartet „01 Trennwand entfernen …"). */}
+                  <span className="mr-1 font-mono text-sm text-oxide">{step.n}</span> {step.de}
+                </h2>
+                <p className="caption-xs text-ink-soft">{step.title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-soft">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Bewusst keine H2: Die sechs Schritte sind die einzigen H2 dieser
+            Seite (Vertrag: page.test.tsx). Die Zeile ist beschriftender Text,
+            kein Gliederungspunkt — `aria-labelledby` darf auf beides zeigen. */}
+        <section
+          aria-labelledby="weiter-holz-titel"
+          className="grid gap-5 rounded border border-rule bg-soot p-5 text-paper md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-8"
+        >
+          <div>
+            <p className="panel-title text-paper/70">WEITER // IM THEMA</p>
+            <p id="weiter-holz-titel" className="h2 mt-2 text-paper">
+              Erst die Reihenfolge, dann der Schaltplan.
+            </p>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper/80">
+              Der Ausbau-Fahrplan ordnet die Gewerke; der Schaltplan rechnet die Elektrik daraus.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/guides/ausbau-fahrplan/" className={buttonVariants({ variant: 'outline' })}>
+              Ausbau-Fahrplan
+              <Ruler className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link href="/planer/" className={buttonVariants({ variant: 'default' })}>
+              Schaltplan zeichnen
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
+      </div>
+    </PageShell>
   );
 }
