@@ -81,7 +81,7 @@ export function assessRelease(
     return {
       status: 'gesperrt',
       label: DOCUMENT_STATUS_LABEL.gesperrt,
-      explanation: `${blockers.length} kritische Verletzung(en). Dokumente werden erst erzeugt, wenn sie behoben sind.`,
+      explanation: `${blockers.length} kritische ${blockers.length === 1 ? 'Verletzung' : 'Verletzungen'}. Dokumente werden erst erzeugt, wenn sie behoben sind.`,
       blockers,
       openPoints,
       canExportDocument: false,
@@ -105,7 +105,10 @@ export function assessRelease(
   return {
     status: 'entwurf',
     label: DOCUMENT_STATUS_LABEL.entwurf,
-    explanation: `Der Plan gilt nicht als geprüft: ${summary.unprovable} Regel(n) sind mit den vorhandenen Angaben nicht entscheidbar. Offene Befunde: ${openPoints}.`,
+    // L17 (Layout-Runde 27.10.2026): „1 Regel(n) sind …“ — die Klammerform
+    // war an dieser Stelle stehen geblieben, als anderswo Einzahl/Mehrzahl
+    // eingeführt wurde (Commit 2385069).
+    explanation: `Der Plan gilt nicht als geprüft: ${summary.unprovable} ${summary.unprovable === 1 ? 'Regel ist' : 'Regeln sind'} mit den vorhandenen Angaben nicht entscheidbar. Offene Befunde: ${openPoints}.`,
     blockers: [],
     openPoints,
     canExportDocument: true,

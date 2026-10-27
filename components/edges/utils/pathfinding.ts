@@ -1884,6 +1884,25 @@ export type PathResult = {
    * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
    */
   hops?: { x: number; y: number; orientation: 'horizontal' | 'vertical' }[];
+  /**
+   * L10 (Layout-Runde 27.10.2026): Für die volle Beschriftung
+   * („DC + · 16 mm² · 1,0 m“) war an `labelX/labelY` kein Platz, der nur
+   * für die **Kurzform** („16 mm²“) frei war. `CableEdge` zeichnet dann die
+   * Kurzform und legt den vollen Satz in `title`.
+   *
+   * Wird ausschließlich in `routeAllCables` gesetzt (nur dort sind alle
+   * Beschriftungen eines Plans gleichzeitig bekannt).
+   */
+  labelCompact?: boolean;
+  /**
+   * L1 (Layout-Runde 27.10.2026): Auch für die Kurzform war kein Platz frei,
+   * der nicht auf einer Karte oder einer fremden Beschriftung liegt.
+   * `CableEdge` zeichnet dann **keine** Beschriftung — zwei deckungsgleiche
+   * Chips lesen sich als ein Label mit vermischten Zahlen. `labelX/labelY`
+   * bleibt der beste gefundene Anker (Geometrie unverändert), die Werte
+   * stehen im Inspector.
+   */
+  labelHidden?: boolean;
 };
 
 const cache = new Map<string, PathResult>();

@@ -30,7 +30,9 @@ import {
   PARALLEL_LABEL_SPREAD,
   boxesOverlap,
   edgeLabelNudge,
+  estimateLabelTextWidth,
   labelBoundingBox,
+  pointAlongPolyline,
   polylineMidpoint,
   waypointsToPath,
   waypointsToPathWithHops,
@@ -78,6 +80,7 @@ import {
   type RoutedPathGeometry,
 } from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
+import { PX_PER_METER } from '../../../lib/units';
 import { compareIds } from '../../../lib/sortOrder';
 import {
   acceptTransformChain,
@@ -249,13 +252,29 @@ export const LABEL_SIDE_OFFSETS: ReadonlyArray<Point> = [
   { x: 0, y: -3 * SPREAD },
 ];
 
-const labelBoxFree = (x: number, y: number, rects: readonly Rect[]): boolean =>
+/**
+ * Freiprüfung gegen Bauteilkarten — optional mit der gemessenen Labelbreite.
+ *
+ * Bis zur Layout-Runde 27.10.2026 war die Prüfbox immer `LABEL_BOX_WIDTH`
+ * breit (156 px). Warn-Labels wie „DC + · zu klein · 4 mm² · 3,0 m (empf.
+ * 70)“ sind aber rund 240 px breit: Die Prüfung sah ein schmaleres Label als
+ * der Nutzer, und der Chip lag auf Karten und Nachbar-Labels (Befund L10).
+ * Der Default bleibt der konservative Umschlag; wer eine Breite mitbringt,
+ * wird mit genau dieser geprüft.
+ */
+const labelBoxFree = (
+  x: number,
+  y: number,
+  rects: readonly Rect[],
+  halfWidth = LABEL_HALF_WIDTH,
+  halfHeight = LABEL_HALF_HEIGHT
+): boolean =>
   rects.every(
     (rect) =>
-      x + LABEL_HALF_WIDTH <= rect.x ||
-      x - LABEL_HALF_WIDTH >= rect.x + rect.width ||
-      y + LABEL_HALF_HEIGHT <= rect.y ||
-      y - LABEL_HALF_HEIGHT >= rect.y + rect.height
+      x + halfWidth <= rect.x ||
+      x - halfWidth >= rect.x + rect.width ||
+      y + halfHeight <= rect.y ||
+      y - halfHeight >= rect.y + rect.height
   );
 
 /**
@@ -270,9 +289,11 @@ const labelBoxFree = (x: number, y: number, rects: readonly Rect[]): boolean =>
 export const labelAnchorClearOfNodes = (
   anchor: Point,
   waypoints: readonly Point[],
-  rects: readonly Rect[]
+  rects: readonly Rect[],
+  labelWidth: number = LABEL_BOX_WIDTH
 ): Point => {
-  if (labelBoxFree(anchor.x, anchor.y, rects)) return anchor;
+  const halfWidth = labelWidth / 2 + LABEL_CLEARANCE;
+  if (labelBoxFree(anchor.x, anchor.y, rects, halfWidth)) return anchor;
   const samples: Point[] = [];
   const step = 8;
   for (let i = 0; i < waypoints.length - 1; i++) {
@@ -291,7 +312,7 @@ export const labelAnchorClearOfNodes = (
   samples.sort((a, b) => distance(a) - distance(b));
   const nearest = samples.slice(0, 64);
   for (const sample of nearest) {
-    if (labelBoxFree(sample.x, sample.y, rects)) return sample;
+    if (labelBoxFree(sample.x, sample.y, rects, halfWidth)) return sample;
   }
 
   // Stufe 2 — **seitlich** der Trasse (Befund 2026-09-28).
@@ -309,7 +330,7 @@ export const labelAnchorClearOfNodes = (
   // — deterministisch, keine Winkelrechnung.
   for (const sample of nearest.slice(0, 16)) {
     for (const offset of LABEL_SIDE_OFFSETS) {
-      if (labelBoxFree(sample.x + offset.x, sample.y + offset.y, rects)) {
+      if (labelBoxFree(sample.x + offset.x, sample.y + offset.y, rects, halfWidth)) {
         return { x: sample.x + offset.x, y: sample.y + offset.y };
       }
     }
@@ -326,38 +347,139 @@ export const labelAnchorClearOfNodes = (
  * Screenshot las man „… 3.0 m · 4.0 m" als ein Label. Gemessen an
  * `knownPlans/complex.json`: 6 solcher Paare, zwei davon mit Δy = 0/1 px.
  *
- * Diese Funktion weicht **vertikal** in Stufen von `PARALLEL_LABEL_SPREAD`
- * aus (dieselbe Bildsprache wie `edgeLabelNudge`: gestapelte Chips, nicht
- * verschobene). Reihenfolge und Ergebnis sind deterministisch: Die Aufrufer
- * (Route-All) laufen in sortierter Kanten-Reihenfolge, die Suche selbst ist
- * eine feste Stufenfolge. Wird nichts frei, bleibt der Anker — ein
- * überlappendes Label ist besser als ein Label ohne Bezug zur Leitung.
+ * Diese Funktion weicht in Stufen von `PARALLEL_LABEL_SPREAD` aus (dieselbe
+ * Bildsprache wie `edgeLabelNudge`: gestapelte Chips, nicht verschobene).
+ * Reihenfolge und Ergebnis sind deterministisch: Die Aufrufer (Route-All)
+ * laufen in sortierter Kanten-Reihenfolge, die Suche selbst ist eine feste
+ * Stufenfolge.
+ *
+ * Erweiterung Layout-Runde 27.10.2026 (Befund L1): Der Versatz sucht nicht
+ * mehr nur senkrecht am festen x des Ankers, sondern entlang der Leitung —
+ * und die Prüfbox benutzt die gemessene Labelbreite statt des festen
+ * Umschlags. Wird nichts frei, kommt `null` zurück (kein Label) statt des
+ * Ankers: Ein zweiter Chip genau auf dem ersten liest sich als EIN Label mit
+ * vermischten Zahlen, das ist der schlimmere Fehler.
  */
 export const LABEL_PLACEMENT_STEPS = [0, 1, -1, 2, -2, 3, -3] as const;
 
+/**
+ * Anteil der Zuglänge, an dem ein Label-Kandidat sitzen darf (L1,
+ * Layout-Runde 27.10.2026). Vom Mittelpunkt nach außen: 0,5 ist der Anker,
+ * 0,35/0,65 und 0,2/0,8 sind die Ausweichstellen entlang der Leitung.
+ */
+export const LABEL_LINE_FRACTIONS = [0.5, 0.35, 0.65, 0.2, 0.8] as const;
+
+/**
+ * Untergrenze für die Kurzform eines Kabel-Labels (px). „16 mm²“ sind rund
+ * 60 px; darunter ist kein Text mehr lesbar, auch wenn die Box frei wäre.
+ */
+export const LABEL_COMPACT_MIN_WIDTH = 60;
+
+/** Domain-Kürzel des Labels — dieselbe Folge wie in `CableEdge`. */
+function labelDomainToken(edge: RouteEdgeRef | undefined): string {
+  const domain = edge?.data?.edgeDomain;
+  if (domain === 'AC_230V') return '230 V';
+  if (domain === 'Solar') return 'SOLAR';
+  return edge?.sourceHandle?.includes('minus') ? 'DC −' : 'DC +';
+}
+
+/** Querschnitt in der Schreibweise des Labels (Komma, keine Nachkommastellen). */
+function labelCrossSectionToken(edge: RouteEdgeRef | undefined): string {
+  const value = edge?.data?.crossSection;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '–';
+  return String(value).replace('.', ',');
+}
+
+/**
+ * Geschätzte Breite des gerenderten Kabel-Labels (Befund L10, Layout-Runde
+ * 27.10.2026).
+ *
+ * Die Platzierung rechnete bisher immer mit dem festen Umschlag
+ * `LABEL_BOX_WIDTH` (156 px). Ein Warn-Label wie „DC + · zu klein · 4 mm² ·
+ * 3,0 m (empf. 70)“ misst aber rund 270 px: Die Prüfung sah ein schmaleres
+ * Label als der Nutzer, und der Chip lag auf Karten und Nachbar-Labels.
+ *
+ * Bewusst eine **Schätzung aus dem Text**, keine Messung (der Routing-Pass
+ * kennt keine Schrift), und bewusst mit `LABEL_BOX_WIDTH` als Untergrenze:
+ * Die Prüfung darf durch die Schätzung nicht optimistischer werden, als sie
+ * vorher war (Ratchet „Labels über Karten“, `labelPlacement.test.ts`).
+ * Elektrische Semantik wird hier nicht neu gerechnet — gelesen werden nur die
+ * Felder, die `CableEdge` ohnehin anzeigt.
+ */
+export function estimateCableLabelWidth(
+  edge: RouteEdgeRef | undefined,
+  lengthPx: number,
+  compact = false
+): number {
+  const crossSection = labelCrossSectionToken(edge);
+  const meters = (lengthPx / PX_PER_METER).toFixed(1).replace('.', ',');
+  const text = compact
+    ? `${crossSection} mm²`
+    : `${labelDomainToken(edge)} · ${crossSection} mm² · ${meters} m`;
+  const floor = compact ? LABEL_COMPACT_MIN_WIDTH : LABEL_BOX_WIDTH;
+  return Math.max(floor, estimateLabelTextWidth(text));
+}
+
+/**
+ * Platz für eine Beschriftung: frei von Karten **und** von den schon gesetzten
+ * Beschriftungen (`placed`), geprüft mit der übergebenen Labelbreite.
+ *
+ * Rückgabe: der gefundene Punkt oder `null`, wenn kein Platz frei ist.
+ */
 export function placeLabelClearOfLabels(
   anchor: Point,
+  waypoints: readonly Point[],
   rects: readonly Rect[],
-  placed: readonly LabelBox[]
-): Point {
-  const candidateAt = (step: number): Point => ({
-    x: anchor.x,
-    y: anchor.y + step * PARALLEL_LABEL_SPREAD,
+  placed: readonly LabelBox[],
+  labelWidth: number = LABEL_BOX_WIDTH
+): Point | null {
+  const halfWidth = labelWidth / 2 + LABEL_CLEARANCE;
+  const candidateAt = (base: Point, step: number): Point => ({
+    x: base.x,
+    y: base.y + step * PARALLEL_LABEL_SPREAD,
   });
   const hitsLabel = (point: Point): boolean => {
-    const box = labelBoundingBox(point.x, point.y);
+    const box = labelBoundingBox(point.x, point.y, labelWidth);
     return placed.some((other) => boxesOverlap(box, other));
   };
-
   // Frei von Karten UND von anderen Labels. „Karte" ist die harte Regel
   // (Finding 2026-09-27, Gate über die sechs Referenzpläne) — sie wird hier
   // nicht aufgeweicht; der Versatz sucht eine Stelle, die beides erfüllt.
-  for (const step of LABEL_PLACEMENT_STEPS) {
-    const candidate = candidateAt(step);
-    if (labelBoxFree(candidate.x, candidate.y, rects) && !hitsLabel(candidate)) return candidate;
+  const isFree = (point: Point): boolean =>
+    labelBoxFree(point.x, point.y, rects, halfWidth) && !hitsLabel(point);
+
+  if (isFree(anchor)) return anchor;
+
+  // Stufe 2 — **entlang der Leitung** (Befund L1).
+  //
+  // Vorher wurde nur am festen x des Ankers senkrecht ausgewichen
+  // (`candidateAt(anchor, step)`). An der Sammelschiene laufen aber vier
+  // Leitungen auf demselben Trassenstück: Dort ist senkrecht kein Platz, und
+  // die Funktion fiel auf den Anker zurück — vier deckungsgleiche Chips, von
+  // denen man nur einen las (Screenshot „Großes Autark-Setup“, 1280×800).
+  // Wandert der Kandidat stattdessen entlang der Leitung, findet er in
+  // praktisch jedem Plan eine freie Stelle, ohne den Bezug zur Leitung zu
+  // verlieren. Die Reihenfolge ist fest ⇒ deterministisch.
+  for (const t of LABEL_LINE_FRACTIONS) {
+    const base = pointAlongPolyline(waypoints, t);
+    for (const step of LABEL_PLACEMENT_STEPS) {
+      const candidate = candidateAt(base, step);
+      if (isFree(candidate)) return candidate;
+    }
   }
-  // Kein Platz für beides: Karte gewinnt (Produktregel), der Anker bleibt.
-  return anchor;
+
+  // Stufe 3 — seitlich der Trasse (Bildsprache der Bündel-Labels).
+  for (const offset of LABEL_SIDE_OFFSETS) {
+    const candidate = { x: anchor.x + offset.x, y: anchor.y + offset.y };
+    if (isFree(candidate)) return candidate;
+  }
+
+  // Kein Platz: **kein** Label zeichnen (`null`) statt eines zweiten Chips
+  // genau auf dem ersten. Zwei deckungsgleiche Beschriftungen lesen sich als
+  // EIN Label mit vermischten Zahlen — der schlimmere Fehler. `CableEdge`
+  // führt die Stelle dann als Kurzform (nur Querschnitt) bzw. blendet sie aus;
+  // die Werte stehen unverändert im Inspector.
+  return null;
 }
 
 const rebuild = (
@@ -1558,19 +1680,50 @@ export function routeAllCables(
       siblingEdges: edges,
     });
     // Beschriftung darf keine Karte verdecken (Finding 2026-09-27) …
+    //
+    // Breite: geschätzt aus dem Text (L10). Vorher galt für jedes Label der
+    // feste Umschlag, Warn-Labels waren deshalb breiter als ihre Prüfbox.
+    const fullWidth = estimateCableLabelWidth(edgeRef, routed.length);
+    const compactWidth = estimateCableLabelWidth(edgeRef, routed.length, true);
     const clearOfNodes = labelAnchorClearOfNodes(
       { x: routed.labelX, y: routed.labelY + bundleNudge },
       wp,
-      allObstacles
+      allObstacles,
+      fullWidth
     );
-    // … und nicht auf einer fremden Beschriftung liegen (Befund 2026-09-28).
-    const label = placeLabelClearOfLabels(clearOfNodes, allObstacles, placedLabels);
-    placedLabels.push(labelBoundingBox(label.x, label.y));
+    // … und nicht auf einer fremden Beschriftung liegen (Befund 2026-09-28,
+    // Ausweichen entlang der Leitung seit Befund L1).
+    let placed: Point | null = placeLabelClearOfLabels(
+      clearOfNodes,
+      wp,
+      allObstacles,
+      placedLabels,
+      fullWidth
+    );
+    // Nichts frei? Dann die Kurzform (nur Querschnitt, ~60 px statt 156 px).
+    const labelCompact = placed === null;
+    if (placed === null) {
+      placed = placeLabelClearOfLabels(clearOfNodes, wp, allObstacles, placedLabels, compactWidth);
+    }
+    // Auch dafür kein Platz: kein Label zeichnen (L1) — zwei deckungsgleiche
+    // Chips lesen sich als EIN Label mit vermischten Zahlen.
+    const labelHidden = placed === null;
+    const label = placed ?? clearOfNodes;
+    if (!labelHidden) {
+      placedLabels.push(labelBoundingBox(label.x, label.y, labelCompact ? compactWidth : fullWidth));
+    }
+    const unchanged = !labelCompact && !labelHidden && label.x === routed.labelX && label.y === routed.labelY;
     out.set(
       id,
-      label.x === routed.labelX && label.y === routed.labelY
+      unchanged
         ? routed
-        : { ...routed, labelX: label.x, labelY: label.y }
+        : {
+            ...routed,
+            labelX: label.x,
+            labelY: label.y,
+            ...(labelCompact ? { labelCompact: true } : {}),
+            ...(labelHidden ? { labelHidden: true } : {}),
+          }
     );
   }
   return out;

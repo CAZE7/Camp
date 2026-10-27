@@ -4,6 +4,7 @@ import React from 'react';
 import { NodeResizer } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { type RoofNodeData } from './types';
+import { formatNumberDe } from './formatNumber';
 
 const RoofSolarNode = function ({
   id,
@@ -57,7 +58,7 @@ const RoofSolarNode = function ({
         <div className="bg-scrim-soft z-10 rounded-none px-2 py-1 text-center text-xs font-semibold text-paper">
           {data.label || 'Solarpanel'}
           <br />
-          <span className="measure text-warn">{watts} W</span>
+          <span className="measure text-warn">{formatNumberDe(watts, 0)} W</span>
           <br />
           <span className="caption-xs opacity-80">
             {Math.round(width)}x{Math.round(height)}cm

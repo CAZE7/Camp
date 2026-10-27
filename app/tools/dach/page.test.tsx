@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import DachPlanerPage from './page';
 import { useAppStore } from '@/lib/store';
@@ -87,8 +87,10 @@ describe('DachPlanerPage', () => {
   it('renders without crashing', async () => {
     render(<DachPlanerPage />);
 
-    // Check header
-    expect(await screen.findByText(/Dach-Planer/)).toBeInTheDocument();
+    // Check header — im HAUPTBEREICH suchen, nicht im ganzen Dokument: Der
+    // Fuß verlinkt denselben Titel („Dach-Planer"), `findByText` fände sonst
+    // zwei Treffer und bricht ab.
+    expect(await within(screen.getByRole('main')).findByText(/Dach-Planer/)).toBeInTheDocument();
 
     // Check standard layout
     expect(screen.getByText('Fahrzeug Modell')).toBeInTheDocument();

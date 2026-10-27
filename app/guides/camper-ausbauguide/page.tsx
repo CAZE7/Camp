@@ -2,13 +2,17 @@ import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import RoadTripAnimationLazy from './RoadTripAnimationLazy';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { breadcrumbsFor } from '@/components/seo/Breadcrumbs';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { pageByPath } from '@/lib/seo/inventory';
 
 import { metadataForPage } from '@/app/seoMetadata';
+
+/** Brotkrumen und strukturierte Beschreibung aus dem Inventar. */
+const PAGE = pageByPath('/guides/camper-ausbauguide/');
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
@@ -16,31 +20,39 @@ const outfit = { className: 'font-outfit' };
 export const metadata: Metadata = metadataForPage('/guides/camper-ausbauguide/');
 
 export default function CamperAusbauguide() {
+  if (!PAGE) throw new Error('SEO-Inventar: /guides/camper-ausbauguide/ fehlt.');
+  const crumbs = breadcrumbsFor(PAGE);
+
   return (
-    <div className="flex min-h-dvh flex-col bg-paper text-ink">
-      <PageStructuredData path="/guides/camper-ausbauguide/" />
-      <SiteHeader />
-      <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pt-12 pb-24 sm:px-6">
+    // Dieselbe Basis wie die anderen Leitfäden: Kopf, Brotkrumen und Fuß aus
+    // einem Stück. Die Reiseanimation bleibt dort, wo sie war — sie sucht
+    // `#ausbau-page` und hängt an keiner Shell-Klasse.
+    <PageShell variant="article" breadcrumbs={crumbs} mainClassName="flex flex-col">
+      <PageStructuredData path="/guides/camper-ausbauguide/" breadcrumbItems={crumbs} />
+      <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pt-8 pb-24 sm:px-6">
         {/* GSAP-Animation als Hintergrundspur — nachgeladen, siehe Wrapper */}
         <RoadTripAnimationLazy />
 
         {/* Main Content Area - Shifted slightly to the right to make room for the fixed animation on larger screens */}
-        <main id="main" className="relative z-20 mx-auto max-w-3xl lg:ml-56 xl:mx-auto">
-          <Link
-            href="/guides/ausbau-fahrplan"
-            className="mb-6 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
-          >
-            ← Zurück zum Ausbau-Fahrplan
-          </Link>
+        <div className="relative z-20 mx-auto max-w-3xl lg:ml-56 xl:mx-auto">
+          <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link href="/guides/" className="inline-flex min-h-11 items-center text-sm text-copper">
+              ← Alle Guides
+            </Link>
+            <Link
+              href="/guides/ausbau-fahrplan"
+              className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
+            >
+              Ausbau-Fahrplan
+            </Link>
+          </div>
 
           {/* Paper-like container */}
           <div className="border border-rule bg-bone p-8 shadow-sm md:p-12">
-            <h1
-              className={cn(
-                'mb-6 text-2xl leading-tight font-semibold text-ink md:text-2xl',
-                outfit.className
-              )}
-            >
+            {/* Die Überschrift bleibt zweizeilig und trägt den Akzent im
+                zweiten Teil; die Größe kommt jetzt aus der gemeinsamen
+                Skala (.h1) statt aus einer eigenen. */}
+            <h1 className={cn('h1 mt-2 mb-6 leading-tight', outfit.className)}>
               Der ultimative Camper-Ausbau-Guide: <br />
               <span className="text-copper">Von der leeren Blechbüchse zum rollenden Zuhause</span>
             </h1>
@@ -478,9 +490,8 @@ export default function CamperAusbauguide() {
               </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
-      <SiteFooter />
-    </div>
+    </PageShell>
   );
 }

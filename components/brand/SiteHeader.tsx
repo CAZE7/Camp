@@ -17,13 +17,16 @@ const NAV = [
   { href: '/rechner', label: 'Rechner' },
   { href: '/tools/dach', label: 'Dach' },
   { href: '/tools/heizung', label: 'Heizlast' },
-  { href: '/guides/ausbau-fahrplan', label: 'Guides' },
+  // Die Übersicht statt eines einzelnen Leitfadens: „Guides" führte vorher
+  // auf /guides/ausbau-fahrplan und behauptete damit, dieser EINE Leitfaden
+  // sei die ganze Rubrik. Der Tab ist für alle /guides/*-Pfade aktiv.
+  { href: '/guides', label: 'Guides' },
 ];
 
 function isActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
   // Guides-Tab ist aktiv für alle /guides/*-Pfade
-  if (href === '/guides/ausbau-fahrplan') {
+  if (href === '/guides') {
     return pathname.startsWith('/guides');
   }
   return pathname === href || pathname.startsWith(`${href}/`);

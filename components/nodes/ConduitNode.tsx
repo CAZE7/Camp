@@ -72,7 +72,10 @@ const ConduitNode = function ({
     >
       <NodeSymbol kind="conduit" dinCode={resolvedDesignator(designators, id, data)} />
 
-      <div className="mb-2 text-center text-sm font-bold text-foreground">
+      <div
+        className="mb-2 text-center text-sm font-bold text-foreground"
+        title={`${data.label || 'Leerrohr'} (${declaredType ?? 'Typ nicht angegeben'})`}
+      >
         {data.label || 'Leerrohr'} ({declaredType ?? 'Typ nicht angegeben'})
       </div>
 
