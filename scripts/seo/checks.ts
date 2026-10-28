@@ -90,6 +90,71 @@ export function linkHrefs(html: string, rel: string): string[] {
     .map(unescapeHtml);
 }
 
+/**
+ * Font-Preloads im Dokumentkopf.
+ *
+ * Warum das eine Prüfung braucht: React 19 behandelt `<link rel="preload">` als
+ * Ressourcen-Hinweis und gibt es ZUSÄTZLICH zu der Stelle aus, an der es im
+ * Baum steht. Im Export standen die vier vorgeladenen Schriften deshalb
+ * achtmal im Kopf — dieselbe Datei zweimal anzukündigen kostet Bytes und
+ * erzeugt in Chrome die Warnung „preload … was not used". Der Doppel-Eintrag
+ * fällt niemandem auf, der die Seite ansieht; er fällt nur beim Zählen auf.
+ *
+ * Geprüft wird deshalb: jede Schrift genau einmal, jede Datei existiert im
+ * Export, und es sind genau die vier Schnitte, die über der Falz stehen. Die
+ * Dateinamen tragen Build-Hashes und werden darum nicht verglichen — gezählt
+ * und geprüft wird die Form, nicht der Hash.
+ */
+export const FONT_PRELOADS_EXPECTED = 4;
+
+export function checkFontPreloads(file: string, html: string, exists: (href: string) => boolean): Finding[] {
+  const findings: Finding[] = [];
+  const add = (severity: Severity, rule: string, message: string) =>
+    findings.push({ severity, file, rule, message });
+
+  const hrefs = linkHrefs(html, 'preload').filter((href) => /\.woff2?$/i.test(href));
+  const seen = new Set<string>();
+
+  for (const href of hrefs) {
+    if (seen.has(href)) {
+      add(
+        'fehler',
+        'FONT-PRELOAD-DOPPELT',
+        `Schrift ${href} wird mehrfach vorgeladen — React hoistet <link rel="preload"> zusätzlich zum Ort im Baum; nutze preload() aus react-dom.`
+      );
+    }
+    seen.add(href);
+    if (!exists(href)) {
+      add('fehler', 'FONT-PRELOAD-FEHLT', `${href} wird vorgeladen, liegt aber nicht im Export.`);
+    }
+  }
+
+  if (hrefs.length !== FONT_PRELOADS_EXPECTED) {
+    add(
+      'fehler',
+      'FONT-PRELOAD-ANZAHL',
+      `${hrefs.length} Font-Preloads statt ${FONT_PRELOADS_EXPECTED} (Inter, Outfit und zwei Schnitte IBM Plex Mono).`
+    );
+  }
+
+  // `as` und `type` entscheiden, ob der Browser die Datei als Schrift erkennt;
+  // ohne `crossorigin` lädt er Fonts im CORS-Modus und verwirft den Preload.
+  for (const tag of [...html.matchAll(/<link\b[^>]*\bas="font"[^>]*>/gi)].map((match) => match[0])) {
+    if ((tagAttribute(tag, 'type') ?? '') !== 'font/woff2') {
+      add('fehler', 'FONT-PRELOAD-TYP', `Font-Preload ohne type="font/woff2": ${tag}`);
+    }
+    if (tagAttribute(tag, 'crossorigin') === null) {
+      add(
+        'hinweis',
+        'FONT-PRELOAD-CORS',
+        `Font-Preload ohne crossorigin — der Browser fordert Fonts im CORS-Modus an und der Preload verpufft: ${tag}`
+      );
+    }
+  }
+
+  return findings;
+}
+
 /** Textinhalt ausgewählter Elemente, normalisiert für Inventar-Abgleiche. */
 export function selectedText(html: string, selector: string): string[] {
   const dom = new JSDOM(html);

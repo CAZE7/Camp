@@ -55,6 +55,12 @@ export function webPageNode(input: {
   breadcrumbId?: string;
   /** `CollectionPage` für Übersichten, sonst `WebPage`. */
   type?: Extract<StructuredDataType, 'WebPage' | 'CollectionPage'>;
+  /**
+   * Tag der letzten belegten Inhaltsänderung (`YYYY-MM-DD`) → `dateModified`.
+   * Ohne Beleg bleibt das Feld weg: Ein falsches `dateModified` ist eine
+   * Behauptung im Maschinenformat, die niemand nachprüfen kann.
+   */
+  lastReviewed?: string;
 }): JsonLdNode {
   const url = siteUrl(input.path);
   const node: JsonLdNode = {
@@ -72,6 +78,7 @@ export function webPageNode(input: {
     node['hasPart'] = input.hasPartIds.map((id) => ({ '@id': id }));
   }
   if (input.breadcrumbId) node['breadcrumb'] = { '@id': input.breadcrumbId };
+  if (input.lastReviewed) node['dateModified'] = input.lastReviewed;
   return node;
 }
 

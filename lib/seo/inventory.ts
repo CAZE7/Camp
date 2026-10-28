@@ -52,6 +52,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     // Zeichen für Zeichen mit dem sichtbaren Akkordeon.
     structuredData: ['WebPage', 'FAQPage'],
     sitemap: { changeFrequency: 'monthly', priority: 1 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den sichtbaren Text der Startseite ersetzt (Einordnung, FAQ).
+    lastReviewed: '2026-10-28',
     source: 'app/page.tsx',
   },
   {
@@ -152,6 +154,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Solarpanels auf dem Dach eines Campers',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den Erklärblock ergänzt (243 → 752 Wörter).
+    lastReviewed: '2026-10-28',
     source: 'app/tools/dach/layout.tsx',
   },
   {
@@ -176,6 +180,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Heizlast-Rechner für Wohnmobil und Camper',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den Erklärblock ergänzt (472 → 1 024 Wörter).
+    lastReviewed: '2026-10-28',
     source: 'app/tools/heizung/layout.tsx',
   },
   {
@@ -273,6 +279,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P3',
     structuredData: ['WebPage'],
     sitemap: { changeFrequency: 'yearly', priority: 0.3 },
+    // Belegte Inhaltsänderung: Commit a3e885e (2026-10-28T09:33:33Z) hat die Anbieterkennzeichnung gefüllt.
+    lastReviewed: '2026-10-28',
     source: 'app/impressum/page.tsx',
   },
   {
@@ -289,6 +297,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P3',
     structuredData: ['WebPage'],
     sitemap: { changeFrequency: 'yearly', priority: 0.3 },
+    // Belegte Inhaltsänderung: Diese Fassung ersetzt die Kurzfassung mit 134 Wörtern (Art. 13 DSGVO).
+    lastReviewed: '2026-10-28',
     source: 'app/datenschutz/page.tsx',
   },
   {
@@ -331,21 +341,6 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     structuredData: [],
     source: 'app/ueber-werft/page.tsx',
   },
-  {
-    path: '/ki-assistent/',
-    label: 'Camper-Assistent',
-    kind: 'ansicht',
-    indexability: 'noindex',
-    h1: 'Camper-Assistent',
-    title: 'Camper-Assistent',
-    description:
-      'Fragen zum Camper-Ausbau im Dialog — als Ergänzung zu Schaltplan, Dach-Planer und Heizlast-Rechner.',
-    searchIntent: 'Fragen im Dialog stellen — ergänzende Ansicht ohne eigenen Inhalt für Ergebnislisten.',
-    topicId: 'start',
-    priority: 'P3',
-    structuredData: [],
-    source: 'app/ki-assistent/page.tsx',
-  },
 ];
 
 /** Technische Seiten: dreimal dieselbe Fehlerseite, nicht beworben, noindex. */
@@ -383,6 +378,7 @@ function entryOfContent(page: (typeof CONTENT_PAGES)[number]): PageEntry {
     ...(page.absoluteTitle ? { absoluteTitle: true } : {}),
     ...(page.ogImage ? { ogImage: page.ogImage } : {}),
     ...(hasCalculator ? { calculators } : {}),
+    ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
   };
 }
 
@@ -421,4 +417,5 @@ export const SITEMAP_ROUTES = indexablePages()
     path: page.path,
     changeFrequency: page.sitemap.changeFrequency,
     priority: page.sitemap.priority,
+    ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
   }));

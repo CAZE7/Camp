@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
  *
  * Vorher baute jede Seite ihr Gerüst selbst: `min-h-screen flex flex-col`,
  * eigener Kopf, eigener Fuß, eigene Breite. Die Folgen standen im Audit:
- * Seiten ohne Fuß (z. B. `/ki-assistent`), Seiten mit leerem Band unter dem
+ * Seiten ohne Fuß (der Planer), Seiten mit leerem Band unter dem
  * Inhalt (Impressum), Seiten mit anderer Lesekante.
  *
  * Hier stehen die drei Varianten aus dem Konzept:

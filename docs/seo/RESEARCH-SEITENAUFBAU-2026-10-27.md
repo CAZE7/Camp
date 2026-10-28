@@ -334,6 +334,32 @@ Deploy-Wächter meldet, wenn die Angaben später geerbt oder überschrieben werd
 mit 134 Wörtern und dem Satz „bitte den finalen Text mit einer Rechtsberatung
 abgleichen". Der nächste sinnvolle Schritt.
 
+### Nachtrag 2026-10-28 — Befund 3 und die Punkte aus §2.4
+
+- **Datenschutzerklärung (Befund 3): geschrieben.** Vollständige Fassung nach
+  Art. 13 DSGVO, Verantwortlicher aus `lib/siteLegal.ts`, Speicherschlüssel aus
+  `lib/storageKeys.ts`, Aufsichtsbehörde mit Anschrift, Rechte Art. 15–21,
+  Beschwerderecht Art. 77. Die Aussagen „keine Cookies, keine Analyse, keine
+  fremden Server" sind testbar hinterlegt (`app/datenschutz/page.test.tsx`
+  durchsucht den Quelltext). Entscheidung: **ADR 0039**.
+- **M11-6 (Fonts vorladen): umgesetzt, mit einem Befund.** Inter und Outfit
+  fehlten tatsächlich im Preload. Beim Nachmessen zeigte sich zusätzlich, dass
+  React 19 `<link rel="preload">` **zusätzlich** zum Ort im Baum in den Kopf
+  hebt: Die vier vorgeladenen Schriften standen achtmal im Kopf (auch die zwei
+  IBM-Plex-Schnitte, die schon vorher dort standen — der Fehler war unsichtbar,
+  solange niemand zählte). Behoben über `preload()` aus `react-dom`, das über
+  den Pfad dedupliziert; der Export-Audit prüft seitdem Anzahl, Dubletten,
+  Existenz der Datei und `crossorigin` (`FONT-PRELOAD-*`).
+- **`lastModified`/`dateModified`: mit belegten Daten, nicht flächendeckend.**
+  Fünf Seiten tragen ein Datum aus einem nachprüfbaren Commit; die übrigen
+  bewusst keins. Ein aus Build-Zeit oder Git-Commit abgeleitetes Datum wurde
+  gemessen und verworfen (in dieser Umgebung ist der Klon flach: `git log -1`
+  liefert für alle Dateien denselben Zeitstempel). Begründung und Messung:
+  ADR 0039.
+- **Seite „Elektrik VW T6 Ausbau": weiterhin offen** — es gibt keine belegten
+  fahrzeugspezifischen Daten im Baum, und geratene Querschnitte wären in einem
+  Planungswerkzeug schädlicher als eine fehlende Seite.
+
 ---
 
 ## Quellen

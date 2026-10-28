@@ -6,7 +6,10 @@ import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import mono400LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2';
 import mono500LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2';
+import interLatinUrl from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2';
+import outfitLatinUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2';
 import type { Metadata, Viewport } from 'next';
+import { preload } from 'react-dom';
 
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
 import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
@@ -80,6 +83,26 @@ function siteDescriptionJsonLd() {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Vier Schriften stehen über der Falz jeder Seite: zwei Schnitte der
+  // Werteschrift (Zahlen im Planer) und je ein variabler Schnitt für Fließtext
+  // (Inter) und Überschriften (Outfit). Ohne Preload beginnt der Download erst
+  // nach dem CSS-Parsen, und der Austausch der Ersatzschrift bricht den Text um
+  // (`tests/e2e/visual-de.spec.ts` misst CLS; gemessen 0,0158 bei 375 px).
+  //
+  // Warum `preload()` aus `react-dom` und nicht <link> im <head>: React 19
+  // behandelt ein `<link rel="preload">` als Ressourcen-Hinweis und gibt es
+  // ZUSÄTZLICH zu der Stelle aus, an der es steht — gemessen im Export standen
+  // vier Schriften achtmal im Kopf. `preload()` dedupliziert über den Pfad und
+  // erzeugt genau ein Element je Datei.
+  //
+  // Vorgeladen wird die lateinische Datei: Die übrigen Subsets (kyrillisch,
+  // griechisch, vietnamesisch) liegen im Export, werden für deutsche Inhalte
+  // aber nie angefordert (`unicode-range`).
+  preload(mono400LatinUrl, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
+  preload(mono500LatinUrl, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
+  preload(interLatinUrl, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
+  preload(outfitLatinUrl, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
+
   return (
     <html lang="de" suppressHydrationWarning>
       <head>
@@ -100,13 +123,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteDescriptionJsonLd() }} />
-        {/* Vorladen der lateinischen Schnitte der Werteschrift: ohne Preload
-            beginnt ihr Download erst nach dem CSS-Parsen, und der Austausch der
-            Ersatzschrift gegen IBM Plex Mono bricht denselben Text eine Zeile
-            später um. Das Gate „CLS sollte 0 sein" in tests/e2e/visual-de.spec.ts
-            misst genau diese Verschiebung (gemessen 0,0158 bei 375 px). */}
-        <link rel="preload" as="font" type="font/woff2" href={mono400LatinUrl} crossOrigin="anonymous" />
-        <link rel="preload" as="font" type="font/woff2" href={mono500LatinUrl} crossOrigin="anonymous" />
       </head>
       <body className="min-h-dvh font-sans">
         <SystemThemeSync />

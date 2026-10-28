@@ -58,6 +58,7 @@ export function PageStructuredData({
       path: page.path,
       name: page.h1,
       description: page.description,
+      ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
       ...(applicationId ? { mainEntityId: applicationId } : {}),
       ...(hasPartIds.length > 0 ? { hasPartIds } : {}),
       ...(breadcrumbId ? { breadcrumbId } : {}),

@@ -104,3 +104,38 @@ Wächter, eine dokumentierte Stufe). Option B höchstens als Übergang mit
 sichtbarem Demo-Hinweis. Für eine Bewerbungsmappe wirkt ein belegbar
 abgesicherter Zustand (Wächter + gefüllte Angaben) stärker als ein
 dauerhafter Platzhalter.
+
+## Nachtrag 2026-10-28 — Datenschutzerklärung geschrieben (Option A für Punkt 2)
+
+Der Befund oben betraf beide Rechtstexte; das Impressum ist am 2026-10-28
+gefüllt worden. Die Datenschutzerklärung folgt am selben Tag und beschreibt,
+was diese Anwendung tatsächlich tut. Entscheidung und Begründung: ADR 0039.
+
+Kurz:
+
+- **Verantwortlicher** aus `lib/siteLegal.ts` — dieselbe Quelle wie das
+  Impressum, kein zweiter Name zum Pflegen. Ein Datenschutzbeauftragter ist
+  nicht bestellt; die Voraussetzungen (Art. 37 DSGVO, § 38 BDSG) liegen bei
+  diesem Angebot nicht vor.
+- **Hosting:** GitHub Pages, einschließlich der technisch notwendigen
+  Verbindungsdaten (IP-Adresse, Zeitpunkt, abgerufene Adresse, Referrer,
+  Browserkennung), Rechtsgrundlage Art. 6 Abs. 1 lit. f DSGVO, Verweis auf die
+  Datenschutzerklärung von GitHub wegen der Drittlandfrage USA.
+- **Speicherung:** die vier Schlüssel aus `lib/storageKeys.ts`, mit Zweck,
+  § 25 Abs. 2 Nr. 2 TDDDG und Art. 6 Abs. 1 lit. b DSGVO als Grundlage, plus
+  Löschweg für den Besucher.
+- **Nicht-Verarbeitung als Aussage:** keine Cookies, keine Reichweitenmessung,
+  keine Werbung, keine fremden Server, keine Chat-Schnittstelle (ADR 0021).
+  Diese Sätze sind testbar und werden getestet: `app/datenschutz/page.test.tsx`
+  durchsucht den Quelltext nach Analyse-Clients, Cookie-Zugriffen und
+  Drittanbieter-Hosts. Kommt einer hinzu, wird der Test rot, bevor die Aussage
+  falsch wird.
+- **Rechte** Art. 15–21 und **Beschwerderecht** Art. 77 mit der zuständigen
+  Behörde: Der Hamburgische Beauftragte für Datenschutz und Informationsfreiheit,
+  Ludwig-Erhard-Str. 22, 20459 Hamburg (am 2026-10-28 geprüft über
+  datenschutz-hamburg.de und die Adressliste des BfDI).
+
+Was weiterhin gilt: Die Seite ist keine Rechtsberatung. Der Text beschreibt den
+technischen Stand; die rechtliche Bewertung bleibt beim Betreiber — etwa ob die
+Reichweite des Angebots einen Vertreter in der EU oder eine
+Datenschutz-Folgenabschätzung verlangt.

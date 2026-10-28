@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculatorBundlesLoaded,
   checkCalculatorBundles,
+  checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
   checkPage,
@@ -313,6 +314,62 @@ describe('checkSitemap', () => {
   it('lässt eine vollständige Sitemap durch', () => {
     const locs = ['/', '/a/', '/b/'].map((path) => `${ORIGIN}${BASE}${path}`);
     expect(checkSitemap('f', sitemap(locs), options)).toEqual([]);
+  });
+});
+
+describe('checkFontPreloads', () => {
+  const link = (href: string, extra = 'type="font/woff2" crossorigin=""') =>
+    `<link rel="preload" href="${href}" as="font" ${extra}/>`;
+
+  const VIER = `
+    ${link('/_next/static/media/ibm-plex-mono-latin-400-normal.aaa.woff2')}
+    ${link('/_next/static/media/ibm-plex-mono-latin-500-normal.bbb.woff2')}
+    ${link('/_next/static/media/inter-latin-wght-normal.ccc.woff2')}
+    ${link('/_next/static/media/outfit-latin-wght-normal.ddd.woff2')}`;
+
+  const vorhanden = () => true;
+
+  it('nimmt vier verschiedene Schriften im Kopf hin', () => {
+    expect(checkFontPreloads('out/index.html', VIER, vorhanden)).toEqual([]);
+  });
+
+  it('meldet dieselbe Schrift doppelt — der React-Hoist-Fehler', () => {
+    // Genau der Zustand vor ADR 0039: `<link rel="preload">` stand als Kind im
+    // Baum und wurde von React zusätzlich in den Kopf gehoben.
+    const findings = checkFontPreloads('out/index.html', VIER + VIER, vorhanden);
+    const doppelt = findings.filter((finding) => finding.rule === 'FONT-PRELOAD-DOPPELT');
+    expect(doppelt).toHaveLength(4);
+    expect(doppelt[0]?.severity).toBe('fehler');
+    expect(doppelt[0]?.message).toContain('react-dom');
+  });
+
+  it('meldet eine vorgeladene Datei, die im Export fehlt', () => {
+    const findings = checkFontPreloads('out/index.html', VIER, (href) => !href.includes('inter'));
+    expect(findings.some((finding) => finding.rule === 'FONT-PRELOAD-FEHLT')).toBe(true);
+  });
+
+  it('meldet eine falsche Anzahl', () => {
+    const findings = checkFontPreloads(
+      'out/index.html',
+      link('/_next/static/media/inter-latin-wght-normal.ccc.woff2'),
+      vorhanden
+    );
+    expect(findings.some((finding) => finding.rule === 'FONT-PRELOAD-ANZAHL')).toBe(true);
+  });
+
+  it('weist auf ein fehlendes crossorigin hin, ohne den Lauf zu kippen', () => {
+    const ohneCors = VIER.replaceAll('crossorigin=""', '');
+    const findings = checkFontPreloads('out/index.html', ohneCors, vorhanden).filter(
+      (finding) => finding.rule === 'FONT-PRELOAD-CORS'
+    );
+    expect(findings).toHaveLength(4);
+    expect(findings[0]?.severity).toBe('hinweis');
+  });
+
+  it('verlangt type="font/woff2"', () => {
+    const ohneTyp = VIER.replaceAll('type="font/woff2"', '');
+    const findings = checkFontPreloads('out/index.html', ohneTyp, vorhanden);
+    expect(findings.filter((finding) => finding.rule === 'FONT-PRELOAD-TYP')).toHaveLength(4);
   });
 });
 

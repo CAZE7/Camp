@@ -9,10 +9,18 @@ const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', '
 
 /**
  * Die Sitemap entsteht aus dem Seiteninventar. Geprüft wird deshalb beides:
- * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, keine
- * Zeitstempel, gültige Werte) und dass sie zum Inventar passt — eine
- * indexierbare Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne
- * Indexierbarkeit ebenfalls.
+ * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, gültige Werte,
+ * belegte Zeitstempel) und dass sie zum Inventar passt — eine indexierbare
+ * Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne Indexierbarkeit
+ * ebenfalls.
+ *
+ * Zu `lastModified`: Seit 2026-10-28 trägt die Sitemap ein Datum, aber nur für
+ * Seiten mit belegter Inhaltsänderung (`lastReviewed` im Inventar). Der Test
+ * prüft die REGEL, nicht die Liste: Format, Kalendergültigkeit, kein Datum in
+ * der Zukunft, kein Datum vor Projektbeginn — und dass jedes Datum im Inventar
+ * eine Begründung am Eintrag hat. Er prüft ausdrücklich NICHT, dass alle
+ * Seiten ein Datum tragen; ein fehlendes Datum ist der korrekte Zustand für
+ * eine Seite, deren letzte Änderung niemand belegen kann.
  */
 describe('sitemap', () => {
   const entries = sitemap();
@@ -30,10 +38,39 @@ describe('sitemap', () => {
     }
   });
 
-  it('führt keine Zeitstempel — die Seite behauptet keine Änderung, die nicht geprüft ist', () => {
+  it('gibt Zeitstempel nur als belegtes Kalenderdatum aus, nie in der Zukunft', () => {
+    const heute = new Date();
     for (const entry of entries) {
-      expect(entry).not.toHaveProperty('lastModified');
+      if (entry.lastModified === undefined) continue;
+      const datum = new Date(entry.lastModified as Date | string);
+      expect(Number.isNaN(datum.getTime())).toBe(false);
+      // Mitternacht UTC: Der Wert ist ein Tag, kein Zeitpunkt.
+      expect(datum.toISOString()).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+      expect(datum.getTime()).toBeLessThanOrEqual(heute.getTime());
+      // Vor dem ersten Commit dieses Projekts kann keine Seite geändert worden sein.
+      expect(datum.getTime()).toBeGreaterThanOrEqual(Date.UTC(2026, 8, 1));
     }
+  });
+
+  it('belegt jeden Zeitstempel mit einem Eintrag im Inventar', () => {
+    for (const entry of entries) {
+      if (entry.lastModified === undefined) continue;
+      const page = indexablePages().find((candidate) => siteUrl(candidate.path) === entry.url);
+      expect(page?.lastReviewed).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it('erfindet kein Datum für Seiten ohne Beleg', () => {
+    // Mindestens eine Seite trägt heute ein belegtes Datum (sonst wäre das
+    // Feld tot), und die Datenschutzerklärung gehört dazu — sie wurde am
+    // 2026-10-28 neu geschrieben.
+    const mitDatum = entries.filter((entry) => entry.lastModified !== undefined);
+    expect(mitDatum.length).toBeGreaterThan(0);
+    const datenschutz = entries.find((entry) => entry.url === siteUrl('/datenschutz/'));
+    expect(datenschutz?.lastModified).toBeInstanceOf(Date);
+    // Und die Mehrheit trägt keins: Ein Datum an jeder Seite wäre genau die
+    // Behauptung, die dieser Test verhindern soll.
+    expect(mitDatum.length).toBeLessThan(entries.length);
   });
 
   it('gibt Priorität und Änderungsfrequenz im gültigen Bereich an', () => {

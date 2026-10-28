@@ -35,11 +35,10 @@ describe('SEO-Metadaten und Inventar', () => {
     // `/ueber-werft/` ist die Umleitung der alten Vertrauensadresse: Sie
     // antwortet weiter, damit bestehende Verweise nicht ins Leere laufen, darf
     // aber nicht als zweite Seite zur selben Aussage in den Index geraten.
-    expect(nonIndexablePages().map((page) => page.path)).toEqual([
-      '/design-system/',
-      '/ueber-werft/',
-      '/ki-assistent/',
-    ]);
+    // `/ki-assistent/` stand hier bis 2026-10-28: Die Ansicht war noindex und im
+    // statischen Export funktionslos (kein `/api/chat`). Mit ADR 0021 ist sie
+    // entfernt — die Liste führt nur noch die zwei verbleibenden Ansichten.
+    expect(nonIndexablePages().map((page) => page.path)).toEqual(['/design-system/', '/ueber-werft/']);
   });
 
   it('stoppt unbekannte Routen und abweichende Inhaltsmetadaten', () => {

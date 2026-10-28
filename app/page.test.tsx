@@ -37,8 +37,10 @@ describe('Home Page', () => {
     expect(within(main).getAllByRole('link', { name: /Schaltplan/ }).length).toBeGreaterThan(0);
     expect(within(main).getAllByRole('link', { name: /Dach/ }).length).toBeGreaterThan(0);
     expect(within(main).getAllByRole('link', { name: /Heizlast/ }).length).toBeGreaterThan(0);
-    // KI-Assistent wurde entfernt (toter Link auf /ki-assistent/, Audit D10).
-    // Negativ-Assertion hält fest, dass er nicht zurückkommt, ohne neue Seite.
+    // Es gibt keinen Assistenten-Einstieg auf der Startseite (Audit D10: toter
+    // Link). Seit 2026-10-28 existiert auch die Route nicht mehr (ADR 0021) —
+    // die Negativ-Assertion hält fest, dass kein Verweis zurückkehrt, ohne dass
+    // es eine Seite dahinter gibt.
     expect(within(main).queryByRole('link', { name: /Assistent/ })).not.toBeInTheDocument();
   });
 

@@ -27,6 +27,7 @@ import {
   type Finding,
   type HeavyLibrary,
   checkCalculatorBundles,
+  checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
   checkPage,
@@ -87,8 +88,6 @@ const INITIAL_SCRIPT_BUDGETS: Record<string, number> = {
    */
   '/tools/heizung/': 900 * 1024,
   '/tools/dach/': 1100 * 1024,
-  // Auch ohne Indexstatus soll die Chat-Ansicht das AI-SDK erst nach Klick laden.
-  '/ki-assistent/': 700 * 1024,
 };
 
 /** Wortzahl, unter der eine Inhaltsseite als dünn gilt (Hinweis, kein Fehler). */
@@ -202,6 +201,15 @@ function main(): void {
         expectedSocialSiteName: SITE_NAME,
         expectedH1: entry?.h1,
       })
+    );
+    // Schriften: React hoistet `<link rel="preload">` und gibt es zusätzlich an
+    // seiner Stelle im Baum aus — vier Schriften standen so achtmal im Kopf.
+    // Die Prüfung zählt und prüft die Existenz der Dateien; sie fällt nur auf,
+    // wenn jemand zählt, und genau das soll sie übernehmen.
+    findings.push(
+      ...checkFontPreloads(page, html, (href) =>
+        exportFileCandidates(href).some((candidate) => existsSync(join(OUT, candidate)))
+      )
     );
     findings.push(
       ...checkStructuredData(page, html, {
