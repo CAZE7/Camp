@@ -17,6 +17,8 @@ import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { PageShell } from '@/components/brand/PageShell';
+import { ToolExplainer } from '@/components/seo/ToolExplainer';
+import { DACH_EXPLAINER_BLOCKS, DACH_FAQ } from './explainerContent';
 import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
@@ -418,6 +420,20 @@ function DachPlanerInner() {
           </ReactFlow>
         </div>
       </div>
+
+      {/* Erklärender Teil unter dem Werkzeug. Bis 2026-10-27 war diese Seite
+          die dünnste der Auslieferung (243 Wörter, 0 × h2) — der Text stand
+          nirgends, weil das Werkzeug den Bildschirm füllt. Er steht unter der
+          Werkfläche, nicht davor: Wer planen will, plant; wer verstehen will,
+          scrollt. Inhalt und Begründung: `./explainerContent.ts`. */}
+      <ToolExplainer
+        kicker="HINTERGRUND // DACH-PLANUNG"
+        title="Wie die Dachbelegung gerechnet wird"
+        intro="Der Planer prüft jede Platzierung gegen einen sicheren Bereich und addiert die Nennleistung der Module. Was die Zahlen bedeuten — und welche Frage er bewusst offen lässt."
+        blocks={DACH_EXPLAINER_BLOCKS}
+        faqTitle="Häufige Fragen zur Dachbelegung"
+        faq={DACH_FAQ}
+      />
     </PageShell>
   );
 }

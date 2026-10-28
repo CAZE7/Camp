@@ -22,7 +22,11 @@ function h1Of(path: string): string {
 test('indexierbare Seiten liefern Überschrift, Inhalt und Verweise ohne JavaScript', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('main h1')).toHaveCount(1);
-  await expect(page.locator('main h1')).toHaveText('Camper planen — erst der Plan, dann das Blech.');
+  // Überschrift aus dem Inventar: Die Startseite trägt seit dem 2026-10-27 den
+  // Hauptsuchbegriff im H1; ein zweiter, abgeschriebener Text würde beim
+  // nächsten Umbau wieder stehen bleiben (genau der Befund aus dem Header).
+  await expect(page.locator('main h1')).toHaveText(h1Of('/'));
+  await expect(page.locator('main h1')).toContainText('Camper-Ausbau planen');
   await expect(page.locator('main')).toContainText('Dach, Elektrik, Heizung und Sicherheit an einem Ort.');
   await expect(page.getByRole('link', { name: 'Schaltplan starten' })).toHaveAttribute(
     'href',

@@ -11,6 +11,7 @@ import { SiteSection } from '@/components/brand/SiteSection';
 import { ToolCard } from '@/components/brand/ToolCard';
 import { buttonVariants } from '@/components/ui/button';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
+import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 
 /**
  * D-7 Startseite: bildfreier, typografischer Einstieg mit direkt erreichbaren
@@ -26,6 +27,13 @@ import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
  *   3. Die Abschnitte tragen ihre Überschrift über `SiteSection`: eine H2
  *      je Abschnitt, Anker auf die Überschrift, damit die Sprungziele des
  *      Inhaltsverzeichnisses und der Schnellnavigation zusammenpassen.
+ *   4. Reihenfolge und warum: Einordnung (was ist das, für wen, was nicht) →
+ *      Werkzeuge → Rechner → Guides → Fragen → Abschluss-CTA. Die Einordnung
+ *      steht vor den Werkzeugen, weil ein Erstbesuch zuerst „bin ich hier
+ *      richtig?“ beantwortet, bevor er ein Werkzeug anklickt; die Fragen
+ *      stehen vor dem letzten CTA, weil dort die Einwände liegen (kostenlos?
+ *      wo liegen meine Daten? gilt das fachlich?). Jeder Block beginnt mit
+ *      der Antwort — dieselbe Form, die Antwortmaschinen wörtlich übernehmen.
  */
 
 export const metadata: Metadata = metadataForPage('/');
@@ -94,7 +102,82 @@ const GUIDES = [
   },
 ];
 
+/**
+ * Einordnung: die drei Fragen, die eine Startseite in den ersten Sekunden
+ * beantworten muss — was ist das, für wen, und was leistet es nicht.
+ *
+ * Warum als eigener Abschnitt und nicht als längerer Hero: Der Hero bleibt
+ * knapp (eine Aussage, zwei Wege). Die Einordnung steht darunter als drei
+ * Antwortblöcke, die man einzeln lesen kann — jede beginnt mit der Antwort,
+ * nicht mit dem Kontext. Genau diese Form greifen Antwortmaschinen ab; sie
+ * ersetzt außerdem den Satz „ersetzt keine Elektrofachkraft", der vorher nur
+ * als Fußnote im Fließtext stand.
+ */
+const EINORDNUNG = [
+  {
+    title: 'Was diese Seite ist',
+    body: 'Ein Elektroplaner für den Camper-Ausbau: Bauteile auf die Zeichenfläche setzen, verbinden lassen und die Leitungen automatisch verlegen. Querschnitt, Sicherung und Spannungsfall rechnet die Anwendung aus deinem Plan — du liest sie am Kabel ab, statt sie zu schätzen.',
+  },
+  {
+    title: 'Für wen sie gedacht ist',
+    body: 'Für Menschen, die ihren Camper selbst ausbauen und vor dem Kabelkauf wissen wollen, ob die Anlage trägt. Du brauchst kein Konto und keine Installation: Der Plan bleibt im Browser, Werkzeuge und Rechner sind ohne Anmeldung nutzbar.',
+  },
+  {
+    title: 'Was sie nicht ersetzt',
+    body: 'Keine normgerechte Fachplanung und keine Abnahme. Die Modelle rechnen bewusst konservativ, bleiben aber Näherungen — für Landstrom (230 V) ist eine Prüfung nach DIN VDE 0100-721 durch eine qualifizierte Person Pflicht.',
+  },
+] as const;
+
+/**
+ * Häufige Fragen — sichtbar im Akkordeon UND als `FAQPage` in der
+ * strukturierten Beschreibung (dieselben Zeichenketten, eine Quelle).
+ *
+ * Die Antworten belegen nur, was im Baum steht: kostenlos und ohne Konto
+ * (README, Funktionsumfang), Speicherung im `localStorage` (Store mit
+ * Persistenz), konservative Modelle und die 230-V-Abnahme (Fußzeile,
+ * `lib/vde-standards.ts`). Keine Aussage ohne Deckung — die Prüfung
+ * `scripts/seo/checks.ts` hält Schema und sichtbaren Text Zeichen für Zeichen
+ * gegeneinander.
+ *
+ * FAQ-Auszeichnung bringt seit Mai 2026 kein Rich-Ergebnis mehr (Google hat
+ * das Feature abgekündigt). Sie bleibt trotzdem: Der sichtbare Fragetext ist
+ * der Abschnitt, den Such- und Antwortmaschinen am häufigsten wörtlich
+ * übernehmen — die Auszeichnung beschreibt ihn nur.
+ */
+const HOME_FAQ = [
+  {
+    question: 'Was ist der Elektroplaner?',
+    answer:
+      'Ein kostenloses Planungswerkzeug für die Camper-Elektrik: Bauteile auf die Zeichenfläche setzen, verbinden lassen und Querschnitt, Absicherung und Spannungsfall ablesen. Dazu kommen Dach-Planer, Heizlast-Rechner und Einzelrechner für Batterie, Solar und Spannungsabfall.',
+  },
+  {
+    question: 'Was kostet der Elektroplaner?',
+    answer:
+      'Nichts. Alle Werkzeuge und Rechner sind ohne Anmeldung und ohne Bezahlschranke nutzbar — es gibt kein Konto und kein Abo. Die Anwendung wird als statische Seite ausgeliefert und läuft vollständig im Browser.',
+  },
+  {
+    question: 'Wo werden meine Pläne gespeichert?',
+    answer:
+      'Im lokalen Speicher deines Browsers, nicht auf einem Server: Deine Pläne verlassen das Gerät nicht. Wer den Browserspeicher löscht oder ein anderes Gerät benutzt, sieht den Plan nicht mehr — sichere ihn deshalb über den PNG-Export oder die Stückliste.',
+  },
+  {
+    question: 'Wie genau rechnet der Planer?',
+    answer:
+      'Der Querschnitt folgt Strombelastbarkeit und Spannungsfall gleichzeitig, und die Sicherung wird nie größer gewählt, als die Leitung trägt. Welche Modelle, Annahmen und Grenzen dahinterstehen, steht offen unter „Über Elektroplaner“.',
+  },
+  {
+    question: 'Ersetzt der Planer eine Elektrofachkraft?',
+    answer:
+      'Nein. Die Rechnungen sind Näherungen mit konservativen Annahmen, keine normgerechte Fachplanung. Vor dem Einbau bleibt eine fachliche Prüfung nötig; für 230-V-Landstromanlagen ist die Abnahme nach DIN VDE 0100-721 durch eine qualifizierte Person Pflicht.',
+  },
+] as const;
+
 const PAGE_SECTIONS = [
+  {
+    title: 'Einordnung',
+    detail: 'Was diese Seite ist und für wen',
+    href: '#einordnung-heading',
+  },
   {
     title: 'Werkzeuge',
     detail: 'Schaltplan, Dachlayout und Heizlast',
@@ -109,6 +192,11 @@ const PAGE_SECTIONS = [
     title: 'Guides',
     detail: 'Ausbau, Reihenfolge und Zulassung',
     href: '#guides-heading',
+  },
+  {
+    title: 'Fragen',
+    detail: 'Kosten, Speicherung, Grenzen',
+    href: '#fragen-heading',
   },
 ];
 
@@ -157,7 +245,7 @@ export default function Home() {
         </nav>
       }
     >
-      <PageStructuredData path="/" />
+      <PageStructuredData path="/" faqEntries={HOME_FAQ} />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 md:gap-14">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
           <span className="panel-title border border-rule px-2 py-1">CAMP // WERKSTATT</span>
@@ -167,7 +255,7 @@ export default function Home() {
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)] lg:gap-12">
           <div className="lg:py-2">
             <p className="kicker">TECHNISCHE PRAXIS // CAMPER-AUSBAU</p>
-            <h1 className="h1 mt-4 max-w-3xl">Camper planen — erst der Plan, dann das Blech.</h1>
+            <h1 className="h1 mt-4 max-w-3xl">Camper-Ausbau planen: erst der Plan, dann das Blech.</h1>
             <p className="prose-measure mt-6 text-base leading-relaxed text-ink-soft md:text-lg">
               Dach, Elektrik, Heizung und Sicherheit an einem Ort. Werkzeuge und Guides helfen dir, den
               Camper-Ausbau strukturiert vorzubereiten.
@@ -197,7 +285,7 @@ export default function Home() {
             >
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="panel-title">AUF DIESER SEITE</p>
-                <span className="panel-title">01—03</span>
+                <span className="panel-title">01—05</span>
               </div>
               <ol>
                 {PAGE_SECTIONS.map((section, index) => (
@@ -232,6 +320,23 @@ export default function Home() {
             </p>
           </aside>
         </section>
+
+        <SiteSection
+          id="einordnung"
+          kicker="WORUM ES GEHT // EINORDNUNG"
+          title="Was der Elektroplaner ist — und was er nicht ersetzt"
+          lead="Drei Antworten, bevor du klickst: was das hier leistet, für wen es gedacht ist und wo die Grenze liegt."
+          aside={<span className="panel-title">KURZ GEPRÜFT</span>}
+        >
+          <ul className="grid gap-3 md:grid-cols-3">
+            {EINORDNUNG.map((item) => (
+              <li key={item.title} className="rounded border border-rule bg-surface-panel p-4">
+                <h3 className="text-sm font-semibold text-ink">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{item.body}</p>
+              </li>
+            ))}
+          </ul>
+        </SiteSection>
 
         <SiteSection
           id="werkzeuge"
@@ -286,6 +391,26 @@ export default function Home() {
               className="font-semibold text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
             >
               Zur Guides-Übersicht
+            </Link>
+            .
+          </p>
+        </SiteSection>
+
+        <SiteSection
+          id="fragen"
+          kicker="RÜCKFRAGEN // GRENZEN"
+          title="Häufige Fragen zum Elektroplaner"
+          lead="Kosten, Speicherort und die Frage, wofür die Rechnungen gelten — und wofür nicht."
+          aside={<span className="panel-title">{HOME_FAQ.length} FRAGEN</span>}
+        >
+          <FaqAkkordeon entries={HOME_FAQ} />
+          <p className="mt-4 text-sm text-ink-soft">
+            Rechenwege, Annahmen und Grenzen stehen offen unter{' '}
+            <Link
+              href="/ueber-elektroplaner"
+              className="font-semibold text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+            >
+              Über Elektroplaner
             </Link>
             .
           </p>

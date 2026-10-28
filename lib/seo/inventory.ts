@@ -36,7 +36,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     label: 'Startseite',
     kind: 'start',
     indexability: 'index',
-    h1: 'Camper planen — erst der Plan, dann das Blech.',
+    h1: 'Camper-Ausbau planen: erst der Plan, dann das Blech.',
     title: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast',
     absoluteTitle: true,
     description:
@@ -44,7 +44,13 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Überblick: welche Werkzeuge und Wissensseiten es für den Camper-Ausbau gibt.',
     topicId: 'start',
     priority: 'P0',
-    structuredData: ['WebPage'],
+    // H1 trägt den Hauptsuchbegriff („Camper-Ausbau planen“) — der Anspruch
+    // („erst der Plan, dann das Blech“) bleibt, die Einordnung kommt dazu.
+    // FAQPage: Die fünf Fragen stehen sichtbar auf der Startseite
+    // (`HOME_FAQ` in `app/page.tsx`) und werden aus derselben Quelle
+    // ausgezeichnet; `checkStructuredData` vergleicht Frage und Antwort
+    // Zeichen für Zeichen mit dem sichtbaren Akkordeon.
+    structuredData: ['WebPage', 'FAQPage'],
     sitemap: { changeFrequency: 'monthly', priority: 1 },
     source: 'app/page.tsx',
   },
@@ -135,7 +141,10 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Solarpanels und Dachluken auf der Dachfläche platzieren und die Gesamtleistung ablesen.',
     topicId: 'dachplanung',
     priority: 'P1',
-    structuredData: ['WebPage', 'WebApplication'],
+    // FAQPage: Die vier Fragen stehen sichtbar unter der Werkfläche
+    // (`app/tools/dach/explainerContent.ts`) — dieselbe Quelle für Anzeige
+    // und Auszeichnung.
+    structuredData: ['WebPage', 'WebApplication', 'FAQPage'],
     ogImage: {
       path: '/og/dach.png',
       width: 1200,
@@ -157,7 +166,9 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'die nötige Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur bestimmen.',
     topicId: 'heizlast',
     priority: 'P1',
-    structuredData: ['WebPage', 'WebApplication'],
+    // FAQPage: Die vier Fragen stehen sichtbar unter dem Rechner
+    // (`app/tools/heizung/explainerContent.ts`).
+    structuredData: ['WebPage', 'WebApplication', 'FAQPage'],
     ogImage: {
       path: '/og/heizung.png',
       width: 1200,
