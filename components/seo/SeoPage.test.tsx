@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { AUTHOR_PROFILE_PATH, SITE_AUTHOR } from '@/lib/author';
 import type { SeoPageContent } from '@/lib/seo/types';
 
-import { SeoPage } from './SeoPage';
+import { jsonLdFor, SeoPage } from './SeoPage';
 
 /**
  * Der Tisch-Scrollbereich ist der einzige Ort im Gerüst, an dem Inhalt breiter
@@ -62,6 +63,36 @@ describe('SeoPage', () => {
     // Next normalisiert im gerenderten href den abschließenden Schrägstrich;
     // im Export steht wieder die volle Adresse (geprüft von scripts/seo/).
     expect(screen.getByRole('link', { name: 'Überblick' })).toHaveAttribute('href', '/camper-elektrik');
+  });
+
+  it('nennt den Autor und verweist auf seine Vorstellung', () => {
+    // E-E-A-T: Eine Seite ohne erkennbare Urheberschaft ist schwächer
+    // einzuordnen. Der Name ist derselbe wie im Impressum (Test in
+    // lib/author.test.ts), der Verweis führt auf die Autorenvorstellung.
+    render(<SeoPage page={SEITE} />);
+
+    const zeile = screen.getByText(new RegExp(`Von ${SITE_AUTHOR.name}`));
+    expect(zeile).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Wer schreibt hier' });
+    // Im gebauten Export steht `/ueber-elektroplaner/#autor`; beim Rendern im
+    // Test entfernt Next den Schrägstrich vor dem Fragment. Beide Formen
+    // führen zum selben Anker, deshalb wird der Pfad geprüft, nicht die
+    // Zeichenkette.
+    expect(AUTHOR_PROFILE_PATH).toBe('/ueber-elektroplaner/#autor');
+    expect(link?.getAttribute('href')).toMatch(/^\/ueber-elektroplaner\/?#autor$/);
+  });
+
+  it('nennt den Autor auch in der strukturierten Beschreibung', () => {
+    const graph = jsonLdFor(SEITE) as {
+      '@graph': Array<Record<string, unknown>>;
+    };
+    const webPage = graph['@graph'].find((node) => node['@type'] === 'WebPage');
+    expect(webPage?.['author']).toEqual({ '@id': 'https://elektroplaner-camper.de/#author' });
+    // Die Person selbst steht im Wurzel-Layout, nicht auf jeder Seite — der
+    // Verweis muss aber auf einen Knoten zeigen, der im Dokument existiert
+    // (geprüft im Export-Audit: json-ld-autor).
+    expect(graph['@graph'].some((node) => node['@type'] === 'Person')).toBe(false);
+    expect(webPage?.['dateModified']).toBeUndefined();
   });
 
   it('beschreibt die Seite in genau einer Hauptüberschrift', () => {

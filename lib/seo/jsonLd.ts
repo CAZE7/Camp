@@ -53,6 +53,12 @@ export function webPageNode(input: {
   mainEntityId?: string;
   hasPartIds?: readonly string[];
   breadcrumbId?: string;
+  /**
+   * Kennung der Autorin oder des Autors (`@id` der `Person` im
+   * Wurzel-Layout). Fehlt sie, entsteht kein `author`-Feld — besser kein
+   * Verweis als ein Verweis auf eine Person, die im Dokument nicht steht.
+   */
+  authorId?: string;
   /** `CollectionPage` für Übersichten, sonst `WebPage`. */
   type?: Extract<StructuredDataType, 'WebPage' | 'CollectionPage'>;
   /**
@@ -79,6 +85,7 @@ export function webPageNode(input: {
   }
   if (input.breadcrumbId) node['breadcrumb'] = { '@id': input.breadcrumbId };
   if (input.lastReviewed) node['dateModified'] = input.lastReviewed;
+  if (input.authorId) node['author'] = { '@id': input.authorId };
   return node;
 }
 

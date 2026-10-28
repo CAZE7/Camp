@@ -689,7 +689,11 @@ export function checkStructuredData(
     const value = node['@type'];
     return Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];
   });
-  const sharedSiteTypes = new Set(['WebSite', 'Organization']);
+  // Seitenweite Knoten: Sie stehen im Wurzel-Layout und gelten für jede Seite.
+  // Deshalb müssen sie nicht im Seiteninventar angekündigt werden — angekündigt
+  // wird, was eine Seite AUSZEICHNET (WebPage, FAQPage, WebApplication …).
+  // Person ist am 2026-10-28 dazugekommen: die Autorenangabe.
+  const sharedSiteTypes = new Set(['WebSite', 'Organization', 'Person']);
   const actualPageTypes = new Set(nodeTypes.flat().filter((type) => !sharedSiteTypes.has(type)));
   for (const [index, types] of nodeTypes.entries()) {
     if (types.length === 0) add('fehler', 'json-ld', `Knoten ${index + 1} ohne @type.`);
@@ -710,6 +714,27 @@ export function checkStructuredData(
         }
       };
       visit(value);
+    }
+  }
+
+  // Verweise auf seitenweite Knoten müssen im selben Dokument aufgelöst
+  // werden: Ein `author: { '@id': … }` ohne passende Person ist für eine
+  // Suchmaschine ein Verweis ins Nichts — und niemand sieht es, weil der
+  // sichtbare Name ja dasteht.
+  const definierteIds = new Set(
+    nodes.map((node) => node['@id']).filter((id): id is string => typeof id === 'string' && id.length > 0)
+  );
+  for (const [index, node] of nodes.entries()) {
+    const author = node['author'];
+    if (author && typeof author === 'object' && !Array.isArray(author)) {
+      const id = (author as Record<string, unknown>)['@id'];
+      if (typeof id !== 'string' || !definierteIds.has(id)) {
+        add(
+          'fehler',
+          'json-ld-autor',
+          `Knoten ${index + 1}: author verweist auf ${String(id)}, im Dokument ist kein Knoten mit dieser @id definiert.`
+        );
+      }
     }
   }
 

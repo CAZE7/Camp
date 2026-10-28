@@ -8,6 +8,7 @@ import {
   webPageNode,
   type BreadcrumbItem,
 } from '@/lib/seo/jsonLd';
+import { authorNodeId } from '@/lib/author';
 import { pageByPath } from '@/lib/seo/inventory';
 import { topicOf } from '@/lib/seo/topics';
 import type { FaqEntry } from '@/lib/seo/types';
@@ -58,6 +59,7 @@ export function PageStructuredData({
       path: page.path,
       name: page.h1,
       description: page.description,
+      authorId: authorNodeId(),
       ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
       ...(applicationId ? { mainEntityId: applicationId } : {}),
       ...(hasPartIds.length > 0 ? { hasPartIds } : {}),

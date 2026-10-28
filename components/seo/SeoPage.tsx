@@ -13,9 +13,11 @@ import {
   webApplicationNode,
   webPageNode,
 } from '@/lib/seo/jsonLd';
+import { authorNodeId } from '@/lib/author';
 import { topicOf } from '@/lib/seo/topics';
 import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
+import { AuthorNote } from './AuthorNote';
 import { breadcrumbsFor } from './Breadcrumbs';
 import { RichText } from './RichText';
 
@@ -45,6 +47,9 @@ export function jsonLdFor(page: SeoPageContent) {
       path: page.path,
       name: page.h1,
       description: page.description,
+      // Urheberschaft: Verweis auf die Person aus dem Wurzel-Layout.
+      authorId: authorNodeId(),
+      ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
       hasPartIds: [
@@ -135,6 +140,9 @@ export function SeoPage({
         )}
 
         <TrustBlock page={page} />
+        {/* Immer sichtbar, nicht nur wenn es Quellen, Annahmen oder Grenzen
+            gibt: Die Urheberschaft gehört zu jeder Inhaltsseite. */}
+        <AuthorNote contentRevision={page.contentRevision} />
 
         <section aria-labelledby="weiter-titel">
           <h2 id="weiter-titel" className="h2 border-b border-rule pb-3">
@@ -431,10 +439,6 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
           </div>
         )}
       </div>
-      <p className="caption-xs mt-4 text-ink-soft">
-        Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege, Quellen
-        und Grenzen stehen offen, siehe <Link href="/ueber-elektroplaner/">Über Elektroplaner</Link>.
-      </p>
     </section>
   );
 }

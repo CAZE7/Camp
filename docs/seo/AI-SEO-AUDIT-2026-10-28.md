@@ -59,14 +59,25 @@ verglichen wird, FAQ als `details`/`summary` (ohne JavaScript lesbar),
 strukturierte Daten aus derselben Quelle wie die sichtbare Anzeige, genau eine
 H1 je Seite.
 
-Was fehlt: **Autorenangabe und Erfahrungsnachweis** (E-E-A-T). Der Skill führt
-benannte Autoren mit Qualifikation als einen der stärksten Hebel
-(+25–30 % in der GEO-Studie). Diese Seite nennt im Impressum eine
-verantwortliche Person, aber keinen Autor je Text, keine Qualifikation und
-keine Belege für eigene Erfahrung. Das lässt sich nicht ehrlich aus dem
-Rechenmodell ableiten: Name, Rolle und Erfahrung muss der Betreiber liefern.
-Ohne diese Angaben bleibt es bei der Organisation als Herausgeber — besser als
-eine erfundene Autorenzeile.
+**Nachtrag noch am 2026-10-28: Autorenangabe umgesetzt.** Der Betreiber hat
+Name und Grundlage geliefert (Jonas Rieckhoff, eigene Camper-Ausbauten, Studium
+an einer Universität), seitdem steht sie an vier Stellen:
+
+| Stelle                      | Umsetzung                                                                                                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Fußzeile jeder Inhaltsseite | `components/seo/AuthorNote.tsx`: „Von Jonas Rieckhoff, Betreiber von Elektroplaner · Wer schreibt hier“                |
+| Vertrauensseite             | Abschnitt `#autor` auf `/ueber-elektroplaner/`, Name und Grundlage aus `lib/author.ts`                                 |
+| JSON-LD                     | `Person`-Knoten einmal im Wurzel-Layout (`#author`), jede `WebPage` verweist mit `author: { '@id': … }`                |
+| Quelle der Angaben          | `lib/author.ts` — ein Ort für Name, Rolle und Grundlage; ein Test hält ihn mit `SITE_LEGAL` (Impressum) deckungsgleich |
+
+Bewusst nicht erfunden: Studienfach, Hochschule, Fahrzeugmodell. Der bisherige
+Abschnitt nannte einen „Ducato L2H2“ als eigenes Ausbauprojekt; diese Angabe hat
+der Betreiber nicht bestätigt und sie ist deshalb auf „meine eigenen Ausbauten“
+zurückgenommen worden.
+
+Was weiterhin fehlt, ohne dass es sich erfinden lässt: ein Nachweis der
+Erfahrung (Fotos, Messwerte, dokumentierte Umbauten) und eine zweite,
+unabhängige Quelle, die die Seite zitiert. Das ist Inhalt, nicht Markup.
 
 ## 4. Was der Skill empfiehlt und hier nicht gilt
 

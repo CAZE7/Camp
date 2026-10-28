@@ -13,6 +13,7 @@ import { preload } from 'react-dom';
 
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
 import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
+import { authorPersonNode } from '@/lib/author';
 
 /**
  * Kopfdaten der gesamten Auslieferung.
@@ -76,6 +77,11 @@ function siteDescriptionJsonLd() {
           height: 512,
         },
       },
+      // Autorenangabe: einmal für die Auslieferung, nicht je Seite neu. Die
+      // Seiten verweisen mit `author: { '@id': … }` darauf (E-E-A-T: eine
+      // Seite ohne erkennbare Urheberschaft ist für Suchmaschinen und für
+      // Sprachmodell-Agenten schwächer einzuordnen).
+      authorPersonNode(),
     ],
   };
 

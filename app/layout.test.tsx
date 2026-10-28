@@ -92,6 +92,37 @@ describe('RootLayout', () => {
     expect(quelle.match(/crossOrigin: 'anonymous'/g) ?? []).toHaveLength(4);
   });
 
+  it('definiert die Autorenangabe einmal für die ganze Auslieferung', () => {
+    const element = RootLayout({ children: <div /> }) as React.ReactElement<{
+      children?: React.ReactNode;
+    }>;
+    const head = React.Children.toArray(element.props.children).find(
+      (child): child is React.ReactElement<{ children: React.ReactNode }> =>
+        React.isValidElement(child) && child.type === 'head'
+    );
+    const scripts = React.Children.toArray(head!.props.children).filter(
+      (child): child is React.ReactElement<{ type?: string; dangerouslySetInnerHTML?: { __html: string } }> =>
+        React.isValidElement(child) && (child.props as { type?: string }).type === 'application/ld+json'
+    );
+    const siteGraph = scripts
+      .map((script) => script.props.dangerouslySetInnerHTML?.__html ?? '')
+      .map((html) => {
+        try {
+          return JSON.parse(html) as { '@graph'?: Array<Record<string, unknown>> };
+        } catch {
+          return {};
+        }
+      })
+      .find((graph) => graph['@graph']?.some((node) => node['@type'] === 'WebSite'));
+
+    const person = siteGraph?.['@graph']?.find((node) => node['@type'] === 'Person');
+    expect(person).toBeDefined();
+    expect(person?.['@id']).toBe('https://elektroplaner-camper.de/#author');
+    expect(person?.['name']).toBe('Jonas Rieckhoff');
+    // Die Organisation steht im selben Graphen und wird nur verwiesen.
+    expect(person?.['worksFor']).toEqual({ '@id': 'https://elektroplaner-camper.de/#organization' });
+  });
+
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {
     expect(metadata.metadataBase?.toString()).toBe('https://elektroplaner-camper.de/');
     expect(metadata.title).toEqual({

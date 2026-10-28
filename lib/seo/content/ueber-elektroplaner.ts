@@ -17,6 +17,8 @@ import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS } from '@/lib/shortCircuit';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from '@/lib/materials';
 import { VDE_GROUP_FACTORS_MAX_N } from '@/lib/electrical';
 
+import { SITE_AUTHOR } from '../../author';
+
 import type { SeoPageContent } from '../types';
 
 const CAPACITY_ROWS = (['ato', 'midi', 'anl', 'mrbf'] as const).map((type) => [
@@ -39,6 +41,11 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
   changeFrequency: 'monthly',
   sitemapPriority: 0.6,
   contentRevision: '2026-10',
+  // Belegte Inhaltsänderung: Die Autorenvorstellung nennt seit 2026-10-28 den
+  // Namen aus lib/author.ts und die belegte Grundlage (eigene Ausbauten,
+  // Studium) — vorher stand dort ein Fahrzeugmodell, das der Betreiber nicht
+  // bestätigt hat.
+  lastReviewed: '2026-10-28',
   sections: [
     {
       id: 'projekt',
@@ -116,9 +123,9 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
     },
     {
       id: 'autor',
-      heading: 'Autor: Jonas Rieckhoff',
+      heading: `Autor: ${SITE_AUTHOR.name}`,
       body: [
-        'Ich bin Jonas Rieckhoff, Selbstausbauer und Betreiber von elektroplaner-camper.de. Die Erfahrungswerte auf diesen Seiten stammen aus meinem eigenen Ausbau eines Ducato L2H2 — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.',
+        `Ich bin ${SITE_AUTHOR.name}, Selbstausbauer und ${SITE_AUTHOR.role}. Ich ${SITE_AUTHOR.backgroundFirstPerson}. Die Erfahrungswerte auf diesen Seiten stammen aus meinen eigenen Ausbauten — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.`,
         'Ich schreibe die Artikel als Erfahrungsberichte, nicht als generische Ratgeber. Jede Rechnung habe ich selbst nachgerechnet, jeder Fehler habe ich selbst gemacht und korrigiert. Wo ich keine eigene Messung habe, steht das als Annahme oder [PRÜFEN] daneben.',
       ],
     },

@@ -262,6 +262,70 @@ describe('checkStructuredData', () => {
   });
 });
 
+describe('Autorenangabe in der strukturierten Beschreibung', () => {
+  const graph = (knoten: unknown[]) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': knoten,
+    })}</script>`;
+
+  const SEITE_MIT_AUTOR = graph([
+    {
+      '@type': 'WebPage',
+      '@id': `${ORIGIN}${BASE}/seite/#webpage`,
+      url: `${ORIGIN}${BASE}/seite/`,
+      author: { '@id': `${ORIGIN}/#author` },
+    },
+    { '@type': 'Person', '@id': `${ORIGIN}/#author`, name: 'Jonas Rieckhoff' },
+  ]);
+
+  it('lässt den seitenweiten Person-Knoten ohne Inventar-Eintrag zu', () => {
+    // Person steht im Wurzel-Layout wie WebSite und Organization: Sie zeichnet
+    // die Seite nicht aus, sie gilt für alle. Angekündigt wird nur, was eine
+    // Seite besonders macht.
+    const findings = checkStructuredData('out/seite/index.html', SEITE_MIT_AUTOR, {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage'],
+    });
+    expect(findings.filter((finding) => finding.rule === 'json-ld-inventar')).toEqual([]);
+    expect(findings.filter((finding) => finding.rule === 'json-ld-autor')).toEqual([]);
+  });
+
+  it('meldet einen Autorenverweis auf eine Person, die im Dokument fehlt', () => {
+    const kaputt = graph([
+      {
+        '@type': 'WebPage',
+        '@id': `${ORIGIN}${BASE}/seite/#webpage`,
+        author: { '@id': `${ORIGIN}/#niemand` },
+      },
+    ]);
+    const findings = checkStructuredData('out/seite/index.html', kaputt, {
+      origin: ORIGIN,
+      basePath: BASE,
+    });
+    const autor = findings.filter((finding) => finding.rule === 'json-ld-autor');
+    expect(autor).toHaveLength(1);
+    expect(autor[0]?.severity).toBe('fehler');
+    expect(autor[0]?.message).toContain('#niemand');
+  });
+
+  it('verlangt für andere Typen weiterhin einen Inventar-Eintrag', () => {
+    // Gegenprobe: Die Ausnahme gilt nur für Person — Product ohne Ankündigung
+    // bleibt ein Fehler.
+    const fremd = graph([
+      { '@type': 'WebPage', '@id': `${ORIGIN}${BASE}/seite/#webpage` },
+      { '@type': 'Product', name: 'Etwas' },
+    ]);
+    const findings = checkStructuredData('out/seite/index.html', fremd, {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage'],
+    });
+    expect(findings.some((finding) => finding.rule === 'json-ld-inventar')).toBe(true);
+  });
+});
+
 describe('checkSitemap', () => {
   const sitemap = (locs: string[]) =>
     `<urlset>${locs.map((loc) => `<url><loc>${loc}</loc></url>`).join('')}</urlset>`;
