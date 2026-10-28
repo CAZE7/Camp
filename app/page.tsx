@@ -79,7 +79,7 @@ const GUIDES = [
     facts: ['Vom Entkernen zum Möbelbau'],
   },
   {
-    title: 'Holzausbau (BEDMAS)',
+    title: 'Holzausbau in sechs Schritten',
     body: 'Sechs Schritte für den Möbelbau.',
     href: '/guides/holzausbau',
     meta: 'Möbelbau',
@@ -130,7 +130,7 @@ export default function Home() {
               className="flex h-full flex-1 flex-col items-center justify-center gap-1 px-1 text-xs leading-none"
             >
               <BookOpen className="h-4 w-4" aria-hidden="true" />
-              <span>Magazin</span>
+              <span>Start</span>
             </Link>
             <Link
               href="/camper-elektrik"
@@ -160,7 +160,7 @@ export default function Home() {
       <PageStructuredData path="/" />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 md:gap-14">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
-          <span className="panel-title border border-rule px-2 py-1">CAMP // WERKSTATT</span>
+          <span className="panel-title border border-rule px-2 py-1">ELEKTROPLANER // WERKSTATT</span>
           <span className="panel-title">ELEKTRIK · DACH · HEIZUNG</span>
         </header>
 

@@ -64,10 +64,10 @@ const NORMEN: readonly { norm: string; bereich: string }[] = [
   },
   {
     norm: 'DIN VDE 0100-721',
-    bereich: 'Kleinspannungsanlagen in Caravans und Motorcaravans — 12 V und 230 V im Fahrzeug',
+    bereich: 'Elektrische Anlagen in Caravans und Motorcaravans — 12 V und 230 V im Fahrzeug',
   },
   {
-    norm: 'ISO 10133 / ABYC E-11',
+    norm: 'ISO 13297:2020 / ABYC E-11',
     bereich: 'Schutzorgan am Quellpunkt bei Kleinspannungs-Gleichstromanlagen',
   },
 ];
@@ -309,7 +309,7 @@ export default function ElektrikPlanung() {
               ist hoch genug, um eine 2,5-mm²-Leitung in Sekunden in Brand zu setzen. Deshalb sitzt das
               Schutzorgan unmittelbar am Pluspol der Batterie, bevor die erste Leitung ungeschützt geführt
               wird. Der Planer prüft dafür {FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm ab der Quelle — der Wert
-              aus ISO 10133:2000 § 8.1, der für kleine Boote und damit für einen großen Teil der Camper-Praxis
+              aus ISO 13297:2020 § 8.1, der für Small Craft und damit für einen großen Teil der Camper-Praxis
               gilt. DIN VDE 0100-721 verlangt den Überstromschutz ebenfalls nahe der Batterie, nennt aber
               keine Länge.
             </p>

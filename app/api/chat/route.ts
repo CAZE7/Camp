@@ -455,7 +455,7 @@ Beantworte die Fragen des Nutzers basierend auf deinem Wissen und dem folgenden 
 
 Prüfe den Schaltplan auf folgende Fehler nach VDE-Norm:
 - Fehlt ein FI-Schutzschalter (RCD mit ≤ 30 mA) nach dem Landstrom-Eingang? Falls ja, warne den Nutzer, da dies nach DIN VDE 0100-721 illegal ist.
-- Werden starre NYM-Kabel verwendet? Erinnere den Nutzer, dass nur feindrähtige Leitungen im Camper erlaubt sind.
+- Werden starre NYM-Kabel verwendet? Erinnere den Nutzer, dass massive Klasse-1-Leiter im Fahrzeug unzulässig sind; zulässig sind Leiter der Klasse 5 oder Klasse 2 (mind. 7 Drähte) bzw. umhüllte flexible Leitungen.
 - Prüfe, ob der Wechselrichter-Verlust von ca. 15% (Faktor 0.85) bei 230V-Geräten beachtet wurde.
 
 Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons bei gefundenen Fehlern.

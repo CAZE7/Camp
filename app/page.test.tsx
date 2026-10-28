@@ -49,6 +49,6 @@ describe('Home Page', () => {
     expect(within(main).getByRole('link', { name: /Camper-Ausbauguide/ })).toBeInTheDocument();
     // "Ausbau-Fahrplan" erscheint als Empfehlung UND als Guide-Link — mindestens 1×.
     expect(within(main).getAllByRole('link', { name: /Ausbau-Fahrplan/ }).length).toBeGreaterThan(0);
-    expect(within(main).getByRole('link', { name: /Holzausbau \(BEDMAS\)/ })).toBeInTheDocument();
+    expect(within(main).getByRole('link', { name: /Holzausbau in sechs Schritten/ })).toBeInTheDocument();
   });
 });

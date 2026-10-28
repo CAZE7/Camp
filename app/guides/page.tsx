@@ -49,7 +49,7 @@ const GUIDES = [
   {
     href: '/guides/holzausbau/',
     title: 'Holzausbau im Camper',
-    body: 'Möbelbau in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl und Gewicht.',
+    body: 'Möbelbau in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl.',
     index: '03',
     meta: 'Möbelbau',
     facts: ['6 Schritte', 'Materialwahl'],
@@ -79,7 +79,7 @@ const WEITER = [
   {
     href: '/wohnmobilzulassung/',
     title: 'Wohnmobilzulassung',
-    body: 'TÜV, Schaltplan und Dokumente für die Abnahme.',
+    body: 'TÜV, Nachweise für die 230-V-Anlage und Dokumente für die Abnahme.',
     icon: ShieldCheck,
   },
 ];
@@ -191,9 +191,10 @@ export default function GuidesOverview() {
             </p>
             <p>
               <strong className="font-semibold text-ink">Mit klarer Grenze.</strong> Diese Seiten bereiten
-              Entscheidungen vor, sie treffen sie nicht. Für Landstrom-Anlagen (230 V) ist eine Abnahme nach
-              DIN VDE 0100-721 durch eine qualifizierte Person Pflicht; die Berechnungen hier sind Näherungen
-              und ersetzen keine Prüfung durch eine Elektrofachkraft.
+              Entscheidungen vor, sie treffen sie nicht. Für Landstrom-Anlagen (230 V) gehören Errichtung und
+              Prüfung in die Hände einer Elektrofachkraft; die Errichtung folgt DIN VDE 0100-721, die
+              Erstprüfung DIN VDE 0100-600. Die Berechnungen hier sind Näherungen und ersetzen diese Prüfung
+              nicht.
             </p>
           </div>
         </SiteSection>

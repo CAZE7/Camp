@@ -46,7 +46,7 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
   description:
     'LiFePO4 im Camper einsetzen: 90 % Entladetiefe, Peukert-Faktor, Entladeschlussspannung, BMS und Kurzschlussstrom — mit Rechenbeispiel.',
   h1: 'LiFePO4 im Camper einsetzen',
-  lead: 'Lithium-Eisenphosphat liefert fast die doppelte nutzbare Kapazität einer AGM bei weniger als der Hälfte des Gewichts. Der Preis dafür sind Ansprüche an das Ladegerät, an die Absicherung und an den sicheren Einbau — diese Seite benennt sie konkret.',
+  lead: 'Lithium-Eisenphosphat liefert bei gleicher Nennkapazität rund die doppelte nutzbare Kapazität einer AGM; für dieselbe nutzbare Energie braucht AGM etwa die doppelte Nennkapazität und wiegt rund das Vierfache. Der Preis dafür sind Ansprüche an das Ladegerät, an die Absicherung und an den sicheren Einbau — diese Seite benennt sie konkret.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.8,
@@ -56,7 +56,7 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
       id: 'nutzbar',
       heading: 'Was 90 % Entladetiefe praktisch bedeuten',
       body: [
-        'Das Modell rechnet LiFePO4 mit 90 % Entladetiefe — bei einer 100-Ah-Batterie also 90 Ah nutzbar gegenüber 50 Ah bei AGM. Derselbe Tagesbedarf braucht dadurch weniger als die halbe Nennkapazität, und weil Lithium zusätzlich leichter ist, sinkt das Gewicht auf einen Bruchteil.',
+        'Das Modell rechnet LiFePO4 mit 90 % Entladetiefe — bei einer 100-Ah-Batterie also 90 Ah nutzbar gegenüber 50 Ah bei AGM. Derselbe Tagesbedarf braucht dadurch etwa 56 % der AGM-Nennkapazität, und weil Lithium zusätzlich leichter ist, sinkt das Gewicht auf etwa ein Viertel.',
       ],
       table: {
         caption: `Beispiel: ${DAILY_WH} Wh Tagesbedarf, ein autarker Tag, 12-V-System (Modellrechnung)`,
@@ -97,7 +97,7 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
       body: [
         'Lithium-Batterien haben einen deutlich kleineren Innenwiderstand als Bleibatterien. Das ist im Betrieb erwünscht (weniger Spannungsfall unter Last), im Kurzschlussfall aber gefährlich: Der mögliche Kurzschlussstrom liegt um ein Vielfaches höher, und die Sicherung muss ihn abschalten können. Das Modell setzt für LiFePO4 einen Innenwiderstands-Anker von ' +
           `${BATTERY_RI_MILLIOHM_AT_100AH.LiFePO4} mΩ je 100 Ah an (inklusive typischem BMS-Anteil) und leitet daraus den Kurzschlussstrom am Sicherungseinbauort ab.`,
-        'Als Folge gilt: Die Sicherung wird nach Nennstrom UND Abschaltvermögen gewählt. Eine einfache Flachsicherung reicht am Batteriepol regelmäßig nicht aus — dort gehört eine Bauform mit passendem Abschaltvermögen hin, andernfalls ist der Plan nicht ausführbar.',
+        'Als Folge gilt: Die Sicherung wird nach Nennstrom UND Abschaltvermögen gewählt. Eine einfache Flachsicherung reicht am Batteriepol regelmäßig nicht aus — bei LiFePO4-Bänken ist mindestens MRBF oder Class T nötig; BMS und Datenblatt der konkreten Batterie bleiben maßgeblich.',
       ],
       links: [
         {
@@ -123,9 +123,9 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
       ],
       list: {
         items: [
-          'Ein Laderegler oder Ladegerät mit Blei-Kennlinie lädt Lithium nie vollständig und kann bei dauerhafter Erhaltungsladung schaden — das Ladegerät muss zur Chemie passen.',
+          'Ein Laderegler oder Ladegerät mit Blei-Kennlinie lädt Lithium nicht zuverlässig voll und kann bei dauerhafter Erhaltungsladung schaden — das Ladegerät muss zur Chemie passen.',
           'Die Lichtmaschine ist keine geregelte Ladequelle für Lithium: Ohne Booster (DC-DC-Ladegerät) begrenzt nur ihr eigener Widerstand den Strom, und die Lima kann überhitzen.',
-          'Bei Kälte nimmt eine LiFePO4-Zelle unterhalb von rund 0 °C keinen Ladestrom an. Wer im Winter lädt, braucht eine beheizte Batterie oder ein BMS mit Temperaturschutz.',
+          'Unter 0 °C darf eine LiFePO4-Zelle nicht geladen werden; ein BMS muss den Ladestrom sperren. Victron nennt +5 °C als untere Ladegrenze; das Datenblatt der konkreten Batterie gilt. Wer im Winter lädt, braucht eine beheizte Batterie oder ein BMS mit Temperaturschutz.',
         ],
       },
       callout: {
@@ -167,12 +167,12 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
     {
       question: 'Ist LiFePO4 im Winter ein Problem?',
       answer:
-        'Beim Laden ja: Unterhalb von rund 0 °C nimmt die Zelle keinen Ladestrom an, und ein BMS mit Temperaturschutz blockiert ihn. Entladen ist bei Kälte mit verringerter Kapazität möglich. Wer im Winter lädt, braucht eine beheizte Batterie, einen temperierten Einbauort oder ein BMS, das die Ladung sperrt, bis die Batterie warm genug ist.',
+        'Beim Laden ja: Unter 0 °C darf die Zelle nicht geladen werden, und ein BMS mit Temperaturschutz sperrt den Strom; Victron nennt +5 °C als untere Ladegrenze. Entladen ist bei Kälte mit verringerter Kapazität möglich, je nach Zelle bis etwa −20 °C. Wer im Winter lädt, braucht eine beheizte Batterie, einen temperierten Einbauort oder ein BMS, das die Ladung sperrt, bis die Batterie warm genug ist.',
     },
     {
       question: 'Braucht LiFePO4 einen anderen Kabelquerschnitt?',
       answer:
-        'Der Querschnitt folgt dem Strom und dem Spannungsfall, nicht der Chemie. Was sich ändert, ist die Absicherung: Der Kurzschlussstrom ist deutlich höher, deshalb muss die Sicherung ein passendes Abschaltvermögen haben — bei LiFePO4-Bänken ist das regelmäßig eine Bauform ab MIDI/MEGA, nicht die Flachsicherung.',
+        'Der Querschnitt folgt dem Strom und dem Spannungsfall, nicht der Chemie. Was sich ändert, ist die Absicherung: Der Kurzschlussstrom ist deutlich höher, deshalb muss die Sicherung ein passendes Abschaltvermögen haben — bei LiFePO4-Bänken ist das regelmäßig mindestens MRBF oder Class T, nicht die Flachsicherung.',
     },
   ],
   related: [

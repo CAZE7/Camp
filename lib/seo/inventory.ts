@@ -54,7 +54,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Camper-Elektrik berechnen',
-    title: 'Camper Elektrik berechnen: 12V Kabelquerschnitt & Batterie-Planer',
+    title: 'Camper-Elektrik berechnen: 12V-Kabelquerschnitt & Batterie',
     absoluteTitle: true,
     description:
       'Wohnmobil-Elektrik präzise dimensionieren: Leitungsquerschnitt nach DIN berechnen, Batteriekapazität bestimmen und autarkes 12V-System sicher planen.',
@@ -103,7 +103,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Camper-Schaltplan kostenlos erstellen',
-    title: 'Kostenloses Programm für den Camper-Schaltplan',
+    title: 'Kostenloses Programm: Camper-Schaltplan',
     description:
       'Kostenloses Programm für den Camper-Schaltplan: Bauteile setzen, verdrahten lassen und Querschnitt, Sicherung und Spannungsfall prüfen — ohne Anmeldung.',
     searchIntent:
@@ -129,7 +129,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Dach-Planer',
-    title: 'Dach-Planer: Solarpanels und Dachluken platzieren',
+    title: 'Dach-Planer: Solar & Dachluken platzieren',
     description:
       'Solarpanels, Dachluken und Kabeldurchlässe auf der Dachfläche platzieren, Belegung prüfen und die Gesamtleistung in Watt ablesen.',
     searchIntent: 'Solarpanels und Dachluken auf der Dachfläche platzieren und die Gesamtleistung ablesen.',
@@ -194,11 +194,11 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     label: 'Camper-Ausbauguide',
     kind: 'ratgeber',
     indexability: 'index',
-    h1: 'Der ultimative Camper-Ausbau-Guide: Von der leeren Blechbüchse zum rollenden Zuhause',
-    title: 'Camper-Ausbauguide: Technik, Normen und Praxis',
+    h1: 'Camper-Ausbau: Planung, Technik und Zulassung',
+    title: 'Camper-Ausbau: Technik, Normen und Zulassung',
     description:
-      'Wissen für den Ausbau: Karosserie, Dämmung, 12-V-Elektrik, Gas und TÜV — verständlich erklärt, mit Normbezug und Praxiswerten.',
-    searchIntent: 'Wissen zu Karosserie, Dämmung, Elektrik, Gas und TÜV nachlesen.',
+      'Der Camper-Ausbau in der richtigen Reihenfolge: Fahrzeugwahl, Karosserie, Dämmung, 12-V-Elektrik, Heizung und Zulassung — mit Normbezug und Grenzen.',
+    searchIntent: 'den Camper-Ausbau von der Planung bis zur Zulassung strukturiert durchgehen.',
     topicId: 'ausbau',
     priority: 'P1',
     structuredData: ['WebPage', 'BreadcrumbList'],
@@ -219,7 +219,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     h1: 'Holzausbau im Camper: sechs Schritte',
     title: 'Holzausbau im Camper: sechs Schritte',
     description:
-      'Möbelbau im Camper in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl und Gewicht.',
+      'Möbelbau im Camper in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl.',
     searchIntent: 'Möbelbau im Camper in sechs Schritten umsetzen.',
     topicId: 'ausbau',
     priority: 'P3',

@@ -27,7 +27,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
   title: 'Solaranlage für den Camper berechnen',
   absoluteTitle: true,
   description:
-    'Solaranlage berechnen: Tagesbedarf, spezifischer Ertrag und Jahreszeit ergeben Modulleistung, Panelanzahl und Ladestrom — mit Sommer- und Winterrechnung.',
+    'Solaranlage berechnen: Tagesbedarf, spezifischer Ertrag und Jahreszeit ergeben Modulleistung, Panelanzahl und Modulstrom — mit Sommer- und Winterrechnung.',
   h1: 'Solaranlage berechnen',
   lead: 'Dieser Rechner beantwortet zwei Fragen in einer: Wie viel Modulleistung deckt meinen Tagesbedarf — und reicht die Fläche dafür im Winter überhaupt? Sommer- und Winterfall stehen dabei getrennt, weil sie unterschiedliche Antworten geben.',
   priority: 'P0',
@@ -62,7 +62,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
         },
         {
           term: `Winterfall`,
-          description: `Rechnet mit ${VDE_SOLAR_WINTER_REDUCTION} des Sommerertrags (Modellwert). Er zeigt, was im Dezember von der Anlage übrig bleibt.`,
+          description: `Rechnet mit ${(VDE_SOLAR_WINTER_REDUCTION * 100).toLocaleString('de-DE')} % des Sommerertrags (Modellwert). Er zeigt, was im Dezember von der Anlage übrig bleibt.`,
         },
         {
           term: 'Abschlag (%)',
@@ -79,7 +79,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
         caption: `Der Faktor ${VDE_CHARGE_DERATING_FACTOR} ist der Ladezeit-Aufschlag des Modells (CC/CV, Wärme, Alterung).`,
       },
       body: [
-        'Der Rechner rundet anschließend auf ganze Panels auf — eine halbe Platte gibt es nicht. Die Angabe „erwarteter Ladestrom" ergibt sich aus der installierten Leistung geteilt durch die MPP-Spannung von 18 V je 12-V-Modul.',
+        'Der Rechner rundet anschließend auf ganze Panels auf — eine halbe Platte gibt es nicht. Die Angabe „Modulstrom" ergibt sich aus der installierten Leistung geteilt durch die MPP-Spannung von 18 V je 12-V-Modul. Der tatsächliche Ladestrom in die Batterie ist bei 13,8 V höher (400 Wp ≈ 29 A); die Reglerauslegung orientiert sich am Modulstrom.',
       ],
     },
     {
@@ -88,7 +88,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
       table: {
         caption:
           'Modellrechnung für 1 000 Wh Tagesbedarf am 12-V-Bordnetz, 100-Wp-Panels, Ertrag 3,0 kWh/kWp/Tag',
-        head: ['Jahreszeit', 'Nötige Leistung', 'Empfehlung', 'Erwarteter Ladestrom'],
+        head: ['Jahreszeit', 'Nötige Leistung', 'Empfehlung', 'Modulstrom (bei 18 V)'],
         rows: [
           [
             'Sommer',
@@ -178,7 +178,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
     {
       label: 'Modellwerte',
       detail:
-        'Winterertrag 35 % des Sommerwerts, MPP-Spannung 18 V je 12-V-Modul, Ladezeit-Aufschlag 1,15 — `lib/vde-standards.ts`.',
+        'Winterertrag 35 % des Sommerwerts (Modellwert für gut geneigte Südlage; flaches Dach 10–20 %), MPP-Spannung 18 V je 12-V-Modul, Ladezeit-Aufschlag 1,15 — `lib/vde-standards.ts`.',
     },
     {
       label: 'Ertragsstandard',

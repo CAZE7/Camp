@@ -60,7 +60,7 @@ export const BATTERIE_CONTENT: SeoPageContent = {
         note: 'Werte sind Planungsannahmen des Modells: Die Herstellerangabe der konkreten Batterie geht vor.',
       },
       body: [
-        'Eine 100-Ah-AGM liefert in diesem Modell 50 Ah, eine 100-Ah-LiFePO4 dagegen 90 Ah. Wer Äpfel mit Birnen vergleicht — „Lithium ist teurer" — übersieht, dass er für dieselbe nutzbare Energie die doppelte AGM-Kapazität und damit etwa das doppelte Gewicht braucht.',
+        'Eine 100-Ah-AGM liefert in diesem Modell 50 Ah, eine 100-Ah-LiFePO4 dagegen 90 Ah. Wer Äpfel mit Birnen vergleicht — „Lithium ist teurer" — übersieht, dass er für dieselbe nutzbare Energie etwa die doppelte AGM-Kapazität und damit rund das Vierfache des Gewichts braucht.',
       ],
     },
     {
@@ -130,7 +130,7 @@ export const BATTERIE_CONTENT: SeoPageContent = {
     {
       question: 'Wie tief darf eine Camper-Batterie entladen werden?',
       answer:
-        'Das Modell rechnet mit 90 % bei LiFePO4, 50 % bei AGM und Gel und 30 % bei Nassblei. Die Werte sind Planungsannahmen: Das Datenblatt der konkreten Batterie und die Abschaltschwellen des BMS oder des Wechselrichters gehen vor.',
+        'Das Modell rechnet mit 90 % bei LiFePO4, 50 % bei AGM und Gel und 30 % bei Nassblei (Startertyp); zyklenfeste Nassbatterien werden oft mit 50 % betrieben. Die Werte sind Planungsannahmen: Das Datenblatt der konkreten Batterie und die Abschaltschwellen des BMS oder des Wechselrichters gehen vor.',
     },
     {
       question: 'Was ist der Peukert-Effekt in der Praxis?',

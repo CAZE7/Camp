@@ -42,7 +42,7 @@ export const AC_230V_CONTENT: SeoPageContent = {
   title: '230 V im Camper: Landstrom, FI-Schutz und Absicherung',
   absoluteTitle: true,
   description:
-    '230-V-Anlage im Camper: CEE-Einspeisung, FI-Schutz mit 30 mA, Leitungsschutzschalter, Schutzleiterquerschnitt und die Pflicht zur Abnahme.',
+    '230-V-Anlage im Camper: CEE-Einspeisung, FI-Schutz mit 30 mA, Leitungsschutzschalter, Schutzleiterquerschnitt und die Erstprüfung durch eine Elektrofachkraft.',
   h1: '230-V-Anlage im Camper',
   lead: 'Die 230-V-Seite ist der Teil der Camper-Elektrik, der nicht in Eigenregie fertig wird: Sie braucht eine Elektrofachkraft für Aufbau und Abnahme. Diese Seite erklärt, was dabei geprüft wird — damit man den Plan versteht und die richtigen Fragen stellt.',
   priority: 'P1',
@@ -54,7 +54,7 @@ export const AC_230V_CONTENT: SeoPageContent = {
       id: 'einspeisung',
       heading: 'Einspeisung: wie der Landstrom ins Fahrzeug kommt',
       body: [
-        'Der Landstromanschluss ist eine Außenstelle des Fahrzeugs und muss wasserdicht, zugentlastet und mechanisch geschützt ausgeführt sein. Üblich ist eine CEE-Einspeisung (blau, 16 A) mit Klappe, von dort geht es zur Verteilung. Ein Adapter von Schuko auf CEE ist für den Dauerbetrieb keine Lösung.',
+        'Der Landstromanschluss ist eine Außenstelle des Fahrzeugs und muss mindestens spritzwassergeschützt (IP44), zugentlastet und mechanisch geschützt ausgeführt sein. Üblich ist eine CEE-Einspeisung (blau, 16 A) mit Klappe, von dort geht es zur Verteilung. Ein Adapter von Schuko auf CEE ist für den Dauerbetrieb keine Lösung.',
         'Zwei Dinge gehören in die Planung: eine Trennstelle, mit der sich das Fahrzeug vollständig vom Landstrom lösen lässt, und eine eindeutige Zuordnung von Außenleiter (L), Neutralleiter (N) und Schutzleiter (PE). Das Modell führt die 230-V-Leitung deshalb als 3-adrige Leitung und nicht als Einzelader.',
       ],
     },
@@ -88,13 +88,13 @@ export const AC_230V_CONTENT: SeoPageContent = {
       heading: 'Absicherung: Charakteristik und Abschaltbedingung',
       body: [
         `Das Modell prüft die automatische Abschaltung der Stromversorgung nach IEC 60364-4-41 § 411.3.2: Der Schleifenwiderstand muss so klein sein, dass der Schutzschalter im Fehlerfall innerhalb der geforderten Zeit auslöst. Maßgeblich ist der garantierte Auslösestrom — die obere Grenze des magnetischen Schnellauslösebereichs: bei Charakteristik B das ${MCB_INSTANT_TRIP_MAX_MULTIPLE.B}-Fache, bei C das ${MCB_INSTANT_TRIP_MAX_MULTIPLE.C}-Fache des Nennstroms.`,
-        `Dazu kommt die 2/3-Regel aus DIN VDE 0100-600: Der gemessene Schleifenwiderstand darf höchstens zwei Drittel des rechnerischen Grenzwerts betragen — das deckt Messunsicherheit und Leitererwärmung im Fehlerfall ab. Die vorgelagerte Netzimpedanz ist im Modell als Annahme hinterlegt (${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω für eine CEE-16-A-Einspeisung); ein Messwert vor Ort schlägt diese Annahme.`,
+        `Dazu kommt die 2/3-Regel aus dem informativen Anhang D.6.4.3.7.2 der DIN VDE 0100-600: Der gemessene Schleifenwiderstand darf höchstens zwei Drittel des rechnerischen Grenzwerts betragen. Sie ist ein vereinfachtes Prüfkriterium für die Leitererwärmung; die Messunsicherheit des Geräts ist separat zu bewerten. Die vorgelagerte Netzimpedanz ist im Modell als Annahme hinterlegt (${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM.toLocaleString('de-DE')} Ω für eine CEE-16-A-Einspeisung); ein Messwert vor Ort schlägt diese Annahme.`,
       ],
       table: {
-        caption: `Zulässiger Schleifenwiderstand nach der 2/3-Regel bei ${AC_MODEL_VOLTAGE_V} V`,
-        head: ['Schutzorgan', 'Garantierter Auslösestrom', 'Zulässiges Zs'],
+        caption: `Zulässiger Messwert nach der 2/3-Regel bei ${AC_MODEL_VOLTAGE_V} V`,
+        head: ['Schutzorgan', 'Garantierter Auslösestrom', 'Zulässiger Messwert (2/3-Regel)'],
         rows: TRIP_ROWS,
-        note: 'Je größer der Nennstrom, desto kleiner der zulässige Schleifenwiderstand — deshalb ist eine lange, dünne Landstromleitung ein Sicherheitsthema und nicht nur ein Spannungsproblem.',
+        note: 'Die normative Tabelle 41.3 nennt andere Zs-Werte; diese Spalte ist der Messwert nach der 2/3-Regel. Je größer der Nennstrom, desto kleiner der zulässige Schleifenwiderstand — deshalb ist eine lange, dünne Landstromleitung ein Sicherheitsthema und nicht nur ein Spannungsproblem.',
       },
       subsections: [
         {
@@ -131,7 +131,7 @@ export const AC_230V_CONTENT: SeoPageContent = {
     {
       question: 'Darf ich die 230-V-Anlage im Camper selbst bauen?',
       answer:
-        'Eine 230-V-Anlage im Fahrzeug gehört in die Hände einer Elektrofachkraft — Aufbau und Abnahme. Camp liefert den Plan, prüft rechnerisch Abschaltbedingung, Schutzleiterquerschnitt und Absicherung, ersetzt aber keine Abnahme nach DIN VDE 0100-721.',
+        'Eine 230-V-Anlage im Fahrzeug gehört in die Hände einer Elektrofachkraft — Aufbau und Abnahme. Camp liefert den Plan und prüft rechnerisch Abschaltbedingung, Schutzleiterquerschnitt und Absicherung; das ersetzt keine Erstprüfung nach DIN VDE 0100-600 und keine Abnahme durch eine Elektrofachkraft. Die Errichtung folgt DIN VDE 0100-721.',
     },
     {
       question: 'Brauche ich im Camper einen FI-Schutzschalter?',
@@ -167,15 +167,16 @@ export const AC_230V_CONTENT: SeoPageContent = {
     },
     {
       label: 'DIN VDE 0100-600',
-      detail: '2/3-Regel für den zulässigen Schleifenwiderstand (Messunsicherheit und Erwärmung).',
+      detail:
+        '2/3-Regel im informativen Anhang D.6.4.3.7.2 — vereinfachtes Prüfkriterium für die Leitererwärmung; die Messunsicherheit ist separat zu bewerten.',
     },
     {
       label: 'DIN VDE 0100-721',
-      detail: 'Kleinspannungsanlagen in Caravans und Motorcaravans — 230 V im Fahrzeug.',
+      detail: 'Elektrische Anlagen in Caravans und Motorcaravans — 230 V im Fahrzeug.',
     },
   ],
   assumptions: [
-    `Vorgelagerte Netzimpedanz ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω (CEE-16-A-Näherung) — im Modell ausdrücklich als Annahme geführt; eine Messung vor Ort schlägt sie.`,
+    `Vorgelagerte Netzimpedanz ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM.toLocaleString('de-DE')} Ω (CEE-16-A-Näherung) — im Modell ausdrücklich als Annahme geführt; eine Messung vor Ort schlägt sie.`,
     'Das Modell ist ein Single-Line-Schema: Neutralleiterführung einzeln, Trenn- und Umschalteinrichtungen sowie Selektivität bildet es nicht ab.',
   ],
   limits: [

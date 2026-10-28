@@ -83,7 +83,7 @@ export const BATTERIEKAPAZITAET_CONTENT: SeoPageContent = {
       id: 'ergebnis',
       heading: 'Was das Ergebnis sagt — und was nicht',
       body: [
-        `Im Beispiel (1 000 Wh Tagesbedarf, ein autarker Tag, 12 V, LiFePO4) fordert die Rechnung ${EXAMPLE.requiredNominalAh.toFixed(1).replace('.', ',')} Ah Nennkapazität; die Empfehlung rundet auf ${EXAMPLE.recommendedNominalAh} Ah in 5-Ah-Stufen. Mit AGM sind es ${EXAMPLE_AGM.recommendedNominalAh} Ah — mehr als das Doppelte für dieselbe nutzbare Energie.`,
+        `Im Beispiel (1 000 Wh Tagesbedarf, ein autarker Tag, 12 V, LiFePO4) fordert die Rechnung ${EXAMPLE.requiredNominalAh.toFixed(1).replace('.', ',')} Ah Nennkapazität; die Empfehlung rundet auf ${EXAMPLE.recommendedNominalAh} Ah in 5-Ah-Stufen. Mit AGM sind es ${EXAMPLE_AGM.recommendedNominalAh} Ah — fast das Doppelte für dieselbe nutzbare Energie.`,
         'Das Ergebnis ist eine Nennkapazität, die den TAGESBEDARF deckt. Es ist keine Aussage darüber, ob die Batterie bei Kälte oder nach drei Jahren noch dieselbe Kapazität hat, und keine Aussage über den Ladepfad: Eine große Batterie ohne Ladung verlängert nur die Zeit bis zum leeren Zustand.',
       ],
       formula: {
