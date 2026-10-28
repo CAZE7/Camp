@@ -91,6 +91,67 @@ export function linkHrefs(html: string, rel: string): string[] {
 }
 
 /**
+ * `/llms.txt` — Kurzübersicht für Sprachmodell-Agenten.
+ *
+ * Die Datei entsteht aus dem Seiteninventar, kann also nur veralten, wenn das
+ * Inventar selbst nicht gepflegt wird. Geprüft wird das, was ein Agent
+ * tatsächlich benutzt: dass eine Überschrift und eine Zusammenfassung da sind,
+ * dass jede P0-Seite vorkommt und dass kein Verweis ins Leere zeigt. Ein toter
+ * Link in dieser Datei ist schlimmer als keine Datei: Der Agent bekommt eine
+ * Adresse, die nicht existiert, und verwirft die Quelle.
+ */
+export function checkLlmsTxt(
+  file: string,
+  text: string,
+  options: { exists: (href: string) => boolean; requiredUrls: readonly string[] }
+): Finding[] {
+  const findings: Finding[] = [];
+  const add = (severity: Severity, rule: string, message: string) =>
+    findings.push({ severity, file, rule, message });
+
+  if (!text.startsWith('# ')) {
+    add('fehler', 'LLMS-TITEL', 'Die Datei beginnt nicht mit einer H1 (`# Name`).');
+  }
+  if (!/^> .+/m.test(text)) {
+    add(
+      'hinweis',
+      'LLMS-ZUSAMMENFASSUNG',
+      'Keine Zusammenfassung als Zitatblock (`> …`) — Agenten lesen sie zuerst.'
+    );
+  }
+  for (const url of options.requiredUrls) {
+    if (!text.includes(url)) {
+      add('fehler', 'LLMS-SEITE-FEHLT', `Pflichtseite ${url} fehlt in llms.txt.`);
+    }
+  }
+
+  const links = [...text.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)]
+    .map((match) => match[1])
+    .filter((link): link is string => typeof link === 'string' && link.length > 0);
+  for (const link of links) {
+    if (!link.startsWith('https://')) {
+      add(
+        'fehler',
+        'LLMS-LINK-RELATIV',
+        `Verweis ${link} ist nicht absolut — Agenten kennen den Basis-Pfad nicht.`
+      );
+      continue;
+    }
+    if (!options.exists(link)) {
+      add('fehler', 'LLMS-LINK-TOT', `Verweis ${link} zeigt auf keine Datei im Export.`);
+    }
+  }
+  if (links.length === 0) {
+    add('fehler', 'LLMS-OHNE-VERWEISE', 'Die Datei enthält keinen einzigen Seitenverweis.');
+  }
+  if (/TODO|Platzhalter|undefined/i.test(text)) {
+    add('fehler', 'LLMS-PLATZHALTER', 'Die Datei enthält einen Platzhalter oder `undefined`.');
+  }
+
+  return findings;
+}
+
+/**
  * Font-Preloads im Dokumentkopf.
  *
  * Warum das eine Prüfung braucht: React 19 behandelt `<link rel="preload">` als

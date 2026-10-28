@@ -6,6 +6,7 @@ import {
   checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
+  checkLlmsTxt,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -314,6 +315,68 @@ describe('checkSitemap', () => {
   it('lässt eine vollständige Sitemap durch', () => {
     const locs = ['/', '/a/', '/b/'].map((path) => `${ORIGIN}${BASE}${path}`);
     expect(checkSitemap('f', sitemap(locs), options)).toEqual([]);
+  });
+});
+
+describe('checkLlmsTxt', () => {
+  const SAUBER = `# Beispiel
+
+> Eine Seite über Prüfungen.
+
+## Wissen
+
+- [Kabelquerschnitt](https://example.test/a/): Querschnitt berechnen.
+- [Sicherungen](https://example.test/b/): Sicherungen auslegen.
+`;
+
+  const optionen = {
+    exists: () => true,
+    requiredUrls: ['https://example.test/a/'],
+  };
+
+  it('nimmt eine saubere Datei hin', () => {
+    expect(checkLlmsTxt('out/llms.txt', SAUBER, optionen)).toEqual([]);
+  });
+
+  it('verlangt eine H1 am Anfang', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER.replace('# Beispiel', 'Beispiel'), optionen);
+    expect(findings.some((f) => f.rule === 'LLMS-TITEL')).toBe(true);
+  });
+
+  it('meldet eine fehlende Pflichtseite', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER, {
+      exists: () => true,
+      requiredUrls: ['https://example.test/fehlt/'],
+    });
+    expect(findings.some((f) => f.rule === 'LLMS-SEITE-FEHLT' && f.severity === 'fehler')).toBe(true);
+  });
+
+  it('meldet einen toten Verweis — der eigentliche Grund für die Prüfung', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER, {
+      exists: (href) => href.includes('/a/'),
+      requiredUrls: ['https://example.test/a/'],
+    });
+    const tot = findings.filter((f) => f.rule === 'LLMS-LINK-TOT');
+    expect(tot).toHaveLength(1);
+    expect(tot[0]?.message).toContain('/b/');
+  });
+
+  it('meldet relative Verweise', () => {
+    const findings = checkLlmsTxt(
+      'out/llms.txt',
+      SAUBER.replace('(https://example.test/b/)', '(/b/)'),
+      optionen
+    );
+    expect(findings.some((f) => f.rule === 'LLMS-LINK-RELATIV')).toBe(true);
+  });
+
+  it('meldet Platzhalter', () => {
+    const findings = checkLlmsTxt(
+      'out/llms.txt',
+      `${SAUBER}\n- [X](https://example.test/c/): TODO\n`,
+      optionen
+    );
+    expect(findings.some((f) => f.rule === 'LLMS-PLATZHALTER')).toBe(true);
   });
 });
 

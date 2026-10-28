@@ -356,6 +356,11 @@ abgleichen". Der nächste sinnvolle Schritt.
   gemessen und verworfen (in dieser Umgebung ist der Klon flach: `git log -1`
   liefert für alle Dateien denselben Zeitstempel). Begründung und Messung:
   ADR 0039.
+- **`llms.txt`: eingebaut** — hier stand sie als „optional, nur für den
+  Lighthouse-Check" (Google braucht sie nicht, ein Ranking-Signal ist sie
+  nicht). Für die anderen Engines und die Agent-Readiness-Prüfungen zählt sie
+  trotzdem; sie wird seit 2026-10-28 aus dem Inventar erzeugt. Prüfung:
+  `docs/seo/AI-SEO-AUDIT-2026-10-28.md`.
 - **Seite „Elektrik VW T6 Ausbau": weiterhin offen** — es gibt keine belegten
   fahrzeugspezifischen Daten im Baum, und geratene Querschnitte wären in einem
   Planungswerkzeug schädlicher als eine fehlende Seite.

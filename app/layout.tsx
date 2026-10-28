@@ -123,6 +123,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteDescriptionJsonLd() }} />
+        {/* Kurzübersicht für Sprachmodell-Agenten (app/llms.txt/route.ts).
+            Der Verweis steht im Kopf, weil eine Datei, auf die nichts zeigt,
+            auch nicht abgerufen wird — Agent-Readiness-Messungen führen fast
+            alle llms.txt-Aufrufe auf einen Link zurück, nicht auf einen
+            geratenen Pfad. Kein sichtbarer Link: Für Menschen ist die Datei
+            ohne Nutzen, und die Fußzeile ist voll genug. */}
+        <link rel="alternate" type="text/plain" href={`${siteUrl('/llms.txt')}`} title="llms.txt" />
       </head>
       <body className="min-h-dvh font-sans">
         <SystemThemeSync />

@@ -21,7 +21,13 @@ import { join, relative, sep } from 'node:path';
 
 import { DEFAULT_PREVIEW_IMAGE } from '../../app/siteMetadata';
 import { SITE_ORIGIN, SITE_BASE_PATH, SITE_NAME, siteUrl } from '../../lib/site';
-import { indexablePages, nonIndexablePages, pageByPath, TECHNICAL_PAGES } from '../../lib/seo/inventory';
+import {
+  indexablePages,
+  nonIndexablePages,
+  pageByPath,
+  PAGES,
+  TECHNICAL_PAGES,
+} from '../../lib/seo/inventory';
 import { THIN_CONTENT_KINDS } from '../../lib/seo/types';
 import {
   type Finding,
@@ -29,6 +35,7 @@ import {
   checkCalculatorBundles,
   checkFontPreloads,
   checkHeavyLibraries,
+  checkLlmsTxt,
   checkInitialScriptBudget,
   checkPage,
   checkSitemap,
@@ -389,6 +396,34 @@ function main(): void {
     } catch {
       // checkPage meldet bereits ungültige oder nicht absolute Open-Graph-Bilder.
     }
+  }
+
+  // llms.txt: Kurzübersicht für Sprachmodell-Agenten, erzeugt aus dem Inventar.
+  // Geprüft wird der gebaute Text, nicht die Route — nur was im Export liegt,
+  // kann ein Agent abrufen.
+  const llmsPfad = join(OUT, 'llms.txt');
+  if (!existsSync(llmsPfad)) {
+    findings.push({
+      severity: 'fehler',
+      file: OUT,
+      rule: 'llms',
+      message: 'llms.txt fehlt.',
+    });
+  } else {
+    findings.push(
+      ...checkLlmsTxt('out/llms.txt', readFileSync(llmsPfad, 'utf8'), {
+        // llms.txt nennt absolute Adressen; `exportFileCandidates` erwartet
+        // Pfade im Export. Herkunft und Basis-Pfad werden deshalb abgeschnitten.
+        exists: (href) => {
+          const ohneHerkunft = href.startsWith(SITE_ORIGIN) ? href.slice(SITE_ORIGIN.length) : href;
+          const ohneBasis = SITE_BASE_PATH ? ohneHerkunft.replace(SITE_BASE_PATH, '') : ohneHerkunft;
+          return exportFileCandidates(ohneBasis || '/').some((c) => existsSync(join(OUT, c)));
+        },
+        requiredUrls: PAGES.filter((page) => page.indexability === 'index' && page.priority === 'P0').map(
+          (page) => siteUrl(page.path)
+        ),
+      })
+    );
   }
 
   if (!existsSync(join(OUT, 'robots.txt'))) {
