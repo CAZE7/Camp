@@ -21,6 +21,9 @@ const mockVehicle: VehicleTemplate = {
   height: 2,
   roofLength: 4, // 800px width equivalent
   roofWidth: 1.5, // 300px height equivalent
+  exteriorLength: 5.2,
+  exteriorWidth: 2.1,
+  exteriorHeight: 2.2,
 };
 
 describe('useDachNodes', () => {

@@ -30,6 +30,9 @@ const nodeTypes = {
   roofWindow: RoofWindowNode,
 };
 
+/** Meterangabe mit deutschem Dezimalkomma, z. B. 5,41. */
+const formatMeters = (meters: number) => meters.toFixed(2).replace('.', ',');
+
 /** Berechnet einen laienverständlichen Text, wenn ein Node außerhalb der Safe
  *  Zone liegt. Rein anzeigend – die Regel-Logik in validation.ts bleibt
  *  unverändert. */
@@ -270,7 +273,7 @@ function DachPlanerInner() {
               <SelectContent className="border-rule">
                 {vehicleTemplates.map((vehicle) => (
                   <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} {vehicle.version}
+                    {vehicle.model} {vehicle.version}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -279,6 +282,13 @@ function DachPlanerInner() {
               Nutzbare Dachfläche:{' '}
               <strong className="text-ink">
                 {roofWidthCm} × {roofHeightCm} cm
+              </strong>
+            </p>
+            <p className="caption-xs text-ink-soft">
+              Fahrzeug außen:{' '}
+              <strong className="text-ink">
+                {formatMeters(selectedVehicle.exteriorLength)} × {formatMeters(selectedVehicle.exteriorWidth)}{' '}
+                × {formatMeters(selectedVehicle.exteriorHeight)} m
               </strong>
             </p>
           </div>

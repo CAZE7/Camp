@@ -77,10 +77,13 @@ Fahrzeuge genannt: **VW T6 und Sprinter L2H2**. Sie stehen jetzt in
 `lib/author.ts` und in der Autorenvorstellung.
 
 Dabei ist eine Lücke im Planer aufgefallen, die nicht in diesen Bericht gehört,
-aber notiert werden muss: `lib/vehicleTemplates.ts` kennt Ducato, Sprinter und
-Transit — **keinen VW T6**. Wer einen T6 ausbaut, kann sein Fahrzeug im Planer
-nicht auswählen. Maße und Dachfläche für einen T6-Template wären zu erfinden;
-sie fehlen weiterhin.
+aber notiert werden muss: `lib/vehicleTemplates.ts` kannte nur Ducato, Sprinter
+und Transit, aber **keinen VW T6**. Wer einen T6 ausbaut, konnte sein Fahrzeug im
+Planer nicht auswählen. Die Lücke ist am 2026-10-28 geschlossen: Die Vorlagen
+decken jetzt zwölf Baureihen in allen angebotenen Längen- und Dachvarianten ab
+(59 Varianten), darunter T5/T6/T6.1, Crafter/TGE, Vito und Daily. Die Maße
+stammen aus Herstellerangaben und Aufbauunterlagen, die Quellen stehen als
+Kommentar an jeder Baureihe.
 
 Was weiterhin fehlt, ohne dass es sich erfinden lässt: ein Nachweis der
 Erfahrung (Fotos, Messwerte, dokumentierte Umbauten) und eine zweite,

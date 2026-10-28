@@ -15,6 +15,9 @@ describe('validateRoofNodes', () => {
     height: 2,
     roofLength: 4, // 800px
     roofWidth: 1.5, // 300px
+    exteriorLength: 5.2,
+    exteriorWidth: 2.1,
+    exteriorHeight: 2.2,
   };
 
   const roofW_px = mockVehicle.roofWidth * 200; // 300

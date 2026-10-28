@@ -270,10 +270,10 @@ function VehicleConfiguration({
             {vehicleTemplates.map((v) => (
               <SelectItem key={v.id} value={v.id} className="cursor-pointer px-4 py-3 focus:bg-paper">
                 <div className="flex flex-col">
-                  <span className="font-medium text-ink">
-                    {v.brand} {v.model}
+                  <span className="font-medium text-ink">{v.model}</span>
+                  <span className="text-xs text-ink-soft">
+                    {v.version} · {v.brand}
                   </span>
-                  <span className="text-xs text-ink-soft">{v.version}</span>
                 </div>
               </SelectItem>
             ))}
