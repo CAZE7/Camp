@@ -44,7 +44,19 @@ export const SITE_AUTHOR = {
    * Test prüft, dass beide dieselben Fakten nennen.
    */
   backgroundFirstPerson: 'baue Camper selbst aus und studiere an einer Universität',
+  /**
+   * Die Fahrzeuge, an denen die Erfahrung gemacht wurde — vom Betreiber
+   * bestätigt (2026-10-28). Bewusst als Liste: Eine Seite, die „Ducato L2H2"
+   * behauptete, stand hier vorher ohne Beleg.
+   */
+  vehicles: ['VW T6', 'Sprinter L2H2'],
 } as const;
+
+/** Die Fahrzeuge in einem Satz — „VW T6 und Sprinter L2H2". */
+export const vehiclesPhrase = (): string =>
+  SITE_AUTHOR.vehicles.length <= 1
+    ? (SITE_AUTHOR.vehicles[0] ?? '')
+    : `${SITE_AUTHOR.vehicles.slice(0, -1).join(', ')} und ${SITE_AUTHOR.vehicles.at(-1)}`;
 
 /** Absolute Adresse der Autorenvorstellung (für JSON-LD). */
 export const authorProfileUrl = (): string => siteUrl(AUTHOR_PROFILE_PATH);

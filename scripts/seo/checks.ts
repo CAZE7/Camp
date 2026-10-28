@@ -152,6 +152,39 @@ export function checkLlmsTxt(
 }
 
 /**
+ * Interne Bearbeitungsvermerke im ausgelieferten Text.
+ *
+ * Anlass: Auf `/camper-elektrik/stromverbrauch/` stand mitten im Fließtext
+ * „[PRÜFEN: Anlaufstrom im Datenblatt des konkreten Geräts nachsehen]" — eine
+ * Notiz an den Autor, öffentlich lesbar. Solche Marker sind für die Arbeit
+ * richtig und für die Auslieferung falsch; sie fallen beim Lesen der Seite
+ * nicht zwingend auf, weil sie wie ein Hinweis aussehen.
+ *
+ * Geprüft wird der sichtbare Text, nicht das HTML: Ein Marker in einem
+ * Kommentar oder einem Skript ist kein Fehler.
+ */
+export const INTERNAL_MARKERS: readonly string[] = ['[PRÜFEN', '[TODO', '[FIXME', '[XXX', 'BITTE EINTRAGEN'];
+
+export function checkInternalMarkers(file: string, html: string): Finding[] {
+  const findings: Finding[] = [];
+  const body = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
+  const text = unescapeHtml(body.replace(/<[^>]+>/g, ' '));
+
+  for (const marker of INTERNAL_MARKERS) {
+    if (text.toUpperCase().includes(marker)) {
+      findings.push({
+        severity: 'fehler',
+        file,
+        rule: 'interner-vermerk',
+        message: `Bearbeitungsvermerk "${marker}" steht im sichtbaren Text — das ist eine Notiz an den Autor, keine Aussage für den Leser.`,
+      });
+    }
+  }
+
+  return findings;
+}
+
+/**
  * Font-Preloads im Dokumentkopf.
  *
  * Warum das eine Prüfung braucht: React 19 behandelt `<link rel="preload">` als

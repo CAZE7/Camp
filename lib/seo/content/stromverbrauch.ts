@@ -105,7 +105,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'warning',
-        text: 'Der Anlaufstrom eines Kompressors oder Wechselrichters steht nicht im Datenblatt jedes Geräts. Ohne belegtem Wert rechnet das Modell nicht mit Anlauf — [PRÜFEN: Anlaufstrom im Datenblatt des konkreten Geräts nachsehen].',
+        text: 'Der Anlaufstrom eines Kompressors oder Wechselrichters steht nicht in jedem Datenblatt. Wer ihn braucht, findet ihn im Datenblatt des konkreten Geräts — der Planer rechnet ohne ihn und ist damit auf der sicheren Seite: Der Querschnitt wird nach dem Dauerstrom bemessen, nicht nach der Spitze.',
       },
     },
     {

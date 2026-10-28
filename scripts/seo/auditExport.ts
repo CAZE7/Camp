@@ -35,8 +35,9 @@ import {
   checkCalculatorBundles,
   checkFontPreloads,
   checkHeavyLibraries,
-  checkLlmsTxt,
   checkInitialScriptBudget,
+  checkInternalMarkers,
+  checkLlmsTxt,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -209,6 +210,8 @@ function main(): void {
         expectedH1: entry?.h1,
       })
     );
+    // Bearbeitungsvermerke („[PRÜFEN]") gehören nicht in die Auslieferung.
+    findings.push(...checkInternalMarkers(page, html));
     // Schriften: React hoistet `<link rel="preload">` und gibt es zusätzlich an
     // seiner Stelle im Baum aus — vier Schriften standen so achtmal im Kopf.
     // Die Prüfung zählt und prüft die Existenz der Dateien; sie fällt nur auf,

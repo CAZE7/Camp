@@ -6,6 +6,7 @@ import {
   checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
+  checkInternalMarkers,
   checkLlmsTxt,
   checkPage,
   checkSitemap,
@@ -441,6 +442,36 @@ describe('checkLlmsTxt', () => {
       optionen
     );
     expect(findings.some((f) => f.rule === 'LLMS-PLATZHALTER')).toBe(true);
+  });
+});
+
+describe('checkInternalMarkers', () => {
+  it('nimmt einen Text ohne Vermerke hin', () => {
+    expect(
+      checkInternalMarkers('out/seite/index.html', '<p>Der Anlaufstrom steht im Datenblatt.</p>')
+    ).toEqual([]);
+  });
+
+  it('meldet einen Bearbeitungsvermerk im sichtbaren Text', () => {
+    // Genau der Zustand vor 2026-10-28 auf /camper-elektrik/stromverbrauch/.
+    const findings = checkInternalMarkers(
+      'out/seite/index.html',
+      '<p>Ohne belegtem Wert — [PRÜFEN: Anlaufstrom nachsehen].</p>'
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.rule).toBe('interner-vermerk');
+    expect(findings[0]?.severity).toBe('fehler');
+  });
+
+  it('ignoriert Vermerke in Skripten und Kommentaren', () => {
+    // Ein Kommentar ist für Autoren gedacht, nicht für Leser.
+    const html = '<!-- [TODO] später prüfen --><script>const x = "[FIXME]"</script><p>Text.</p>';
+    expect(checkInternalMarkers('out/seite/index.html', html)).toEqual([]);
+  });
+
+  it('erkennt auch den Platzhalter des Impressums', () => {
+    const findings = checkInternalMarkers('out/impressum/index.html', '<p>BITTE EINTRAGEN</p>');
+    expect(findings.some((finding) => finding.message.includes('BITTE EINTRAGEN'))).toBe(true);
   });
 });
 

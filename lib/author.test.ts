@@ -9,6 +9,7 @@ import {
   authorPersonNode,
   authorProfileUrl,
   SITE_AUTHOR,
+  vehiclesPhrase,
 } from './author';
 
 /**
@@ -46,6 +47,13 @@ describe('SITE_AUTHOR', () => {
     const text = [SITE_AUTHOR.role, SITE_AUTHOR.background, SITE_AUTHOR.backgroundFirstPerson].join(' ');
     expect(text).not.toMatch(/\b(Dr\.|Prof\.|Dipl\.|Ing\.|B\.Eng\.|M\.Sc\.|B\.Sc\.)\b/);
     expect(text).not.toMatch(/Elektrofachkraft|Sachverständig|zertifiziert/i);
+  });
+
+  it('nennt die Fahrzeuge, an denen die Erfahrung gemacht wurde', () => {
+    // Vom Betreiber bestätigt (2026-10-28): VW T6 und Sprinter L2H2. Vorher
+    // stand hier ein Ducato L2H2, den niemand bestätigt hatte.
+    expect(SITE_AUTHOR.vehicles).toEqual(['VW T6', 'Sprinter L2H2']);
+    expect(vehiclesPhrase()).toBe('VW T6 und Sprinter L2H2');
   });
 
   it('zeigt in der Fußzeile Name und Rolle, ohne den Anspruch zu überziehen', () => {

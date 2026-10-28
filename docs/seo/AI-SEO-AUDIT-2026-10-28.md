@@ -70,10 +70,17 @@ an einer Universität), seitdem steht sie an vier Stellen:
 | JSON-LD                     | `Person`-Knoten einmal im Wurzel-Layout (`#author`), jede `WebPage` verweist mit `author: { '@id': … }`                |
 | Quelle der Angaben          | `lib/author.ts` — ein Ort für Name, Rolle und Grundlage; ein Test hält ihn mit `SITE_LEGAL` (Impressum) deckungsgleich |
 
-Bewusst nicht erfunden: Studienfach, Hochschule, Fahrzeugmodell. Der bisherige
-Abschnitt nannte einen „Ducato L2H2“ als eigenes Ausbauprojekt; diese Angabe hat
-der Betreiber nicht bestätigt und sie ist deshalb auf „meine eigenen Ausbauten“
-zurückgenommen worden.
+Bewusst nicht erfunden: Studienfach und Hochschule. Der bisherige Abschnitt
+nannte außerdem einen „Ducato L2H2“ als eigenes Ausbauprojekt — eine Angabe, die
+niemand bestätigt hatte. Der Betreiber hat am 2026-10-28 die tatsächlichen
+Fahrzeuge genannt: **VW T6 und Sprinter L2H2**. Sie stehen jetzt in
+`lib/author.ts` und in der Autorenvorstellung.
+
+Dabei ist eine Lücke im Planer aufgefallen, die nicht in diesen Bericht gehört,
+aber notiert werden muss: `lib/vehicleTemplates.ts` kennt Ducato, Sprinter und
+Transit — **keinen VW T6**. Wer einen T6 ausbaut, kann sein Fahrzeug im Planer
+nicht auswählen. Maße und Dachfläche für einen T6-Template wären zu erfinden;
+sie fehlen weiterhin.
 
 Was weiterhin fehlt, ohne dass es sich erfinden lässt: ein Nachweis der
 Erfahrung (Fotos, Messwerte, dokumentierte Umbauten) und eine zweite,

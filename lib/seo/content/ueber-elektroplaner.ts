@@ -17,7 +17,7 @@ import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS } from '@/lib/shortCircuit';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from '@/lib/materials';
 import { VDE_GROUP_FACTORS_MAX_N } from '@/lib/electrical';
 
-import { SITE_AUTHOR } from '../../author';
+import { SITE_AUTHOR, vehiclesPhrase } from '../../author';
 
 import type { SeoPageContent } from '../types';
 
@@ -125,8 +125,8 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       id: 'autor',
       heading: `Autor: ${SITE_AUTHOR.name}`,
       body: [
-        `Ich bin ${SITE_AUTHOR.name}, Selbstausbauer und ${SITE_AUTHOR.role}. Ich ${SITE_AUTHOR.backgroundFirstPerson}. Die Erfahrungswerte auf diesen Seiten stammen aus meinen eigenen Ausbauten — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.`,
-        'Ich schreibe die Artikel als Erfahrungsberichte, nicht als generische Ratgeber. Jede Rechnung habe ich selbst nachgerechnet, jeder Fehler habe ich selbst gemacht und korrigiert. Wo ich keine eigene Messung habe, steht das als Annahme oder [PRÜFEN] daneben.',
+        `Ich bin ${SITE_AUTHOR.name}, Selbstausbauer und ${SITE_AUTHOR.role}. Ich ${SITE_AUTHOR.backgroundFirstPerson}. Die Erfahrungswerte auf diesen Seiten stammen aus meinen eigenen Ausbauten (${vehiclesPhrase()}) — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.`,
+        'Ich schreibe die Artikel als Erfahrungsberichte, nicht als generische Ratgeber. Jede Rechnung habe ich selbst nachgerechnet, jeder Fehler habe ich selbst gemacht und korrigiert. Wo ich keine eigene Messung habe, steht das als Annahme daneben.',
       ],
     },
     {
