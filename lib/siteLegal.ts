@@ -14,13 +14,16 @@
  * Namen und Anschriften wären schlimmer als ein Platzhalter, weil sie die Seite
  * gleichzeitig rechtswidrig und plausibel machen.
  *
- * Normstand (2026): § 5 DDG (Anbieterkennzeichnung, seit 05/2024 Nachfolger von
- * § 5 TMG) und § 18 Abs. 2 MStV (Inhaltsverantwortung, Nachfolger von § 55
- * Abs. 2 RStV). Die SICHTBAREN Zitate auf der Seite lauten noch TMG/RStV —
- * sie sind Teil der eingefrorenen Pixel-Baseline
- * (`tests/e2e/visual.spec.ts-snapshots/route-impressum-*.png`) und werden mit
- * UI-Freigabe zusammen mit den Angaben aktualisiert (FOLLOW-UP, s. Ledger
- * „Achte Fassung").
+ * Normstand (2026): § 5 DDG (Anbieterkennzeichnung, seit 14.05.2024 Nachfolger
+ * von § 5 TMG) und § 18 Abs. 2 MStV (Inhaltsverantwortung, seit 2020
+ * Nachfolger von § 55 Abs. 2 RStV). Beide Vorschriften werden auf der Seite
+ * auch so zitiert — ein Impressum, das ein aufgehobenes Gesetz nennt, sieht
+ * vollständig aus und ist es nicht.
+ *
+ * Stand 2026-10-28: vollständig ausgefüllt. Die Pixel-Baseline der Route
+ * (`route-impressum-{light,dark}-*.png`) zeigt noch den Platzhalter-Zweig und
+ * wird mit dieser Änderung neu aufgenommen (Workflow „Pixel-Baselines
+ * aufnehmen", Freigabe nach Sichtprüfung).
  */
 
 /**
@@ -53,16 +56,22 @@ export const LEGAL_FIELD_LABELS: Readonly<Record<keyof SiteLegal, string>> = {
 };
 
 /**
- * Die Angaben, wie sie im Baum stehen. Solange hier Platzhalter stehen, ist
- * das Impressum unvollständig — die Seite zeigt ihre Aufforderungstexte, und
- * `npm run ci:verify-legal-notice` scheitert im Deploy.
+ * Die Angaben, wie sie im Baum stehen.
+ *
+ * Anbieter ist eine natürliche Person: Nach § 5 DDG Nr. 1 genügt dann der
+ * bürgerliche Name — ein Rechtsformzusatz existiert nicht und darf auch nicht
+ * erfunden werden. Anschrift ist die ladungsfähige Anschrift, kein Postfach.
+ *
+ * `missingLegalFields` und der Deploy-Wächter (`npm run ci:verify-legal-notice`)
+ * prüfen diese fünf Felder weiterhin einzeln: Wer sie später leert oder
+ * überschreibt, bekommt den Mangel im Deploy gemeldet, statt ihn zu erben.
  */
 export const SITE_LEGAL: SiteLegal = {
-  providerName: LEGAL_PLACEHOLDER,
-  street: LEGAL_PLACEHOLDER,
-  postalCodeAndCity: LEGAL_PLACEHOLDER,
-  email: LEGAL_PLACEHOLDER,
-  contentResponsible: LEGAL_PLACEHOLDER,
+  providerName: 'Jonas Rieckhoff',
+  street: 'Franzosenkoppel 46',
+  postalCodeAndCity: '22547 Hamburg',
+  email: 'kontakt@elektroplaner-camper.de',
+  contentResponsible: 'Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg',
 };
 
 /** Ist in diesem Wert noch die Platzhalter-Marke? */

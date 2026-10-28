@@ -65,12 +65,15 @@ describe('checkLegalNotice', () => {
     expect(result.missing).toEqual(['email']);
   });
 
-  it('prüft den echten Stand im Baum (Default-Argument)', () => {
-    // Solange niemand SITE_LEGAL ausfüllt, ist das Impressum unvollständig —
-    // genau der Befund des Audits. Nach dem Ausfüllen wird dieser Test grün.
+  it('prüft den echten Stand im Baum (Default-Argument): vollständig', () => {
+    // Der Wächter läuft im Deploy mit dem Default-Argument — also gegen die
+    // ausgelieferten Angaben. Vorher war hier der Gegenbefund gepinnt („es
+    // fehlt etwas", der Mangel aus dem Audit); seit 2026-10-28 ist er erfüllt.
+    // Bleibt er rot, fehlt eine Pflichtangabe im Deploy.
     const result = checkLegalNotice();
-    expect(result.missing.length).toBeGreaterThan(0);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.missing).toEqual([]);
+    expect(result.message).toMatch(/vollständig/);
   });
 });
 

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import { PageShell } from '@/components/brand/PageShell';
+import { ToolExplainer } from '@/components/seo/ToolExplainer';
+import { HEIZUNG_FAQ, HEIZUNG_EXPLAINER_BLOCKS } from './explainerContent';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -1118,6 +1120,19 @@ export default function HeatingCalculatorPage() {
           </div>
         </div>
       </div>
+
+      {/* Erklärender Teil unter dem Rechner — dieselbe Begründung wie beim
+          Dach-Planer: Die Seite trug bis 2026-10-27 keine einzige
+          Zwischenüberschrift. Die Texte kommen aus `./explainerContent.ts`,
+          damit Anzeige und FAQ-Auszeichnung dieselben Zeichenketten tragen. */}
+      <ToolExplainer
+        kicker="HINTERGRUND // HEIZLAST"
+        title="Wie die Heizlast gerechnet wird"
+        intro="Der Rechner schätzt die nötige Heizleistung aus Hüllfläche, Dämmung und Luftwechsel. Was in der Summe steckt — und welche Fragen sie bewusst offen lässt."
+        blocks={HEIZUNG_EXPLAINER_BLOCKS}
+        faqTitle="Häufige Fragen zur Heizlast"
+        faq={HEIZUNG_FAQ}
+      />
     </PageShell>
   );
 }

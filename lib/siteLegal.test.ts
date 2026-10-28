@@ -18,7 +18,16 @@ import {
  * die Anzeige-Zweige der Seite stehen.
  */
 
-/** Vollständig ausgefüllte Angaben — die Referenz für „fertig". */
+/** Alle fünf Felder offen — die Referenz für „unvollständig". */
+const empty: SiteLegal = {
+  providerName: LEGAL_PLACEHOLDER,
+  street: LEGAL_PLACEHOLDER,
+  postalCodeAndCity: LEGAL_PLACEHOLDER,
+  email: LEGAL_PLACEHOLDER,
+  contentResponsible: LEGAL_PLACEHOLDER,
+};
+
+/** Vollständig ausgefüllte Angaben (fremde Person) — Referenz für „fertig". */
 const filled: SiteLegal = {
   providerName: 'Elektroplaner Ausbau GmbH',
   street: 'Hafenstraße 12',
@@ -44,12 +53,25 @@ describe('missingLegalFields', () => {
     expect(missingLegalFields(filled)).toEqual([]);
   });
 
-  it('der Stand im Baum ist unvollständig — alle fünf Felder offen', () => {
-    // Das ist die Aussage des Audits: Die Angaben fehlen, und zwar vollständig.
-    // Erfüllt jemand sie, wird dieser Test rot und muss MIT dem Eintrag
-    // aktualisiert werden (er dokumentiert dann den erledigten Mangel).
-    expect(missingLegalFields(SITE_LEGAL)).toEqual(Object.keys(LEGAL_FIELD_LABELS));
-    expect(isProviderComplete(SITE_LEGAL)).toBe(false);
+  it('alle Felder offen: jedes einzelne wird benannt', () => {
+    expect(missingLegalFields(empty)).toEqual(Object.keys(LEGAL_FIELD_LABELS));
+    expect(isProviderComplete(empty)).toBe(false);
+  });
+
+  it('der Stand im Baum ist vollständig (Mangel vom 2026-10-28 behoben)', () => {
+    // Vorher war hier der Gegenbefund gepinnt („alle fünf Felder offen") — der
+    // Mangel, den das Audit gemeldet hatte. Jetzt steht der ausgefüllte Stand
+    // im Test, damit eine versehentliche Leerung auffällt: Das Impressum ist
+    // die einzige Seite, deren Text eine Rechtsfolge hat.
+    expect(missingLegalFields(SITE_LEGAL)).toEqual([]);
+    expect(isProviderComplete(SITE_LEGAL)).toBe(true);
+    // Die Werte selbst, nicht nur ihre Vollständigkeit: PLZ und Ort müssen zu
+    // einer echten Anschrift gehören, nicht zu zwei zusammengewürfelten.
+    expect(SITE_LEGAL.providerName).toBe('Jonas Rieckhoff');
+    expect(SITE_LEGAL.street).toBe('Franzosenkoppel 46');
+    expect(SITE_LEGAL.postalCodeAndCity).toBe('22547 Hamburg');
+    expect(SITE_LEGAL.email).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/);
+    expect(SITE_LEGAL.contentResponsible).toContain('Hamburg');
   });
 
   it('ein halb ausgefülltes Impressum zählt als unvollständig', () => {

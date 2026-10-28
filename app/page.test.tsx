@@ -11,7 +11,7 @@ describe('Home Page', () => {
   it('renders the main sections', () => {
     render(<Home />);
 
-    expect(screen.getByRole('heading', { name: /Camper planen/i, level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Camper-Ausbau planen/i, level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Fokus-Themen/i, level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Wissen für den Ausbau/i, level: 2 })).toBeInTheDocument();
     expect(screen.getByText(/Dach, Elektrik, Heizung und Sicherheit an einem Ort\./)).toBeInTheDocument();
@@ -40,6 +40,35 @@ describe('Home Page', () => {
     // KI-Assistent wurde entfernt (toter Link auf /ki-assistent/, Audit D10).
     // Negativ-Assertion hält fest, dass er nicht zurückkommt, ohne neue Seite.
     expect(within(main).queryByRole('link', { name: /Assistent/ })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Die Startseite ist die meistbesuchte und die dünnste Seite der Auslieferung
+   * (gemessen 2026-10-27: 456 Wörter). Diese Prüfung hält fest, dass sie die
+   * drei Fragen beantwortet, die ein Erstbesuch stellt — und dass die Antworten
+   * als Text dastehen, nicht als Bild oder als Inhalt hinter JavaScript.
+   */
+  it('ordnet die Seite ein und beantwortet die häufigsten Fragen', () => {
+    render(<Home />);
+
+    const main = screen.getByRole('main');
+    expect(
+      within(main).getByRole('heading', { name: /Was der Elektroplaner ist/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(within(main).getByRole('heading', { name: /Was diese Seite ist/i, level: 3 })).toBeInTheDocument();
+    expect(
+      within(main).getByRole('heading', { name: /Was sie nicht ersetzt/i, level: 3 })
+    ).toBeInTheDocument();
+
+    // FAQ: genau eine H2 „Häufige Fragen …", darunter die Aufklappliste. Die
+    // Überschrift beginnt mit „Häufige Fragen", weil die Export-Prüfung den
+    // FAQ-Block genau daran findet (`scripts/seo/checks.ts`).
+    const faqHeading = within(main).getByRole('heading', { name: /^Häufige Fragen/i, level: 2 });
+    expect(faqHeading).toBeInTheDocument();
+    expect(within(main).getAllByText(/Was ist der Elektroplaner\?/).length).toBeGreaterThan(0);
+    expect(within(main).getAllByText(/Was kostet der Elektroplaner\?/).length).toBeGreaterThan(0);
+    // Der Satz, der die Rechnungen einordnet, muss im Klartext stehen.
+    expect(within(main).getAllByText(/Näherungen mit konservativen Annahmen/).length).toBeGreaterThan(0);
   });
 
   it('renders the guide links', () => {
