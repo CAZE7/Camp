@@ -130,7 +130,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       heading: 'Wie viel Ladestrom: 30 A oder 50 A',
       body: [
         'Der Ladestrom bestimmt, wie viel Fahrzeit eine leere Bordbatterie braucht. Die Rechnung ist einfach: Kapazität geteilt durch Strom — 100 Ah mit 30 A sind gut drei Stunden, mit 50 A zwei. Dazu kommt die Konstantspannungsphase am Ende, in der der Strom von selbst sinkt und die letzten Prozent langsamer fließen; praktisch landen 100 Ah deshalb bei etwa vier Stunden mit dem 30-A-Booster und gut zweieinhalb mit dem 50-A-Gerät.',
-        'Gegen den größeren Booster sprechen nicht die Kosten allein: Der Ladestrom muss zur Batterie passen (LiFePO4-Datenblätter nennen häufig 0,3 bis 0,5 C als Dauerstrom, also 30 bis 50 A bei 100 Ah), zur Lichtmaschine und zur Zuleitung.',
+        'Gegen den größeren Booster sprechen nicht die Kosten allein: Der Ladestrom muss zur Batterie passen (LiFePO4-Datenblätter nennen häufig 0,3 bis 0,5 C als Dauerstrom, also 30 bis 50 A bei 100 Ah; AGM/Gel liegen bei 0,1 bis 0,2 C), zur Lichtmaschine und zur Zuleitung.',
         'Die Faustregel, die aus beidem folgt: Der Booster darf den Ladestrom der Batterie ausschöpfen, aber nicht überfordern. Wer dauerhaft mit 50 A in eine 100-Ah-Batterie lädt, fährt am oberen Rand des Datenblattwerts — wer mit 30 A lädt, liegt sicher darunter und braucht eine Querschnittsstufe weniger. Die folgende Gegenüberstellung zeigt, was das für Fahrzeit und Leitung bedeutet.',
       ],
       table: {
@@ -143,11 +143,11 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
           'Kabelquerschnitt ab 6 m',
         ],
         rows: [
-          ['20 A', 'gut 5 Stunden', querschnitt(20, 4), querschnitt(20, 6)],
+          ['20 A', 'etwa 6 Stunden', querschnitt(20, 4), querschnitt(20, 6)],
           ['30 A', 'etwa 4 Stunden', querschnitt(30, 4), querschnitt(30, 6)],
           ['50 A', 'etwa 2,5 Stunden', querschnitt(50, 4), querschnitt(50, 6)],
         ],
-        note: 'Fahrzeiten ohne Konstantspannungsphase (die letzten 20 bis 30 % Füllstand fließen langsamer) und ohne Solar-Ertrag während der Fahrt. Die Querschnitte stammen aus der Bemessungstabelle unten — dieselbe Rechnung für dieselben Ströme.',
+        note: 'Fahrzeiten mit Aufschlag für die Konstantspannungsphase (die letzten 20 bis 30 % Füllstand fließen langsamer) und ohne Solar-Ertrag während der Fahrt; bezogen auf 100 Ah nutzbare Kapazität (LiFePO4). Bei AGM halbiert sich die nutzbare Menge. Die Querschnitte stammen aus der Bemessungstabelle unten — dieselbe Rechnung für dieselben Ströme.',
       },
     },
     {
@@ -203,7 +203,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       heading: 'Absicherung: am Batteriepol, nicht am Booster',
       body: [
         `Die Plusleitung von der Starter- oder Bordbatterie zum Booster ist eine Leitung an einer Quelle mit sehr hohem Kurzschlussstrom. Sie wird deshalb an ihrem Anfang abgesichert — so nah wie möglich an der Batterie, im Modell höchstens ${Math.round(FUSE_MAX_UNPROTECTED_LENGTH_M * 100)} cm entfernt. Der Booster selbst schützt diese Leitung nicht: Seine Eingangssicherung wäre im Fehlerfall stromabwärts der Fehlerstelle.`,
-        `Die Sicherungsgröße folgt der Leitung, nicht dem Booster: Sie muss über dem Betriebsstrom des Boosters liegen und unter dem, was die Leitung dauerhaft führen kann. Die größte zulässige Sicherung je Querschnitt im Modell dieser Auslieferung: 16 mm² bis ${maxSicherung(16)}, 25 mm² bis ${maxSicherung(25)}, 35 mm² bis ${maxSicherung(35)}.`,
+        `Die Sicherungsgröße folgt der Leitung, nicht dem Booster: Sie muss über dem Betriebsstrom des Boosters liegen und unter dem, was die Leitung dauerhaft führen kann. Für Dauerlast ist eine Reserve von etwa 25 % üblich; die konkrete Sicherung muss zur Leitung passen. Die größte zulässige Sicherung je Querschnitt im Modell dieser Auslieferung: 16 mm² bis ${maxSicherung(16)}, 25 mm² bis ${maxSicherung(25)}, 35 mm² bis ${maxSicherung(35)}.`,
       ],
       table: {
         caption: 'Sicherungswahl: Leitungsgrenze und Boosterstrom zusammenbringen (Modellwerte)',
@@ -214,14 +214,14 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
           ['25,0 mm²', maxSicherung(25), '50 A'],
           ['35,0 mm²', maxSicherung(35), '50 A (lange Leitung)'],
         ],
-        note: 'Modellwerte aus `lib/electrical.ts` (Belastbarkeit × Derating, auf die Normgrößen der Sicherungsreihe abgebildet). Das Abschaltvermögen der Sicherung muss zum Kurzschlussstrom der Batterie passen — bei LiFePO4 regelmäßig eine Bauform ab MIDI/MEGA, nicht die Flachsicherung.',
+        note: 'Modellwerte aus `lib/electrical.ts` (Belastbarkeit × Derating, auf die Normgrößen der Sicherungsreihe abgebildet). Die Spalte „größte zulässige Sicherung" ist die Obergrenze, nicht automatisch die richtige Dauerlast-Sicherung; für Dauerlast etwa 25 % Reserve einplanen. Das Abschaltvermögen der Sicherung muss zum Kurzschlussstrom der Batterie passen — bei LiFePO4-Bänken regelmäßig mindestens MRBF oder Class T, nicht die Flachsicherung. BMS und Datenblatt der konkreten Batterie prüfen.',
       },
       subsections: [
         {
           heading: 'Zwei Sicherungen pro Leitung',
           body: [
-            'Die Sicherung an der Quelle schützt die Leitung, die Sicherung am Booster-Ausgang schützt die Leitung zur Bordbatterie — das ist kein Widerspruch, sondern dieselbe Regel zweimal angewendet: Jede Leitung wird an ihrem Anfang abgesichert.',
-            'Die Ausgangsseite liegt spannungslos, wenn der Booster nicht arbeitet. Die Absicherung dort ist deshalb Teil des Anlagenschutzes (Leitungsschutz bei einem Fehler im Ladegerät), nicht des Personenschutzes.',
+            'Die Sicherung an der Quelle schützt die Leitung, die Sicherung am Batteriepol der Bordbatterie schützt die Leitung zwischen Booster und Batterie — denn die Bordbatterie speist den Kurzschlussstrom in diese Leitung. Jede Leitung wird an ihrem Anfang abgesichert.',
+            'Die Ausgangsseite ist mit der Bordbatterie verbunden und liegt auch im Stand an Batteriespannung. Die Absicherung am Batteriepol schützt die Leitung gegen den Kurzschlussstrom der Bordbatterie; sie ist kein Personenschutz.',
           ],
         },
       ],
@@ -287,8 +287,8 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
           'Querschnitt nach dem Booster-Ausgangsstrom wählen, obwohl die Eingangsleitung den höheren Strom führt.',
           'Nur die Plusleitung dick verlegen und den Masseweg über ein dünnes Chassisblech oder die Fahrzeugkarosserie mit unbekanntem Querschnitt führen.',
           'Die Sicherung erst am Booster setzen statt am Batteriepol — die längste, ungeschützte Strecke liegt dann direkt an der Batterie.',
-          'Ein Trennrelais für eine LiFePO4-Batterie einbauen und sich wundern, dass die Batterie nie voll wird und die Lichtmaschine warm wird.',
-          'Kennlinie und Ladeschlussspannung nicht auf die Chemie einstellen — die Batterie bleibt bei 80 % hängen.',
+          'Ein Trennrelais für eine LiFePO4-Batterie einbauen und sich wundern, dass die Batterie nicht zuverlässig voll wird und die Lichtmaschine stark belastet wird.',
+          'Kennlinie und Ladeschlussspannung nicht auf die Chemie einstellen — die Batterie kann bei 80 % hängen bleiben.',
           'Booster ohne Steuerleitung betreiben und ihn bei jeder Solar-Ladung anlaufen lassen; die Bordbatterie entlädt sich dann über die Starterbatterie, wenn die Anlage steht.',
         ],
       },
@@ -376,13 +376,13 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
         'Schutz bei Überstrom: Koordination von Betriebsstrom, Sicherungsgröße und Leitungsbelastbarkeit.',
     },
     {
-      label: 'ISO 10133 § 8.1',
+      label: 'ISO 13297:2020 § 8.1',
       detail: 'Schutzorgan unmittelbar am Quellpunkt — im Modell 0,2 m ab dem Batteriepol.',
     },
     {
       label: 'DIN VDE 0100-721',
       detail:
-        'Kleinspannungsanlagen in Caravans und Motorcaravans: Bezugsrahmen für Absicherung und Leitungsschutz in dieser Auslieferung.',
+        'Elektrische Anlagen in Caravans und Motorcaravans: Bezugsrahmen für Absicherung und Leitungsschutz in dieser Auslieferung.',
     },
   ],
   assumptions: [

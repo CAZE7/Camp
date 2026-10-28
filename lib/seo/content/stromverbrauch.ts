@@ -14,12 +14,11 @@ import type { SeoPageContent } from '../types';
 
 /** Typischer Tageshaushalt im Weekend-Camper (Beispielwerte, keine Messwerte). */
 const VERBRAUCHER_TAGE = [
-  ['Kompressor-Kühlbox (40 l)', '4,5 A', '10 h', '45 W', '540 Wh'],
+  ['Kompressor-Kühlbox (40 l)', '3,75 A', '10 h', '45 W', '450 Wh'],
   ['LED-Beleuchtung', '1 A', '5 h', '12 W', '60 Wh'],
-  ['Wasserpumpe', '5 A', '0,5 h', '60 W', '30 Wh'],
+  ['Wasserpumpe', '5 A', '0,4 h', '60 W', '24 Wh'],
   ['Laptop über 12-V-Netzteil', '5,4 A', '4 h', '65 W', '260 Wh'],
   ['Standheizung Gebläse (Diesel)', '2,9 A', '8 h', '35 W', '280 Wh'],
-  ['Handy- und Tablet-Ladung', '2 A', '3 h', '24 W', '72 Wh'],
 ] as const;
 
 export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
@@ -27,7 +26,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
   slug: 'stromverbrauch',
   topicId: 'stromverbrauch',
   kind: 'cluster',
-  title: 'Stromverbrauch im Camper berechnen: Tabelle typischer Verbraucher',
+  title: 'Stromverbrauch im Camper: Tabelle und Berechnung',
   absoluteTitle: true,
   description:
     'Tabelle typischer 12-V-Verbraucher im Camper mit Watt, Stunden und Wattstunden pro Tag — plus Rechenweg zur Batteriegröße.',
@@ -42,8 +41,8 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       id: 'kernantwort',
       heading: 'Wie viel Strom verbraucht ein Camper pro Tag?',
       body: [
-        'Das hängt von den Geräten ab. Im Beispielhaushalt unten sind es 1 074 Wh je Tag — vor allem durch Kühlbox (540 Wh), Standheizungsgebläse (280 Wh) und Laptop (260 Wh). Ohne eigene Liste ist jede Pauschalzahl eine Schätzung.',
-        'Der Rechenweg: P = U · I (Spannung mal Strom ergibt Leistung in Watt) und E = P · t (Leistung mal Stunden ergibt Energie in Wattstunden). Bei 12 V Nennspannung und 4,5 A Betriebsstrom der Kühlbox über 10 Stunden ergeben sich 540 Wh.',
+        'Das hängt von den Geräten ab. Im Beispielhaushalt unten sind es 1 074 Wh je Tag — vor allem durch Kühlbox (450 Wh), Standheizungsgebläse (280 Wh) und Laptop (260 Wh). Ohne eigene Liste ist jede Pauschalzahl eine Schätzung.',
+        'Der Rechenweg: P = U · I (Spannung mal Strom ergibt Leistung in Watt) und E = P · t (Leistung mal Stunden ergibt Energie in Wattstunden). Bei 45 W Kühlbox-Leistung über 10 Stunden ergeben sich 450 Wh.',
         'Für die Batteriedimensionierung ist nicht der Nennwert entscheidend, sondern die niedrigste im Betrieb auftretende Batteriespannung (z. B. 10,7 V bei entladener Bleibatterie unter Last). Bei sinkender Spannung steigt der Strom bei gleicher Leistungsabnahme (I = P / U).',
       ],
       callout: {
@@ -56,7 +55,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       heading: 'Der Rechenweg: von Watt zu Wattstunden',
       formula: {
         expression: 'E_Wh = U_V · I_A · t_h',
-        caption: 'Beispiel: 12 V · 4,5 A · 10 h = 540 Wh je Tag für die Kühlbox.',
+        caption: 'Beispiel: 45 W · 10 h = 450 Wh je Tag für die Kühlbox.',
       },
       definitions: [
         { term: 'U', description: 'Spannung in Volt (12 V Nennspannung im Camper-Bordnetz).' },
@@ -68,7 +67,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
         },
       ],
       body: [
-        'Die vier Engineering-Nuancen für den Praxisalltag: (1) Bei 10,7 V statt 12 V zieht eine 20 W-USB-Doppelsteckdose (5 V, 2 × 2 A = 20 W Nennleistung) inklusive 20 % Puffer (24 W) bei 10,7 V real 2,24 A statt der theoretischen 1,66 A bei 12 V. (2) Ein 20 % Sicherheitspuffer für Wandlerverluste gehört dazu. (3) Der Spannungsfall von über 4 % (0,48 V bei 12 V) führt dazu, dass empfindliche Geräte wie Kompressor-Kühlboxen, Dieselstandheizungen in der Glühphase oder Wechselrichter wegen Unterspannung abschalten. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
+        'Die vier Engineering-Nuancen für den Praxisalltag: (1) Bei 10,7 V statt 12 V zieht eine 20 W-USB-Doppelsteckdose (5 V, 2 × 2 A = 20 W Nennleistung) inklusive 20 % Puffer (24 W) bei 10,7 V real 2,24 A statt der theoretischen 1,66 A bei 12 V. (2) Ein 20 % Sicherheitspuffer für Wandlerverluste gehört dazu. (3) Ein Spannungsfall von über 4 % (0,48 V bei 12 V) kann dazu führen, dass empfindliche Geräte wie Kompressor-Kühlboxen, Dieselstandheizungen in der Glühphase oder Wechselrichter wegen Unterspannung abschalten; die Schwelle steht im Datenblatt. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
       ],
     },
     {
@@ -77,9 +76,9 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       body: [
         'Die Werte unten sind Beispielwerte aus dem 12V-Elektroplaner und Herstellerangaben — keine Messwerte deines Fahrzeugs. Deine eigenen Geräte können deutlich abweichen, besonders bei Kompressor-Kühlboxen, deren Laufzeit von Umgebungstemperatur und Öffnungsdauer abhängt.',
         'Die Spalte „Energie" ist bereits gerechnet (Watt × Stunden). Die Gesamtsumme ist der Eingabewert für die Batteriedimensionierung.',
-        'Die Standheizung trägt mit 280 Wh am meisten zur Wärme bei — nicht weil sie elektrisch heizt, sondern weil das Gebläse Stunden läuft. Die eigentliche Heizleistung kommt aus dem Diesel, nicht aus der Batterie. Das ist ein häufiger Denkfehler: Die Standheizung wird als reiner Stromverbraucher eingeplant, obwohl sie nur das Gebläse mit Strom versorgt.',
+        'Die Standheizung trägt 280 Wh zum Tagesbedarf bei — nicht weil sie elektrisch heizt, sondern weil das Gebläse Stunden läuft. Die eigentliche Heizleistung kommt aus dem Diesel, nicht aus der Batterie. Das ist ein häufiger Denkfehler: Die Standheizung wird als reiner Stromverbraucher eingeplant, obwohl sie nur das Gebläse mit Strom versorgt.',
         'Wer zwei Tage autark stehen will, braucht doppelt so viel nutzbare Energie: rund 2 148 Wh. Bei 90 % Entladetiefe (LiFePO4 im Modell) und 12 V Nennspannung sind das etwa 200 Ah Nennkapazität.',
-        '[Erfahrung] Ich habe die Standheizung meines Ducato anfangs nur nachts auf niedriger Stufe laufen lassen. Das senkt den Tagesbedarf um rund 140 Wh — das reicht bei knapp bemessener Batterie für einen zusätzlichen autarken Tag. Foto: Tagesverbrauch-Tabelle im 12V-Elektroplaner.',
+        '[Beispiel] Die niedrige Stufe über Nacht statt Dauerbetrieb senkt den Tagesbedarf im Modell um rund 140 Wh — bei knapp bemessener Batterie kann das den Unterschied auf einen zusätzlichen autarken Tag machen.',
       ],
       table: {
         caption: 'Beispielhafter Tageshaushalt im 12-V-Camper (Modellwerte)',
@@ -154,7 +153,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
     {
       question: 'Wie viel Strom verbraucht ein Camper pro Tag?',
       answer:
-        'Das hängt von den Geräten ab. Im Beispielhaushalt oben sind es 1 074 Wh je Tag — vor allem durch Kühlbox (540 Wh), Standheizungsgebläse (280 Wh) und Laptop (260 Wh). Ohne eigene Liste ist jede Pauschalzahl eine Schätzung.',
+        'Das hängt von den Geräten ab. Im Beispielhaushalt oben sind es 1 074 Wh je Tag — vor allem durch Kühlbox (450 Wh), Standheizungsgebläse (280 Wh) und Laptop (260 Wh). Ohne eigene Liste ist jede Pauschalzahl eine Schätzung.',
     },
     {
       question: 'Rechnen alle Verbraucher mit 12 V?',

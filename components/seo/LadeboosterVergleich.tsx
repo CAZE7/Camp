@@ -105,7 +105,7 @@ export function LadeboosterVergleich() {
                 </p>
               </div>
               <div className="lb-step__meta">
-                <strong>ab ca. 150 €</strong>geringer Aufwand
+                <strong>ab ca. 168 €</strong>geringer Aufwand
               </div>
             </article>
             <article className="lb-step">
@@ -183,9 +183,9 @@ export function LadeboosterVergleich() {
               <div className="lb-step__body">
                 <h4>Ladegerät und Booster in einem Gehäuse</h4>
                 <p>
-                  Büttner MT BCB (20–60 A Booster plus 230-V-Lader) oder Renogy DC/DC mit MPPT (50 A gesamt).
-                  Platzsparend und aufgeräumt, aber mit eigenen Grenzen: Büttner endet bei 60 A, Renogy teilt
-                  die 50 A zwischen Solar und Lichtmaschine auf.
+                  Büttner MT BCB (30/30/20 bis 60/40/40: Booster plus 230-V-Lader) oder Renogy DC/DC mit MPPT
+                  (50 A gesamt). Platzsparend und aufgeräumt, aber mit eigenen Grenzen: Büttner endet bei 60
+                  A, Renogy teilt die 50 A zwischen Solar und Lichtmaschine auf.
                 </p>
               </div>
               <div className="lb-step__meta">
@@ -225,7 +225,7 @@ export function LadeboosterVergleich() {
                   <td>Victron Orion-Tr Smart 12/12-30</td>
                   <td>30 A</td>
                   <td>nein</td>
-                  <td>ca. 150 €</td>
+                  <td>ab ca. 168 €</td>
                   <td>16-mm²-Grenze; parallel möglich, Lastverteilung ungleich</td>
                 </tr>
                 <tr>
@@ -260,7 +260,7 @@ export function LadeboosterVergleich() {
                   <td>Renogy 50 A DC/DC mit MPPT</td>
                   <td>50 A gesamt</td>
                   <td>IGN</td>
-                  <td>ca. 169 €</td>
+                  <td>ca. 210 €</td>
                   <td>25 A je Quelle im Hybridbetrieb; 11,5-V-Schwelle</td>
                 </tr>
                 <tr>
@@ -282,7 +282,10 @@ export function LadeboosterVergleich() {
                   <td>110–120 A (angeblich)</td>
                   <td>je nach Gerät</td>
                   <td>ca. 180 € (beobachtet)</td>
-                  <td>keine Prüfbarkeit, kein Support, keine Gewährleistung</td>
+                  <td>
+                    keine Prüfbarkeit; Support und Rücksendung praktisch schwer durchsetzbar — die gesetzliche
+                    Gewährleistung bei Kauf in Deutschland bleibt bestehen
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -351,7 +354,7 @@ export function LadeboosterVergleich() {
                 </div>
                 <div>
                   <dt>Preis</dt>
-                  <dd>ab ca. 150 €</dd>
+                  <dd>ab ca. 168 €</dd>
                 </div>
               </dl>
               <p className="lb-device__copy">
@@ -573,11 +576,11 @@ export function LadeboosterVergleich() {
               <article className="lb-compact">
                 <h4>Büttner MT BCB</h4>
                 <p>
-                  3-in-1 aus 230-V-Lader und Booster, 20–60 A. Beim 40/40/30 muss in Fahrzeugen mit EBL auf 30
-                  A begrenzt werden; der 30/30/20 braucht ein Hochlastrelais. Einen 90-A-Booster gibt es
-                  nicht.
+                  3-in-1 aus 230-V-Lader und Booster, 30/30/20 bis 60/40/40. Beim 40/40/30 muss in Fahrzeugen
+                  mit EBL auf 30 A begrenzt werden; der 30/30/20 braucht ein Hochlastrelais. Einen
+                  90-A-Booster gibt es nicht.
                 </p>
-                <span className="lb-compact__meta">702–1.289 € · kein 90-A-Modell</span>
+                <span className="lb-compact__meta">959–1.289 € · kein 90-A-Modell</span>
               </article>
               <article className="lb-compact">
                 <h4>Renogy 50 A DC/DC mit MPPT</h4>
@@ -585,7 +588,7 @@ export function LadeboosterVergleich() {
                   50 A sind die Gesamtleistung über beide Quellen. Im Hybridbetrieb liefert jede Quelle
                   maximal 25 A. Wer 50 A aus der Lichtmaschine erwartet, während Solar läuft, wird enttäuscht.
                 </p>
-                <span className="lb-compact__meta">ab 169 € · kombiniert, nicht additiv</span>
+                <span className="lb-compact__meta">ca. 210 € · kombiniert, nicht additiv</span>
               </article>
               <article className="lb-compact">
                 <h4>Sterling Saturn BB12120</h4>
@@ -1341,7 +1344,7 @@ export function LadeboosterVergleich() {
                 </li>
                 <li>
                   <a href="https://www.campingwagner.de/de/p/buettner-elektronik-bcb-iuou-lader-booster-kombination-batterie-control-booster_m7469">
-                    CampingWagner: Büttner 25/20, 702 €
+                    CampingWagner: Büttner 25/20, 702 € (nicht die MT-BCB-Baureihe 30/30/20–60/40/40)
                   </a>
                 </li>
                 <li>

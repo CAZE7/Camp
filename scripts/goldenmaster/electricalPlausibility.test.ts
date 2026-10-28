@@ -194,7 +194,7 @@ describe('Golden-Master: elektrische Plausibilität (AUDIT E2)', () => {
 
   it('FUSE_MAX_UNPROTECTED_SOURCE nennt die Normquellen (keine erfundene VDE-Klausel)', () => {
     // AGENTS.md §5: Normaussagen brauchen eine Quelle im Text.
-    expect(FUSE_MAX_UNPROTECTED_SOURCE).toMatch(/ISO 10133/);
+    expect(FUSE_MAX_UNPROTECTED_SOURCE).toMatch(/ISO 13297/);
     expect(FUSE_MAX_UNPROTECTED_SOURCE).toMatch(/ABYC E-11/);
   });
 });

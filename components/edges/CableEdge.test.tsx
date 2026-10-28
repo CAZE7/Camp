@@ -586,7 +586,7 @@ describe('ELE-004 — 20-cm-Hauptsicherungsregel, normativ verankert', () => {
     expect(rule!.severity).toBe('critical');
     expect(rule!.expectedValue).toBe(FUSE_MAX_UNPROTECTED_LENGTH_M);
     // Normquelle wandert bis ins Chip-Detail: ISO-Grenze UND ABYC-Referenz.
-    expect(rule!.source).toContain('ISO 10133:2000');
+    expect(rule!.source).toContain('ISO 13297:2020');
     expect(rule!.source).toContain('178 mm');
   });
 

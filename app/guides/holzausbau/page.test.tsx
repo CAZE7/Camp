@@ -13,7 +13,7 @@ describe('HolzausbauGuide Component', () => {
     expect(mainHeading).toHaveTextContent('Holzausbau im Camper: sechs Schritte');
   });
 
-  it('renders all 6 BEDMAS section headings', () => {
+  it('renders all 6 section headings', () => {
     render(<HolzausbauGuide />);
 
     // Define the expected section headings (number + German step title)

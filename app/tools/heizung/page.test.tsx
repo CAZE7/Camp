@@ -126,8 +126,8 @@ describe('HeatingCalculatorPage', () => {
     fireEvent.change(tempInsideInput, { target: { value: '18' } });
     fireEvent.change(tempOutsideInput, { target: { value: '-2' } });
 
-    // With smaller delta T, Autoterm Air 2D (Diesel) will modulate or fit optimal range perfectly
-    expect(screen.getByText(/Auslegung Optimal/i)).toBeInTheDocument();
+    // With smaller delta T, Autoterm Air 2D (Diesel) covers the calculated load.
+    expect(screen.getByText(/Auslegung passt/i)).toBeInTheDocument();
 
     // Scenario 2: Underdimensioniert (extremely high load exceeding 2000W of default Autoterm 2D)
     fireEvent.change(tempInsideInput, { target: { value: '25' } });

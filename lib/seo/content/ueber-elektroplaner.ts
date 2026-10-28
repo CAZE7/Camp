@@ -53,12 +53,12 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       heading: 'Wie gerechnet wird',
       list: {
         items: [
-          `Spannungsfall über die Kupfer-Leitfähigkeit κ = ${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) bei 20 °C (Kehrwert von ρ = ${COPPER_RESISTIVITY_OHM_MM2_PER_M} Ω·mm²/m, der in den Branchentabellen übliche Verlegepraxis-Wert).`,
+          `Spannungsfall über die Kupfer-Leitfähigkeit κ = ${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) bei 20 °C (Kehrwert von ρ = ${COPPER_RESISTIVITY_OHM_MM2_PER_M.toLocaleString('de-DE')} Ω·mm²/m, der in den Branchentabellen übliche Verlegepraxis-Wert).`,
           'Querschnittsbemessung in beide Richtungen: A = I · 2L / (κ · ΔU) sucht den Querschnitt, ΔU = I · 2L / (κ · A) bewertet eine vorhandene Leitung. Es gibt keinen zweiten Rechenweg.',
-          'Strombelastbarkeit nach DIN VDE 0298-4 (Verlegeart B2, 30 °C, zwei belastete Adern) mit einem dokumentierten Derating von 0,7 für Bündelung und höhere Umgebungstemperatur.',
+          'Strombelastbarkeit nach DIN VDE 0298-4 (Verlegeart B2, 30 °C, zwei belastete Adern) mit einem dokumentierten Derating von 0,7 als Modellannahme für Bündelung und höhere Umgebungstemperatur.',
           `Sicherungen nach der Kette I_B ≤ I_n ≤ I_z: Die größte zulässige Sicherung folgt der belastbaren Leitung, nicht dem Verbraucher. Bündel bis ${VDE_GROUP_FACTORS_MAX_N} Stromkreise werden über Häufungsfaktoren des Modells abgebildet.`,
           'Kapazität über Entladetiefe je Chemie und den Peukert-Effekt — beides als Modellgröße benannt, nicht als Messung ausgegeben.',
-          'Solar über spezifischen Ertrag, Winterfaktor (35 % des Sommerwerts) und Ladezeit-Aufschlag (1,15).',
+          'Solar über spezifischen Ertrag, Winterfaktor (35 % des Sommerwerts als Modellwert für gut geneigte Südlage; flaches Dach 10–20 %) und Ladezeit-Aufschlag (1,15).',
         ],
       },
       body: [
@@ -73,8 +73,8 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
           'DIN VDE 0298-4 — Strombelastbarkeit der Leitungen (Modellspalte Verlegeart B2).',
           'DIN VDE 0100-430 — Schutz bei Überstrom, Koordination von Betriebsstrom, Sicherung und Leitungsbelastbarkeit.',
           'DIN VDE 0100-520 — Auswahl und Errichtung elektrischer Betriebsmittel, Spannungsfall.',
-          'DIN VDE 0100-721 — Kleinspannungsanlagen in Caravans und Motorcaravans.',
-          'ISO 10133:2000 § 8.1 — Schutzorgan am Quellpunkt (200 mm) bei Kleinspannungs-Gleichstromanlagen.',
+          'DIN VDE 0100-721 — Elektrische Anlagen in Caravans und Motorcaravans.',
+          'ISO 13297:2020 § 8.1 — Schutzorgan am Quellpunkt (200 mm) bei Small Craft; für Caravans eine Praxisempfehlung.',
           'IEC 60364-5-54 (Schutzleiter), IEC 60898-1 (Leitungsschutzschalter), IEC 60364-4-41 (Abschaltbedingung) — die 230-V-Prüfungen.',
           'NEC 690.8 / 690.9 — Ableitung des Sicherungsfaktors im Solarkreis (1,5625 × Isc).',
         ],

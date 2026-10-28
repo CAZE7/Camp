@@ -278,7 +278,7 @@ describe('useLiveValidation', () => {
       expect(warning!.message).toContain('ohne Schutzorgan');
       // Abhilfe kommt als fertiger Vorschlag aus dem Ereignis (kein zweiter Textpfad).
       expect(warning!.remedy).toContain('Sicherung');
-      expect(warning!.source).toContain('ISO 10133');
+      expect(warning!.source).toContain('ISO 13297');
     });
 
     it('meldet dieselbe Aussage nicht mehr unter der alten Planer-ID', () => {

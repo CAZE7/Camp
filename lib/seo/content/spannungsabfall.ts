@@ -92,7 +92,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
         caption: 'Größter Strom bis 3 % Spannungsfall, aus I = κ · A · ΔU / (2 · L)',
         head: ['Querschnitt', 'bei 2,5 m', 'bei 5 m', 'bei 10 m'],
         rows: REACH_ROWS,
-        note: 'Beispiel: 2,5 mm² trägt auf 5 m noch 13,1 A bis zur Planungsgrenze. Wer 2 % statt 3 % ansetzt, muss diesen Wert mit 0,66 multiplizieren.',
+        note: 'Beispiel: 2,5 mm² trägt auf 5 m noch 5,2 A bis zur Planungsgrenze; 13,1 A gelten auf 2 m. Wer 2 % statt 3 % ansetzt, muss diesen Wert mit 0,66 multiplizieren.',
       },
       body: [
         'Die Tabelle antwortet auf die praktische Frage („reicht mein vorhandenes Kabel für diesen Verbraucher?"), die Formel auf die Planungsfrage. Beide gehören zusammen: Wer den Tagesbedarf kennt, kann die Leitungslänge als Entwurfsgröße begreifen und den Querschnitt danach wählen.',
@@ -127,7 +127,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
         {
           term: `${VOLTAGE_DROP_PCT_CRITICAL} % — Verstoßgrenze`,
           description:
-            'Der Planer meldet ab hier einen Fehler. Ein Verbraucher, der bei 12,8 V spezifiziert ist, arbeitet bei 11,5 V nicht mehr zuverlässig.',
+            'Ab mehr als 3 % meldet der Planer einen Verstoß; ab mehr als 4 % gilt die Stufe als kritisch. Ob ein Gerät bei der verbleibenden Spannung abschaltet, steht im Datenblatt — ein pauschaler Gerätegrenzwert lässt sich daraus nicht ableiten.',
         },
       ],
       callout: {
@@ -165,7 +165,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
     {
       question: 'Wie viel Spannungsabfall ist bei 12 V zulässig?',
       answer:
-        'Camp dimensioniert mit 3 % (0,36 V). Für empfindliche Verbraucher sind 2 % (0,24 V) die bessere Zielmarke, ab 4 % meldet der Planer einen Verstoß. Eine Normgrenze für 12-V-Bordnetze in Fahrzeugen gibt es nicht: DIN VDE 0298-4 nennt Strombelastbarkeiten, der Spannungsfall ist eine Planungsentscheidung.',
+        'Camp dimensioniert mit 3 % (0,36 V). Für empfindliche Verbraucher sind 2 % (0,24 V) die bessere Zielmarke; ab mehr als 3 % meldet der Planer einen Verstoß, ab mehr als 4 % gilt die Stufe als kritisch. Eine Normgrenze für 12-V-Bordnetze in Fahrzeugen gibt es nicht: DIN VDE 0298-4 nennt Strombelastbarkeiten, der Spannungsfall ist eine Planungsentscheidung.',
     },
     {
       question: 'Warum ist der Spannungsfall bei 12 V kritischer als bei 230 V?',
@@ -197,7 +197,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
     },
     {
       label: 'DIN VDE 0100-721',
-      detail: 'Kleinspannungsanlagen in Caravans und Motorcaravans.',
+      detail: 'Elektrische Anlagen in Caravans und Motorcaravans.',
     },
   ],
   assumptions: [

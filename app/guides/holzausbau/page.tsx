@@ -29,39 +29,39 @@ const PAGE = pageByPath('/guides/holzausbau/');
 const STEPS = [
   {
     n: '01',
-    title: 'Bulkhead removal and base prep',
+    title: 'Rost stoppen, bevor gedämmt wird',
     de: 'Trennwand entfernen, Rost behandeln',
-    body: 'Bevor der eigentliche Ausbau beginnen kann, muss das Fahrzeug komplett entkernt werden. Entferne die Trennwand, falls vorhanden, um ein offenes Raumgefühl zu schaffen. Reinige den Innenraum gründlich und überprüfe alle Blechteile auf Rost. Vorhandener Rost muss abgeschliffen und mit Rostumwandler sowie Grundierung behandelt werden. Schließe alle nicht benötigten Löcher im Boden, um spätere Feuchtigkeitsprobleme zu vermeiden.',
+    body: 'Bevor der eigentliche Ausbau beginnen kann, muss das Fahrzeug komplett entkernt werden. Entferne die Trennwand, falls vorhanden, um ein offenes Raumgefühl zu schaffen. Prüfe vorher, ob sie tragend ist oder Sensoren beziehungsweise Airbags trägt; im Zweifel beim Hersteller oder Umrüster fragen. Reinige den Innenraum gründlich und überprüfe alle Blechteile auf Rost. Vorhandener Rost muss abgeschliffen und mit Rostumwandler sowie Grundierung behandelt werden. Schließe alle nicht benötigten Löcher im Boden, um spätere Feuchtigkeitsprobleme zu vermeiden.',
   },
   {
     n: '02',
-    title: 'Electrical planning and rough-in',
+    title: 'Leitungen vor der Dämmung verlegen',
     de: 'Kabel ziehen vor der Isolation',
-    body: 'Plane deine gesamte 12V- und 230V-Elektrik im Voraus. Ziehe Leerrohre und verlege die Kabelstränge dorthin, wo später Lampen, Steckdosen und Verbraucher installiert werden sollen. Dieser Schritt muss vor der Isolierung erfolgen, da die Kabel hinter der Dämmung und Verkleidung verschwinden. Denke daran, die Kabelquerschnitte entsprechend der erwarteten Stromstärke korrekt zu dimensionieren.',
+    body: 'Plane deine gesamte 12-V- und 230-V-Elektrik im Voraus. Ziehe Leerrohre und verlege die Kabelstränge dorthin, wo später Lampen, Steckdosen und Verbraucher installiert werden sollen. Dieser Schritt muss vor der Isolierung erfolgen, da die Kabel hinter der Dämmung und Verkleidung verschwinden. Dimensioniere die Kabelquerschnitte nach Strom und Leitungslänge; Ausschnitte und Fenster vor dem Kabelzug ausführen oder die Kabel während der Arbeiten schützen. Die 230-V-Installation gehört in die Hände einer Elektrofachkraft.',
   },
   {
     n: '03',
-    title: 'Doors, windows, and roof vents',
+    title: 'Ausschnitte sauber und dicht ausführen',
     de: 'Löcher in die Karosserie schneiden',
-    body: 'Der Einbau von Fenstern, Dachluken und Belüftungssystemen ist ein kritischer Schritt. Miss alles doppelt aus, bevor du die Karosserie zerschneidest. Behandle die Schnittkanten zwingend mit Rostschutzfarbe. Setze die Fenster und Dachluken mit geeignetem Dichtmittel (z.B. Dekalin Dekaseal) ein, um eine dauerhaft wasserdichte Verbindung zu gewährleisten. Ein Holzrahmen auf der Innenseite sorgt für zusätzliche Stabilität.',
+    body: 'Der Einbau von Fenstern, Dachluken und Belüftungssystemen ist ein kritischer Schritt. Miss alles doppelt aus, bevor du die Karosserie zerschneidest. Behandle die Schnittkanten zwingend mit Rostschutzfarbe. Setze die Fenster und Dachluken mit einem geeigneten, dauerelastischen Dichtmittel ein; die Dichtung muss lückenlos sitzen. Ein Holzrahmen auf der Innenseite sorgt für zusätzliche Stabilität.',
   },
   {
     n: '04',
-    title: 'More metalwork and mounting points',
+    title: 'Lasten an der Karosserie verankern',
     de: 'Verstärkungen für schwere Möbel anbringen',
-    body: 'Plane, wo schwere Gegenstände wie Küchenzeile, Hängeschränke oder Wassertanks befestigt werden sollen. Bringe Nietmuttern (Blindnietmuttern) in den Karosseriestreben an oder klebe/niete zusätzliche Holz- oder Metallprofile ein. Diese Verankerungspunkte sind essenziell, da spätere Möbelkästen während der Fahrt extremen Belastungen standhalten müssen.',
+    body: 'Plane, wo schwere Gegenstände wie Küchenzeile, Hängeschränke oder Wassertanks befestigt werden sollen. Bringe Nietmuttern (Blindnietmuttern) in den Karosseriestreben an oder klebe beziehungsweise niete zusätzliche Holz- oder Metallprofile ein. Verteile schwere Lasten auf mehrere Punkte und prüfe die zulässige Zuladung; Möbelkästen müssen während der Fahrt Belastungen standhalten.',
   },
   {
     n: '05',
-    title: 'Appliances and plumbing systems',
+    title: 'Wasser, Gas und Geräte vorbereiten',
     de: 'Wassertanks und Geräte installieren',
-    body: 'Lege die Position von Frisch- und Abwassertanks fest. Oftmals werden Wassertanks über den Radkästen oder als Unterflurtanks installiert. Verlege die Wasserleitungen (z.B. UniQuick-System) und schließe die Wasserpumpe sowie den Druckausgleichsbehälter an. Plane auch den Platz für Kühlschrank, Herd und Standheizung und bereite die entsprechenden Anschlüsse (Gas, Strom) vor.',
+    body: 'Lege die Position von Frisch- und Abwassertanks fest. Oftmals werden Wassertanks über den Radkästen oder als Unterflurtanks installiert. Verlege die Wasserleitungen und schließe die Wasserpumpe sowie den Druckausgleichsbehälter an. Plane auch den Platz für Kühlschrank, Herd und Standheizung und bereite die Anschlüsse vor. Gasanschlüsse und die Gasprüfung gehören zu einer Gasfachkraft; Elektrik und Wasser bleiben getrennt geführt.',
   },
   {
     n: '06',
-    title: 'Structure, walls, and interior finish',
+    title: 'Leicht bauen und Befestigungspunkte nutzen',
     de: 'Wandverkleidung und Möbelbau',
-    body: 'Nachdem Kabel und Rohre verlegt sowie die Isolierung angebracht ist, wird der Camper mit Profilholz oder Sperrholzplatten verkleidet. Nutze leichtes, aber stabiles Holz (z.B. Pappelsperrholz) für den Möbelbau. Baue das Bettgerüst, die Küchenzeile und die Sitzbänke und verankere sie an den zuvor vorbereiteten Montagepunkten. Zum Schluss folgen die kosmetischen Details, Bodenbelag und Polsterarbeiten.',
+    body: 'Nachdem Kabel und Rohre verlegt sowie die Isolierung angebracht ist, wird der Camper mit Profilholz oder Sperrholzplatten verkleidet. Nutze leichtes, aber stabiles Holz (zum Beispiel Pappelsperrholz) für den Möbelbau. Baue das Bettgerüst, die Küchenzeile und die Sitzbänke und verankere sie an den zuvor vorbereiteten Montagepunkten. Jedes Kilogramm zählt bei der Zuladung; wiege den Ausbau vor der Zulassung. Zum Schluss folgen Bodenbelag und Polsterarbeiten.',
   },
 ];
 

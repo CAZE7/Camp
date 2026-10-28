@@ -27,8 +27,8 @@ import {
   calculateCrossSection,
   calculateMaxFuse,
   designAmpacity,
-  lookupThermalCrossSection,
   selectFuseSize,
+  thermalCrossSectionFor,
 } from './electrical';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
 import { amps, crossSectionForVoltageDrop, dropPercent, meters, mm2, volts, voltageDrop } from './units';
@@ -114,10 +114,18 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
   // Querschnitt, den der Spannungsfall fordert: A = I · 2L / (κ · ΔU).
   const dropArea = crossSectionForVoltageDrop(current, length, allowedDrop, COPPER_CONDUCTIVITY_MS_PER_MM2);
   // Querschnitt, den die Strombelastbarkeit fordert (Tabellenwert mit Derating).
-  const thermalArea = lookupThermalCrossSection(current);
+  // Oberhalb der modellierten Tabelle gibt es keinen passenden Querschnitt;
+  // der Modellrand 70 mm² ist dann KEINE ausreichende Empfehlung.
+  const thermalBoundary = thermalCrossSectionFor(current);
+  const thermalArea =
+    thermalBoundary.status === 'within-model'
+      ? thermalBoundary.crossSectionMm2
+      : MAX_STANDARD_CROSS_SECTION_MM2 + 1;
 
   const requiredCrossSectionMm2 = Math.max(MIN_STANDARD_CROSS_SECTION_MM2, dropArea, thermalArea);
-  const exceedsStandardRange = requiredCrossSectionMm2 > MAX_STANDARD_CROSS_SECTION_MM2 + 1e-9;
+  const exceedsStandardRange =
+    thermalBoundary.status === 'outside-model' ||
+    requiredCrossSectionMm2 > MAX_STANDARD_CROSS_SECTION_MM2 + 1e-9;
 
   const criterion: SizingCriterion =
     dropArea >= thermalArea && dropArea > MIN_STANDARD_CROSS_SECTION_MM2
