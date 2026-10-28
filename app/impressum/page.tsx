@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 
 import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
-// AUDIT „Impressum-Placeholder": Die Angaben stehen in `lib/siteLegal.ts` —
-// eine Stelle zum Ausfüllen, eine maschinell prüfbare Vollständigkeit
-// (`npm run ci:verify-legal-notice`, Schritt im Deploy-Workflow).
+// AUDIT „Impressum-Placeholder" (erledigt 2026-10-28): Die Angaben stehen in
+// `lib/siteLegal.ts` — eine Stelle zum Ausfüllen, eine maschinell prüfbare
+// Vollständigkeit (`npm run ci:verify-legal-notice`, Schritt im
+// Deploy-Workflow). Der Placeholder-Zweig bleibt bestehen: Er ist der Zustand,
+// den der Wächter meldet, wenn die Angaben später geerbt oder geleert werden.
 import { SITE_LEGAL, isPlaceholderText, isProviderComplete } from '@/lib/siteLegal';
 
 import { metadataForPage } from '@/app/seoMetadata';
@@ -22,7 +24,7 @@ export default function ImpressumPage() {
       <PageStructuredData path="/impressum/" />
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Impressum</h1>
-        <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 TMG.</p>
+        <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 DDG.</p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Anbieter</h2>
@@ -47,15 +49,35 @@ export default function ImpressumPage() {
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Kontakt</h2>
-          {emailComplete ? <p>E-Mail: {legal.email}</p> : <p>E-Mail: kontakt@example.org</p>}
+          {emailComplete ? (
+            <p>
+              E-Mail:{' '}
+              <a
+                href={`mailto:${legal.email}`}
+                className="font-medium text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+              >
+                {legal.email}
+              </a>
+            </p>
+          ) : (
+            <p>
+              E-Mail:{' '}
+              <a
+                href="mailto:kontakt@example.org"
+                className="font-medium text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+              >
+                kontakt@example.org
+              </a>
+            </p>
+          )}
         </section>
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Verantwortlich für den Inhalt</h2>
           {responsibleComplete ? (
-            <p>Nach § 55 Abs. 2 RStV: {legal.contentResponsible}</p>
+            <p>Nach § 18 Abs. 2 MStV: {legal.contentResponsible}</p>
           ) : (
-            <p>Nach § 55 Abs. 2 RStV: Bitte hier eintragen.</p>
+            <p>Nach § 18 Abs. 2 MStV: Bitte hier eintragen.</p>
           )}
         </section>
 

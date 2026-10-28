@@ -1,5 +1,17 @@
 # Befund: Impressum & Datenschutz — Platzhalter und Optionen
 
+> **Nachtrag 2026-10-28 — Punkt 1 (Impressum) ist erledigt.**
+> `SITE_LEGAL` in `lib/siteLegal.ts` ist vollständig eingetragen (Anbieter,
+> Anschrift, E-Mail, Inhaltsverantwortung); `npm run ci:verify-legal-notice`
+> meldet „vollständig". Die sichtbaren Normzitate stehen jetzt auf § 5 DDG und
+> § 18 Abs. 2 MStV (vorher TMG/RStV) und sind durch
+> `app/impressum/page.test.tsx` gepinnt.
+> **Offen bleibt Punkt 2 (Datenschutz)**: Die Seite ist weiterhin eine
+> Kurzfassung ohne benannte verantwortliche Stelle, ohne Hosting-Hinweis und
+> ohne die Angaben nach Art. 13 DSGVO.
+> Die Abschnitte unten beschreiben den Stand vom 2026-10-12 und bleiben als
+> Nachweis stehen — sie sind nicht der aktuelle Zustand.
+
 Stand: 2026-10-12 · Erhoben durch Code-Sicht (`lib/siteLegal.ts`, `app/impressum/page.tsx`,
 `app/datenschutz/page.tsx`, `.github/workflows/deploy.yml`). **Es wurden keine
 personenbezogenen Daten eingetragen** — das kann und darf nur der Betreiber
