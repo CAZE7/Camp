@@ -652,18 +652,35 @@ describe('useLiveValidation', () => {
           },
           position: { x: 0, y: 0 },
         },
-        { id: 'bus', type: 'busbar', data: { label: 'Plus-Schiene', role: 'positive' }, position: { x: 0, y: 0 } },
+        {
+          id: 'bus',
+          type: 'busbar',
+          data: { label: 'Plus-Schiene', role: 'positive' },
+          position: { x: 0, y: 0 },
+        },
         {
           id: 'lader',
           type: 'acBatteryCharger',
           data: { label: 'AC-Ladegerät', amps: 50 },
           position: { x: 0, y: 0 },
         },
-        { id: 'shore', type: 'shorePower', data: { label: 'Landstrom', rating: 16 }, position: { x: 0, y: 0 } },
+        {
+          id: 'shore',
+          type: 'shorePower',
+          data: { label: 'Landstrom', rating: 16 },
+          position: { x: 0, y: 0 },
+        },
       ];
       const edges: Edge<CableEdgeData>[] = [
         { id: 'bat-bus', source: 'b1', target: 'bus', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
-        { id: 'lader-bus', source: 'lader', target: 'bus', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        {
+          id: 'lader-bus',
+          source: 'lader',
+          target: 'bus',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: {},
+        },
         {
           id: 'shore-lader',
           source: 'shore',

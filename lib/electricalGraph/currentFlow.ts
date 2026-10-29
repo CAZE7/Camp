@@ -750,7 +750,8 @@ function buildFlowNet(
       const data = node.data as Record<string, unknown>;
       const rated = numberField(data, 'amps');
       const effRaw = numberField(data, 'efficiency');
-      const eta = effRaw !== null && effRaw > 0 && effRaw <= 1 ? effRaw : node.type === 'mpptController' ? 0.95 : 0.9;
+      const eta =
+        effRaw !== null && effRaw > 0 && effRaw <= 1 ? effRaw : node.type === 'mpptController' ? 0.95 : 0.9;
       const batteryA = solarW / (systemVoltageV * eta);
       const capped = rated !== null && rated > 0 ? Math.min(rated, batteryA) : batteryA;
       return roundCurrent(capped);

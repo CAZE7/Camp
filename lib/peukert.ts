@@ -50,7 +50,13 @@ export function normalizeBatteryChemistry(raw: unknown): BatteryChemistryKey | n
   if (value === 'liion' || value === 'li-ion' || value === 'lion') return 'LiFePO4';
   if (value === 'agm') return 'AGM';
   if (value === 'gel') return 'Gel';
-  if (value === 'lead' || value === 'blei' || value === 'lead-acid' || value === 'blei-säure' || value === 'bleisäure') {
+  if (
+    value === 'lead' ||
+    value === 'blei' ||
+    value === 'lead-acid' ||
+    value === 'blei-säure' ||
+    value === 'bleisäure'
+  ) {
     return 'Blei';
   }
   return null;

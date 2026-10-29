@@ -19,7 +19,11 @@ import {
   VDE_SOLAR_VMP_VOLTAGE,
   VDE_CHARGE_DERATING_FACTOR,
 } from '@/lib/vde-standards';
-import { normalizeBatteryChemistry, peukertExponentOf, usableCapacityWithPeukertAh } from '../../../lib/peukert'; // DOM-002-Nachpflege
+import {
+  normalizeBatteryChemistry,
+  peukertExponentOf,
+  usableCapacityWithPeukertAh,
+} from '../../../lib/peukert'; // DOM-002-Nachpflege
 
 /** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
 
