@@ -137,7 +137,7 @@ function SizingResult({ sizing }: { sizing: CableSizing }) {
   // konkrete Forderung (z. B. 191,6 mm²) die nützlichere Aussage. Die
   // Modellgrenze der Belastbarkeitstabelle gilt nur, wenn der Querschnitt
   // ansonsten innerhalb der Reihe läge (z. B. 200 A auf 0,5 m).
-  if (sizing.exceedsStandardRange && sizing.requiredCrossSectionMm2 <= 70 + 1e-9) {
+  if (sizing.exceedsStandardRange && !sizing.voltageDropRequiresBeyondStandard) {
     return (
       <div className="space-y-3">
         <p className="panel-title text-signal">Außerhalb der Belastbarkeitstabelle</p>
