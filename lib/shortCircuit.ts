@@ -53,6 +53,7 @@ import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
 
 import type { Node } from './domain/graph';
 import { DEFAULT_SYSTEM_VOLTAGE } from './vde-standards';
+import { normalizeBatteryChemistry } from './peukert';
 
 /**
  * κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010).
@@ -114,6 +115,8 @@ export const BATTERY_RI_MILLIOHM_AT_100AH: Record<string, number> = {
   LiFePO4: 3,
   AGM: 5,
   Gel: 6,
+  // Nassblei: gleicher Blei-Familienanker wie Gel (6 mΩ/100 Ah).
+  Blei: 6,
 };
 
 const dataOf = (node: Node | undefined): Record<string, unknown> | undefined => node?.data;
@@ -138,10 +141,8 @@ export function internalResistanceMilliOhmOf(node: Node | undefined): number | n
   if (explicit !== null) return explicit;
   const capacity = finitePositive(dataOf(node)?.capacity);
   if (capacity === null) return null;
-  const chemistry = dataOf(node)?.chemistry;
-  const ri100 =
-    BATTERY_RI_MILLIOHM_AT_100AH[typeof chemistry === 'string' ? chemistry : 'LiFePO4'] ??
-    BATTERY_RI_MILLIOHM_AT_100AH['LiFePO4']!;
+  const chemistry = normalizeBatteryChemistry(dataOf(node)?.chemistry) ?? 'LiFePO4';
+  const ri100 = BATTERY_RI_MILLIOHM_AT_100AH[chemistry] ?? BATTERY_RI_MILLIOHM_AT_100AH['LiFePO4']!;
   return (ri100 * 100) / capacity;
 }
 

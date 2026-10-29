@@ -118,6 +118,44 @@ describe('lib/verify/topology — PASS 2 Domäne & Polarität', () => {
     expect(check.status).toBe('FAIL');
     expect(check.events[0]?.entity.id).toBe('e-plus-ground');
   });
+
+  it('DOM-002: Solar↔Solar in Reihe ist kein Plus-auf-Masse', () => {
+    const plan: FixturePlan = {
+      nodes: [
+        fixtureNode('p1', 'solar', { label: 'Panel 1', watts: 100, voc: 22, isc: 5.8 }),
+        fixtureNode('p2', 'solar', { label: 'Panel 2', watts: 100, voc: 22, isc: 5.8 }),
+      ],
+      edges: [
+        fixtureEdge('e-series', 'p1', 'plus', 'p2', 'minus', {
+          edgeDomain: 'Solar',
+          crossSection: 4,
+          length: 1,
+        }),
+      ],
+    };
+    const { all } = runPlan(plan);
+    expect(checkFor(all, 'DOM-002-positive-to-reference').events).toEqual([]);
+    expect(checkFor(all, 'TOPO-001-short-path').events).toEqual([]);
+  });
+
+  it('DOM-002: Solar-Plus direkt auf Masse bleibt ein Kurzschluss', () => {
+    const plan: FixturePlan = {
+      nodes: [
+        fixtureNode('p1', 'solar', { label: 'Panel 1', watts: 100, voc: 22, isc: 5.8 }),
+        fixtureNode('gnd1', 'ground', { label: 'Massepunkt' }),
+      ],
+      edges: [
+        fixtureEdge('e-pv-ground', 'p1', 'plus', 'gnd1', 'minus', {
+          edgeDomain: 'Solar',
+          crossSection: 4,
+          length: 1,
+        }),
+      ],
+    };
+    const check = checkFor(runPlan(plan).pass2, 'DOM-002-positive-to-reference');
+    expect(check.status).toBe('FAIL');
+    expect(check.events[0]?.entity.id).toBe('e-pv-ground');
+  });
 });
 
 describe('lib/verify/topology — Kurzschlussfreiheit (TOPO-001)', () => {

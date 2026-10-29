@@ -740,7 +740,21 @@ function buildFlowNet(
       for (const panelId of feeding) {
         solarW += solarGraph.panelWatts(panelId) ?? 0;
       }
-      return solarW > 0 ? roundCurrent(solarW / toNumber(VDE_SOLAR_VMP_VOLTAGE)) : null;
+      if (!(solarW > 0)) return null;
+      // Der MPPT-AUSGANG liegt auf Batteriespannung, nicht auf Panelspannung:
+      // I_Batterie = P_PV / (U_Akku · η). Vorher wurde der Panelstrom
+      // (P_PV / 18 V) als Batteriestrom verwendet — bei 12,8 V rund 32 %
+      // zu niedrig (Ladekabel/Sicherung unterdimensioniert), bei 48 V 170 %
+      // zu hoch (Überdimensionierung). Der Regler begrenzt auf seinen
+      // Ausgangsnennstrom (`amps`).
+      const data = node.data as Record<string, unknown>;
+      const rated = numberField(data, 'amps');
+      const effRaw = numberField(data, 'efficiency');
+      const eta =
+        effRaw !== null && effRaw > 0 && effRaw <= 1 ? effRaw : node.type === 'mpptController' ? 0.95 : 0.9;
+      const batteryA = solarW / (systemVoltageV * eta);
+      const capped = rated !== null && rated > 0 ? Math.min(rated, batteryA) : batteryA;
+      return roundCurrent(capped);
     }
     const data = node.data as Record<string, unknown>;
     const amps = numberField(data, 'amps');
@@ -751,6 +765,18 @@ function buildFlowNet(
   };
   const acLoadDemandOf = (node: Node): number | null => {
     const data = node.data as Record<string, unknown>;
+    // Mischdomäne: `amps` am AC-Ladegerät ist der DC-LADEAGANGSSTROM, nicht
+    // der AC-Eingangsstrom. Vorher wurden 30 A DC als 30 A AC gelesen
+    // (30 A × 230 V = 6,9 kVA statt ~0,4 kW) — das AC-Kabel war 16× zu groß
+    // und die 16-A-Landstromsicherung galt fälschlich als zu klein.
+    if (node.type === 'acBatteryCharger') {
+      const amps = numberField(data, 'amps');
+      if (amps !== null && amps > 0) {
+        const effRaw = numberField(data, 'efficiency');
+        const eta = effRaw !== null && effRaw > 0 && effRaw <= 1 ? effRaw : 0.9;
+        return roundCurrent((amps * systemVoltageV) / AC_VOLTAGE_V / eta);
+      }
+    }
     const watts = numberField(data, 'watts');
     if (watts !== null) return watts / AC_VOLTAGE_V;
     const amps = numberField(data, 'amps');

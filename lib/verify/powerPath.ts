@@ -23,7 +23,7 @@
 import type { PassContext } from './context';
 import { auditEvent, checkOrNotApplicable, passedCheck } from './events';
 import { behaviorOf, labelOfNode } from './graph';
-import { usableCapacityWithPeukertAh, peukertExponentOf } from '../peukert';
+import { normalizeBatteryChemistry, usableCapacityWithPeukertAh, peukertExponentOf } from '../peukert';
 import {
   voltageDropBudgetPercent,
   voltageDropPercent,
@@ -33,7 +33,7 @@ import {
 import { buildPortGraph, type PortGraph } from './topology';
 import { nominalVoltageOfCable } from './graph';
 import { sortedCables } from './pathSearch';
-import { VDE_BATTERY_DOD, VDE_DOD_REFERENCE } from '../vde-standards';
+import { VDE_BATTERY_DOD, VDE_DOD_REFERENCE, VDE_INVERTER_EFFICIENCY } from '../vde-standards';
 import type { AuditEvent, CableModel, CheckResult, LoadClass } from './types';
 
 /** Lastklasse des Verbrauchers am Ende einer Leitung (sonst 'standard'). */
@@ -392,7 +392,7 @@ export function checkEnergyBalance(context: PassContext): CheckResult {
     if (capacity === null) continue;
     capacityKnown = true;
     capacityAh += capacity;
-    const chemistry = typeof data?.chemistry === 'string' ? data.chemistry : 'LiFePO4';
+    const chemistry = normalizeBatteryChemistry(data?.chemistry) ?? 'LiFePO4';
     dod = Math.min(dod, VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE);
     exponentK = Math.max(exponentK, peukertExponentOf(data));
   }
@@ -424,22 +424,29 @@ export function checkEnergyBalance(context: PassContext): CheckResult {
     const watts = typeof data?.watts === 'number' && data.watts > 0 ? data.watts : null;
     const hours = typeof data?.hours === 'number' && data.hours >= 0 ? data.hours : null;
     if (watts === null || hours === null) {
-      if (watts !== null || hours !== null) {
-        missing += 1;
-        events.push(
-          auditEvent({
-            ruleId,
-            entity: { kind: 'node', id: load.nodeId },
-            kind: 'UNVERIFIABLE',
-            message: `Verbraucher ${labelOfNode(context.graph, load.nodeId)}: Leistung oder Nutzungsdauer (h/Tag) fehlt — der Tagesbedarf ist unvollständig.`,
-            autoFixRemedy:
-              'Leistung (W) und tägliche Nutzungsdauer (h) eintragen; der Tagesbedarf wird sonst zu klein gerechnet.',
-          })
-        );
-      }
+      // Auch das vollständige Fehlen beider Werte ist eine Datenlücke, keine
+      // Null-Last. Vorher wurde sie stillschweigend übersprungen — die Bilanz
+      // konnte dadurch bestehen, obwohl ein Verbraucher gar nicht eingerechnet war.
+      missing += 1;
+      const bothMissing = watts === null && hours === null;
+      events.push(
+        auditEvent({
+          ruleId,
+          entity: { kind: 'node', id: load.nodeId },
+          kind: 'UNVERIFIABLE',
+          message: bothMissing
+            ? `Verbraucher ${labelOfNode(context.graph, load.nodeId)}: Leistung UND Nutzungsdauer (h/Tag) fehlen — der Tagesbedarf ist unvollständig.`
+            : `Verbraucher ${labelOfNode(context.graph, load.nodeId)}: Leistung oder Nutzungsdauer (h/Tag) fehlt — der Tagesbedarf ist unvollständig.`,
+          autoFixRemedy:
+            'Leistung (W) und tägliche Nutzungsdauer (h) eintragen; der Tagesbedarf wird sonst zu klein gerechnet.',
+        })
+      );
       continue;
     }
-    dailyWh += watts * hours;
+    const energyWh = watts * hours;
+    // 230-V-Lasten ziehen über den Wechselrichter mehr aus der Batterie als
+    // ihre Wirkleistung: P_DC = P_AC / η. Das Dashboard rechnet bereits so.
+    dailyWh += node?.type === 'consumer230v' ? energyWh / VDE_INVERTER_EFFICIENCY : energyWh;
   }
   dailyWh += context.options.additionalDailyEnergyWh ?? 0;
 

@@ -131,6 +131,54 @@ describe('buildBom — deterministisch über einen Planstand', () => {
     expect(bom).toEqual({ counts: {}, cableLengths: {}, pipeLengths: {}, lengthAssumptions: [] });
   });
 
+  it('zählt AC-Schutzorgane je Stromkreis, nicht je Quelle (Regression)', () => {
+    const inverter: Node = {
+      id: 'inv',
+      type: 'inverter',
+      position: { x: 0, y: 0 },
+      data: { label: 'Wechselrichter', continuousPower: 1000 },
+    };
+    const socket1: Node = {
+      id: 'ac1',
+      type: 'consumer230v',
+      position: { x: 400, y: 0 },
+      data: { label: 'Küche', watts: 300 },
+    };
+    const socket2: Node = {
+      id: 'ac2',
+      type: 'consumer230v',
+      position: { x: 400, y: 100 },
+      data: { label: 'Heck', watts: 200 },
+    };
+    const acEdge = (id: string, target: string): Edge<CableEdgeData> => ({
+      id,
+      source: 'inv',
+      target,
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      type: 'cableEdge',
+      data: {
+        edgeDomain: 'AC_230V',
+        fuseSize: 10,
+        length: 2,
+        crossSection: 2.5,
+        acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+      } as CableEdgeData,
+    });
+    const bom = buildBom(
+      {
+        nodes: [inverter, socket1, socket2],
+        edges: [acEdge('e-ac1', 'ac1'), acEdge('e-ac2', 'ac2')],
+        waterNodes: [],
+        waterEdges: [],
+      },
+      noRoute
+    );
+    // Vorher wurde über edge.source dedupliziert → nur EIN RCBO für zwei
+    // getrennte 230-V-Stromkreise.
+    expect(bom.fuses?.find((fuse) => fuse.key === 'rcbo:10')?.count).toBe(2);
+  });
+
   it('M5 & M10: sortiert Querschnitte aufsteigend, führt Sicherungen/Kabelschuhe/Hauptschalter und unterscheidet Sammelschienen-Rückweg vs. Karosseriemasse', () => {
     const busbarPlan = buildBom(
       {

@@ -169,6 +169,40 @@ describe('lib/verify/powerPath — PWR-001 (Energiebilanz)', () => {
     expect(zeroWatts.status).toBe('UNPROVABLE');
   });
 
+  it('meldet auch das vollständige Fehlen beider Werte (Regression: stiller Skip)', () => {
+    const bothMissing = checkEnergyBalance(contextOf(withLoad(healthyDcPlan(), {})));
+    expect(bothMissing.status).toBe('UNPROVABLE');
+    expect(bothMissing.events[0]?.message).toContain('Leistung UND Nutzungsdauer');
+  });
+
+  it('rechnet 230-V-Lasten mit Wechselrichter-Wirkungsgrad gegen die Batterie', () => {
+    const plan: FixturePlan = {
+      nodes: [
+        fixtureNode('bat1', 'battery', {
+          label: '45Ah LiFePO4',
+          role: 'house',
+          capacity: 45,
+          chemistry: 'LiFePO4',
+          nominalVoltage: 12.8,
+          internalResistance: 15,
+        }),
+        fixtureNode('ac1', 'consumer230v', { label: '230-V-Last', watts: 500, hours: 1 }),
+      ],
+      edges: [
+        fixtureEdge('e-ac', 'bat1', 'plus', 'ac1', 'plus', {
+          edgeDomain: 'AC_230V',
+          crossSection: 2.5,
+          length: 2,
+        }),
+      ],
+    };
+    const check = checkEnergyBalance(contextOf(plan));
+    expect(check.status).toBe('FAIL');
+    // 500 Wh / 0,85 / 12,8 V = 45,96 Ah; nutzbar sind 45 Ah × 0,9 = 40,5 Ah.
+    // Ohne η wären es 39,06 Ah — die Batterie hätte fälschlich bestanden.
+    expect(check.events[0]?.calculatedValue).toBeCloseTo(500 / 0.85 / 12.8, 2);
+  });
+
   it('rechnet die nutzbare Kapazität mit Peukert gegen den Tagesbedarf', () => {
     const check = checkEnergyBalance(contextOf(healthyDcPlan()));
     expect(check.status).toBe('PASS');

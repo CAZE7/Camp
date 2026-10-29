@@ -225,6 +225,26 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const house = battery('h1', { label: 'Aufbaubatterie', nominalVoltage: 12 });
       expect(getSystemVoltage([house, starter], 's1')).toBe(24);
     });
+
+    it('erbt NIE die Spannung einer nachrangigen Batterie, wenn die Vorrangbatterie keine hat', () => {
+      // Regression: Vorher lief die nominalVoltage-Suche über ALLE Batterien.
+      // Eine 24-V-Starterbatterie lieferte dann die Auslegung für eine
+      // 12,8-V-LiFePO4-Aufbaubatterie — alle DC-Ströme wurden halbiert.
+      const starter = battery('s1', { label: 'Starterbatterie', nominalVoltage: 24 });
+      const house = battery('h1', { label: 'Aufbaubatterie', chemistry: 'LiFePO4' });
+      expect(getSystemVoltage([starter, house])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([house, starter])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+    });
+
+    it('nutzt die Chemie der Vorrangbatterie, wenn deren nominalVoltage fehlt', () => {
+      const starter = battery('s1', { label: 'Starterbatterie', nominalVoltage: 24 });
+      const house = battery('h1', { label: 'Aufbaubatterie', chemistry: 'AGM' });
+      expect(getSystemVoltage([starter, house])).toBe(LEAD_SYSTEM_VOLTAGE);
+      const lower = battery('h2', { label: 'Aufbaubatterie', chemistry: 'agm' });
+      expect(getSystemVoltage([starter, lower])).toBe(LEAD_SYSTEM_VOLTAGE);
+      const lead = battery('h3', { label: 'Aufbaubatterie', chemistry: 'Blei' });
+      expect(getSystemVoltage([starter, lead])).toBe(LEAD_SYSTEM_VOLTAGE);
+    });
   });
 
   describe('calculateEdgeCurrent', () => {
