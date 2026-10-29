@@ -168,30 +168,47 @@ const stepsData: StepData[] = [
       'Fenster/Dachluke lückenlos abdichten und einsetzen',
     ],
     typischeFehler:
-      'Falsches Dichtmittel! Dekaseal 8936 bleibt dauerelastisch, Sikaflex 252 ist ein Kleber und lässt sich nie wieder lösen.',
+      'Falsches Dichtmittel: Dekaseal 8936 bleibt dauerelastisch; Sikaflex 252 ist ein Kleber und für eine lösbare Fensterdichtung nicht gedacht.',
     zusatzInfo:
-      'Zusatzinfo Fensteinbau: Besonders hervorheben, dass die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden muss und dass die Dichtung lückenlos sitzen muss, damit weder Zugluft noch Feuchtigkeit eindringen.',
+      'Beim Fenstereinbau muss die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden. Die Dichtung muss lückenlos sitzen, damit weder Zugluft noch Feuchtigkeit eindringen.',
     comparison: {
       title: 'Vergleich: Fenster & Lüftung',
       items: [
         {
           name: 'Fenster',
           description:
-            'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage, Rostschutz an Schnittkanten und vollständiger Abdichtung hervorheben.',
+            'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage; Schnittkanten rostschützen und vollständig abdichten.',
         },
         {
           name: 'Lüftung',
           description:
-            'Fenstergrößen und Position so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke besonders sinnvoll (häufige Größe: 40x40 cm).',
+            'Fenstergrößen und Positionen so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke sinnvoll (häufige Größe: 40 × 40 cm).',
         },
       ],
     },
   },
   {
+    id: 'elektrik',
+    title: '4. Elektrik-Vorbereitung',
+    ziel: 'Alle Kabel und Leerrohre an die richtigen Stellen im Camper legen.',
+    warumJetzt: 'Vor der Dämmung und der Wandverkleidung; danach ist das unsichtbare Verlegen unmöglich.',
+    werkzeugMaterial: ['Wellrohre', 'Kabelzange', 'Kabel in passenden Querschnitten', 'Kabelbinder'],
+    schrittFuerSchritt: [
+      'Verbraucher-Positionen festlegen (Licht, USB, Kühlschrank)',
+      'Leerrohre verlegen',
+      'Kabel einziehen',
+      'Ausreichend Kabellänge als Reserve lassen',
+    ],
+    typischeFehler:
+      'Zu dünne Kabelquerschnitte gewählt: Der Spannungsfall steigt, und eine unzureichend geschützte Leitung kann sich erwärmen. Querschnitt nach Strom und Länge dimensionieren und die Sicherung auf die Leitung abstimmen.',
+    kaufhilfe:
+      'Nutze den Elektroplaner, um Kabelquerschnitte und Komponenten für deine Verbraucher zu bestimmen.',
+  },
+  {
     id: 'daemmung',
-    title: '4. Dämmung',
+    title: '5. Dämmung',
     ziel: 'Kondenswasser vermeiden und angenehme Temperaturen im Sommer sowie Winter schaffen.',
-    warumJetzt: 'Bevor Kabel und Wände reinkommen, muss das Blech isoliert werden.',
+    warumJetzt: 'Nachdem Kabel und Leerrohre liegen, wird das Blech gedämmt.',
     werkzeugMaterial: [
       'Armaflex/Kautschuk',
       'Schere/Cutter',
@@ -216,31 +233,15 @@ const stepsData: StepData[] = [
         {
           name: 'Mineralwolle',
           description:
-            'Nur mit sauberer Dampfsperre verwenden! Ansonsten Gefahr von Schimmel durch Kondenswasser.',
+            'Nur mit luftdicht ausgeführter Dampfbremse verwenden; sonst kann Feuchte im Aufbau kondensieren.',
         },
         {
           name: 'Schafwolle',
           description:
-            'Eher für Nutzer mit Naturmaterial-Fokus. Reguliert das Raumklima gut, erfordert aber ebenfalls sorgfältige Verarbeitung.',
+            'Naturmaterial, das Feuchtigkeit aufnehmen und wieder abgeben kann. Es braucht eine trockene Konstruktion und sorgfältige Verarbeitung.',
         },
       ],
     },
-  },
-  {
-    id: 'elektrik',
-    title: '5. Elektrik-Vorbereitung',
-    ziel: 'Alle Kabel und Leerrohre an die richtigen Stellen im Camper legen.',
-    warumJetzt: 'Nach der Wandverkleidung ist das unsichtbare Verlegen unmöglich.',
-    werkzeugMaterial: ['Wellrohre', 'Kabelzange', 'Kabel in passenden Querschnitten', 'Kabelbinder'],
-    schrittFuerSchritt: [
-      'Verbraucher-Positionen festlegen (Licht, USB, Kühlschrank)',
-      'Leerrohre verlegen',
-      'Kabel einziehen',
-      'Ausreichend Kabellänge als Reserve lassen',
-    ],
-    typischeFehler: 'Zu dünne Kabelquerschnitte gewählt. Das führt zu Spannungsabfall oder Brandgefahr!',
-    kaufhilfe:
-      'Nutze unseren 2D Elektrik-Planer zur genauen Bestimmung der Kabelquerschnitte und Komponenten.',
   },
   {
     id: 'boden',
@@ -289,8 +290,8 @@ const stepsData: StepData[] = [
       'Türen und Schubladen einpassen',
       'Möbel fest mit der Karosserie (Unterkonstruktion) verschrauben',
     ],
-    typischeFehler: 'Möbel aus schwerem MDF oder Spanplatten gebaut – das kostet extrem viel Zuladung.',
-    kaufhilfe: 'Pappelsperrholz (12-15mm) ist der Standard im Camperbau, da es sehr leicht ist.',
+    typischeFehler: 'Möbel aus schwerem MDF oder Spanplatten gebaut – das kostet viel Zuladung.',
+    kaufhilfe: 'Pappelsperrholz (12–15 mm) ist der Standard im Camperbau, da es leicht ist.',
   },
   {
     id: 'kueche-kuehlschrank',
@@ -312,7 +313,7 @@ const stepsData: StepData[] = [
         {
           name: 'Kompressor',
           description:
-            'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12V Strom.',
+            'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12 V Strom.',
         },
         {
           name: 'Absorber',
@@ -372,7 +373,7 @@ export default function AusbauFahrplanPage() {
             <p className="kicker">LEITFADEN // REIHENFOLGE</p>
             <h1 className="h1 mt-4">{PAGE.h1}</h1>
             <p className="prose-measure mt-5 text-base leading-relaxed text-ink-soft md:text-lg">
-              Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
+              Planung, Rostschutz, Fenster, Kabel, Dämmung, Boden, Wände, Möbel, Küche.
             </p>
           </header>
           <div className="mt-8">

@@ -34,12 +34,14 @@ afterEach(() => {
 });
 
 describe('Impressum — solange die Angaben fehlen', () => {
-  it('zeigt die Aufforderungstexte der eingefrorenen Baseline', () => {
+  it('zeigt die offenen Betreiberangaben', () => {
     render(<ImpressumPage />);
-    expect(screen.getByText('Elektroplaner — Projekt-Placeholder')).toBeTruthy();
-    expect(screen.getByText('Bitte hier den Namen und die Anschrift des Betreibers eintragen.')).toBeTruthy();
-    expect(screen.getByText('E-Mail: kontakt@example.org')).toBeTruthy();
-    expect(screen.getByText('Nach § 55 Abs. 2 RStV: Bitte hier eintragen.')).toBeTruthy();
+    expect(screen.getByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeTruthy();
+    expect(
+      screen.getByText('Name und Anschrift des Betreibers werden vor der Veröffentlichung ergänzt.')
+    ).toBeTruthy();
+    expect(screen.getByText('E-Mail: wird ergänzt.')).toBeTruthy();
+    expect(screen.getByText('Nach § 18 Abs. 2 MStV: wird ergänzt.')).toBeTruthy();
   });
 
   it('zeigt keine Platzhalter-Marke und keine halbe Anschrift', () => {
@@ -48,7 +50,7 @@ describe('Impressum — solange die Angaben fehlen', () => {
     Object.assign(SITE_LEGAL, original, { email: filled.email });
     render(<ImpressumPage />);
     expect(screen.getByText('E-Mail: kontakt@elektroplaner.example')).toBeTruthy();
-    expect(screen.queryByText('Elektroplaner — Projekt-Placeholder')).toBeTruthy();
+    expect(screen.queryByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeTruthy();
     expect(screen.queryByText(filled.street)).toBeNull();
     expect(document.body.textContent).not.toContain('BITTE-EINTRAGEN');
   });
@@ -63,19 +65,19 @@ describe('Impressum — mit eingetragenen Angaben', () => {
     expect(screen.getByText('28217 Bremen')).toBeTruthy();
     expect(screen.getByText('E-Mail: kontakt@elektroplaner.example')).toBeTruthy();
     expect(
-      screen.getByText('Nach § 55 Abs. 2 RStV: Mareike Jensen, Hafenstraße 12, 28217 Bremen')
+      screen.getByText('Nach § 18 Abs. 2 MStV: Mareike Jensen, Hafenstraße 12, 28217 Bremen')
     ).toBeTruthy();
     // Die Aufforderungstexte verschwinden, sobald die Angaben da sind.
-    expect(screen.queryByText('Elektroplaner — Projekt-Placeholder')).toBeNull();
-    expect(screen.queryByText('E-Mail: kontakt@example.org')).toBeNull();
+    expect(screen.queryByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeNull();
+    expect(screen.queryByText('E-Mail: wird ergänzt.')).toBeNull();
   });
 
   it('behält den Haftungshinweis in beiden Zweigen', () => {
     Object.assign(SITE_LEGAL, filled);
     const { unmount } = render(<ImpressumPage />);
-    expect(screen.getByText(/DIN VDE 0100-721 Pflicht/)).toBeTruthy();
+    expect(screen.getAllByText(/DIN VDE 0100-721/).length).toBeGreaterThan(0);
     unmount();
     render(<ImpressumPage />);
-    expect(screen.getByText(/DIN VDE 0100-721 Pflicht/)).toBeTruthy();
+    expect(screen.getAllByText(/DIN VDE 0100-721/).length).toBeGreaterThan(0);
   });
 });

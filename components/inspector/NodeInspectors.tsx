@@ -135,7 +135,8 @@ export function BatteryInspector({
             </select>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Verschiedene Blei-Varianten (AGM/Gel) dürfen nicht parallel geschaltet werden — ihre
-              Ladeschlussspannungen unterscheiden sich (Gel ~14,1–14,4 V, AGM ~14,4–14,7 V).
+              Ladeschlussspannungen unterscheiden sich (Gel ~14,1–14,4 V, AGM ~14,2–14,6 V; Schnellladung
+              14,6–14,9 V, Float 13,5–13,8 V).
             </p>
           </div>
           <div className="flex flex-col">

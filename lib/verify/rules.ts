@@ -329,7 +329,8 @@ export const RULE_MATRIX: readonly RuleSpec[] = [
     title: 'Leitungsabgangsschutz an der Energiequelle',
     requirement:
       'Jede von einer Energiequelle (Batterie, Sammelschiene, Lichtmaschine) abgehende Leitung muss innerhalb der zulässigen ungeschützten Länge abgesichert sein.',
-    standard: 'ISO 10133:2000 §8.1 (200 mm); CAMP-Planungsvorgabe (DIN VDE 0100-721 nennt keine Länge)',
+    standard:
+      'ISO 13297:2020 §8.1 (200 mm, Small Craft); CAMP-Planungsvorgabe (DIN VDE 0100-721 nennt keine Länge)',
     clause: '§8.1',
     provenance: 'VERIFIED_NORM',
     testProvenance: 'DERIVED',

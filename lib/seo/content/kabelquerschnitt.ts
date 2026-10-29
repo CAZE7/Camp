@@ -40,7 +40,7 @@ const EXAMPLE_ROWS = EXAMPLE_CURRENTS.map((current) => {
 
 const NORM_ROWS = VDE_SIZES.map((size) => [
   `${size.toFixed(1).replace('.', ',')} mm²`,
-  `${VDE_AMPACITY[size] ?? '—'} A`,
+  `${VDE_AMPACITY[size]?.toLocaleString('de-DE') ?? '—'} A`,
   `${designAmpacity(size).toFixed(1).replace('.', ',')} A`,
   `${FUSE_MAP[size] ?? '—'} A`,
 ]);
@@ -55,7 +55,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
   description:
     'Kabelquerschnitt-Tabelle 12 V für Camper und Wohnmobile: Formel, Normreihe, PDF-Speicherung und Rechenbeispiele. Berechnet mit dem eigenen 12V-Elektroplaner.',
   h1: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge',
-  lead: 'Bei 12 V entscheidet nicht die Strombelastbarkeit über den Querschnitt, sondern der Spannungsfall. Diese Seite zeigt, wie man den Querschnitt für Strom und Leitungslänge berechnet, welche Normgröße gewählt wird und welche Sicherung dazu gehört.',
+  lead: 'Bei 12 V entscheidet bei längeren Leitungen oft der Spannungsfall über den Querschnitt; bei hohen Strömen und kurzen Wegen bleibt die Strombelastbarkeit maßgeblich. Diese Seite zeigt, wie man den Querschnitt für Strom und Leitungslänge berechnet, welche Normgröße gewählt wird und welche Sicherung dazu gehört.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.9,
@@ -101,7 +101,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       ],
       body: [
         'Rechenbeispiel von Hand: 10 A über 5 m einfache Leitung. A = (2 · 5 · 10) / (58 · 0,36) = 100 / 20,88 = 4,79 mm². Aufgerundet auf die nächste Normgröße: 6 mm². Damit beträgt der tatsächliche Spannungsfall 100 / (58 · 6) = 0,287 V, also 2,4 % der Nennspannung.',
-        'Die vier Engineering-Nuancen, die Standard-KI-Regler regelmäßig übersehen: (1) Niedrigste Betriebsspannung als Basis (z. B. 10,7 V bei entladener Bleibatterie unter Last), nicht 12 V Nennspannung. (2) 20 % Sicherheitspuffer für Wandlerverluste. (3) Komponentenspezifischer Spannungsfall statt pauschaler Werte — über 4 % (0,48 V bei 12 V) schalten empfindliche Geräte wegen Unterspannung ab. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
+        'Vier Punkte, die in einfachen Querschnittsrechnern oft fehlen: (1) Niedrigste Betriebsspannung als Basis (z. B. 10,7 V bei entladener Bleibatterie unter Last), nicht 12 V Nennspannung. (2) 20 % Sicherheitspuffer für Wandlerverluste. (3) Komponentenspezifischer Spannungsfall statt pauschaler Werte — über 4 % (0,48 V bei 12 V) können empfindliche Geräte wegen Unterspannung abschalten. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
       ],
     },
     {
@@ -109,26 +109,27 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       heading: 'Rechenbeispiele für typische Camper-Verbraucher',
       body: [
         'Die Tabelle unten zeigt die Bemessung über 5 m einfache Leitungslänge bei 12 V, berechnet mit dem eigenen 12V-Elektroplaner. Alle Werte folgen der Formel und werden auf verfügbare Normgrößen aufgerundet.',
-        'Was die Tabelle zeigt: Ab etwa 10 A über 5 m bestimmt der Spannungsfall die Wahl, nicht die Wärme. Der größte Querschnitt der Reihe ist 70 mm² — darüber hilft nur eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.',
-        '[Erfahrung] In meinem Ducato habe ich zuerst eine 1,5 mm²-Leitung zur Kühlbox verlegt. Bei laufendem Kompressor schaltete die Box in die Unterspannungsabschaltung, obwohl die Batterie voll war. Nach Neuverlegung mit 2,5 mm² ist der Fehler nicht mehr aufgetreten (5 Monate Betrieb, keine Abschaltung). Foto: Kabelquerschnitt-Berechnung im 12V-Elektroplaner für 4,5 A über 5 m.',
+        'Was die Tabelle zeigt: Bei 10 A über 5 m bestimmt der Spannungsfall die Wahl, nicht die Wärme. Die hier modellierte Normreihe endet bei 70 mm² — reicht sie nicht, helfen eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.',
+        '[Erfahrung] In meinem Ducato habe ich zuerst eine 1,5 mm²-Leitung zur Kühlbox verlegt. Bei laufendem Kompressor schaltete die Box in die Unterspannungsabschaltung, obwohl die Batterie voll war. Nach Neuverlegung mit 2,5 mm² ist der Fehler nicht mehr aufgetreten (5 Monate Betrieb, keine Abschaltung).',
       ],
       table: {
         caption: 'Bemessung über 5 m einfache Leitungslänge bei 12 V (Modellwerte, 3 % Spannungsfall)',
         head: ['Strom', 'Rechnerisch nötig', 'Gewählt', 'Spannungsfall', 'Sicherung'],
         rows: EXAMPLE_ROWS,
-        note: 'Die Sicherung folgt der Leitung, nicht dem Verbraucher: Sie darf den Querschnitt schützen, nicht ausreizen.',
+        note: 'Die Sicherung folgt der Leitung, nicht dem Verbraucher: Sie darf den Querschnitt schützen, nicht ausreizen. Die Tabellenwerte sind ein gerundeter Modellauszug; das konkrete Normblatt geht vor.',
       },
     },
     {
       id: 'normreihe',
       heading: 'Die Normreihe mit Belastbarkeit und Sicherungsgrenze',
       body: [
-        'Jeder Querschnitt hat eine maximale zulässige Sicherung. Diese folgt der Design-Belastbarkeit (Tabellenwert × Derating 0,7 nach DIN VDE 0298-4, Verlegeart B2, 30 °C, zwei belastete Adern).',
-        'Zwei Zahlen stehen in jeder Zeile, weil sie oft verwechselt werden: Der Tabellenwert gilt für die Verlegeart B2 bei 30 °C im Freien. Das Design mit dem Faktor 0,7 deckt Bündelung und höhere Umgebungstemperaturen im Fahrzeug pauschal ab. Wer beides gleichsetzt, sichert zu hoch ab.',
-        'Normverweis: DIN VDE 0100-721 schreibt für Caravans und Motorcaravans einen Mindestquerschnitt von 1,5 mm² für sämtliche Leitungen vor — auch wenn die Formel für eine 20 W-LED nur 0,75 mm² ergeben würde. Starrer Leiter (NYM-J) ist wegen Vibrationsbruchgefahr verboten; es müssen feindrähtige, flammwidrige Kupferlitzen verwendet werden.',
+        'Jeder Querschnitt hat eine maximale zulässige Sicherung. Diese folgt der Design-Belastbarkeit: Tabellenwert nach DIN VDE 0298-4 (Verlegeart B2, 30 °C, zwei belastete Adern) × Derating 0,7. Der Faktor 0,7 ist eine Modellannahme, kein Normwert.',
+        'Zwei Zahlen stehen in jeder Zeile, weil sie oft verwechselt werden: Der Tabellenwert gilt für die Verlegeart B2 (mehradriges Kabel im Installationsrohr auf einer Wand) bei 30 °C. Das Design mit dem Faktor 0,7 deckt Bündelung und höhere Umgebungstemperaturen im Fahrzeug pauschal ab. Wer beides gleichsetzt, sichert zu hoch ab.',
+        'Normverweis: DIN VDE 0100-721 verlangt für die Leitungen im Fahrzeug mindestens 1,5 mm² — auch wenn die Formel für eine 20-W-LED weniger ergeben würde. Für die Landstrom-Verlängerung gilt Tabelle 721.1 (bei 16 A mindestens 2,5 mm²). Massive Leiter der Klasse 1 (typische NYM-J) sind im Fahrzeug unzulässig; zulässig sind Leiter der Klasse 5 oder Klasse 2 mit mindestens 7 Drähten beziehungsweise umhüllte flexible Leitungen. Die 12-V-Anlage wird zusätzlich nach DIN EN 1648-1/-2 ausgelegt.',
       ],
       table: {
-        caption: 'Normreihe 1,5 bis 70 mm² — Modellwerte nach DIN VDE 0298-4',
+        caption:
+          'Normreihe 1,5 bis 70 mm² — Modellwerte (Tabellenwerte nach DIN VDE 0298-4, B2; Derating 0,7 als Modellannahme)',
         head: ['Querschnitt', 'Tabelle', 'Design (×0,7)', 'Größte Sicherung'],
         rows: NORM_ROWS,
         note: '„Größte Sicherung" schützt den Leiter. Ein Verbraucher mit 8 A bekommt nicht automatisch eine 8-A-Sicherung, sondern die kleinste Größe, die den Betriebsstrom führt und unter der Leitungsgrenze bleibt.',
@@ -219,7 +220,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     {
       question: 'Warum rundet der Rechner immer auf?',
       answer:
-        'Weil der Querschnitt aus einer Normreihe stammen muss (1,5 · 2,5 · 4 · 6 · 10 · 16 · 25 · 35 · 50 · 70 mm²) — Zwischengrößen sind am Markt nicht erhältlich und würden die Leitung nicht schützen. Aufrunden ist die konservative Richtung: mehr Querschnitt bedeutet weniger Spannungsfall und mehr Sicherungsreserve.',
+        'Weil der Planer nur die genormte Reihe 1,5 · 2,5 · 4 · 6 · 10 · 16 · 25 · 35 · 50 · 70 mm² empfiehlt. Zwischengrößen sind am Markt zwar erhältlich, aber nicht Teil dieser modellierten Reihe. Aufrunden ist die konservative Richtung: mehr Querschnitt bedeutet weniger Spannungsfall und mehr Sicherungsreserve.',
     },
   ],
   related: [
@@ -234,12 +235,12 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     {
       label: 'DIN VDE 0298-4',
       detail:
-        'Strombelastbarkeit der Normreihe (Verlegeart B2, 30 °C, zwei belastete Adern, Derating 0,7 im Modell).',
+        'Strombelastbarkeit der Normreihe (Verlegeart B2, 30 °C, zwei belastete Adern). Der Faktor 0,7 ist eine dokumentierte Modellannahme, kein Normwert.',
     },
     {
       label: 'DIN VDE 0100-721',
       detail:
-        'Elektrische Anlagen in Caravans und Motorcaravans: Mindestquerschnitt 1,5 mm² für alle Leitungen, Verbot starrer Leiter, feindrähtige flammwidrige Kupferlitzen, strikte Trennung 12-V- und 230-V-Leitungen.',
+        'Elektrische Anlagen in Caravans und Motorcaravans: Mindestquerschnitt 1,5 mm² für die Leitungen im Fahrzeug; massive Klasse-1-Leiter sind unzulässig; 12-V- und 230-V-Leitungen werden möglichst räumlich getrennt geführt, gemeinsame Verlegung nur mit Trennung oder Isolierung für die höchste Spannung.',
     },
     {
       label: 'DIN VDE 0100-520',

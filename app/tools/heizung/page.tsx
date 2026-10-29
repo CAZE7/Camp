@@ -27,6 +27,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { DecimalInput } from '../../../components/ui/DecimalInput';
+import { formatNumberDe } from '@/components/nodes/formatNumber';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
@@ -704,7 +705,7 @@ function ValidationCard({
           <p className="mt-1 text-sm leading-relaxed">{validation.message}</p>
           {recommendedName && (
             <p className="mt-2 text-sm">
-              <strong>Lösung:</strong> Wähle {recommendedName} — deckt deine Last sicher ab.
+              <strong>Lösung:</strong> Wähle {recommendedName} — deckt die berechnete Last ab.
             </p>
           )}
         </div>
@@ -716,11 +717,12 @@ function ValidationCard({
       <div className="warn-card warn-card-warning" role="alert">
         <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-base font-semibold">Warnung: Verkokungsgefahr (überdimensioniert – Taktung)</p>
+          <p className="text-base font-semibold">Hinweis: Heizung überdimensioniert (häufiges Takten)</p>
           <p className="mt-1 text-sm leading-relaxed">{validation.message}</p>
           {recommendedName && (
             <p className="mt-2 text-sm">
-              <strong>Lösung:</strong> Kleinere Heizung wie {recommendedName} moduliert sauberer.
+              <strong>Lösung:</strong> Ein kleineres Gerät wie {recommendedName} liegt näher an der
+              berechneten Last.
             </p>
           )}
         </div>
@@ -731,7 +733,7 @@ function ValidationCard({
     <div className="warn-card warn-card-ok" role="status">
       <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
       <div>
-        <p className="text-base font-semibold">Auslegung Optimal</p>
+        <p className="text-base font-semibold">Auslegung passt</p>
         <p className="mt-1 text-sm leading-relaxed">{validation.message}</p>
       </div>
     </div>
@@ -799,19 +801,19 @@ function ResultsView({
               <Metric
                 icon={<Ruler className="h-4 w-4" />}
                 label="Oberfläche"
-                value={area.toFixed(1)}
+                value={formatNumberDe(area, 1)}
                 unit="m²"
               />
               <Metric
                 icon={<Box className="h-4 w-4" />}
                 label="Volumen"
-                value={volume.toFixed(1)}
+                value={formatNumberDe(volume, 1)}
                 unit="m³"
               />
               <Metric
                 icon={<Wind className="h-4 w-4" />}
                 label="Luftwechsel"
-                value={airChangeRate.toFixed(2)}
+                value={formatNumberDe(airChangeRate, 2)}
                 unit="/h"
                 hint={
                   <InfoHint title="Luftwechselrate">
@@ -823,7 +825,7 @@ function ResultsView({
               <Metric
                 icon={<Thermometer className="h-4 w-4" />}
                 label="U-Wert (Mix)"
-                value={U_mix.toFixed(2)}
+                value={formatNumberDe(U_mix, 2)}
                 unit="W/m²K"
                 hint={
                   <InfoHint title="U-Wert">
@@ -844,7 +846,8 @@ function ResultsView({
                   </InfoHint>
                 </div>
                 <p className="measure text-2xl font-semibold text-ink">
-                  {Q_trans.toFixed(0)} <span className="caption-xs font-semibold text-ink-soft">W</span>
+                  {formatNumberDe(Q_trans, 0)}{' '}
+                  <span className="caption-xs font-semibold text-ink-soft">W</span>
                 </p>
               </div>
               <div className="flex flex-col items-start gap-1 border border-rule bg-paper p-3">
@@ -855,7 +858,8 @@ function ResultsView({
                   </InfoHint>
                 </div>
                 <p className="measure text-2xl font-semibold text-ink">
-                  {Q_luft.toFixed(0)} <span className="caption-xs font-semibold text-ink-soft">W</span>
+                  {formatNumberDe(Q_luft, 0)}{' '}
+                  <span className="caption-xs font-semibold text-ink-soft">W</span>
                 </p>
               </div>
             </div>
@@ -865,7 +869,7 @@ function ResultsView({
               <p className="kicker text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <p className="measure text-2xl font-semibold tracking-tight text-ink md:text-6xl">
-                  {Q_total.toFixed(0)}
+                  {formatNumberDe(Q_total, 0)}
                 </p>
                 <div className="flex flex-col">
                   <p className="text-lg leading-none font-semibold text-ink">Watt</p>
@@ -986,20 +990,20 @@ export default function HeatingCalculatorPage() {
     if (Q_total > selectedHeater.maxPower) {
       return {
         status: 'critical',
-        message: `Heizung zu schwach! Das Fahrzeug erreicht bei Extremwetter nicht die Zieltemperatur. Q_total (${Q_total.toFixed(0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`,
+        message: `Heizung zu schwach: Das Fahrzeug erreicht bei Extremwetter nicht die Zieltemperatur. Q_total (${formatNumberDe(Q_total, 0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`,
       };
     }
 
     if (Q_at_minus_10 < selectedHeater.minPower) {
       return {
         status: 'warning',
-        message: `Gefahr der Verkokung: Heizung ist stark überdimensioniert, läuft unterhalb der minimalen Modulationsgrenze und wird sich tot-takten. Selbst bei -10°C liegt der Bedarf bei nur ${Q_at_minus_10.toFixed(0)} W, was unter dem Minimum von ${selectedHeater.minPower} W liegt.`,
+        message: `Die Heizung ist für die berechnete Last überdimensioniert: Selbst bei −10 °C liegt der Bedarf bei nur ${formatNumberDe(Q_at_minus_10, 0)} W und damit unter der minimalen Modulationsgrenze von ${selectedHeater.minPower} W. Häufiges Takten kann die Brennkammer belasten; prüfen, ob ein kleineres Gerät besser passt.`,
       };
     }
 
     return {
       status: 'ok',
-      message: `Heizgerät ${selectedHeater.name} passt perfekt für dein Setup. Es deckt deine Last ab und moduliert sicher.`,
+      message: `Heizgerät ${selectedHeater.name} deckt die berechnete Last ab und liegt im Modulationsbereich.`,
     };
   }, [Q_total, Q_at_minus_10, selectedHeater, error]);
 

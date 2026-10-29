@@ -29,7 +29,7 @@ export const AGM_CONTENT: SeoPageContent = {
       id: 'entladetiefe',
       heading: `Nutzbar sind ${AGM_DOD} % — und warum das doppelte Kapazität bedeutet`,
       body: [
-        `Das Modell rechnet AGM und Gel mit ${AGM_DOD} % Entladetiefe, Nassblei mit 30 %. Für 1 000 Wh Tagesbedarf und einen autarken Tag heißt das: rund 167 Ah Nennkapazität statt 93 Ah bei LiFePO4. Dazu kommt das Gewicht — Blei liegt bei rund 30 kg je 100 Ah.`,
+        `Das Modell rechnet AGM und Gel mit ${AGM_DOD} % Entladetiefe, Nassblei (Startertyp) mit 30 %; zyklenfeste Nassbatterien werden oft mit 50 % betrieben. Für 1 000 Wh Tagesbedarf und einen autarken Tag heißt das: rund 167 Ah Nennkapazität statt 93 Ah bei LiFePO4. Dazu kommt das Gewicht — Blei liegt bei rund 30 kg je 100 Ah.`,
         'Die Entladetiefe ist keine Herstellerwillkür: Tiefentladung verkürzt die Lebensdauer von Bleibatterien deutlich. Wer regelmäßig bis 80 % entlädt, bezahlt das über die Zyklenzahl.',
       ],
       callout: {
@@ -83,7 +83,7 @@ export const AGM_CONTENT: SeoPageContent = {
         {
           term: 'Ladeverhalten und Kälte',
           description:
-            'Blei lädt auch bei Kälte, braucht aber eine vollständige Kennlinie und mehr Zeit. Lithium lädt unter 0 °C gar nicht, dafür sehr schnell, wenn es warm genug ist.',
+            'Blei lädt auch bei Kälte, braucht aber eine vollständige Kennlinie und mehr Zeit. LiFePO4 ohne Heizung darf unter 0 °C nicht geladen werden; ein BMS sperrt den Strom. Dafür lädt es, sobald es warm genug ist, mit hohem Strom.',
         },
         {
           term: 'Kosten',

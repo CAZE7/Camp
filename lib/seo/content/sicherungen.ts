@@ -21,7 +21,7 @@ import type { SeoPageContent } from '../types';
 
 const NORM_ROWS = VDE_SIZES.filter((size) => size <= 25).map((size) => [
   `${size.toFixed(1).replace('.', ',')} mm²`,
-  `${VDE_AMPACITY[size] ?? '—'} A`,
+  `${VDE_AMPACITY[size]?.toLocaleString('de-DE') ?? '—'} A`,
   `${designAmpacity(size).toFixed(1).replace('.', ',')} A`,
   `${FUSE_MAP[size] ?? '—'} A`,
 ]);
@@ -36,7 +36,10 @@ const FORMAT_ROWS = (
  */
 const RATING_ROWS = STANDARD_FUSE_SIZES.filter((rating) => rating <= 60).map((rating) => {
   const smallest = VDE_SIZES.find((crossSection) => (FUSE_MAP[crossSection] ?? 0) >= rating);
-  return [`${rating} A`, smallest === undefined ? '—' : `${smallest.toFixed(1).replace('.', ',')} mm²`];
+  return [
+    `${rating.toLocaleString('de-DE')} A`,
+    smallest === undefined ? '—' : `${smallest.toFixed(1).replace('.', ',')} mm²`,
+  ];
 });
 
 export const SICHERUNGEN_CONTENT: SeoPageContent = {
@@ -59,7 +62,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
       id: 'schutzziel',
       heading: 'Was eine Sicherung schützt — und was nicht',
       body: [
-        'Ein Kurzschluss in einer ungeschützten 2,5-mm²-Leitung an einer 100-Ah-LiFePO4 wird zur Heizung: Der Batteriestrom ist hoch genug, um das Kupfer in Sekunden auf Zündtemperatur zu bringen. Die Sicherung soll genau das verhindern — sie schützt die LEITUNG, nicht das Gerät dahinter.',
+        'Ein Kurzschluss in einer ungeschützten 2,5-mm²-Leitung an einer 100-Ah-LiFePO4 kann zur Heizung werden: Je nach Batterie und BMS ist der Kurzschlussstrom hoch genug, um das Kupfer schnell zu erhitzen. Die Sicherung soll genau das verhindern — sie schützt die LEITUNG, nicht das Gerät dahinter.',
         'Ein zweites Missverständnis betrifft die Richtung: Eine zu kleine Sicherung schützt nicht besser, sie löst im Normalbetrieb aus. Eine zu große schützt nicht mehr, weil sie den Leiter thermisch überlastet zulässt. Die Größe liegt deshalb in einem Fenster — der Kette I_B ≤ I_n ≤ I_z.',
       ],
       definitions: [
@@ -79,7 +82,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
       id: 'ort',
       heading: 'Der Ort: unmittelbar am Batteriepol',
       body: [
-        `Die Sicherung sitzt unmittelbar am Pluspol der Batterie, bevor die erste Leitung ungeschützt geführt wird. Der Planer prüft dafür ${FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm ab der Quelle — den Wert aus ISO 10133:2000 § 8.1, der für kleine Boote gilt und in der Camper-Praxis weit verbreitet ist. DIN VDE 0100-721 verlangt den Überstromschutz ebenfalls nahe der Batterie, nennt aber keine Länge.`,
+        `Die Sicherung sitzt unmittelbar am Pluspol der Batterie, bevor die erste Leitung ungeschützt geführt wird. Der Planer prüft dafür ${FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm ab der Quelle — den Wert aus ISO 13297:2020 § 8.1, der für Small Craft gilt und in der Camper-Praxis weit verbreitet ist. DIN VDE 0100-721 verlangt den Überstromschutz ebenfalls nahe der Batterie, nennt aber keine Länge.`,
         'Praktisch bedeutet das: Die Leitung vom Pol zum Verteiler oder zum Trennschalter ist selbst ein Kabel, das geschützt werden muss. Sie wird am Pol abgesichert — nicht erst im Verteiler, denn genau die Strecke dazwischen ist die ungeschützte.',
       ],
       callout: {
@@ -91,13 +94,14 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
       id: 'groesse',
       heading: 'Die Größe: erst der Leiter, dann der Verbraucher',
       table: {
-        caption: 'Leitungsgrenzen des Modells (DIN VDE 0298-4, Verlegeart B2, Derating 0,7)',
+        caption:
+          'Leitungsgrenzen des Modells (Tabellenwerte nach DIN VDE 0298-4, B2, 30 °C; Derating 0,7 als Modellannahme)',
         head: ['Querschnitt', 'Tabelle', 'Design (×0,7)', 'Größte Sicherung'],
         rows: NORM_ROWS,
         note: 'Bei 2,5 mm² liegt das Fenster zwischen dem Betriebsstrom und 16 A. Ein Verbraucher mit 12 A bekommt also eine 15-A-Sicherung, nicht 20 A.',
       },
       body: [
-        'Die letzte Spalte ist die Obergrenze, nicht die Empfehlung. Die konkrete Größe ist der kleinste Normwert, der über dem Betriebsstrom liegt und die Leitung nicht überlastet — bei 10 A auf 6 mm² also 10 A, bei 10 A auf 1,5 mm² dagegen 16 A, weil die Leitung mehr nicht schützt.',
+        'Die letzte Spalte ist die Obergrenze, nicht die Empfehlung. Die konkrete Größe ist der kleinste Normwert, der über dem Betriebsstrom liegt und die Leitung nicht überlastet — bei 10 A auf 6 mm² also 10 A, bei 10 A auf 1,5 mm² ebenfalls 10 A, weil die Leitung mit 11,5 A Design-Belastbarkeit keine 16-A-Sicherung trägt.',
         'Wer eine größere Sicherung braucht, braucht zuerst ein dickeres Kabel. Das ist die einzige Richtung, in der die Kette verschoben werden darf.',
       ],
       subsections: [
@@ -126,17 +130,16 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
         'Der Nennstrom ist die halbe Antwort. Eine Sicherung muss den Kurzschlussstrom, der an ihrem Einbauort fließen kann, sicher abschalten — sonst entsteht ein Lichtbogen, den sie nicht löscht. Das Datenblatt nennt dafür das Abschaltvermögen; die Modelltabelle gibt typische Ankerwerte je Bauform.',
       ],
       table: {
-        caption:
-          'Typisches DC-Abschaltvermögen je Bauform (Modellwerte, Herstellerdatenblätter bei ≤ 32 V DC)',
+        caption: 'Typisches DC-Abschaltvermögen je Bauform (Modellwerte; Nennspannung je Datenblatt)',
         head: ['Bauform', 'Abschaltvermögen (typisch)'],
         rows: FORMAT_ROWS,
-        note: 'ATO nur bis 30 A Nennstrom erhältlich; darüber entscheiden MEGA, ANL, MRBF oder Class T. Das Datenblatt des konkreten Produkts schlägt die Tabelle.',
+        note: 'ATO/ATOF sind typischerweise bis 40 A erhältlich, Maxi bis 80 A; darüber entscheiden MEGA, ANL, MRBF oder Class T. Die Ankerwerte gelten je nach Bauform bei 14 V, 32 V oder 58 V — MRBF zum Beispiel 10 kA bei 14 V und 5 kA bei 32 V. Das Datenblatt des konkreten Produkts schlägt die Tabelle.',
       },
       subsections: [
         {
           heading: 'Warum nicht immer Class T?',
           body: [
-            'Class T schaltet typischerweise 20 000 A ab und ist damit das Dach für Lithium-Spitzenbänke. Die Modellpolitik wählt trotzdem die kleinste Bauform, deren Abschaltvermögen den Kurzschlussstrom am Einbauort trägt: Höheres Abschaltvermögen bedeutet physikalisch längere, energiereichere Lichtbögen beim Abschalten und größere Bauformen — nicht automatisch einen besseren Schutz für eine kleine Anlage.',
+            'Class T schaltet typischerweise 20 000 A ab und ist damit das Dach für Lithium-Spitzenbänke. Die Modellpolitik wählt trotzdem die kleinste Bauform, deren Abschaltvermögen den Kurzschlussstrom am Einbauort trägt: Höheres Abschaltvermögen erfordert eine robustere Lichtbogenlöschung und größere Bauformen; es ist kein Qualitätsmerkmal für kleine Ströme.',
           ],
         },
       ],
@@ -148,7 +151,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
         ordered: true,
         items: [
           'Kühlschrank, 8 A Dauerstrom, 4 m einfache Leitungslänge: Der Spannungsfall fordert 3,1 mm² → gewählt 4 mm² (ΔU 0,28 V = 2,3 %). Die Leitung trägt 21 A, die größte zulässige Sicherung ist 20 A — gewählt wird die 10-A-Sicherung am Pol, weil sie über dem Betriebsstrom liegt.',
-          'Wechselrichter, 1 000 W bei 12 V: Der Eingangsstrom liegt bei rund 98 A (Wirkungsgrad 0,85, Entladeschlussspannung 12,0 V). Über 1,5 m fordert der Spannungsfall nur 14,1 mm² — maßgeblich ist die Strombelastbarkeit: 98 A verlangen 70 mm² (Design 120,4 A). Größte zulässige Sicherung: 100 A. Dazu gehört die Prüfung des Kurzschlussstroms gegen das Abschaltvermögen dieser Sicherung.',
+          'Wechselrichter, 1 000 W bei 12 V: Der Eingangsstrom liegt bei rund 98 A (Wirkungsgrad 0,85, Entladeschlussspannung 12,0 V). Über 1,5 m fordert der Spannungsfall nur 14,1 mm² — maßgeblich ist die Strombelastbarkeit: 98 A verlangen 70 mm² (Design 120,4 A). Größte zulässige Sicherung: 100 A. Für Dauerlast ist diese Sicherung knapp; mehr Reserve oder ein 24-V-Bordnetz sind zu prüfen. Dazu gehört die Prüfung des Kurzschlussstroms gegen das Abschaltvermögen dieser Sicherung.',
         ],
       },
       callout: {
@@ -163,8 +166,8 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
         items: [
           'Sicherung im Verteiler statt am Pol — die ungeschützte Strecke bleibt bestehen.',
           'Sicherung nach Verbraucherdatenblatt statt nach Leitung wählen.',
-          'Abschaltvermögen ignorieren: Eine 100-A-Flachsicherung mit 1 000 A Abschaltvermögen kann an einer großen LiFePO4-Bank überfordert sein.',
-          'Rückleitungen mitabsichern, aber die Plusseite ungeschützt lassen — die Masse wird nicht abgesichert, die Plusleitung schon.',
+          'Abschaltvermögen ignorieren: Eine 100-A-Sicherung in einer Bauform mit nur 1 000 A Abschaltvermögen kann an einer großen LiFePO4-Bank überfordert sein.',
+          'Nur die Masse absichern und die Plusleitung ungeschützt lassen: Abgesichert wird die Plusleitung; die Fahrzeugmasse ist der Rückleiter.',
           'Sammelschienen ohne eigene Absicherung abgreifen: Jeder Abzweig braucht den Schutz, der zu seinem Querschnitt passt.',
         ],
       },
@@ -174,7 +177,7 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
     {
       question: 'Wo muss die Sicherung in der 12-V-Anlage sitzen?',
       answer:
-        'Unmittelbar am Pluspol der Batterie, vor der ersten ungeschützten Leitungsstrecke. Der Planer prüft 0,2 m ab der Quelle (ISO 10133:2000 § 8.1); DIN VDE 0100-721 verlangt den Überstromschutz nahe der Batterie, ohne eine Länge zu nennen. Die Sicherung schützt die Leitung — ihre Größe folgt deshalb dem Querschnitt und nicht dem Verbraucher.',
+        'Unmittelbar am Pluspol der Batterie, vor der ersten ungeschützten Leitungsstrecke. Der Planer prüft 0,2 m ab der Quelle (ISO 13297:2020 § 8.1, Small Craft); DIN VDE 0100-721 verlangt den Überstromschutz nahe der Batterie, ohne eine Länge zu nennen. Die Sicherung schützt die Leitung — ihre Größe folgt deshalb dem Querschnitt und nicht dem Verbraucher.',
     },
     {
       question: 'Welche Sicherung gehört zu welchem Kabelquerschnitt?',
@@ -205,8 +208,8 @@ export const SICHERUNGEN_CONTENT: SeoPageContent = {
       detail: 'Strombelastbarkeit der Leitungen (Verlegeart B2, Derating 0,7 im Modell).',
     },
     {
-      label: 'ISO 10133:2000 § 8.1',
-      detail: `Schutzorgan am Quellpunkt bei Kleinspannungs-Gleichstromanlagen; der Planer prüft daraus ${FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm.`,
+      label: 'ISO 13297:2020 § 8.1',
+      detail: `Schutzorgan am Quellpunkt bei Small Craft; der Planer prüft daraus ${FUSE_MAX_UNPROTECTED_LENGTH_M * 100} cm. Für Caravans ist das eine Praxisempfehlung, keine Pflicht.`,
     },
     {
       label: 'Abschaltvermögen in der Auslieferung',

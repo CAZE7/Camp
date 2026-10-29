@@ -137,7 +137,7 @@ describe('verificationWarning — ein Ereignis, ein Befund', () => {
 
   it('nennt die Klausel nicht zweimal, wenn sie schon im Normtext steht', () => {
     const warning = verificationWarning(
-      event({ standard: 'ISO 10133:2000 §8.1 (200 mm); CAMP-Planungsvorgabe', clause: '§8.1' }),
+      event({ standard: 'ISO 13297:2020 §8.1 (200 mm, Small Craft); CAMP-Planungsvorgabe', clause: '§8.1' }),
       5
     );
     expect(warning.source?.match(/§8\.1/g)).toHaveLength(1);

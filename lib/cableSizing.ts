@@ -86,6 +86,8 @@ export type CableSizing = {
    * scheinbar gültige Antwort zu präsentieren.
    */
   beyondModeledRange: boolean;
+  /** true = der Spannungsfall allein fordert mehr als 70 mm² (dann ist die Drop-Meldung präziser). */
+  voltageDropRequiresBeyondStandard: boolean;
   /** Größter Strom, den die Tabelle im Design (× Derating) noch trägt. */
   maximumModeledCurrentA: number;
 };
@@ -126,12 +128,13 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
   const dropArea = crossSectionForVoltageDrop(current, length, allowedDrop, COPPER_CONDUCTIVITY_MS_PER_MM2);
   // Querschnitt, den die Strombelastbarkeit fordert (Tabellenwert mit Derating).
   // Die Modellgrenze ist ZWEIWERTIG (outside-model): Sie darf nicht als
-  // "70 mm² genügt" gelesen werden. Deshalb wird der Status hier ausgewertet
-  // und nicht nur die gedeckelte Zahl übernommen.
+  // "70 mm² genügt" gelesen werden. Der Modellrand 70 mm² wird deshalb um eine
+  // Stufe überschritten (71), damit `requiredCrossSectionMm2` den Überlauf
+  // sichtbar macht; der verbaute Querschnitt bleibt bei 70 gedeckelt.
   const thermalBoundary = thermalCrossSectionFor(current);
   const beyondModeledRange = thermalBoundary.status === 'outside-model';
   const thermalArea = beyondModeledRange
-    ? MAX_STANDARD_CROSS_SECTION_MM2
+    ? MAX_STANDARD_CROSS_SECTION_MM2 + 1
     : thermalBoundary.crossSectionMm2;
 
   const requiredCrossSectionMm2 = Math.max(MIN_STANDARD_CROSS_SECTION_MM2, dropArea, thermalArea);
@@ -158,6 +161,7 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
     criterion,
     exceedsStandardRange,
     beyondModeledRange,
+    voltageDropRequiresBeyondStandard: dropArea > MAX_STANDARD_CROSS_SECTION_MM2 + 1e-9,
     maximumModeledCurrentA: MAX_MODELED_AMPACITY_A * DERATE_FACTOR,
   };
 }

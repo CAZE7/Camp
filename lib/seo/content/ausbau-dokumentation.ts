@@ -13,7 +13,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
   slug: 'camper-ausbau',
   topicId: 'ausbau',
   kind: 'ratgeber',
-  title: 'Camper-Ausbau dokumentieren: 12-V-Elektrik Schritt für Schritt',
+  title: 'Camper-Ausbau: 12-V-Elektrik dokumentieren',
   absoluteTitle: true,
   description:
     'Wie dokumentiere ich den Camper-Ausbau? Fotos, Schaltpläne und Rechenbeispiele für die 12-V-Elektrik — eigene Einbau-Entscheidungen mit [Erfahrung]-Abschnitten.',
@@ -41,7 +41,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       heading: 'Inhaltlich geprüft',
       body: [
         'Alle in dieser Dokumentation genannten Kabelquerschnitte, Sicherungsgrößen und Spannungswerte sind gegen den eigenen 12V-Elektroplaner validiert.',
-        'Die Normenverweise (DIN VDE 0100-721, EN ISO 13297, ISO 10133) entsprechen dem geltenden Stand für Freizeitfahrzeuge.',
+        'Die Normenverweise: DIN VDE 0100-721 für die 230-V-Anlage, DIN EN 1648-1/-2 für die 12-V-Anlage. Die 200-mm-Regel stammt aus dem Small-Craft-Bereich (ISO 13297:2020 § 8.1) und ist für Caravans eine Praxisempfehlung.',
       ],
     },
     {
@@ -53,7 +53,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
           'Bordnetz: 12 V DC, LiFePO4 200 Ah, 90 % DoD',
           'Ladung: Ladebooster 30 A DC-DC + Solar 500 Wp MPPT',
           'Verbraucher: Kühlbox, Standheizungsgebläse, Beleuchtung, Wasserpumpe',
-          'Hauptsicherung: 100 A, ≤ 0,2 m ab Batteriepol (ISO 10133)',
+          'Hauptsicherung: 100 A, ≤ 0,2 m ab Batteriepol (ISO 13297:2020 § 8.1, Small Craft)',
           '230 V: Wechselrichter 1000 W, FI-Schutz nach DIN VDE 0100-721',
         ],
         ordered: false,
@@ -78,8 +78,12 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
           ['Ladebooster', '30 A DC-DC, IUoU', 'Herstellerspezifikation'],
           ['Solaranlage', '500 Wp, MPPT-Regler', 'Eigener Kauf, Messwerte Sommer/Winter'],
           ['Wechselrichter', '1000 W, 230 V, reiner Sinus', 'Herstellerspezifikation'],
-          ['Hauptsicherung', '100 A, NH oder Flachsteckersicherung', 'ISO 10133, ≤ 0,2 m ab Pol'],
-          ['Leitung Hauptstrom', '35 mm², flandrige Kupferlitze', 'DIN ISO 6722, VDE 0295'],
+          [
+            'Hauptsicherung',
+            '100 A, MEGA-, ANL- oder MRBF-Sicherung',
+            'ISO 13297:2020 § 8.1, ≤ 0,2 m ab Pol',
+          ],
+          ['Leitung Hauptstrom', '70 mm², flexible Kupferlitze (Klasse 5)', 'DIN ISO 6722, VDE 0295'],
         ],
       },
     },
@@ -88,9 +92,9 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       heading: 'Rechenbeispiel: Hauptleitung Batterie → Verteilung',
       body: [
         'Annahme: Maximale Entladung 100 A über 1,5 m Leitung, zulässiger Spannungsfall 3 % (0,36 V).',
-        'Spannungsfall ΔU = 2 · I · L / (κ · A) → ΔU = 2 · 100 A · 1,5 m / (58 · 35 mm²) ≈ 0,148 V.',
-        'Das liegt deutlich unter 0,36 V. Der Querschnitt 35 mm² ist für diesen Anwendungsfall dimensioniert.',
-        'Mit Derating 0,7 für den geschlossenen Sitzkasten ergibt sich der nutzbare Querschnitt: 35 mm² · 0,7 = 24,5 mm² effektiv — ausreichend für 100 A.',
+        'Spannungsfall ΔU = 2 · I · L / (κ · A) → ΔU = 2 · 100 A · 1,5 m / (58 · 70 mm²) ≈ 0,074 V.',
+        'Das liegt deutlich unter 0,36 V. Maßgeblich ist hier die Strombelastbarkeit: 100 A verlangen nach dem Modell 70 mm² (Design-Belastbarkeit 120,4 A).',
+        'Die Strombelastbarkeit von 70 mm² liegt bei 172 A; mit Derating 0,7 für den geschlossenen Sitzkasten sind das 120,4 A. Der thermische Nachweis für 100 A ist damit erfüllt.',
       ],
     },
     {
@@ -119,7 +123,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
         'Fehler 1: Keine Kabelbezeichnung. Ohne beschriftete Kabel weiß man bei Fehlersuche nicht, welche Leitung wohin führt.',
         'Fehler 2: Keine Fotos vor dem Verschließen von Hohlräumen. Später ist nicht mehr nachvollziehbar, wo Kabel verlegt wurden.',
         'Fehler 3: Hauptsicherung nicht dokumentiert. Ohne genaue Position und Auslösespannung kann die Versicherung im Schadensfall prüfen.',
-        '[Erfahrung] Ich habe anfangs Kabel ohne Beschriftung verlegt. Beim Nachrüsten einer Steckdose musste ich zwei Innenverkleidungen demontieren, um die richtige Leitung zu finden. Seitdem beschrifte ich jedes Kabel an beiden Enden. Foto: Beschriftete Kabelenden im Verteiler.',
+        '[Erfahrung] Ich habe anfangs Kabel ohne Beschriftung verlegt. Beim Nachrüsten einer Steckdose musste ich zwei Innenverkleidungen demontieren, um die richtige Leitung zu finden. Seitdem beschrifte ich jedes Kabel an beiden Enden.',
       ],
     },
     {
@@ -153,8 +157,8 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       id: 'quellen',
       heading: 'Quellen',
       body: [
-        'EN ISO 13297 — Bordnetze DC in Freizeitfahrzeugen. Grundlage für die Dokumentation von Gleichstromanlagen.',
-        'ISO 10133:2000 § 8.1 — Hauptsicherung ≤ 0,2 m ab der Batteriequelle. Pflichtangabe in der Dokumentation.',
+        'DIN EN 1648-1/-2 — Elektrische Anlagen für DC 12 V in Caravans und Motorcaravans. Grundlage für die 12-V-Anlage.',
+        'ISO 13297:2020 § 8.1 — 200-mm-Regel für Small Craft; für Caravans eine Praxisempfehlung, keine Pflichtangabe.',
         'DIN VDE 0100-721 — Elektrische Anlagen in Caravans/Motorcaravans. Für den 230-V-Teil der Dokumentation.',
         'DIN ISO 6722 & VDE 0295 — Fahrzeugleitungen und Kupferlitzen. Für die Kabelauswahl und Beschriftung.',
       ],
@@ -190,9 +194,9 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       heading: 'Redaktionell',
       body: [
         'Autor: Jonas Rieckhoff, Selbstausbauer und Betreiber von elektroplaner-camper.de.',
-        'Inhaltlich geprüft: 2026-10.',
+        'Redaktionell überarbeitet: 2026-10.',
         'Jede Zahl in diesem Artikel hat eine Herkunft: eigener 12V-Elektroplaner, Herstellerdatenblatt oder gültige Norm. Nicht belegbare Zahlen sind mit [PRÜFEN] gekennzeichnet.',
-        'Alle Fotos in dieser Dokumentation sind eigene Aufnahmen vom Einbau im eigenen Fahrzeug.',
+        'Die Dokumentation beschreibt den Einbau im eigenen Fahrzeug; Fotos sind nicht Teil dieser Seite.',
       ],
     },
   ],
@@ -216,12 +220,13 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
   ],
   sources: [
     {
-      label: 'EN ISO 13297',
-      detail: 'Bordnetze DC in Freizeitfahrzeugen — Grundlage für die Dokumentation von Gleichstromanlagen.',
+      label: 'DIN EN 1648-1/-2',
+      detail:
+        'Elektrische Anlagen für DC 12 V in Caravans und Motorcaravans — Grundlage für die 12-V-Anlage.',
     },
     {
-      label: 'ISO 10133:2000 § 8.1',
-      detail: 'Hauptsicherung ≤ 0,2 m ab der Batteriequelle — Pflichtangabe in der Dokumentation.',
+      label: 'ISO 13297:2020 § 8.1',
+      detail: '200-mm-Regel für Small Craft — für Caravans eine Praxisempfehlung, keine Pflichtangabe.',
     },
     {
       label: 'DIN VDE 0100-721',
@@ -242,6 +247,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
   limits: [
     'Kein Ersatz für eine Prüfung durch eine Elektrofachkraft.',
     'Gilt für 12-V-DC-Anlagen; 230-V-Anlagen erfordern gesonderte Dokumentation und Abnahme.',
+    'Die 100-A-Hauptsicherung ist die Modell-Obergrenze; für Dauerlast 100 A ist mehr Reserve einzuplanen.',
     'Keine Garantie auf Übertragbarkeit auf andere Fahrzeugtypen.',
   ],
 };

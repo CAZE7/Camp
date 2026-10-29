@@ -171,7 +171,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
     {
       question: 'Kann ich den Verlust durch ein zweites Kabel verkleinern?',
       answer:
-        'Zwei parallel gelegte Leitungen halbieren den Widerstand, aber Parallelschaltungen sind nichts für den Laien: Beide Adern müssen gleiche Länge, gleichen Querschnitt und sichere Klemmverbindungen haben, und die Sicherung schützt weiterhin die einzelne Ader. Der einfachere Weg ist immer der größere Querschnitt.',
+        'Zwei parallel gelegte Leitungen halbieren den Widerstand, aber Parallelschaltungen sind nichts für den Laien: Beide Adern müssen gleiche Länge, gleichen Querschnitt und sichere Klemmverbindungen haben, und die Sicherung schützt weiterhin die einzelne Ader. Für die meisten Anwendungen ist der größere Querschnitt der einfachere Weg.',
     },
   ],
   related: [

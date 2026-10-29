@@ -26,12 +26,13 @@ const inputCurrent = (outputWatts: number): number => outputWatts / VDE_INVERTER
 const SIZING_ROWS = [500, 1000, 2000, 3000].map((watts) => {
   const current = inputCurrent(watts);
   const sizing = sizeCable(current, 1.5);
+  const outside = sizing.exceedsStandardRange;
   return [
-    `${watts} W`,
+    `${watts.toLocaleString('de-DE')} W`,
     `${current.toFixed(0)} A`,
-    `${sizing.crossSectionMm2.toFixed(1).replace('.', ',')} mm²`,
-    sizing.maxFuseA === null ? '—' : `${sizing.fuseA ?? '—'} A`,
-    `${sizing.voltageDropPercent.toFixed(2).replace('.', ',')} %`,
+    outside ? 'außerhalb der Normreihe' : `${sizing.crossSectionMm2.toFixed(1).replace('.', ',')} mm²`,
+    outside ? '—' : `${sizing.fuseA ?? '—'} A`,
+    outside ? '—' : `${sizing.voltageDropPercent.toFixed(2).replace('.', ',')} %`,
   ];
 });
 
@@ -56,10 +57,10 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
       heading: 'Der Eingangsstrom ist die entscheidende Zahl',
       formula: {
         expression: 'I_ein = P_aus / (η · U_min)',
-        caption: `η = ${VDE_INVERTER_EFFICIENCY} (Modellwert für den Wirkungsgrad), U_min = ${FLOOR_V.toFixed(1).replace('.', ',')} V (Entladeschlussspannung des Modells bei 12,8 V Nennspannung).`,
+        caption: `η = ${VDE_INVERTER_EFFICIENCY.toLocaleString('de-DE')} (Modellwert für den Wirkungsgrad), U_min = ${FLOOR_V.toFixed(1).replace('.', ',')} V (Entladeschlussspannung des Modells bei 12,8 V Nennspannung).`,
       },
       body: [
-        `Ein 1 000-W-Wechselrichter zieht am 12-V-Bordnetz rund ${inputCurrent(1000).toFixed(0)} A — nicht 83 A, wie die Rechnung mit 12,8 V und ohne Verluste ergäbe. Die konservative Rechnung ist Absicht: Am Entladeende ist die Batteriespannung niedriger, und bei gleicher Leistung fließt dann mehr Strom.`,
+        `Ein 1 000-W-Wechselrichter zieht am 12-V-Bordnetz rund ${inputCurrent(1000).toFixed(0)} A — nicht 78 A, wie die Rechnung mit 12,8 V und ohne Verluste ergäbe. Die konservative Rechnung ist Absicht: Am Entladeende ist die Batteriespannung niedriger, und bei gleicher Leistung fließt dann mehr Strom.`,
         'Der Strom steigt überproportional mit der Leistung, weil die Verluste im Wechselrichter mit ihr wachsen. Genau deshalb gehört der Eingangsstrom in die Kabelbemessung — nicht die Ausgangsleistung.',
       ],
       callout: {
@@ -74,10 +75,10 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
         caption: 'Modellrechnung: Zuleitung über 1,5 m einfache Länge bei 12 V Nennspannung',
         head: ['Wechselrichter', 'Eingangsstrom', 'Gewählter Querschnitt', 'Sicherung', 'Spannungsfall'],
         rows: SIZING_ROWS,
-        note: 'Der Querschnitt folgt dem Spannungsfall, die Sicherung der Leitungsgrenze — bei großen Leistungen ist die Zuleitung damit ein eigenes Bauteil und keine Beigabe.',
+        note: 'Der Querschnitt folgt dem Spannungsfall, die Sicherung der Leitungsgrenze. Die Tabelle nennt die größte zulässige Sicherung des Modells, nicht eine 125-%-Reserve für Dauerlast: Bei 1.000 W (98 A) liegt die 100-A-Sicherung bereits sehr nah am Dauerstrom; für Dauerlast ist mehr Reserve oder ein 24-V-System sinnvoll. Bei 2.000 W und 3.000 W reicht die modellierte Normreihe bis 70 mm² nicht; die Tabelle weist das aus. Dann sind 24 V oder eine größere, fachlich ausgelegte Leitung nötig — zum Beispiel zwei parallele Leitungen mit gleicher Länge und getrennter Absicherung. Die konkrete Ausführung plant eine Fachkraft.',
       },
       body: [
-        'Die Tabelle macht sichtbar, warum die Zuleitung so kurz wie möglich sein sollte: Bei 2 000 W entscheidet der Meter über die nächste Normgröße. Ein Wechselrichter, der 1 m neben der Batterie sitzt, braucht deutlich weniger Kupfer als einer am Heck.',
+        'Die Tabelle macht sichtbar, warum die Zuleitung so kurz wie möglich sein sollte: Bei 1 000 W entscheidet der Meter über die nächste Normgröße. Bei 2 000 W reicht die modellierte Normreihe selbst auf 1,5 m nicht mehr; dann hilft nur ein größerer Querschnitt außerhalb des Modells oder ein 24-V-Bordnetz. Ein Wechselrichter, der 1 m neben der Batterie sitzt, braucht deutlich weniger Kupfer als einer am Heck.',
         'Auch die 230-V-Seite sollte nicht ignoriert werden: Ein langes, dünnes Ausgangskabel verschiebt die Verluste nur — aber die bleiben Verluste.',
       ],
     },
@@ -105,7 +106,7 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
       id: 'verbrauch',
       heading: 'Was der Wechselrichter im Leerlauf kostet',
       body: [
-        'Ein Wechselrichter arbeitet nicht umsonst: Sein eigener Leerlaufverbrauch (typisch zweistellige Wattzahlen, im Bereitschaftsmodus weniger) fließt rund um die Uhr aus der Batterie, wenn er eingeschaltet bleibt. Über 24 Stunden summiert sich das zu einem erheblichen Teil des Tagesbedarfs.',
+        'Ein Wechselrichter arbeitet nicht umsonst: Sein eigener Leerlaufverbrauch (datenblattabhängig, bei kleinen Geräten oft einstellig, bei größeren Geräten im zweistelligen Wattbereich) fließt rund um die Uhr aus der Batterie, wenn er eingeschaltet bleibt. Über 24 Stunden summiert sich das zu einem erheblichen Teil des Tagesbedarfs.',
         'Praktisch heißt das: Wechselrichter bei Nichtbenutzung hart ausschalten (Fernbedienung oder Schalter) und die Geräteauswahl prüfen — eine 230-V-Kaffeemaschine zieht über den Umweg Wechselrichter etwa 98 A aus der Batterie, während ein 12-V-Kocher dieselbe Energie direkt zieht.',
       ],
       links: [
@@ -117,7 +118,7 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
       id: 'ac-seite',
       heading: 'Die 230-V-Seite: eigener Schutz, eigene Regeln',
       body: [
-        `Ein Wechselrichterausgang ist ein eigenes Stromversorgungssystem mit ${AC_MODEL_VOLTAGE_V} V, das nicht über die Außenwelt geerdet ist. Das Modell der 230-V-Seite führt dabei drei Größen: Schutzleiterquerschnitt nach IEC 60364-5-54, Leitungsschutzschalter mit Charakteristik B oder C (Schnellauslösung bei ${MCB_INSTANT_TRIP_MAX_MULTIPLE.B}× bis ${MCB_INSTANT_TRIP_MAX_MULTIPLE.C}× Nennstrom) und die Abschaltbedingung nach IEC 60364-4-41.`,
+        `Ein Wechselrichterausgang ist ein eigenes Stromversorgungssystem mit ${AC_MODEL_VOLTAGE_V} V. Ob der Ausgang isoliert oder geerdet ist, steht im Datenblatt des Geräts; die Anleitung gilt. Das Modell der 230-V-Seite führt drei Größen: Schutzleiterquerschnitt nach IEC 60364-5-54, Leitungsschutzschalter mit Charakteristik B (Auslösung bei ${MCB_INSTANT_TRIP_MAX_MULTIPLE.B}× Nennstrom) oder C (bei ${MCB_INSTANT_TRIP_MAX_MULTIPLE.C}× Nennstrom) und die Abschaltbedingung nach IEC 60364-4-41.`,
         'Wechselrichter-Ausgänge sind elektronisch strombegrenzt — sie verhalten sich nicht wie das öffentliche Netz. Was das für Schutzmaßnahmen bedeutet, steht in der Anleitung des Geräts und ist keine Rechenaufgabe dieser Seite.',
       ],
       links: [{ href: '/camper-elektrik/230v/', label: '230-V-Anlage im Camper verstehen' }],
@@ -128,7 +129,7 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
       list: {
         items: [
           'Zuleitung nach der Ausgangsleistung bemessen statt nach dem Eingangsstrom.',
-          'Wirkungsgrad vernachlässigen — 15 % Mehrstrom sind bei 2 000 W immerhin 25 A.',
+          'Wirkungsgrad vernachlässigen — 15 % Mehrstrom sind bei 2 000 W rund 29 A.',
           'Sicherung am Wechselrichter statt am Batteriepol.',
           'Leerlaufverbrauch nicht einplanen und sich über die leere Batterie am dritten Standtag wundern.',
           'Wechselrichter ohne Blick auf die Kurzschlussleistung der Batteriebank betreiben.',
@@ -139,12 +140,12 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
   faq: [
     {
       question: 'Wie viel Strom zieht ein 2000-W-Wechselrichter aus der 12-V-Batterie?',
-      answer: `Rechnerisch rund ${inputCurrent(2000).toFixed(0)} A: 2 000 W Ausgangsleistung bei einem Wirkungsgrad von ${VDE_INVERTER_EFFICIENCY} und der Entladeschlussspannung von ${FLOOR_V.toFixed(1).replace('.', ',')} V. Die Zuleitung über 1,5 m fordert dafür im Modell ${sizeCable(inputCurrent(2000), 1.5).crossSectionMm2.toFixed(0)} mm² — die Sicherung schützt den Leiter, nicht das Gerät.`,
+      answer: `Rechnerisch rund ${inputCurrent(2000).toFixed(0)} A: 2 000 W Ausgangsleistung bei einem Wirkungsgrad von ${VDE_INVERTER_EFFICIENCY.toLocaleString('de-DE')} und der Entladeschlussspannung von ${FLOOR_V.toFixed(1).replace('.', ',')} V. Die Zuleitung über 1,5 m liegt damit außerhalb der modellierten Normreihe bis 70 mm²; nötig sind ein größerer Querschnitt außerhalb des Modells oder ein 24-V-Bordnetz. Die Sicherung schützt den Leiter, nicht das Gerät.`,
     },
     {
       question: 'Reicht ein 1000-W-Wechselrichter für eine Kaffeemaschine?',
       answer:
-        'Für den Dauerbetrieb ja, wenn die Maschine dauerhaft unter 1 000 W bleibt. Viele Kaffeemaschinen ziehen aber kurzzeitig mehr und takten (Heizstab mit Thermostat): Die Spitzenlast übersteigt dann die Nennleistung. Bei 1 000 W Ausgangsleistung fließen rund 98 A aus der Batterie — das ist der Strom, den Kabel und Sicherung tragen müssen.',
+        'Für den Dauerbetrieb ja, wenn die Maschine dauerhaft unter 1 000 W bleibt. Viele Kaffeemaschinen ziehen aber kurzzeitig mehr und takten (Heizstab mit Thermostat): Die Spitzenlast übersteigt dann die Nennleistung. Bei 1 000 W Ausgangsleistung fließen rund 98 A aus der Batterie — das ist der Strom, den Kabel und Sicherung tragen müssen. Die 100-A-Sicherung auf 70 mm² ist dabei knapp; für Dauerlast mehr Reserve oder 24 V einplanen.',
     },
     {
       question: 'Wechselrichter mit reinem Sinus oder modifiziertem Sinus?',
@@ -163,7 +164,7 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
   sources: [
     {
       label: 'Modellwerte des Wechselrichters',
-      detail: `Wirkungsgrad ${VDE_INVERTER_EFFICIENCY} und Entladeschlussspannung (Faktor 0,9375) in \`lib/vde-standards.ts\`; die 230-V-Seite in \`lib/acProtection.ts\` (dort mit Normbezug).`,
+      detail: `Wirkungsgrad ${VDE_INVERTER_EFFICIENCY.toLocaleString('de-DE')} und Entladeschlussspannung (Faktor 0,9375) in \`lib/vde-standards.ts\`; die 230-V-Seite in \`lib/acProtection.ts\` (dort mit Normbezug).`,
     },
     {
       label: 'IEC 60364-5-54 / 4-41, IEC 60898-1',
@@ -179,7 +180,7 @@ export const WECHSELRICHTER_CONTENT: SeoPageContent = {
     'Anlaufströme und Einschaltspitzen sind nicht modelliert; sie liegen über dem Dauerstrom.',
     'Blindleistung, Einschaltstrombegrenzer und Netzbildung (Inselbetrieb) sind keine Größen dieser Seite.',
     'Die vorgelagerte Netzimpedanz ist im AC-Modell eine deklarierte Annahme (' +
-      `${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω` +
+      `${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM.toLocaleString('de-DE')} Ω` +
       ') und keine Messung vor Ort.',
   ],
 };

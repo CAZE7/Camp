@@ -16,11 +16,8 @@
  *
  * Normstand (2026): § 5 DDG (Anbieterkennzeichnung, seit 05/2024 Nachfolger von
  * § 5 TMG) und § 18 Abs. 2 MStV (Inhaltsverantwortung, Nachfolger von § 55
- * Abs. 2 RStV). Die SICHTBAREN Zitate auf der Seite lauten noch TMG/RStV —
- * sie sind Teil der eingefrorenen Pixel-Baseline
- * (`tests/e2e/visual.spec.ts-snapshots/route-impressum-*.png`) und werden mit
- * UI-Freigabe zusammen mit den Angaben aktualisiert (FOLLOW-UP, s. Ledger
- * „Achte Fassung").
+ * Abs. 2 RStV). Die sichtbaren Zitate auf der Seite nennen inzwischen DDG und
+ * MStV; offen sind nur noch die fünf Betreiberangaben.
  */
 
 /**

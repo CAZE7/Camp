@@ -22,7 +22,7 @@ const DOD_ROWS = Object.entries(VDE_BATTERY_DOD).map(([chemistry, dod]) => [
 
 const CABLE_ROWS = [1.5, 2.5, 4, 6, 10].map((size) => [
   `${size.toFixed(1).replace('.', ',')} mm²`,
-  `${VDE_AMPACITY[size] ?? '—'} A`,
+  `${VDE_AMPACITY[size]?.toLocaleString('de-DE') ?? '—'} A`,
   `${designAmpacity(size).toFixed(1).replace('.', ',')} A`,
   `${FUSE_MAP[size] ?? '—'} A`,
 ]);
@@ -106,7 +106,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       id: 'leitungen',
       heading: 'Leitungen: der Spannungsfall entscheidet, nicht das Tabellenbuch',
       body: [
-        'Bei 12 V sind die Ströme zehnmal so hoch wie bei 230 V — und genau darum ist der Spannungsfall hier das bestimmende Kriterium, nicht die Strombelastbarkeit. Eine Leitung, die thermisch 20 A trägt, kann über fünf Meter bei 10 A bereits sichtbar Spannung verlieren.',
+        'Bei 12 V sind die Ströme bei gleicher Leistung rund 19-mal so hoch wie bei 230 V — deshalb ist der Spannungsfall hier oft das bestimmende Kriterium. Bei hohen Strömen und kurzen Wegen bleibt die Strombelastbarkeit maßgeblich. Eine Leitung, die thermisch 20 A trägt, kann über fünf Meter bei 10 A bereits sichtbar Spannung verlieren.',
         'Die Formel ist in beide Richtungen nutzbar: A = (2 · L · I) / (κ · ΔU) sucht den Querschnitt, ΔU = I · 2L / (κ · A) bewertet eine gewählte Leitung. Der Faktor 2 steht für Hin- und Rückleitung, κ ist die Leitfähigkeit von Kupfer mit ' +
           `${COPPER_CONDUCTIVITY_MS_PER_MM2} m/(Ω·mm²) bei 20 °C. Geplant wird mit ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % zulässigem Spannungsfall — bei 12 V also 0,36 V.`,
       ],
@@ -116,7 +116,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       },
       table: {
         caption:
-          'Normreihe mit Belastbarkeit und größter Sicherung (Modell: DIN VDE 0298-4, Verlegeart B2, Derating 0,7)',
+          'Normreihe mit Belastbarkeit und größter Sicherung (Modell: Tabellenwerte nach DIN VDE 0298-4, B2, 30 °C; Derating 0,7 als Modellannahme)',
         head: ['Querschnitt', 'Tabelle', 'Design (×0,7)', 'Größte Sicherung'],
         rows: CABLE_ROWS,
         note: 'Die letzte Spalte schützt die LEITUNG. Welche Sicherung zu einem Gerät passt, ist eine andere Frage — siehe [Sicherungen im Camper](/camper-elektrik/sicherungen/).',
@@ -167,7 +167,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       id: 'laden',
       heading: 'Ladung: Solar, Laderegler, Landstrom',
       body: [
-        'Eine Batterie ohne Ladung ist ein Vorrat, kein System. Die Solarinsel wird aus demselben Tagesbedarf ausgelegt wie die Batterie — im Winter mit 35 % des Sommerertrags, weil die Auslegung sonst nur im Juli trägt. Der Laderegler (MPPT oder PWM) bestimmt, wie viel von der Modulleistung tatsächlich in der Batterie ankommt.',
+        'Eine Batterie ohne Ladung ist ein Vorrat, kein System. Die Solarinsel wird aus demselben Tagesbedarf ausgelegt wie die Batterie — im Winter mit dem Modellwert 35 % des Sommerertrags (gut geneigte Südlage; ein flaches Dach liegt bei 10–20 %), weil die Auslegung sonst nur im Juli trägt. Der Laderegler (MPPT oder PWM) bestimmt, wie viel von der Modulleistung tatsächlich in der Batterie ankommt.',
       ],
       links: [
         {
@@ -246,12 +246,12 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     {
       question: 'Reicht 12 V oder brauche ich 24 V?',
       answer:
-        'Bis etwa 2 000 W Spitzenlast ist 12 V üblich; darüber werden die Ströme so groß, dass Querschnitte und Schutzorgane unhandlich werden. Der Rechenweg bleibt derselbe, nur die Zahlen ändern sich: Bei 24 V halbiert sich der Strom bei gleicher Leistung, der Querschnitt sinkt damit auf ein Viertel.',
+        'Bis etwa 1 000–1 500 W ist 12 V üblich; bei 2 000 W werden die Ströme so groß, dass 24 V oder eine größere, fachlich ausgelegte Leitung nötig werden. Der Rechenweg bleibt derselbe, nur die Zahlen ändern sich: Bei 24 V halbiert sich der Strom bei gleicher Leistung; der Spannungsfall-Querschnitt sinkt damit auf ein Viertel, thermisch halbiert er sich.',
     },
     {
       question: 'Was prüft Camp automatisch, was muss ich selbst prüfen?',
       answer:
-        'Der Planer prüft rechnerisch: Spannungsfall je Leitung, Strombelastbarkeit, Sicherungsgröße, Abstand des Schutzorgans zur Quelle und ob Verbraucher Angaben für die Energiebilanz haben. Nicht geprüft werden Anlagen, die nur eine Elektrofachkraft beurteilen darf — insbesondere die 230-V-Seite, der Zustand von Batterien und die mechanische Verlegung.',
+        'Der Planer prüft rechnerisch: Spannungsfall je Leitung, Strombelastbarkeit, Sicherungsgröße, Abstand des Schutzorgans zur Quelle und ob Verbraucher Angaben für die Energiebilanz haben. Auch die 230-V-Seite wird rechnerisch geprüft (Zs, Schutzleiterquerschnitt, Absicherung); die Abnahme vor Ort, der Zustand von Batterien und die mechanische Verlegung bleiben außerhalb des Modells.',
     },
   ],
   related: [
@@ -274,12 +274,12 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     {
       label: 'DIN VDE 0100-721',
       detail:
-        'Kleinspannungsanlagen in Caravans und Motorcaravans: verlangt den Überstromschutz nahe der Batterie, nennt für diesen Abstand aber keine Länge.',
+        'Elektrische Anlagen in Caravans und Motorcaravans: verlangt den Überstromschutz nahe der Batterie, nennt für diesen Abstand aber keine Länge.',
     },
     {
-      label: 'ISO 10133:2000 § 8.1',
+      label: 'ISO 13297:2020 § 8.1',
       detail:
-        'Schutzorgan am Quellpunkt bei Kleinspannungs-Gleichstromanlagen. Der Planer prüft daraus 0,2 m ab der Quelle.',
+        'Schutzorgan am Quellpunkt bei Small Craft (200 mm). Für Caravans ist das eine Praxisempfehlung; der Planer prüft daraus 0,2 m ab der Quelle.',
     },
     {
       label: 'Modellwerte in der Auslieferung',

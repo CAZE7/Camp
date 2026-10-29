@@ -22,7 +22,7 @@ export default function ImpressumPage() {
       <PageStructuredData path="/impressum/" />
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Impressum</h1>
-        <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 TMG.</p>
+        <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 DDG.</p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Anbieter</h2>
@@ -39,23 +39,23 @@ export default function ImpressumPage() {
                   eingefrorenen Baseline (tests/e2e/visual.spec.ts-snapshots/
                   route-impressum-{light,dark}.png) — ein Textwechsel hier
                   verschiebt das visuelle Gate und braucht UI-Freigabe. */}
-              <p>Elektroplaner — Projekt-Placeholder</p>
-              <p>Bitte hier den Namen und die Anschrift des Betreibers eintragen.</p>
+              <p>Elektroplaner — Betreiberangaben werden ergänzt.</p>
+              <p>Name und Anschrift des Betreibers werden vor der Veröffentlichung ergänzt.</p>
             </>
           )}
         </section>
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Kontakt</h2>
-          {emailComplete ? <p>E-Mail: {legal.email}</p> : <p>E-Mail: kontakt@example.org</p>}
+          {emailComplete ? <p>E-Mail: {legal.email}</p> : <p>E-Mail: wird ergänzt.</p>}
         </section>
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Verantwortlich für den Inhalt</h2>
           {responsibleComplete ? (
-            <p>Nach § 55 Abs. 2 RStV: {legal.contentResponsible}</p>
+            <p>Nach § 18 Abs. 2 MStV: {legal.contentResponsible}</p>
           ) : (
-            <p>Nach § 55 Abs. 2 RStV: Bitte hier eintragen.</p>
+            <p>Nach § 18 Abs. 2 MStV: wird ergänzt.</p>
           )}
         </section>
 
@@ -64,7 +64,8 @@ export default function ImpressumPage() {
           <p>
             Elektroplaner ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen (Heizlast,
             Kabelquerschnitt, Solarleistung) sind Näherungen und ersetzen keine Elektrofachkraft. Für
-            Landstrom-Anlagen ist eine Prüfung durch qualifiziertes Personal nach DIN VDE 0100-721 Pflicht.
+            Landstrom-Anlagen gehören Errichtung und Erstprüfung in die Hände einer Elektrofachkraft; die
+            Errichtung folgt DIN VDE 0100-721, die Erstprüfung DIN VDE 0100-600.
           </p>
         </section>
       </PageShell>

@@ -126,7 +126,10 @@ export function acCableComposition(phaseCrossSectionMm2: number): AcCableComposi
     phase: phaseCrossSectionMm2,
     neutral: phaseCrossSectionMm2,
     protectiveEarth,
-    label: `3G${format(phaseCrossSectionMm2)}`,
+    label:
+      protectiveEarth === phaseCrossSectionMm2
+        ? `3G${format(phaseCrossSectionMm2)}`
+        : `3x${format(phaseCrossSectionMm2)}/${format(protectiveEarth)}`,
   };
 }
 

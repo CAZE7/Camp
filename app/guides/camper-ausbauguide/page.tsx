@@ -53,51 +53,30 @@ export default function CamperAusbauguide() {
                 zweiten Teil; die Größe kommt jetzt aus der gemeinsamen
                 Skala (.h1) statt aus einer eigenen. */}
             <h1 className={cn('h1 mt-2 mb-6 leading-tight', outfit.className)}>
-              Der ultimative Camper-Ausbau-Guide: <br />
-              <span className="text-copper">Von der leeren Blechbüchse zum rollenden Zuhause</span>
+              Camper-Ausbau: <br />
+              <span className="text-copper">Planung, Technik und Zulassung</span>
             </h1>
-
-            <div className="warn-card warn-card-info mb-10">
-              <span
-                aria-hidden="true"
-                className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warn-info text-xs font-bold text-paper"
-              >
-                i
-              </span>
-              <p className="text-sm leading-relaxed">
-                <strong>Storytelling-Navigation:</strong> Auf großen Bildschirmen zeichnet sich links der Weg
-                deines Vans mit — je weiter du scrollst, desto mehr Strecke wird sichtbar. Auf Mobilgeräten
-                und bei aktivierter Einstellung „Bewegungen reduzieren" wird die Animation abgeschaltet.
-              </p>
-            </div>
 
             <div className="space-y-6 text-base leading-relaxed text-ink-soft md:text-lg">
               <h2 className={cn('mt-10 mb-4 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                Die Reise beginnt: Dein Traum vom Vanlife
+                Worum es in diesem Guide geht
               </h2>
               <p>
-                Stell dir vor: Du wachst auf, öffnest die Hecktüren deines Vans und blickst direkt auf einen
-                nebelverhangenen Bergsee. Der Kaffee brüht bereits auf dem Gasherd, und du weißt: Alles um
-                dich herum hast du selbst mit deinen eigenen Händen erschaffen. Der Weg zum fertigen Camper
-                ist lang, manchmal frustrierend und voller Überraschungen – aber er ist auch eines der
-                erfüllendsten Projekte, die du je angehen wirst.
+                Der Ausbau eines Kastenwagens ist eine Kette von Entscheidungen: Fahrzeug, Grundriss, Dämmung,
+                Leitungen, Heizung, Möbel und Zulassung. Wer eine Stufe überspringt, muss später zurückbauen.
+                Dieser Guide ordnet die Arbeit und verweist für jede Zahl auf die Seite, die sie herleitet.
               </p>
               <p>
-                Dieser Guide ist dein Co-Pilot. Wir gehen nicht nur durch die <em>Was</em>-Schritte, sondern
-                klären vor allem das <em>Warum</em> und das <em>Wie</em>. Schluss mit Halbwissen: Hier gibt es
-                handfeste Normen, exakte Materialstärken und das geballte Wissen, das du brauchst, um teure
-                Anfängerfehler zu vermeiden.
+                Die Reihenfolge ist wichtiger als das einzelne Bauteil: Kabel und Leerrohre kommen vor die
+                Dämmung, die Dämmung vor die Wandverkleidung, die Technik vor die Möbel. Die folgenden
+                Abschnitte erklären, was wann entschieden wird — und wo eine Fachkraft gefragt ist. Maße und
+                Materialangaben sind Erfahrungswerte; Herstellerangaben und die eigene Messung gehen vor.
               </p>
-
-              {/* Dezenter Platzhalter statt externem Unsplash-Bild (offline-fähiger Export). */}
-              <div className="my-10 flex aspect-video w-full items-center justify-center border border-rule bg-paper">
-                <span className="kicker text-copper">Ausbau-Impressionen</span>
-              </div>
 
               <hr className="my-12 border-rule" />
 
               <h2 className={cn('mt-12 mb-4 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                1. Gesamtstrategie und Bauphasen
+                1. Bauablauf und Reihenfolge
               </h2>
               <p>
                 Ein Ausbau ohne Plan ist wie eine Fahrt ohne Navi: Man kommt irgendwo an, aber selten dort, wo
@@ -105,31 +84,32 @@ export default function CamperAusbauguide() {
               </p>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                1.1 Der perfekte Bauablauf (Chronologisch)
+                1.1 Der Bauablauf in der richtigen Reihenfolge
               </h3>
               <ol className="list-decimal space-y-3 border border-rule bg-paper p-6 pl-10 font-medium text-ink-soft">
                 <li>
-                  <strong>Planung & Fahrzeugkauf:</strong> Budget, Layout, Gewichtsplanung.
+                  <strong>Planung & Fahrzeugkauf:</strong> Budget, Grundriss, Gewichtsreserve.
                 </li>
                 <li>
-                  <strong>Entkernung & Rostvorsorge:</strong> Das Fundament muss gesund sein.
+                  <strong>Entkernung & Rostvorsorge:</strong> Trennwand (falls zulässig), Reinigung,
+                  Rostbehandlung.
                 </li>
                 <li>
-                  <strong>Karosseriearbeiten:</strong> Fenster, Dachluken, Landstromanschluss (Flexen tut nur
-                  beim ersten Mal weh!).
+                  <strong>Karosseriearbeiten:</strong> Fenster, Dachluken, Landstromanschluss; Schnittkanten
+                  rostschützen.
                 </li>
                 <li>
                   <strong>Kabel- und Rohrwege planen:</strong> Leerrohre und Trassen VOR der Dämmung setzen.
                 </li>
                 <li>
-                  <strong>Dämmung & Isolierung:</strong> Alubutyl und Armaflex (oder Alternativen).
+                  <strong>Dämmung:</strong> Entdröhnung, Wärmedämmung, Hohlräume.
                 </li>
                 <li>
                   <strong>Unterkonstruktion & Boden:</strong> Lattung, Holme verkleiden, Bodenplatte.
                 </li>
                 <li>
-                  <strong>Technik-Installation (Rohbau):</strong> Elektrik-Verkabelung, Wasserleitungen,
-                  Standheizung.
+                  <strong>Technik-Installation (Rohbau):</strong> Elektrik, Wasserleitungen, Standheizung; 230
+                  V durch eine Elektrofachkraft.
                 </li>
                 <li>
                   <strong>Innenausbau (Hülle):</strong> Wand- und Deckenverkleidung.
@@ -138,23 +118,22 @@ export default function CamperAusbauguide() {
                   <strong>Möbelbau & Technik-Endmontage:</strong> Schränke, Bett, Anschließen der Geräte.
                 </li>
                 <li>
-                  <strong>TÜV & Abnahme:</strong> Wohnmobilzulassung und Gasprüfung.
+                  <strong>TÜV & Abnahme:</strong> Wohnmobilzulassung, Gasprüfung, 230-V-Erstprüfung.
                 </li>
               </ol>
 
               <div className="warn-card warn-card-warning my-10 flex-col">
                 <div className="flex items-start gap-3">
                   <p className="text-base leading-relaxed text-warn-warning">
-                    <strong>Profi-Tipp:</strong> Mach dir einen digitalen &quot;Schattenriss&quot; deines Vans
-                    (z. B. in SketchUp oder Vanspace3D) und plane jeden Millimeter, besonders die Kabelwege
-                    und Leerrohre.
+                    <strong>Planungstipp:</strong> Zeichne einen Grundriss deines Vans (zum Beispiel in
+                    SketchUp oder Vanspace3D) und plane besonders die Kabelwege und Leerrohre.
                   </p>
                 </div>
                 <div className="mt-3 flex items-start gap-3">
                   <p className="text-base leading-relaxed text-warn-warning">
-                    <strong>Häufiger Anfängerfehler:</strong> Kabel lose in der Dämmung verlegen. Später
-                    willst du einen Schrank anschrauben, triffst ein unsichtbares Kabel und darfst die halbe
-                    Wand wieder aufreißen. Nutze immer Wellrohre und befestige sie am Blech!
+                    <strong>Typischer Fehler:</strong> Kabel lose in der Dämmung verlegen. Später willst du
+                    einen Schrank anschrauben, triffst ein unsichtbares Kabel und musst die halbe Wand wieder
+                    öffnen. Nutze Wellrohre und befestige sie am Blech.
                   </p>
                 </div>
               </div>
@@ -162,25 +141,29 @@ export default function CamperAusbauguide() {
               <hr className="my-12 border-rule" />
 
               <h2 className={cn('mt-12 mb-4 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                2. Planung, Basis & Vorbereitung
+                2. Fahrzeugwahl und Vorbereitung
               </h2>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                2.1 Das richtige Fahrzeug finden
+                2.1 Fahrzeuggröße und Grundriss
               </h3>
               <p>
-                Die Fahrzeugklasse bestimmt den gesamten Ausbau. <strong>H2/L2</strong> (Höhe 2, Länge 2 -
-                z.B. Fiat Ducato, ca. 5,40m lang) ist der Sweetspot für Alltagstauglichkeit und Platz.
+                Die Fahrzeuggröße bestimmt Grundriss, Zuladung und Alltagstauglichkeit. Ein Kastenwagen der
+                Größe <strong>H2/L2</strong> (zum Beispiel Fiat Ducato) ist ein häufiger Kompromiss: rund 5,4
+                m Länge und gut 1,9 m Innenhöhe im Rohzustand. Die Maße unterscheiden sich je nach Hersteller
+                und Aufbau; miss dein Fahrzeug selbst.
               </p>
               <ul className="mt-6 mb-8 list-disc space-y-3 pl-6 text-ink-soft">
                 <li>
-                  <strong>Stehhöhe:</strong> Achte auf H2 (ca. 1,90m - 1,93m Innenhöhe im Rohzustand). Vergiss
-                  nicht: Bodenkonstruktion (ca. 3-4cm) und Deckenverkleidung (ca. 2-3cm) fressen Höhe!
+                  <strong>Stehhöhe:</strong> Die Innenhöhe im Rohzustand liegt bei H2 je nach Modell bei etwa
+                  1,9 m. Nach Bodenaufbau und Deckenverkleidung bleiben davon oft 5–10 cm weniger. Prüfe die
+                  Stehhöhe an der Stelle, an der du später stehen willst.
                 </li>
                 <li>
-                  <strong>Breite:</strong> Fiat Ducato / Peugeot Boxer / Citroën Jumper sind die einzigen
-                  gängigen Kastenwagen, die Querbetten für Menschen bis 1,85m zulassen, ohne dass man die
-                  Karosserie mit seitlichen GfK-Verbreiterungen (&quot;Flares&quot;) aufschneiden muss.
+                  <strong>Breite:</strong> Die Innenbreite entscheidet, ob ein Querbett passt. Ducato, Boxer
+                  und Jumper gehören zu den breiteren Kastenwagen; auch Sprinter, Crafter und Transit können
+                  je nach Modell und Ausbau ein Querbett aufnehmen. Miss die nutzbare Breite zwischen den
+                  Verkleidungen und rechne die Bettlänge abzüglich Dämmung.
                 </li>
               </ul>
 
@@ -192,21 +175,23 @@ export default function CamperAusbauguide() {
                   !
                 </span>
                 <p className="text-base leading-relaxed text-warn-critical">
-                  <strong>Was passiert, wenn du die Stehhöhe falsch berechnest?</strong> Du musst jahrelang in
-                  deinem rollenden Zuhause den Kopf einziehen. Plane immer mit mindestens 5–7 cm Verlust durch
-                  Dämmung, Boden und Decke.
+                  <strong>Stehhöhe mit Reserve planen:</strong> Dämmung, Boden und Deckenverkleidung kosten
+                  mehrere Zentimeter. Wer die Höhe knapp plant, steht später mit gebeugtem Kopf.
                 </p>
               </div>
 
               <h3 className={cn('mt-10 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                2.2 Material- & Werkzeug-Checkliste
+                2.2 Werkzeug und Material
               </h3>
-              <p>Ohne das richtige Spezialwerkzeug wird der Ausbau zur Qual.</p>
+              <p>
+                Für die meisten Arbeitsschritte reichen Standardwerkzeuge; für dicke Kabel, Nietmuttern und
+                Ausschnitte lohnt Spezialwerkzeug.
+              </p>
 
               <div className="mt-8 mb-12 grid gap-8 md:grid-cols-2">
                 <div className="border border-rule bg-paper p-6">
                   <h4 className={cn('mb-4 text-lg font-semibold text-oxide', outfit.className)}>
-                    Must-Have Werkzeuge
+                    Wichtige Werkzeuge
                   </h4>
                   <ul className="space-y-3 text-base text-ink-soft">
                     <li className="flex gap-3">
@@ -226,7 +211,8 @@ export default function CamperAusbauguide() {
                     <li className="flex gap-3">
                       <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
-                        <strong>Crimpzange (0,5–6 mm²):</strong> Für Flachsteckerhülsen (niemals löten!).
+                        <strong>Crimpzange (0,5–6 mm²):</strong> Für Flachsteckerhülsen; Crimpen ist bei
+                        Vibrationen die übliche Verbindung.
                       </span>
                     </li>
                     <li className="flex gap-3">
@@ -253,8 +239,8 @@ export default function CamperAusbauguide() {
                         ◆
                       </span>
                       <span>
-                        <strong>Holz:</strong> Siebdruckplatte (12–15 mm) Boden, Pappelsperrholz (12–15 mm)
-                        Möbel.
+                        <strong>Holz:</strong> Siebdruckplatte für den Boden, Pappelsperrholz für Möbel;
+                        Stärke nach Last und Gewicht.
                       </span>
                     </li>
                     <li className="flex gap-3">
@@ -262,7 +248,8 @@ export default function CamperAusbauguide() {
                         ◆
                       </span>
                       <span>
-                        <strong>Kleber:</strong> SikaFlex 552 AT oder Dekasyl MS-5 (Konstruktion).
+                        <strong>Kleber:</strong> Konstruktionskleber, zum Beispiel SikaFlex 552 AT oder
+                        Dekasyl MS-5.
                       </span>
                     </li>
                     <li className="flex gap-3">
@@ -270,7 +257,7 @@ export default function CamperAusbauguide() {
                         ◆
                       </span>
                       <span>
-                        <strong>Dichtmasse:</strong> Dekaseal 8936 (abtupfbare Masse für Fenster).
+                        <strong>Dichtmasse:</strong> dauerelastische Dichtmasse, zum Beispiel Dekaseal 8936.
                       </span>
                     </li>
                     <li className="flex gap-3">
@@ -278,7 +265,7 @@ export default function CamperAusbauguide() {
                         ◆
                       </span>
                       <span>
-                        <strong>Rostschutz:</strong> Brantho-Korrux 3in1.
+                        <strong>Rostschutz:</strong> nach Herstellervorgabe, zum Beispiel Brantho-Korrux 3in1.
                       </span>
                     </li>
                   </ul>
@@ -291,97 +278,110 @@ export default function CamperAusbauguide() {
                 3. Karosserie & Außenhülle
               </h2>
               <p>
-                Hier wird aus dem Transporter ein Camper. Löcher ins Blech zu schneiden kostet Überwindung,
-                ist aber mit der richtigen Vorbereitung machbar.
+                Ausschnitte in Fenster, Dach und Karosserie sind der Punkt, an dem aus dem Transporter ein
+                Camper wird. Sie müssen sauber, rostgeschützt und dicht ausgeführt werden — ein späterer
+                Wassereintritt ist aufwendiger zu beheben als der Ausschnitt selbst.
               </p>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                3.1 Fenstereinbau & Dachluken
+                3.1 Fenster und Dachluken einbauen
               </h3>
               <ul className="mb-8 list-disc space-y-3 pl-6 text-ink-soft">
                 <li>
-                  <strong>Wie:</strong> Ausschnitt großflächig mit Kreppband abkleben. Vorbohren an den Ecken
-                  (10mm Bohrer). Mit Stichsäge schneiden.
+                  <strong>Ausschnitt:</strong> Position anzeichnen und abkleben, an den Ecken vorbohren, mit
+                  Stichsäge oder Blechknabber schneiden. Prüfe vorher, ob der Ausschnitt die Karosserie
+                  versteift oder einen Rahmen braucht.
                 </li>
                 <li>
-                  <strong>Das Wichtigste:</strong> Die Schnittkante MUSS sofort entgratet, gereinigt und mit
-                  Rostschutz versiegelt werden.
+                  <strong>Schnittkante:</strong> Sofort entgraten, reinigen und mit Rostschutz behandeln.
                 </li>
                 <li>
-                  <strong>Abdichten:</strong> Fenster immer mit <strong>Dekaseal 8936</strong> einsetzen.
-                  Niemals Konstruktionskleber verwenden!
+                  <strong>Abdichten:</strong> Eine dauerelastische Dichtmasse verwenden, zum Beispiel Dekaseal
+                  8936. Ein Konstruktionskleber ist zum Abdichten nicht gedacht.
                 </li>
               </ul>
 
               <div className="warn-card warn-card-warning my-8">
                 <p className="text-base leading-relaxed text-warn-warning">
-                  <strong>Häufiger Anfängerfehler:</strong> Den Holz-Hilfsrahmen vergessen. Das Blech ist nur
-                  ~1 mm dick, Fensterklemmen brauchen aber oft 26–34 mm. Klebe einen passenden Holzrahmen von
-                  innen gegen das Blech, bevor du das Fenster verschraubst.
+                  <strong>Typischer Fehler:</strong> Den Holzrahmen vergessen. Das Blech ist dünn, die
+                  Klemmbreite der Fensterrahmen liegt je nach Modell oft bei 26–34 mm. Prüfe die
+                  Herstellervorgabe und setze den Rahmen von innen, bevor du das Fenster verschraubst.
                 </p>
               </div>
 
               <hr className="my-12 border-rule" />
 
               <h2 className={cn('mt-12 mb-4 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                4. Isolierung & Dämmung
+                4. Dämmung
               </h2>
               <p>
-                Warum dämmen wir? Nicht nur, damit es warm bleibt, sondern um <strong>Kondenswasser</strong>{' '}
-                und damit unweigerlich Rost und Schimmel zu verhindern.
+                Dämmung hält Wärme im Fahrzeug und reduziert Kondenswasser an kalten Blechflächen. Sie
+                verhindert Feuchtigkeit nicht allein: Lüften, eine trockene Konstruktion und sorgfältig
+                ausgeführte Anschlüsse gehören dazu.
               </p>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                4.1 Materialkunde & Stärken
+                4.1 Materialien und Stärken
               </h3>
               <ul className="mb-8 list-disc space-y-3 pl-6 text-ink-soft">
                 <li>
-                  <strong>Alubutyl (Entdröhnung):</strong> Nimmt die Schwingungen aus dem Blech. Es reicht,{' '}
-                  <strong>30-50%</strong> der Flächen zu bekleben. Mehr bringt akustisch kaum Vorteile,
-                  addiert aber massiv Gewicht.
+                  <strong>Alubutyl (Entdröhnung):</strong> Nimmt Schwingungen aus dem Blech. Es reicht,{' '}
+                  <strong>30–50 %</strong> der Flächen zu bekleben; mehr bringt akustisch oft wenig, kostet
+                  aber Gewicht.
                 </li>
                 <li>
-                  <strong>Armaflex XG oder AF (Wärmedämmung):</strong> 19mm stark für Wände und Decke, 9mm für
-                  Boden und Holme. Hohlräume mit Schafwolle ausstopfen.
+                  <strong>Geschlossenzellige Dämmung (Wärme):</strong> Stärke nach verfügbarem Platz und
+                  Dämmziel. Hohlräume können mit geeignetem Dämmmaterial gefüllt werden; Schafwolle braucht
+                  eine trockene Konstruktion.
+                </li>
+                <li>
+                  <strong>Wärmebrücken:</strong> Blechteile, Holme und Fensterrahmen leiten Wärme besonders
+                  gut. Unterbrich diese Wege, wo es möglich ist.
                 </li>
               </ul>
 
               <hr className="my-12 border-rule" />
 
               <h2 className={cn('mt-12 mb-4 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                5. Elektrik – Das Nervenzentrum
+                5. Elektrik
               </h2>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                5.1 Normen & Sicherheit (DIN VDE 0100-721)
+                5.1 230-V-Anlage und Sicherheit
               </h3>
-              <p>Der Einbau von 230V-Anlagen (Landstrom) unterliegt zwingend der Norm DIN VDE 0100-721.</p>
+              <p>
+                Für 230-V-Anlagen im Fahrzeug gilt DIN VDE 0100-721. Errichtung und Prüfung gehören in die
+                Hände einer Elektrofachkraft; der Plan allein ersetzt sie nicht.
+              </p>
               <ul className="mt-6 mb-8 list-disc space-y-3 pl-6 text-ink-soft">
                 <li>
-                  <strong>Pflicht:</strong> Ein 2-poliger FI/LS-Schutzschalter (RCBO, 30mA, 10A-16A).
+                  <strong>FI-Schutz:</strong> Erforderlich ist ein FI-Schutz mit 30 mA; ob ein zweipoliger
+                  RCBO nötig ist, legt die Elektrofachkraft nach DIN VDE 0100-721 fest.
                 </li>
                 <li>
-                  <strong>Pflicht:</strong> Kabel vom Typ <strong>H07RN-F</strong> (Gummischlauchleitung).
-                  Starrkabel (NYM) brechen durch Vibrationen!
+                  <strong>Leitung:</strong> Für die Landstromzuleitung ist H07RN-F 2,5 mm² üblich; interne
+                  Leitungen flexibel und flammwidrig ausführen. Massive NYM-Leiter sind im Fahrzeug
+                  ungeeignet.
                 </li>
                 <li>
-                  <strong>Pflicht:</strong> Aderendhülsen an den Litzenenden. Niemals verzinnen (Brandgefahr
-                  durch Kaltfließen).
+                  <strong>Litzenenden:</strong> Mit Aderendhülsen versehen; Verzinnen ist an Schraubklemmen
+                  nicht üblich, weil die Verbindung unter Druck nachgeben kann.
                 </li>
               </ul>
 
               <h3 className={cn('mt-8 mb-4 text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
-                5.2 Kabelquerschnitte berechnen
+                5.2 Kabelquerschnitt
               </h3>
               <p>
-                Je weiter der Weg und je höher der Strom, desto dicker das Kabel. Nutze zwingend
-                Online-Kabelrechner. Ein Kühlschrank auf 5 Meter benötigt bereits mind. 2,5mm²!
+                Der Querschnitt folgt aus Strom, Leitungslänge und zulässigem Spannungsfall. Für eine
+                Kompressor-Kühlbox mit 4–5 A sind auf 5 m 2,5 mm² eine übliche Größe; prüfe den Wert mit dem
+                Rechner, weil Länge und Spannungsfall die Wahl bestimmen.
               </p>
 
               <div className="warn-card warn-card-warning my-10">
                 <p className="text-base leading-relaxed text-warn-warning">
-                  <strong>Profi-Tipp:</strong> Setze Sicherungen so nah wie möglich an die Batterie. Die
-                  Sicherung schützt das KABEL vor dem Durchschmoren, nicht das Endgerät!
+                  <strong>Sicherung:</strong> Sie sitzt so nah wie möglich am Batteriepol und schützt die
+                  Leitung, nicht das Gerät am Ende.
                 </p>
               </div>
 
@@ -432,9 +432,10 @@ export default function CamperAusbauguide() {
                 6. Klima & Heizung
               </h2>
               <p>
-                Die <strong>Diesel-Standheizung (z.B. Autoterm Air 2D)</strong> ist der Favorit. Zieht Diesel
-                direkt aus dem Tank. Warum 2kW und nicht 4kW? Eine 4kW-Heizung taktet in kleinen Vans zu oft,
-                verrußt und geht kaputt. 2kW reichen für H2L2 völlig aus.
+                Eine <strong>Diesel-Standheizung mit 2 kW</strong> ist für einen gut gedämmten H2/L2 oft
+                ausreichend. Eine 4-kW-Heizung ist meist überdimensioniert und taktet häufiger; ob das die
+                Brennkammer belastet, hängt von der Modulationsgrenze des Geräts ab. Die nötige Leistung lässt
+                sich mit dem Heizlast-Rechner abschätzen.
               </p>
 
               <hr className="my-12 border-rule" />
@@ -443,9 +444,9 @@ export default function CamperAusbauguide() {
                 7. Innenausbau (Boden, Wände, Möbel)
               </h2>
               <p>
-                Verwende für Möbelbau <strong>Pappelsperrholz</strong> (oft mit CPL-Beschichtung, da
-                kratzfest). Nutze Pocketholes oder Alu-Profile. Schrauben reißen bei Erschütterung sonst
-                schnell aus.
+                Für den Möbelbau ist leichtes Sperrholz üblich, oft Pappel. Verbindungen mit Taschenloch oder
+                Alu-Profilen sind vibrationsfester als einfache Schrauben. Jedes Bauteil wird an der
+                Unterkonstruktion befestigt; jedes Kilogramm zählt bei der Zuladung.
               </p>
 
               <hr className="my-12 border-rule" />
@@ -454,8 +455,11 @@ export default function CamperAusbauguide() {
                 8. Zulassung & Sicherheit
               </h2>
               <p>
-                Um dein Fahrzeug als Wohnmobil zuzulassen, fordert der TÜV: Bett, Tisch, Sitzgelegenheit,
-                Stauraum und einen fest verbauten Kocher.
+                Für die Umschreibung zum Wohnmobil prüft der TÜV je nach Fahrzeug und Prüfstelle eine Reihe
+                von Merkmalen — unter anderem Tisch, Schlafplatz, Sitzgelegenheit, Stauraum, Kochgelegenheit,
+                Fenster und Lüftung. Eine formale Stehhöhe ist keine allgemeine Voraussetzung; einzelne Prüfer
+                achten auf eine nutzbare Höhe. Die genauen Anforderungen stehen auf der Seite
+                Wohnmobilzulassung; kläre sie vor dem Ausbau mit der Prüfstelle.
               </p>
 
               <div className="warn-card warn-card-critical my-8">
@@ -466,8 +470,8 @@ export default function CamperAusbauguide() {
                   !
                 </span>
                 <p className="text-base leading-relaxed font-semibold text-warn-critical">
-                  Achtung: Ein 3,5-Tonner darf max. 3.500 kg wiegen (inkl. Passagiere). Fahre VOR dem
-                  endgültigen Möbelbau auf eine Waage!
+                  Die zulässige Gesamtmasse umfasst Fahrzeug, Ausbau, Wasser, Gepäck und Passagiere. Wiege den
+                  Ausbau vor der Zulassung; eine Reserve für Wasser und Gepäck bleibt nötig.
                 </p>
               </div>
 
@@ -475,11 +479,11 @@ export default function CamperAusbauguide() {
 
               <div className="mt-24 border border-rule bg-soot p-10 text-center text-paper shadow-lg md:p-14">
                 <h3 className={cn('mb-4 text-2xl font-semibold text-paper md:text-2xl', outfit.className)}>
-                  Bereit für den ersten Roadtrip?
+                  Weiter zum Ausbau-Fahrplan
                 </h3>
                 <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-paper/80 md:text-lg">
-                  Der Ausbau kostet Schweiß, zerschnittene Finger und Nerven. Aber der Moment, in dem du
-                  abends am Bergsee die Hecktüren öffnest und das Rauschen der Wellen hörst, ist unbezahlbar.
+                  Der Fahrplan ordnet die Gewerke; der Elektroplaner rechnet die Elektrik. Beide Seiten bauen
+                  auf denselben Annahmen auf.
                 </p>
                 <Link
                   href="/guides/ausbau-fahrplan"

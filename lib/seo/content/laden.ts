@@ -37,8 +37,8 @@ export const LADEN_CONTENT: SeoPageContent = {
       id: 'ladebooster',
       heading: 'Ladebooster: die Brücke von Lichtmaschine zu Bordbatterie',
       body: [
-        'Der Ladebooster (DC-DC-Lader) regelt den Ladestrom von der Lichtmaschine zur Bordbatterie. Ohne ihn begrenzt nur der eigene Widerstand der Lichtmaschine den Strom — die Lima kann überhitzen, die Batterie lädt unreguliert.',
-        'Besonders bei Euro-6-Fahrzeugen mit intelligenter Lichtmaschine (varsvarabler Ladespannung, Rekuperation) ist ein Booster nötig: Die Lichtmaschine liefert nicht immer genug Spannung, um die Bordbatterie vollständig zu laden.',
+        'Der Ladebooster (DC-DC-Lader) regelt den Ladestrom von der Lichtmaschine zur Bordbatterie. Ohne ihn bestimmt die Spannungsregelung der Lichtmaschine die Ladung; die Batterie bekommt keine LiFePO4-Ladekennlinie, und der Strom wird nicht aktiv begrenzt. Die Lima kann dabei überhitzen.',
+        'Bei vielen Euro-6-Fahrzeugen mit intelligenter Lichtmaschine (variabler Ladespannung, Rekuperation) ist ein Booster die sichere Lösung: Die Lichtmaschine liefert nicht immer genug Spannung, um die Bordbatterie vollständig zu laden.',
         'Der Booster wird nach Batteriekapazität und Ladeziel dimensioniert: 30 A für kleinere Anlagen, 50 A für größere Batterien und schnelles Laden.',
       ],
       links: [
@@ -53,8 +53,8 @@ export const LADEN_CONTENT: SeoPageContent = {
       id: 'lichtmaschine',
       heading: 'Lichtmaschine und intelligente Lichtmaschine',
       body: [
-        'Ältere Fahrzeuge haben eine klassische Lichtmaschine mit fester Ladespannung. Neubere Euro-6-Fahrzeuge arbeiten mit intelligenter Lichtmaschine: Die Ladespannung variiert je nach Betriebszustand, und bei Rekuperation kann sie kurzzeitig ansteigen.',
-        'Eine einfache Trennrelais-Verbindung reicht bei intelligenter Lichtmaschine nicht mehr. Der Booster regelt den Strom unabhängig von der Lima-Spannung und schützt sowohl Lima als auch Batterie.',
+        'Ältere Fahrzeuge haben oft eine klassische Lichtmaschine mit fester Ladespannung. Viele neuere Euro-6-Fahrzeuge arbeiten mit intelligenter Lichtmaschine: Die Ladespannung variiert je nach Betriebszustand, und bei Rekuperation kann sie kurzzeitig ansteigen.',
+        'Eine einfache Trennrelais-Verbindung kann bei intelligenter Lichtmaschine ausreichen, um die Batterie vollständig zu laden — oft tut sie es nicht. Der Booster regelt den Strom unabhängig von der Lima-Spannung und schützt sowohl Lima als auch Batterie.',
       ],
     },
     {
@@ -81,7 +81,7 @@ export const LADEN_CONTENT: SeoPageContent = {
       id: 'ladegeraet',
       heading: 'Landstrom-Ladegerät: welche Leistung?',
       body: [
-        'Ein Ladegerät wird nach Batteriekapazität und gewünschter Ladezeit gewählt. Als Faustregel im Modell: 10 % der Nennkapazität als Ladestrom (bei 100 Ah also 10 A) für schonendes Laden, mehr für schnelles Nachladen.',
+        'Ein Ladegerät wird nach Batteriekapazität und gewünschter Ladezeit gewählt. C/10 ist eine Blei-Faustregel; für LiFePO4 nennen Datenblätter häufig 0,2–0,5 C, für AGM/Gel 0,1–0,2 C. Das Datenblatt der konkreten Batterie gilt.',
         'Das Ladegerät muss zur Batteriechemie passen: LiFePO4 braucht ein Ladegerät mit LiFePO4-Kennlinie, kein Blei-Ladegerät.',
       ],
     },
@@ -90,9 +90,9 @@ export const LADEN_CONTENT: SeoPageContent = {
       heading: 'Ladebooster oder Trennrelais?',
       body: [
         'Ein Trennrelais schaltet die Bordbatterie bei laufendem Motor zur Lichtmaschine durch. Es ist einfach und günstig, aber unreguliert: Die Lichtmaschine bestimmt den Strom, und bei intelligenter Lichtmaschine lädt die Batterie nicht vollständig.',
-        'Der Ladebooster regelt den Strom aktiv und passt sich an Batterie und Lichtmaschine an. Er kostet mehr, lädt aber effizienter und sicherer.',
-        'Empfehlung: Bei LiFePO4 oder intelligenter Lichtmaschine immer Booster. Bei einfachen Anlagen mit AGM kann ein Trennrelais ausreichen.',
-        '[Erfahrung] Ich habe anfangs ein Trennrelais in meinem Ducato verbaut — bei der intelligenten Lichtmaschine des Euro 6 wurde die Bordbatterie nie voll. Erst mit einem 30-A-Ladebooster kommt sie auf 100 %. Foto: Ladebooster im Schaltplan des 12V-Elektroplaners.',
+        'Der Ladebooster regelt den Strom aktiv und passt sich an Batterie und Lichtmaschine an. Er kostet mehr und hat Wandlungsverluste (typisch 7–13 %), lädt aber vollständiger und schneller als ein unreguliertes Trennrelais.',
+        'Empfehlung: Bei LiFePO4 oder intelligenter Lichtmaschine ist ein Booster die sichere Wahl. Bei einfachen Anlagen mit AGM kann ein Trennrelais ausreichen.',
+        '[Erfahrung] Ich habe anfangs ein Trennrelais in meinem Ducato verbaut — bei der intelligenten Lichtmaschine des Euro 6 wurde die Bordbatterie nicht vollständig geladen. Erst mit einem 30-A-Ladebooster erreichte sie den vollen Ladezustand.',
       ],
       links: [
         {
@@ -120,11 +120,11 @@ export const LADEN_CONTENT: SeoPageContent = {
       heading: 'Typische Fehler beim Laden',
       list: {
         items: [
-          'LiFePO4 an ein Blei-Ladegerät hängen — lädt nie vollständig.',
-          'Lichtmaschine ohne Booster an die Bordbatterie koppeln — Lima überhitzt bei hohen Strömen.',
+          'LiFePO4 an ein Blei-Ladegerät hängen — lädt nicht zuverlässig voll.',
+          'Lichtmaschine ohne Booster an die Bordbatterie koppeln — die Lima kann bei hohen Strömen überhitzen.',
           'Trennrelais bei intelligenter Lichtmaschine — Batterie lädt nicht voll.',
           'Keine Absicherung zwischen Booster und Batterie — die Zuleitung ist ungeschützt.',
-          '230-V-Anlage selbst installiert — lebensgefährlich und nicht versichert.',
+          '230-V-Anlage selbst installiert — kann lebensgefährlich sein und den Versicherungsschutz gefährden.',
         ],
       },
     },
@@ -144,12 +144,12 @@ export const LADEN_CONTENT: SeoPageContent = {
     {
       question: 'Brauche ich immer einen Ladebooster?',
       answer:
-        'Bei LiFePO4 oder intelligenter Lichtmaschine (Euro 6) ja. Bei einfachen Anlagen mit AGM und klassischer Lichtmaschine kann ein Trennrelais ausreichen — lädt aber langsamer und unregulierter.',
+        'Bei LiFePO4 oder intelligenter Lichtmaschine (Euro 6) ist ein Booster die sichere Wahl. Bei einfachen Anlagen mit AGM und klassischer Lichtmaschine kann ein Trennrelais ausreichen — es lädt aber langsamer und weniger geregelt.',
     },
     {
       question: 'Welche Größe Ladebooster für 100 Ah?',
       answer:
-        'Als Faustregel: 10–20 % der Nennkapazität als Ladestrom. Bei 100 Ah sind das 10–20 A, bei 200 Ah 20–40 A. Für schnelleres Laden 30 A oder 50 A — passend zur Batterie und zur Lichtmaschine.',
+        'Für Blei sind 10–20 % der Nennkapazität eine konservative Faustregel (10–20 A bei 100 Ah); LiFePO4 verträgt oft 0,2–0,5 C (20–50 A), AGM/Gel 0,1–0,2 C. Für schnelleres Laden 30 A oder 50 A — passend zur Batterie, zum BMS und zur Lichtmaschine.',
     },
     {
       question: 'Darf ich Landstrom selbst anschließen?',

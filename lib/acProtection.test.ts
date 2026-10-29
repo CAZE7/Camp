@@ -43,14 +43,15 @@ describe('protectiveEarthCrossSectionMm2 (IEC 60364-5-54, Tabelle 54.2)', () => 
 });
 
 describe('acCableComposition', () => {
-  it('N folgt S, PE folgt Tabelle 54.2 — und die Marke ist NYM-J-artig', () => {
+  it('N folgt S, PE folgt Tabelle 54.2 — die Marke zeigt einen reduzierten PE', () => {
     expect(acCableComposition(2.5)).toEqual({
       phase: 2.5,
       neutral: 2.5,
       protectiveEarth: 2.5,
       label: '3G2,5',
     });
-    expect(acCableComposition(70).label).toBe('3G70');
+    expect(acCableComposition(25).label).toBe('3x25/16');
+    expect(acCableComposition(70).label).toBe('3x70/35');
     expect(acCableComposition(70).protectiveEarth).toBe(35);
   });
 });

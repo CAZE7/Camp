@@ -64,7 +64,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
       id: 'kernantwort',
       heading: 'Wie viel Solar brauche ich für meinen Camper?',
       body: [
-        'Das folgt aus dem Tagesbedarf: P = Bedarf / Ertrag × 1000 Wp × 1,15. Bei 1 000 Wh Tagesbedarf und 3,0 kWh/kWp/Tag sind das im Sommer rund 400 Wp, im Winter rund 1 100 Wp. Die Sommerzahl ist mit vier 100-Wp-Panels erreichbar, die Winterzahl auf den meisten Dächern nicht — dort hilft nur eine zweite Ladequelle.',
+        'Das folgt aus dem Tagesbedarf: P = Bedarf / Ertrag × 1000 Wp × 1,15. Bei 1 000 Wh Tagesbedarf und 3,0 kWh/kWp/Tag sind das im Sommer rund 400 Wp, im Winter rund 1 100 Wp. Der Sommerwert 3,0 kWh/kWp/Tag gilt für eine günstig geneigte Fläche; ein flaches Camperdach liegt eher bei 2,4–2,6 und braucht entsprechend mehr Modulleistung. Die Winterzahl ist auf den meisten Dächern nicht erreichbar — dort hilft nur eine zweite Ladequelle.',
         'Die Rechengrundlage: Das Modell setzt als Standard 3,0 kWh je kWp und Tag an (rund 1 100 kWh im Jahr am unteren Rand guter mitteleuropäischer Dachflächen). Der Ladezeit-Aufschlag von 1,15 berücksichtigt CC/CV-Knick, Wärme und Alterung.',
         'Wer im Winter autark stehen will, kombiniert Solar mit einer Ladung über die Lichtmaschine während der Fahrt und senkt den Verbrauch. Den Winterfall als Auslegungsziel zu setzen, führt fast immer zu einer überdimensionierten und ungenutzten Insel.',
       ],
@@ -92,7 +92,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
       ],
       body: [
         'Rechenbeispiel: 1 000 Wh Tagesbedarf, 3,0 kWh/kWp/Tag Ertrag. P = (1 000 / 3 000) · 1000 Wp · 1,15 = 383 Wp → aufgerundet 400 Wp (vier 100-Wp-Panels).',
-        'Die vier Engineering-Nuancen für Solar: (1) Niedrigste Betriebsspannung als Basis für die Batterieberechnung (10,7 V statt 12 V). (2) 20 % Puffer für Wandlerverluste. (3) Über 4 % Spannungsfall (0,48 V bei 12 V) führen zu Unterspannungsabschaltung empfindlicher Geräte. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
+        'Die vier Engineering-Nuancen für Solar: (1) Niedrigste Betriebsspannung als Basis für die Batterieberechnung (10,7 V statt 12 V). (2) 20 % Puffer für Wandlerverluste. (3) Über 4 % Spannungsfall (0,48 V bei 12 V) können bei empfindlichen Geräten zur Unterspannungsabschaltung führen; die Schwelle steht im Datenblatt. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
       ],
     },
     {
@@ -101,7 +101,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
       body: [
         'Ein Solarmodul mit 100 Wp liefert nicht 100 W — nur bei Einstrahlung, Zelltemperatur und Sonnenstand nach Standardbedingungen (STC: 1 000 W/m², 25 °C). Über einen Tag kommen davon je nach Standort und Jahreszeit deutlich weniger an.',
         'Das Modell setzt als Standard 3,0 kWh je kWp und Tag an. Wer eine flache Dachmontage ohne Ausrichtung, Teilverschattung oder einen Ost-West-Standort hat, muss diesen Wert senken.',
-        '[Erfahrung] In meinem Fahrzeug habe ich die Panels nicht flach aufs Blech geklebt, sondern mit einem kleinen Abstand montiert, damit Luft zirkulieren kann. Bei 60 °C Zelltemperatur liefert ein Modul einige Prozent weniger als bei 25 °C — Hinterlüftung lohnt sich. Foto: Solaranlage im Elektroplaner mit 400 Wp Sommerauslegung.',
+        '[Erfahrung] In meinem Fahrzeug habe ich die Panels nicht flach aufs Blech geklebt, sondern mit einem kleinen Abstand montiert, damit Luft zirkulieren kann. Bei 60 °C Zelltemperatur liefert ein Modul je nach Temperaturkoeffizient etwa 12–16 % weniger als bei 25 °C — Hinterlüftung lohnt sich.',
       ],
     },
     {
@@ -111,7 +111,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
         caption: `Beispiel: ${DAILY_WH} Wh Tagesbedarf am 12-V-Bordnetz (Modellrechnung, 100-Wp-Panels)`,
         head: ['Jahreszeit', 'Ertragsfaktor', 'Angesetzter Ertrag', 'Nötige Modulleistung'],
         rows: SEASON_ROWS,
-        note: `Der Winterfaktor ${VDE_SOLAR_WINTER_REDUCTION} ist ein Modellwert aus der Auslieferung — rund ein Drittel des Sommerertrags.`,
+        note: `Der Winterfaktor ${(VDE_SOLAR_WINTER_REDUCTION * 100).toLocaleString('de-DE')} % ist ein Modellwert aus der Auslieferung. Er gilt für eine gut geneigte Südlage in Süddeutschland; ein flaches Camperdach liegt im Winter oft nur bei 10–20 % des Sommerwerts. Für die Winterplanung ist der Modellwert daher optimistisch.`,
       },
       body: [
         `Die Tabelle ist die ehrlichste Antwort auf die Frage „wie viel Solar brauche ich?": Für denselben Tagesbedarf reichen im Sommer ${summer.recommendedPeakWatts} Wp, im Winter braucht es ${winter.recommendedPeakWatts} Wp — mehr, als auf die meisten Camper-Dächer passt. Deshalb ist die Winterauslegung in der Praxis keine Flächenfrage, sondern eine Frage der Ladequellen: Lichtmaschine, Landstrom oder eine zweite Quelle.`,
@@ -137,7 +137,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
       id: 'laderegler',
       heading: 'Der Laderegler entscheidet, wie viel ankommt',
       body: [
-        'Ohne Laderegler liegt die Modulspannung über der Batteriespannung — die Differenz verpufft als Wärme im Widerstand, bei PWM bleibt ein Teil der Modulleistung ungenutzt. Ein MPPT-Regler wandelt die Spannungsdifferenz in zusätzlichen Strom um und nutzt damit deutlich mehr vom Modul.',
+        'Ein PWM-Regler ist ein Schalter, kein Widerstand: Er zieht das Modul auf Batteriespannung; das Modul arbeitet dann nicht im MPP, und ein Teil der möglichen Leistung wird gar nicht erzeugt. Ein MPPT-Regler sucht den MPP und wandelt die Spannungsdifferenz in zusätzlichen Ladestrom um; damit nutzt er mehr vom Modul.',
         'Die Auslegung des Reglers ist ein eigenes Thema: Spannungsfenster, Kalt-Leerlaufspannung und Stromgrenzen müssen zu Modul und Batterie passen.',
       ],
       links: [
@@ -204,7 +204,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
     {
       question: 'Reichen 200 W Solar für einen Camper?',
       answer:
-        'Für einen sparsamen Ausbau mit Kompressor-Kühlbox und LED-Licht ja, sobald die Sonne scheint: 200 Wp liefern im Sommer bei 3 kWh/kWp/Tag rund 600 Wh am Tag. Im Winter sind es nur etwa 210 Wh — das deckt dann kaum den Kühlschrank.',
+        'Für einen sparsamen Ausbau mit Kompressor-Kühlbox und LED-Licht ja, sobald die Sonne scheint: 200 Wp liefern im Sommer bei günstiger Neigung und 3 kWh/kWp/Tag rund 600 Wh am Tag. Im Winter sind es nach dem Modellwert etwa 210 Wh, bei flacher Montage deutlich weniger — das deckt dann kaum den Kühlschrank.',
     },
     {
       question: 'Wie viel Verlust entsteht durch Verschattung?',
@@ -223,7 +223,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
   sources: [
     {
       label: 'Modellwerte für Solar',
-      detail: `Winterertrag ${VDE_SOLAR_WINTER_REDUCTION} des Sommerwerts und MPP-Spannung 18 V je 12-V-Modul in \`lib/vde-standards.ts\`; Ladezeit-Aufschlag 1,15 ebenda.`,
+      detail: `Winterertrag ${(VDE_SOLAR_WINTER_REDUCTION * 100).toLocaleString('de-DE')} % des Sommerwerts (Modellwert für gut geneigte Südlage; flaches Dach 10–20 %) und MPP-Spannung 18 V je 12-V-Modul in \`lib/vde-standards.ts\`; Ladezeit-Aufschlag 1,15 ebenda.`,
     },
     {
       label: 'Spezifischer Ertrag',
