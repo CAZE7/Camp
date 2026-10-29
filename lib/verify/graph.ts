@@ -415,7 +415,12 @@ export function edgeAcDevices(data: CableEdgeData | undefined): ProtectionDevice
       i2A: null,
       breakingCapacityKA:
         typeof descriptor?.breakingCapacityKA === 'number' ? descriptor.breakingCapacityKA : null,
-      poles: descriptor?.kind === 'rcbo' ? 2 : null,
+      poles:
+        descriptor?.poles === 1 || descriptor?.poles === 2
+          ? descriptor.poles
+          : descriptor?.kind === 'rcbo'
+            ? 2
+            : null,
     });
   }
   if (descriptor?.kind === 'rcbo') {

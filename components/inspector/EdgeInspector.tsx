@@ -100,6 +100,21 @@ export function EdgeInspector({
   const acBic = MCB_BREAKING_CAPACITY_KA_OPTIONS.includes(Number(edge.data?.acProtection?.breakingCapacityKA))
     ? Number(edge.data?.acProtection?.breakingCapacityKA)
     : '';
+  // Polzahl: ein FI/LS ist bauartbedingt zweipolig; ein LS ist ohne Angabe
+  // unbekannt (RCD-004). Der Wert ist im Inspektor pflegbar.
+  const acPoles =
+    edge.data?.acProtection?.poles === 1 || edge.data?.acProtection?.poles === 2
+      ? edge.data.acProtection.poles
+      : edge.data?.acProtection?.kind === 'rcbo'
+        ? 2
+        : '';
+  const acResidual =
+    edge.data?.acProtection?.residualType === 'AC' ||
+    edge.data?.acProtection?.residualType === 'A' ||
+    edge.data?.acProtection?.residualType === 'F' ||
+    edge.data?.acProtection?.residualType === 'B'
+      ? edge.data.acProtection.residualType
+      : '';
   const acComposition = isAc && typeof storedCs === 'number' ? acCableComposition(storedCs) : null;
   const tripAssessment = isAc
     ? evaluateAcEdgeProtection({
@@ -117,6 +132,11 @@ export function EdgeInspector({
 
   const setAcProtection = (acProtection: AcProtectionDescriptor | undefined) =>
     onChangeAcProtection?.(edge.id, acProtection);
+  const updateAcProtection = (patch: Partial<AcProtectionDescriptor>) => {
+    const current = edge.data?.acProtection;
+    if (!current) return;
+    setAcProtection({ ...current, ...patch });
+  };
 
   const tripVerdictTone =
     tripAssessment?.verdict === 'fail'
@@ -367,6 +387,7 @@ export function EdgeInspector({
                       return;
                     }
                     setAcProtection({
+                      ...(edge.data?.acProtection ?? {}),
                       kind: value,
                       characteristic: acChar === '' ? 'B' : acChar,
                       breakingCapacityKA: acBic === '' ? 6 : acBic,
@@ -393,10 +414,8 @@ export function EdgeInspector({
                       id="ac-char-select"
                       value={acChar === '' ? 'B' : acChar}
                       onChange={(event) =>
-                        setAcProtection({
-                          kind: acKind,
-                          characteristic: event.target.value,
-                          breakingCapacityKA: acBic === '' ? 6 : acBic,
+                        updateAcProtection({
+                          characteristic: event.target.value as 'B' | 'C',
                         })
                       }
                       className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
@@ -417,11 +436,7 @@ export function EdgeInspector({
                       id="ac-bic-select"
                       value={String(acBic === '' ? 6 : acBic)}
                       onChange={(event) =>
-                        setAcProtection({
-                          kind: acKind,
-                          characteristic: acChar === '' ? 'B' : acChar,
-                          breakingCapacityKA: Number(event.target.value),
-                        })
+                        updateAcProtection({ breakingCapacityKA: Number(event.target.value) })
                       }
                       className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
                     >
@@ -432,6 +447,66 @@ export function EdgeInspector({
                       ))}
                     </select>
                   </div>
+
+                  <div className="flex flex-col">
+                    <label
+                      className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                      htmlFor="ac-poles-select"
+                    >
+                      Polzahl
+                    </label>
+                    <select
+                      id="ac-poles-select"
+                      value={acPoles === '' ? '' : String(acPoles)}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        updateAcProtection({
+                          poles: value === '' ? undefined : value === '1' ? 1 : 2,
+                        });
+                      }}
+                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+                    >
+                      <option value="">— nicht angegeben —</option>
+                      <option value="1">1-polig (nur L)</option>
+                      <option value="2">2-polig (L+N)</option>
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Für die Einspeisung fordert RCD-004 zwei Pole (L und N gemeinsam). Ohne Angabe bleibt
+                      die Polzahl unbekannt.
+                    </p>
+                  </div>
+
+                  {acKind === 'rcbo' && (
+                    <div className="flex flex-col">
+                      <label
+                        className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                        htmlFor="ac-residual-select"
+                      >
+                        Fehlerstromtyp
+                      </label>
+                      <select
+                        id="ac-residual-select"
+                        value={acResidual}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          updateAcProtection({
+                            residualType: value === '' ? undefined : (value as 'AC' | 'A' | 'F' | 'B'),
+                          });
+                        }}
+                        className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+                      >
+                        <option value="">— nicht angegeben —</option>
+                        <option value="A">A (Standard)</option>
+                        <option value="AC">AC</option>
+                        <option value="F">F</option>
+                        <option value="B">B (glatte Gleichfehlerströme)</option>
+                      </select>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Typ B ist für Wechselrichter-Inseln die belegte Wahl; Typ A/F braucht einen
+                        Herstellernachweis, Typ AC ist unzureichend.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

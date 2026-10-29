@@ -151,3 +151,54 @@ describe('V2-INTENT-002: Verbindlichkeit', () => {
     expect(onChangeIntent).toHaveBeenCalledWith('edge-1', 'locked');
   });
 });
+
+describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
+  const acEdge = (data: CableEdgeData): Edge<CableEdgeData> => ({
+    id: 'edge-1',
+    source: 'node-1',
+    target: 'node-2',
+    data,
+  });
+
+  it('meldet die gewählte Polzahl und behält die übrigen Descriptor-Felder', () => {
+    const onChangeAcProtection = vi.fn();
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={onChangeAcProtection}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Polzahl/i), { target: { value: '2' } });
+    expect(onChangeAcProtection).toHaveBeenCalledWith(
+      'edge-1',
+      expect.objectContaining({ kind: 'mcb', characteristic: 'B', poles: 2 })
+    );
+  });
+
+  it('meldet den Fehlerstromtyp des RCBO und behält die übrigen Felder', () => {
+    const onChangeAcProtection = vi.fn();
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={onChangeAcProtection}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Fehlerstromtyp/i), { target: { value: 'B' } });
+    expect(onChangeAcProtection).toHaveBeenCalledWith(
+      'edge-1',
+      expect.objectContaining({ kind: 'rcbo', residualType: 'B' })
+    );
+  });
+});
