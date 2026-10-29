@@ -511,8 +511,7 @@ export function useLiveValidation(
           expectedValue: 'max. PV-Eingangsspannung laut Datenblatt',
           unit: '',
           source: 'Regel M: fehlende Eingabe ⇒ UNKNOWN; Modell prüft Voc(T_min) gegen maxPvVoltage',
-          message:
-            'Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei −10 °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.',
+          message: `Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.`,
         });
         return;
       }

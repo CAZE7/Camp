@@ -140,6 +140,8 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
   inverter: {
     ...COMMON_FIELDS,
     hasRcd: { type: 'boolean' },
+    rcdType: { type: 'string', enumValues: ['AC', 'A', 'F', 'B'] },
+    rcdProofNoSmoothDc: { type: 'boolean' },
     idleWatts: { type: 'number', allowZero: true, min: 0, max: 1_000 },
     hours: { type: 'number', allowZero: true, min: 0, max: 24 },
     /** Landstrom-Quelle am AC-Eingang (s. consumer230v.acSourceId). */
@@ -149,6 +151,7 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     ...COMMON_FIELDS,
     hasRcd: { type: 'boolean' },
     rating: { type: 'number', allowZero: true, min: 0, max: 10_000 },
+    systemForm: { type: 'string', enumValues: ['TN-S', 'TN-C', 'TT', 'IT'] },
     acCurrentA: { type: 'number', allowZero: true, min: 0, max: 1_000 },
     prospectiveIkA: { type: 'number', allowZero: true, min: 0, max: 100_000 },
   },

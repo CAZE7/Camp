@@ -193,6 +193,21 @@ describe('useLiveValidation', () => {
       expect(result.current.some((w) => w.id === 'solar-voc-window-m')).toBe(false);
     });
 
+    it('nennt bei fehlendem maxPvVoltage die Auslegungstemperatur −20 °C (nicht −10 °C)', () => {
+      const nodes: Node[] = [
+        {
+          id: 'm',
+          type: 'mpptController',
+          data: { label: 'MPPT', amps: 20 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      const warning = result.current.find((w) => w.id === 'solar-voc-window-unknown-m');
+      expect(warning?.message).toContain('-20');
+      expect(warning?.message).not.toContain('-10');
+    });
+
     it('fordert fehlende Voc-Datenblattwerte als Hinweis an (nicht still schätzen)', () => {
       const nodes = [
         panel('p1', { label: 'Panel 1', watts: 100 }), // ohne voc

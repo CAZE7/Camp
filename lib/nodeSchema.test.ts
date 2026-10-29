@@ -63,8 +63,8 @@ describe('DOM-003 — deklaratives node.data-Schema (lib/nodeSchema.ts)', () => 
     // eine Pflichtliste, da Runtime die Interface-Optionalität nicht sieht).
     const pflicht: Record<string, string[]> = {
       battery: ['capacity', 'chemistry', 'nominalVoltage', 'role'],
-      inverter: ['continuousPower', 'hasRcd'],
-      shorePower: ['hasRcd', 'rating', 'acCurrentA'],
+      inverter: ['continuousPower', 'hasRcd', 'rcdType', 'rcdProofNoSmoothDc'],
+      shorePower: ['hasRcd', 'rating', 'acCurrentA', 'systemForm'],
       solar: ['voc', 'isc', 'tempCoefficient'],
       mpptController: ['amps', 'maxPvVoltage'],
       busbar: ['role', 'rating'],

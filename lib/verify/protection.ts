@@ -590,6 +590,20 @@ export function checkRcdType(context: PassContext): CheckResult {
       }
     }
     const integrated = inverter.behavior.kind === 'CONVERTER' ? inverter.behavior.hasIntegratedRcd : null;
+    // Der integrierte FI hat einen eigenen Typ-/Nachweisfeldsatz am
+    // Wechselrichter-Knoten. Ohne Typ bleibt er unbekannt (UNPROVABLE), statt
+    // still Typ A zu unterstellen; mit Herstellernachweis ist A/F belegt.
+    const inverterNode = context.nodes.find((entry) => entry.id === inverter.nodeId);
+    const inverterData = inverterNode?.data as Record<string, unknown> | undefined;
+    const declaredRcdType = inverterData?.rcdType;
+    const integratedType =
+      declaredRcdType === 'AC' ||
+      declaredRcdType === 'A' ||
+      declaredRcdType === 'F' ||
+      declaredRcdType === 'B'
+        ? declaredRcdType
+        : null;
+    const integratedProof = inverterData?.rcdProofNoSmoothDc === true;
 
     if (residualTypes.size === 0 && integrated !== true) {
       // Kein FI vorhanden → das ist RCD-001, hier nicht doppelt gemeldet.
@@ -600,7 +614,10 @@ export function checkRcdType(context: PassContext): CheckResult {
     const entity = { kind: 'node' as const, id: inverter.nodeId };
     const label = labelOfNode(context.graph, inverter.nodeId);
 
-    if (residualTypes.has('AC')) {
+    const allTypes = new Set<string>(residualTypes);
+    if (integrated === true && integratedType !== null) allTypes.add(integratedType);
+
+    if (allTypes.has('AC')) {
       events.push(
         auditEvent({
           ruleId,
@@ -616,17 +633,40 @@ export function checkRcdType(context: PassContext): CheckResult {
     // Formale Bedingung der Regel: residualType ∈ {B}. Ein eingetragener Typ B
     // auf der Insel ist damit belegt. Typ A/F ohne Herstellererklärung bleibt
     // eine Lücke — und ein nur integrierter FI ohne Typangabe ebenfalls.
-    const otherTypes = [...residualTypes].filter((type) => type !== 'B');
-    if (residualTypes.has('B') && otherTypes.length === 0) continue;
+    const edgeTypesCovered = [...residualTypes].every((type) => type === 'B');
+    const integratedCovered =
+      integrated !== true ||
+      integratedType === 'B' ||
+      ((integratedType === 'A' || integratedType === 'F') && integratedProof);
+    // Ein unbekannter integrierter FI ist dann unkritisch, wenn bereits ein
+    // belegter Typ-B-FI auf der Insel liegt (er deckt den Fehlerfall ab).
+    const integratedUnknownCoveredByEdge =
+      integrated === true && integratedType === null && residualTypes.size > 0 && edgeTypesCovered;
+    if (edgeTypesCovered && (integratedCovered || integratedUnknownCoveredByEdge)) continue;
 
-    const types = [...residualTypes].sort().join(', ');
+    const uncovered: string[] = [];
+    if (!edgeTypesCovered) {
+      uncovered.push(
+        `Leitung: ${[...residualTypes]
+          .filter((type) => type !== 'B')
+          .sort()
+          .join(', ')}`
+      );
+    }
+    if (!integratedCovered) {
+      uncovered.push(
+        integratedType === null
+          ? 'integrierter FI ohne Typangabe'
+          : `integrierter FI Typ ${integratedType}${integratedProof ? '' : ' ohne Herstellernachweis'}`
+      );
+    }
     events.push(
       auditEvent({
         ruleId,
         entity,
         kind: 'UNVERIFIABLE',
-        message: `Wechselrichter-Insel ${label}: FI-Typ ${types === '' ? '(integrierter FI ohne Typangabe)' : types} — ob der ${label} glatte Gleichfehlerströme liefern kann, sagt der Plan nicht; Typ A ist dann NICHT belegt.`,
-        autoFixRemedy: `Herstellererklärung des ${label} („erzeugt keine glatten Gleichfehlerströme“) als Nachweis hinterlegen und im Plan dokumentieren — oder unmittelbar FI Typ B einsetzen.`,
+        message: `Wechselrichter-Insel ${label}: ${uncovered.join('; ')} — ob der ${label} glatte Gleichfehlerströme liefern kann, sagt der Plan nicht; Typ A ist dann NICHT belegt.`,
+        autoFixRemedy: `FI-Typ im Wechselrichter-Inspektor auf B stellen oder für A/F den Herstellernachweis „erzeugt keine glatten Gleichfehlerströme“ dokumentieren; FI/LS auf den AC-Leitungen ebenfalls auf Typ B setzen.`,
       })
     );
   }
@@ -726,7 +766,7 @@ export function checkTwoPoleSwitching(context: PassContext): CheckResult {
               kind: 'UNVERIFIABLE',
               message: `Einspeiseleitung ${cable.edgeId}: Polzahl des Schutzorgans ist nicht angegeben — zweipolige Abschaltung (L+N) ist nicht belegt.`,
               autoFixRemedy:
-                'Polzahl aus dem Datenblatt nachtragen (zweipoliger LS/FI/LS) — einpolige Einspeise-Schutzorgane sind für Caravan-Einspeisungen nicht zulässig.',
+                'Polzahl im Schutzorgan-Inspektor der Leitung auf 2 (L+N) stellen — einpolige Einspeise-Schutzorgane sind für Caravan-Einspeisungen nicht zulässig.',
             })
           );
           continue;
@@ -741,7 +781,7 @@ export function checkTwoPoleSwitching(context: PassContext): CheckResult {
               allowedLimit: 2,
               message: `Einspeiseleitung ${cable.edgeId}: Schutzorgan schaltet nur ${poles} Pol(e) — L und N müssen gemeinsam abgeschaltet werden.`,
               autoFixRemedy:
-                'Zweipoligen Leitungsschutzschalter (L+N) bzw. zweipoligen FI/LS an der Einspeisung einsetzen.',
+                'Polzahl im Schutzorgan-Inspektor auf 2 stellen (L+N gemeinsam) oder einen zweipoligen LS/FI/LS einsetzen.',
             })
           );
         }

@@ -219,6 +219,53 @@ describe('lib/verify/protection — RCD-002 (FI-Typ)', () => {
     expect(check.events).toHaveLength(0);
     expect(check.evaluatedEntities).toBe(1);
   });
+
+  it('erkennt den integrierten FI Typ B als belegt', () => {
+    const check = checkRcdType(
+      contextOf(islandWith({ hasRcd: true, neutralEarthBond: 'dynamic', rcdType: 'B' }))
+    );
+    expect(check.status).toBe('PASS');
+    expect(check.events).toHaveLength(0);
+  });
+
+  it('akzeptiert Typ A mit Herstellernachweis (keine glatten Gleichfehlerströme)', () => {
+    const check = checkRcdType(
+      contextOf(
+        islandWith({
+          hasRcd: true,
+          neutralEarthBond: 'dynamic',
+          rcdType: 'A',
+          rcdProofNoSmoothDc: true,
+        })
+      )
+    );
+    expect(check.status).toBe('PASS');
+    expect(check.events).toHaveLength(0);
+  });
+
+  it('verlangt für Typ A ohne Nachweis weiterhin den Beleg', () => {
+    const check = checkRcdType(
+      contextOf(islandWith({ hasRcd: true, neutralEarthBond: 'dynamic', rcdType: 'A' }))
+    );
+    expect(check.status).toBe('UNPROVABLE');
+    expect(check.events[0]?.message).toContain('ohne Herstellernachweis');
+  });
+
+  it('ein Nachweis ohne Typangabe belegt den integrierten FI nicht', () => {
+    const check = checkRcdType(
+      contextOf(islandWith({ hasRcd: true, neutralEarthBond: 'dynamic', rcdProofNoSmoothDc: true }))
+    );
+    expect(check.status).toBe('UNPROVABLE');
+    expect(check.events[0]?.message).toContain('ohne Typangabe');
+  });
+
+  it('meldet Typ AC am integrierten FI als kritisch', () => {
+    const check = checkRcdType(
+      contextOf(islandWith({ hasRcd: true, neutralEarthBond: 'dynamic', rcdType: 'AC' }))
+    );
+    expect(check.status).toBe('FAIL');
+    expect(check.events[0]?.severity).toBe('CRITICAL_SAFETY');
+  });
 });
 
 describe('lib/verify/protection — RCD-003 (kein Abzweig vor dem FI)', () => {
@@ -249,6 +296,41 @@ describe('lib/verify/protection — RCD-004 (zweipolige Abschaltung)', () => {
     expect(check.status).toBe('UNPROVABLE');
     expect(check.events[0]?.kind).toBe('UNVERIFIABLE');
     expect(check.events[0]?.message).toContain('Polzahl');
+  });
+
+  it('bestätigt einen deklarierten zweipoligen LS (L+N)', () => {
+    const plan = shoreWith(
+      {},
+      {
+        acProtection: {
+          kind: 'mcb',
+          characteristic: 'B',
+          breakingCapacityKA: 6,
+          poles: 2,
+        },
+      }
+    );
+    const check = checkTwoPoleSwitching(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.evaluatedEntities).toBe(1);
+  });
+
+  it('meldet einen einpoligen LS als Verstoß', () => {
+    const plan = shoreWith(
+      {},
+      {
+        acProtection: {
+          kind: 'mcb',
+          characteristic: 'B',
+          breakingCapacityKA: 6,
+          poles: 1,
+        },
+      }
+    );
+    const check = checkTwoPoleSwitching(contextOf(plan));
+    expect(check.status).toBe('FAIL');
+    expect(check.events[0]?.calculatedValue).toBe(1);
+    expect(check.events[0]?.allowedLimit).toBe(2);
   });
 
   it('meldet UNPROVABLE, wenn die Einspeiseleitung gar kein Schutzorgan führt', () => {

@@ -560,6 +560,35 @@ export function ShorePowerInspector({
               className="min-h-11 rounded border border-border px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+              htmlFor={`${node.id}-systemForm`}
+            >
+              Netzform der Einspeisung
+            </label>
+            <select
+              id={`${node.id}-systemForm`}
+              value={node.data?.systemForm ?? ''}
+              onChange={(event) => {
+                const value = event.target.value;
+                onUpdateNodeData?.(node.id, {
+                  systemForm: value === '' ? undefined : (value as 'TN-S' | 'TN-C' | 'TT' | 'IT'),
+                });
+              }}
+              className="min-h-11 rounded border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+            >
+              <option value="">— nicht angegeben —</option>
+              <option value="TN-S">TN-S (ohne PEN)</option>
+              <option value="TN-C">TN-C (PEN — im Fahrzeug unzulässig)</option>
+              <option value="TT">TT</option>
+              <option value="IT">IT</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Für die Fahrzeuginstallation ist TN-S (getrennter N/PE, kein PEN) die Anforderung; ohne Angabe
+              bleibt die PEN-Freiheit unbewertet.
+            </p>
+          </div>
         </div>
       </InspectorSection>
       <InspectorSection title="Berechnung">
@@ -705,6 +734,50 @@ export function InverterInspector({
               <div className="warn-card warn-card-critical p-2 text-xs">
                 Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen FI-Schutzschalter (max.
                 30 mA, Typ A) haben — sonst droht Stromschlaggefahr auch ohne Landstrom.
+              </div>
+            )}
+            {node.data?.hasRcd && (
+              <div className="mt-2 flex flex-col gap-2 rounded border border-border p-3">
+                <div className="flex flex-col">
+                  <label
+                    className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                    htmlFor={`${node.id}-rcdType`}
+                  >
+                    FI-Typ des integrierten FI/LS
+                  </label>
+                  <select
+                    id={`${node.id}-rcdType`}
+                    value={node.data?.rcdType ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      onUpdateNodeData?.(node.id, {
+                        rcdType: value === '' ? undefined : (value as 'AC' | 'A' | 'F' | 'B'),
+                      });
+                    }}
+                    className="min-h-11 rounded border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+                  >
+                    <option value="">— nicht angegeben —</option>
+                    <option value="A">A (Standard)</option>
+                    <option value="AC">AC</option>
+                    <option value="F">F</option>
+                    <option value="B">B (glatte Gleichfehlerströme)</option>
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Typ B ist für Halbleiterquellen belegt. Typ A/F gilt nur mit Herstellernachweis; Typ AC
+                    ist unzureichend.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={node.data?.rcdProofNoSmoothDc === true}
+                    onChange={(event) =>
+                      onUpdateNodeData?.(node.id, { rcdProofNoSmoothDc: event.target.checked })
+                    }
+                    className="rounded border-rule text-primary focus:ring-ring"
+                  />
+                  Herstellernachweis: keine glatten Gleichfehlerströme
+                </label>
               </div>
             )}
           </div>
