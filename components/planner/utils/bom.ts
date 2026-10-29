@@ -278,7 +278,6 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
   };
 
   const currents = getCableCurrents([...nodes], [...edges]).byEdgeId;
-  const acProtectedSources = new Set<string>();
 
   edges.forEach((edge) => {
     const isAc = edge.data?.edgeDomain === 'AC_230V';
@@ -304,8 +303,11 @@ export function buildBom(input: BomInput, routeOf: RouteLookup = getCableRoute):
       acCableLengths[crossSection] = (acCableLengths[crossSection] || 0) + length.meters;
       const acProt = edge.data?.acProtection;
       const acRating = Number(edge.data?.fuseSize) || 16;
-      if (acProt && !acProtectedSources.has(edge.source)) {
-        acProtectedSources.add(edge.source);
+      // Jede 230-V-Leitung ist ein eigener Stromkreis mit eigenem Schutzorgan.
+      // Die frühere Deduplizierung über `edge.source` zählte zwei Steckdosen-
+      // kreise hinter demselben Wechselrichter nur EINMAL — die Stückliste
+      // enthielt dann eine Sicherung zu wenig.
+      if (acProt) {
         addFuse(acProt.kind === 'rcbo' ? 'rcbo' : 'mcb', acRating);
       }
     } else {

@@ -25,7 +25,7 @@
  */
 
 import { auditEvent, checkFromEvents, checkOrNotApplicable, passedCheck } from './events';
-import { behaviorOf, cablesAt, labelOfNode, otherPort } from './graph';
+import { behaviorOf, cablesAt, labelOfNode, otherPort, SOLAR_PANEL_NODE_TYPES } from './graph';
 import type {
   AuditEvent,
   CableModel,
@@ -358,6 +358,8 @@ function checkPolarityCross(graph: ConductionGraph): CheckResult {
 
 /** DOM-002: Kante Plus↔Masse/PE. */
 function checkPositiveToReference(graph: ConductionGraph): CheckResult {
+  const isSolarPanelNode = (nodeId: string): boolean =>
+    SOLAR_PANEL_NODE_TYPES.includes(graph.components.get(nodeId)?.nodeType ?? '');
   const events = graph.cables
     .filter((cable) => {
       const hasPositive = [cable.from.polarity, cable.to.polarity].includes('positive');
@@ -365,7 +367,14 @@ function checkPositiveToReference(graph: ConductionGraph): CheckResult {
         (nodeId) => behaviorOf(graph, nodeId).kind === 'REFERENCE'
       );
       const hasMinus = [cable.from.polarity, cable.to.polarity].includes('negative');
-      return hasPositive && (reachesReference || hasMinus);
+      // Solar↔Solar (plus → minus) ist die LEGALE Reihenverbindung eines
+      // Strings, kein Pluspol auf Masse. Zwei getrennte Panels, nicht ein
+      // Kurzschluss desselben Bauteils.
+      const solarSeries =
+        cable.from.nodeId !== cable.to.nodeId &&
+        isSolarPanelNode(cable.from.nodeId) &&
+        isSolarPanelNode(cable.to.nodeId);
+      return hasPositive && (reachesReference || hasMinus) && !solarSeries;
     })
     .sort((a, b) => a.edgeId.localeCompare(b.edgeId))
     .map((cable) =>
@@ -403,8 +412,17 @@ function checkShortPathWithoutLoad(graph: ConductionGraph, portGraph: PortGraph)
   }
 
   const events: AuditEvent[] = [];
-  const isGoal = (port: PortRef): boolean => {
+  const isSolarPanelNode = (nodeId: string): boolean =>
+    SOLAR_PANEL_NODE_TYPES.includes(graph.components.get(nodeId)?.nodeType ?? '');
+  const isGoal = (port: PortRef, startNodeId: string): boolean => {
     if (port.polarity !== 'negative') return false;
+    // Solar↔Solar in Reihe: Der Minuspol des NÄCHSTEN Panels ist das Ende
+    // der legalen Reihenverbindung, nicht der Rückweg eines Kurzschlusses.
+    // Nur ein anderer Solar-Knoten wird ausgenommen; derselbe Knoten
+    // (Plus direkt auf eigenen Minus) bleibt ein Kurzschluss.
+    if (port.nodeId !== startNodeId && isSolarPanelNode(startNodeId) && isSolarPanelNode(port.nodeId)) {
+      return false;
+    }
     const behavior = behaviorOf(graph, port.nodeId);
     if (behavior.kind === 'REFERENCE' || behavior.kind === 'SOURCE') return true;
     // Der Minuspol eines Verbrauchers beendet den Fehlerpfad NICHT als
@@ -415,7 +433,7 @@ function checkShortPathWithoutLoad(graph: ConductionGraph, portGraph: PortGraph)
   };
 
   for (const start of sourcePlusPorts) {
-    const result = walk(portGraph, [start], isGoal, {
+    const result = walk(portGraph, [start], (port) => isGoal(port, start.nodeId), {
       // Deklariertes Prädikat (TOPO-001): kein Schutzorgan auf irgendeiner
       // Leitung des Pfades …
       acceptCable: (cableId) => {

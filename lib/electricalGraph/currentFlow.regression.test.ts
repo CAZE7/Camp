@@ -297,3 +297,76 @@ describe('Auftrag §15 — Regresstests des Strommodells', () => {
     }
   });
 });
+
+describe('AC-Ladegerät: Eingangsstrom wird aus der DC-Ladeleistung umgerechnet', () => {
+  it('30 A DC-Ladestrom an 12,8 V ergeben ≈ 1,86 A AC, nicht 30 A', () => {
+    const nodes: PlanNode[] = [
+      node('shore-1', 'shorePower', { label: 'Landstrom', rating: 16 }),
+      node('charger-ac', 'acBatteryCharger', { label: 'AC-Ladegerät', amps: 30 }),
+      node('bat-1', 'battery', {
+        label: '100Ah LiFePO4',
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        nominalVoltage: 12.8,
+        internalResistance: 4,
+      }),
+    ];
+    const edges: PlanEdge[] = [
+      edge('e-shore-charger', 'shore-1', 'charger-ac', 'plus', 'plus', { edgeDomain: 'AC_230V', length: 2 }),
+      edge('e-charger-bat', 'charger-ac', 'bat-1', 'plus', 'plus', { length: 1, crossSection: 10 }),
+      edge('e-bat-charger-minus', 'bat-1', 'charger-ac', 'minus', 'minus', { length: 1, crossSection: 10 }),
+    ];
+    // P_DC = 30 A × 12,8 V = 384 W; AC = 384 W / (230 V × 0,9) = 1,855 A.
+    expect(currentOf(nodes, edges, 'Landstrom', 'AC-Ladegerät')).toBeCloseTo(1.86, 2);
+  });
+});
+
+describe('MPPT-Ladeausgang liegt auf Batteriespannung', () => {
+  const solarPlan = (
+    watts: number,
+    nominalVoltage: number,
+    mpptAmps: number
+  ): { nodes: PlanNode[]; edges: PlanEdge[] } => {
+    const nodes: PlanNode[] = [
+      node('bat-1', 'battery', {
+        label: 'Batterie',
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        nominalVoltage,
+        internalResistance: 4,
+      }),
+      node('mppt-1', 'mpptController', { label: 'MPPT', amps: mpptAmps, maxPvVoltage: 150 }),
+      node('pv-1', 'solar', { label: 'Panel', watts, voc: 24, isc: watts / 18 + 1 }),
+    ];
+    const edges: PlanEdge[] = [
+      edge('e-pv-mppt', 'pv-1', 'mppt-1', 'plus', 'plus', {
+        edgeDomain: 'Solar',
+        length: 3,
+        crossSection: 4,
+      }),
+      edge('e-mppt-bat', 'mppt-1', 'bat-1', 'plus', 'plus', { length: 1, crossSection: 16 }),
+      edge('e-bat-mppt-minus', 'bat-1', 'mppt-1', 'minus', 'minus', { length: 1, crossSection: 16 }),
+    ];
+    return { nodes, edges };
+  };
+
+  it('400 W an 12,8 V: 32,9 A Batteriestrom, nicht 22,2 A Panelstrom', () => {
+    const plan = solarPlan(400, 12.8, 50);
+    expect(currentOf(plan.nodes, plan.edges, 'MPPT', 'Batterie')).toBeCloseTo(400 / (12.8 * 0.95), 1);
+  });
+
+  it('200 W an 12,8 V: 16,4 A (vorher 11,1 A)', () => {
+    const plan = solarPlan(200, 12.8, 30);
+    expect(currentOf(plan.nodes, plan.edges, 'MPPT', 'Batterie')).toBeCloseTo(200 / (12.8 * 0.95), 1);
+  });
+
+  it('500 W an 25,6 V: 20,6 A (vorher 27,8 A)', () => {
+    const plan = solarPlan(500, 25.6, 30);
+    expect(currentOf(plan.nodes, plan.edges, 'MPPT', 'Batterie')).toBeCloseTo(500 / (25.6 * 0.95), 1);
+  });
+
+  it('begrenzt auf den Ausgangsnennstrom des Reglers', () => {
+    const plan = solarPlan(600, 12.8, 30);
+    expect(currentOf(plan.nodes, plan.edges, 'MPPT', 'Batterie')).toBeCloseTo(30, 2);
+  });
+});

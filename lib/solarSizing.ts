@@ -73,7 +73,9 @@ export type SolarSizingResult = {
   expectedChargeCurrentA: number;
   /**
    * Faktor, um den der Tagesbedarf im gewählten Fall gedeckt ist (> 1 =
-   * Überdeckung, < 1 = Unterdeckung).
+   * Überdeckung, < 1 = Unterdeckung). Bezug ist der DESIGN-Bedarf inklusive
+   * Ladezeit-Aufschlag (1,15) — sonst zeigte die Anzeige 120 % Deckung,
+   * obwohl die Empfehlung nur 4 % Reserve über dem tatsächlichen Ladebedarf hat.
    */
   coverageFactor: number;
 };
@@ -135,7 +137,9 @@ export function sizeSolarArray(input: SolarSizingInput): SolarSizingResult {
     panelCount,
     panelWatts,
     expectedChargeCurrentA,
-    coverageFactor: expectedYieldWh / dailyEnergyWh,
+    // Deckung gegen den Design-Bedarf (inkl. 1,15 Ladezeit-Aufschlag), damit
+    // die Anzeige nicht mehr Deckung suggeriert, als die Empfehlung liefert.
+    coverageFactor: expectedYieldWh / (dailyEnergyWh * VDE_CHARGE_DERATING_FACTOR),
   };
 }
 

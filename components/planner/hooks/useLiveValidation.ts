@@ -652,10 +652,27 @@ export function useLiveValidation(
         const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
         const isBatteryTargetPlus = edge.target === battery.id && !!edge.targetHandle?.includes('plus');
         if (!isBatterySourcePlus && !isBatteryTargetPlus) continue;
-        // Topologieabhängiger Strom aus dem gemeinsamen Modell.
-        const I = currentModel.byEdgeId.get(edge.id)?.operatingCurrent ?? null;
+        // Topologieabhängiger Strom aus dem gemeinsamen Modell. Die Richtung
+        // wird aus den Beiträgen bestimmt, NICHT aus der Zeichenrichtung:
+        // AutoWire zeichnet Batterie→Schiene auch dann, wenn geladen wird.
+        // Vorher wurde auf dieser Kante nur „Entladen“ geprüft — die
+        // Ladegrenze des BMS war damit im Auto-Plan nie wirksam.
+        const explanation = currentModel.byEdgeId.get(edge.id);
+        const I = explanation?.operatingCurrent ?? null;
         if (I === null) continue; // nicht bestimmbar — die Engine weist es aus
-        if (dischargeLimit > 0 && isBatterySourcePlus && I > dischargeLimit) {
+        const contributions = explanation?.contributingLoads ?? [];
+        const hasContributions = contributions.length > 0;
+        const dischargeA = contributions
+          .filter((entry) => entry.role === 'load')
+          .reduce((sum, entry) => sum + entry.contribution, 0);
+        const chargeA = contributions
+          .filter((entry) => entry.role === 'source')
+          .reduce((sum, entry) => sum + entry.contribution, 0);
+        // Fallback nur ohne Beiträge (z. B. expliziter totalAmps): dann
+        // entscheidet die Zeichenrichtung wie bisher.
+        const effectiveDischarge = hasContributions ? dischargeA : isBatterySourcePlus ? I : 0;
+        const effectiveCharge = hasContributions ? chargeA : isBatteryTargetPlus ? I : 0;
+        if (dischargeLimit > 0 && effectiveDischarge > dischargeLimit + 1e-9) {
           warnings.push({
             id: `bms-discharge-${battery.id}-${edge.id}`,
             category: 'safety',
@@ -664,17 +681,17 @@ export function useLiveValidation(
             focusId: battery.id,
             focusType: 'node',
             ruleId: 'ELE-005-bms-discharge',
-            measuredValue: `${Math.round(I)} A`,
+            measuredValue: `${Math.round(effectiveDischarge)} A`,
             expectedValue: `max. ${dischargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousDischarge (BMS-Grenze)',
             message: `Kritisch: Die Leitung von „${nodeLabel(
               battery,
               'Batterie'
-            )}“ wird mit ≈${Math.round(I)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
+            )}“ wird mit ≈${Math.round(effectiveDischarge)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
           });
         }
-        if (chargeLimit > 0 && isBatteryTargetPlus && I > chargeLimit) {
+        if (chargeLimit > 0 && effectiveCharge > chargeLimit + 1e-9) {
           warnings.push({
             id: `bms-charge-${battery.id}-${edge.id}`,
             category: 'safety',
@@ -683,14 +700,14 @@ export function useLiveValidation(
             focusId: battery.id,
             focusType: 'node',
             ruleId: 'ELE-005-bms-charge',
-            measuredValue: `${Math.round(I)} A`,
+            measuredValue: `${Math.round(effectiveCharge)} A`,
             expectedValue: `max. ${chargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousCharge (BMS-Grenze)',
             message: `Kritisch: Der Ladezweig zu „${nodeLabel(
               battery,
               'Batterie'
-            )}“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
+            )}“ führt ≈${Math.round(effectiveCharge)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
           });
         }
       }

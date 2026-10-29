@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   PEUKERT_EXPONENT,
+  normalizeBatteryChemistry,
   peukertCapacityFactor,
   peukertExponentOf,
   usableCapacityWithPeukertAh,
@@ -45,6 +46,23 @@ describe('DOM-002-Nachpflege — Peukert-Faustmodell (lib/peukert.ts)', () => {
     expect(peukertExponentOf({ peukertExponent: 0.8, chemistry: 'Gel' })).toBe(PEUKERT_EXPONENT['Gel']); // k < 1 verworfen
     expect(peukertExponentOf({ chemistry: 'NasBatterie' })).toBe(PEUKERT_EXPONENT['LiFePO4']);
     expect(peukertExponentOf(undefined)).toBe(PEUKERT_EXPONENT['LiFePO4']);
+  });
+
+  it('normalisiert freie Chemie-Schreibweisen (Regression: agm → LiFePO4)', () => {
+    expect(normalizeBatteryChemistry('agm')).toBe('AGM');
+    expect(normalizeBatteryChemistry('AGM')).toBe('AGM');
+    expect(normalizeBatteryChemistry('gel')).toBe('Gel');
+    expect(normalizeBatteryChemistry('Blei')).toBe('Blei');
+    expect(normalizeBatteryChemistry('blei')).toBe('Blei');
+    expect(normalizeBatteryChemistry('lead-acid')).toBe('Blei');
+    expect(normalizeBatteryChemistry('lifepo4')).toBe('LiFePO4');
+    expect(normalizeBatteryChemistry('LFP')).toBe('LiFePO4');
+    expect(normalizeBatteryChemistry('')).toBeNull();
+    expect(normalizeBatteryChemistry(undefined)).toBeNull();
+    expect(normalizeBatteryChemistry(42)).toBeNull();
+    // Vorher: 'agm' → undefined → LiFePO4-Exponent 1,05 statt AGM 1,12.
+    expect(peukertExponentOf({ chemistry: 'agm' })).toBe(PEUKERT_EXPONENT['AGM']);
+    expect(peukertExponentOf({ chemistry: 'Blei' })).toBe(PEUKERT_EXPONENT['Blei']);
   });
 
   it('usableCapacityWithPeukertAh: DoD und Faktor multiplizieren sich', () => {

@@ -24,13 +24,45 @@
  * weiterhin nicht modelliert (steht im ExpertPanel).
  */
 
-const defaultKeys = ['LiFePO4', 'AGM', 'Gel'] as const;
+const defaultKeys = ['LiFePO4', 'AGM', 'Gel', 'Blei'] as const;
+
+/** Kanonische Batterie-Chemie — die einzige Schlüsselform für Tabellen. */
+export type BatteryChemistryKey = (typeof defaultKeys)[number];
+
+/**
+ * Normalisiert freie Chemie-Angaben aus `node.data`, Importen und der
+ * Node-Karte auf die kanonischen Tabellenschlüssel.
+ *
+ * Vorher wurde `VDE_BATTERY_DOD[chemistry]` mit dem Rohstring gelesen:
+ * `'agm'` ergab `undefined` und fiel auf LiFePO4 (DoD 0,9) zurück, obwohl
+ * AGM 0,5 hat — die Autarkie war damit bis zu 1,8× zu hoch. Die UI-Auswahl
+ * liefert die richtige Schreibweise, freie Eingaben/Importe nicht.
+ *
+ * Unbekannte Angaben → `null`; der Aufrufer entscheidet über den
+ * dokumentierten Fallback (LiFePO4), statt eine falsche Chemie zu erfinden.
+ */
+export function normalizeBatteryChemistry(raw: unknown): BatteryChemistryKey | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim().toLowerCase();
+  if (value === '') return null;
+  if (value === 'lifepo4' || value === 'li-feapo4' || value === 'lfp') return 'LiFePO4';
+  // Li-Ion hat keine eigene DoD-Zeile; der dokumentierte Fallback ist LiFePO4.
+  if (value === 'liion' || value === 'li-ion' || value === 'lion') return 'LiFePO4';
+  if (value === 'agm') return 'AGM';
+  if (value === 'gel') return 'Gel';
+  if (value === 'lead' || value === 'blei' || value === 'lead-acid' || value === 'blei-säure' || value === 'bleisäure') {
+    return 'Blei';
+  }
+  return null;
+}
 
 /** Peukert-Exponent je Chemie — Faustwerte, s. Dateikopf (UNVERIFIED). */
 export const PEUKERT_EXPONENT: Record<string, number> = {
   LiFePO4: 1.05,
   AGM: 1.12,
   Gel: 1.15,
+  // Nassblei: gleicher Blei-Familienanker wie Gel (1,15). Datenblatt schlägt.
+  Blei: 1.15,
 };
 
 /**
@@ -59,7 +91,7 @@ export function peukertCapacityFactor(capacity20hAh: number, currentA: number, e
 export function peukertExponentOf(data: Record<string, unknown> | undefined): number {
   const explicit = typeof data?.peukertExponent === 'number' ? data.peukertExponent : NaN;
   if (Number.isFinite(explicit) && explicit >= 1) return explicit;
-  const chemistry = typeof data?.chemistry === 'string' ? data.chemistry : 'LiFePO4';
+  const chemistry = normalizeBatteryChemistry(data?.chemistry) ?? 'LiFePO4';
   return PEUKERT_EXPONENT[chemistry] ?? PEUKERT_EXPONENT['LiFePO4']!;
 }
 

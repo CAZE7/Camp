@@ -52,6 +52,23 @@ describe('useDashboardMetrics', () => {
     // autarkyHours = 50 / (24 / 24) = 50
     // 50 hours = 2 Tage / 2 Stunden (rounded)
     expect(resAGM.current.autarkyStr).toBe('2 Tage / 2 Stunden');
+
+    // Regression: Freitext/Import 'agm' fiel vorher auf LiFePO4 (DoD 0,9)
+    // zurück — 90 Ah statt 50 Ah, Autarkie 1,8× zu hoch.
+    const nodesLower: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'agm' }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result: resLower } = renderHook(() => useDashboardMetrics(nodesLower, emptyEdges, 'summer', 0));
+    expect(resLower.current.autarkyStr).toBe('2 Tage / 2 Stunden');
+
+    const nodesLead: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'Blei' }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result: resLead } = renderHook(() => useDashboardMetrics(nodesLead, emptyEdges, 'summer', 0));
+    // Nassblei DoD 0,3 → 30 Ah / 24 Ah pro Tag = 30 h = 1 Tag / 6 Stunden.
+    expect(resLead.current.autarkyStr).toBe('1 Tage / 6 Stunden');
   });
 
   it('should handle seasonal adjustment for consumption', () => {
@@ -219,7 +236,8 @@ describe('Edge cases and error conditions', () => {
       { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
     ];
     const { result } = renderHook(() => useDashboardMetrics(nodes, [], 'summer', 120));
-    expect(result.current.chargingTimeStr).toBe('15.5 Stunden');
+    // 0–100 %: 100 Ah Nennkapazität / (120 W / 18 V) × 1,15 = 17,25 h.
+    expect(result.current.chargingTimeStr).toBe('17.3 Stunden');
   });
 
   it('should calculate metrics when only calculatedSolarWatts is provided in winter', () => {
@@ -227,7 +245,8 @@ describe('Edge cases and error conditions', () => {
       { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
     ];
     const { result } = renderHook(() => useDashboardMetrics(nodes, [], 'winter', 120));
-    expect(result.current.chargingTimeStr).toBe('44.4 Stunden');
+    // Winter: 120 W × 0,35 / 18 V = 2,333 A → 100 / 2,333 × 1,15 = 49,29 h.
+    expect(result.current.chargingTimeStr).toBe('49.3 Stunden');
   });
 
   it('should handle series solar connection missing data properly', () => {
@@ -472,9 +491,22 @@ describe('Audit K1, K2, M3, M9 — Starterbatterie, Solar+MPPT, WR-Leerlauf & 24
       },
     ];
     const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
-    // PV-Batteriestrom = (200 W * 0,98) / 12,8 V = 15,3125 A (gedeckelt durch 19,6 A MPPT)
-    // Ladezeit = (90 / 15,3125) * 1,15 = 6,759 h → „6.8 Stunden“ (vorher doppelt gezählt: ~3,5 Stunden).
-    expect(result.current.chargingTimeStr).toBe('6.8 Stunden');
+    // PV-Batteriestrom = (200 W * 0,98) / 12,8 V = 15,3125 A (gedeckelt durch 20 A MPPT).
+    // Ladezeit 0–100 % = (100 Ah Nennkapazität / 15,3125 A) * 1,15 = 7,51 h.
+    // Vorher wurde die DoD-reduzierte Kapazität (90 Ah) und ein um den
+    // Wirkungsgrad gekürzter Reglerstrom (19,6 A) verwendet → 6,8 h.
+    expect(result.current.chargingTimeStr).toBe('7.5 Stunden');
+  });
+
+  it('0–100 % lädt die Nennkapazität, nicht die DoD-reduzierte Kapazität (AGM)', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'AGM' }, position: { x: 0, y: 0 } },
+      { id: 'ch1', type: 'charger', data: { amps: 10 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // 100 Ah Nennkapazität / 10 A × 1,15 = 11,5 h. Vorher wurde mit 50 Ah
+    // nutzbar gerechnet (5,75 h) — bei „0–100 %" um Faktor 2 zu optimistisch.
+    expect(result.current.chargingTimeStr).toBe('11.5 Stunden');
   });
 
   it('M3: bezieht den Eigenverbrauch (idleWatts) aktiver Wechselrichter in den Tagesverbrauch ein', () => {

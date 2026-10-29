@@ -144,7 +144,9 @@ export function SpannungsabfallRechner() {
               <div className="flex items-baseline justify-between gap-4 border-t border-rule pt-2">
                 <dt className="text-ink-soft">Empfehlung für diese Strecke</dt>
                 <dd className="font-mono text-ink">
-                  {format(state.result.recommendedCrossSectionMm2, 1)} mm²
+                  {state.result.beyondModeledRange
+                    ? 'außerhalb der Belastbarkeitstabelle'
+                    : `${format(state.result.recommendedCrossSectionMm2, 1)} mm²`}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 border-t border-rule pt-2">

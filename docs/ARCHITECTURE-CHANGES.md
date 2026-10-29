@@ -3083,3 +3083,37 @@ Systematische Behebung aller bestätigten Befunde aus Audit-Runde 1 und Runde 2 
 - **Live-DOM-Routing, AutoWire & Geführter Modus:** Außenbündige 48×48-px-Touch-Hitboxen in `normalizeHandleBox` (`nodeGeometry.ts`, `ROUTING_TOKENS_VERSION = 4`) auf den Kartenrand-Anker normiert, Korridoraufweitung bei dichten LR-Spannkanten in `applyAdvancedLayout` (`routingV2Adapter.ts`), ehrlicher Status in `optimizeCurrentCableRoutes` (`cableRouteStore.ts`), sichtbarer Text auf `RoutingStatusBadge`, ehrliches AutoWire-Prüfbanner in `ExpertPanel.tsx` und Freigabe-Sperre in Schritt 5 (`GuidedPlanRail.tsx`) bei offenen Prüf- oder Trassenkonflikten.
 - **Bewusste Golden-Master-Neuerfassung (`knownPlans/camper.json`, `knownPlans/complex.json`):** Ausgelöst ausschließlich durch die fachlichen Vorlagen- und AutoWire-Dimensionierungskorrekturen (`TEMPLATE_MINIMALIST` Masseleitung 16 mm² + ATO-Zweigsicherungen; `TEMPLATE_AUTARK` realistische Verbraucherwerte 1800 W Induktion / 2500 W Wechselrichter, 50 mm² Batteriezweig, DC-Minus-Rückführung am AC-Ladegerät). Alle vier synthetischen Referenzpläne (`simple`, `solar`, `acdc`, `hbridge`) bleiben unverändert grün.
 - **Eingabe, Overlays, Barrierefreiheit & Stückliste (H3, H4, M5, M6, M10, M11, N1, N2, N5, N6, N8, N12):** Tausenderpunkt-Erkennung (`1.000` → `1000`) in `lib/units.ts`, Fokus-Rollback bei ungültigen Zwischenständen und Leistungsobergrenze in `ValidatingInput.tsx`, freier Dokument-Scroll zum Ratgeberteil + Impressum/Datenschutz auf `/planer/`, kollisionsfreie Stapelung von `Ansicht` und `Aktueller Status` inkl. Panel-Innenabstand beim `fitView`, 44-px-Kanten-Trefferzonen, klappbare `UNVERIFIED`-Sammelgruppen in `WarningCenter.tsx`, deutsches Dezimalkomma sowie sortierte Stückliste inklusive Sicherungseinsätzen, Rohrkabelschuhen, Hauptschalter-Empfehlung und karosseriemasse-bewusster Rückleiterlogik.
+
+## 2026-10-28 — Rechenfehler-Audit: MPPT-Ladepfad, AC-Ladegerät und Modellgrenzen
+
+Behebung der im Audit über 29 realistische Pläne bestätigten Rechenfehler. Die
+Golden-Master-Neuerfassung betrifft ausschließlich die elektrischen Werte von
+`knownPlans/solar.json`, `knownPlans/acdc.json` und `knownPlans/complex.json`;
+die Routing-Stufe bleibt byte-gleich. Anlass:
+
+- **MPPT-Ladepfad:** Der MPPT-Ausgang wird jetzt auf Batteriespannung gerechnet
+  (`P_PV / (U_Akku · η)`, gedeckelt durch den Regler-Nennstrom) statt mit dem
+  Panelstrom (`P_PV / 18 V`). Bei 12,8 V war der Ladestrom ~32 % zu niedrig
+  (Ladekabel/Sicherung unterdimensioniert), bei 48 V ~170 % zu hoch.
+  `complex`: `e-auto-7`/`e-charger-busbar` 22,22 → 32,89 A, MPPT-Kabel
+  6 → 10 mm², Sicherung 25 → 40 A. `solar`: Batterie-/MPPT-Kabel 2,5 → 4 bzw.
+  4 → 6 mm², Sicherung 15 → 20 A, kumulierte Spannungsfälle entsprechend.
+- **AC-Ladegerät:** Der AC-Eingangsstrom wird aus der DC-Ladeleistung
+  (`amps · U_Akku / 230 / η`) statt aus dem DC-Ausgangsstrom (`amps`) gebildet.
+  `acdc`: 25 → 1,55 A, AC-Kabel 6 → 2,5 mm², Sicherung 25 → 5 A; `solar`:
+  AC-Kabel 4 → 2,5 mm².
+- **Weitere Behebungen ohne Golden-Master-Wirkung:** `sizeCable` reicht den
+  `outside-model`-Status der Belastbarkeitstabelle durch (200 A/0,5 m ist keine
+  70-mm²-Empfehlung mehr); `getSystemVoltage` liest `nominalVoltage` nur noch an
+  der Vorrangbatterie; Chemie-Normalisierung (`agm`, `Blei`) für DoD, Peukert
+  und Innenwiderstand; BMS-Ladegrenze richtungsunabhängig über die
+  Strombeiträge; DOM-002/TOPO-001 nehmen die legale Solar-Reihenverbindung aus;
+  Ladezeit 0–100 % nutzt die Nennkapazität; `batterySizing.sufficient` prüft die
+  Autonomietage; BOM zählt AC-Schutzorgane je Stromkreis; Solar-Deckung bezieht
+  den 1,15-Ladeaufschlag ein; PWR-001 rechnet 230-V-Lasten mit
+  Wechselrichter-η und meldet vollständig fehlende Verbraucherwerte; AMP-005
+  prüft das nächstgelegene vorgelagerte Organ; AMP-004 prüft Solar-Sicherungen
+  nicht mehr gegen den Batterie-Bank-I_k.
+- **Nicht Teil dieses Schnitts:** vollständige Einbauort-Dämpfung für
+  AMP-004-Zweigsicherungen, 24/48-V-Spannungsfallbudget in der Anzeige,
+  Serien-/Parallel-Solarstrom auf der Panel-Seite und AC-Durchgangsmodell.

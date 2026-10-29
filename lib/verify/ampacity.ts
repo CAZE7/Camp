@@ -832,6 +832,10 @@ export function checkBreakingCapacity(context: PassContext): CheckResult {
 
   for (const cable of sortedCables(context.graph)) {
     if (!isDcLike(cable)) continue;
+    // Solar-Zuleitungen sehen den Panel-/String-I_sc, nicht den Kurzschluss
+    // der Batteriebank (der MPPT trennt die Seiten). Eine 1-kA-ATO gegen
+    // 3,2 kA Bank-I_k zu prüfen, war ein falscher kritischer Befund.
+    if (cable.carrier === 'solar') continue;
     const placements = protectingPlacements(cable, upstreamChain(context.graph, portGraph, cable));
     for (const placement of dedupeByHost(placements)) {
       const device = placement.device;
@@ -918,7 +922,16 @@ export function checkSelectivity(context: PassContext): CheckResult {
     const upstream = chain.devices
       .filter(isOvercurrentUpstream)
       .map((entry): OvercurrentUpstream => ({ entry, device: entry.placement.device }))
-      .sort((a, b) => b.device.ratedCurrentA - a.device.ratedCurrentA)[0];
+      // Das NÄCHSTGELEGENE vorgelagerte Organ ist der Selektivitätspartner.
+      // Vorher wurde nach Nennstrom absteigend sortiert und das GRÖSSTE
+      // genommen — bei 200 A → 100 A → 80 A bestand 200/80 = 2,5, obwohl
+      // 100/80 = 1,25 nicht selektiv ist.
+      .sort((a, b) => {
+        const aDistance = a.entry.distanceFromStartM ?? Number.POSITIVE_INFINITY;
+        const bDistance = b.entry.distanceFromStartM ?? Number.POSITIVE_INFINITY;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+        return a.device.ratedCurrentA - b.device.ratedCurrentA;
+      })[0];
     if (!upstream) continue;
 
     const downstreamA = downstream.device.ratedCurrentA;

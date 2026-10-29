@@ -22,13 +22,15 @@
 import {
   VOLTAGE_DROP_PCT_CRITICAL,
   VOLTAGE_DROP_PCT_PLAN_LIMIT,
+  DERATE_FACTOR,
+  MAX_MODELED_AMPACITY_A,
   VDE_AMPACITY,
   VDE_SIZES,
   calculateCrossSection,
   calculateMaxFuse,
   designAmpacity,
-  lookupThermalCrossSection,
   selectFuseSize,
+  thermalCrossSectionFor,
 } from './electrical';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
 import { amps, crossSectionForVoltageDrop, dropPercent, meters, mm2, volts, voltageDrop } from './units';
@@ -77,6 +79,15 @@ export type CableSizing = {
   criterion: SizingCriterion;
   /** true = selbst 70 mm² erfüllen die Forderung nicht (Leitung teilen / 24 V prüfen). */
   exceedsStandardRange: boolean;
+  /**
+   * true = der Strom liegt oberhalb der hinterlegten Belastbarkeitstabelle
+   * (Modellgrenze 70 mm² / 120,4 A). Dann gibt es KEINE Querschnitts- oder
+   * Sicherungsempfehlung — die Anzeige muss das sagen, statt 70 mm² als
+   * scheinbar gültige Antwort zu präsentieren.
+   */
+  beyondModeledRange: boolean;
+  /** Größter Strom, den die Tabelle im Design (× Derating) noch trägt. */
+  maximumModeledCurrentA: number;
 };
 
 /**
@@ -114,10 +125,18 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
   // Querschnitt, den der Spannungsfall fordert: A = I · 2L / (κ · ΔU).
   const dropArea = crossSectionForVoltageDrop(current, length, allowedDrop, COPPER_CONDUCTIVITY_MS_PER_MM2);
   // Querschnitt, den die Strombelastbarkeit fordert (Tabellenwert mit Derating).
-  const thermalArea = lookupThermalCrossSection(current);
+  // Die Modellgrenze ist ZWEIWERTIG (outside-model): Sie darf nicht als
+  // "70 mm² genügt" gelesen werden. Deshalb wird der Status hier ausgewertet
+  // und nicht nur die gedeckelte Zahl übernommen.
+  const thermalBoundary = thermalCrossSectionFor(current);
+  const beyondModeledRange = thermalBoundary.status === 'outside-model';
+  const thermalArea = beyondModeledRange
+    ? MAX_STANDARD_CROSS_SECTION_MM2
+    : thermalBoundary.crossSectionMm2;
 
   const requiredCrossSectionMm2 = Math.max(MIN_STANDARD_CROSS_SECTION_MM2, dropArea, thermalArea);
-  const exceedsStandardRange = requiredCrossSectionMm2 > MAX_STANDARD_CROSS_SECTION_MM2 + 1e-9;
+  const exceedsStandardRange =
+    beyondModeledRange || requiredCrossSectionMm2 > MAX_STANDARD_CROSS_SECTION_MM2 + 1e-9;
 
   const criterion: SizingCriterion =
     dropArea >= thermalArea && dropArea > MIN_STANDARD_CROSS_SECTION_MM2
@@ -138,6 +157,8 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
     maxFuseA: exceedsStandardRange ? null : calculateMaxFuse(crossSectionMm2),
     criterion,
     exceedsStandardRange,
+    beyondModeledRange,
+    maximumModeledCurrentA: MAX_MODELED_AMPACITY_A * DERATE_FACTOR,
   };
 }
 
@@ -162,6 +183,10 @@ export type VoltageDropResult = {
    * benennt (Rule M: keine stille Empfehlung).
    */
   exceedsPlanLimit: boolean;
+  /** true = der Strom liegt oberhalb der Belastbarkeitstabelle; keine Querschnittsempfehlung. */
+  beyondModeledRange: boolean;
+  /** Größter Strom, den die Tabelle im Design noch trägt (A). */
+  maximumModeledCurrentA: number;
 };
 
 /**
@@ -202,13 +227,16 @@ export function voltageDropFor(
           ? 'verstoss'
           : 'kritisch';
 
+  const sizing = sizeCable(currentA, lengthM);
   return {
     crossSectionMm2,
     dropV: drop,
     dropPercent: percent,
     verdict,
-    recommendedCrossSectionMm2: sizeCable(currentA, lengthM).crossSectionMm2,
+    recommendedCrossSectionMm2: sizing.crossSectionMm2,
     exceedsPlanLimit: percent > VOLTAGE_DROP_PCT_PLAN_LIMIT,
+    beyondModeledRange: sizing.beyondModeledRange,
+    maximumModeledCurrentA: sizing.maximumModeledCurrentA,
   };
 }
 

@@ -635,6 +635,51 @@ describe('useLiveValidation', () => {
       expect(warning?.ruleId).toBe('ELE-005-bms-discharge');
     });
 
+    it('erkennt die BMS-LADEGRENZE auch auf der AutoWire-Kante Batterie→Schiene', () => {
+      // AutoWire zeichnet Batterie→Schiene. Der Ladestrom fließt in
+      // Gegenrichtung; die alte Prüfung sah nur „source= battery“ und
+      // verglich ihn mit der ENTLADEgrenze — die Ladegrenze war nie wirksam.
+      const nodes: Node[] = [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: {
+            label: 'Batterie',
+            capacity: 100,
+            nominalVoltage: 12.8,
+            bmsContinuousDischarge: 200,
+            bmsContinuousCharge: 20,
+          },
+          position: { x: 0, y: 0 },
+        },
+        { id: 'bus', type: 'busbar', data: { label: 'Plus-Schiene', role: 'positive' }, position: { x: 0, y: 0 } },
+        {
+          id: 'lader',
+          type: 'acBatteryCharger',
+          data: { label: 'AC-Ladegerät', amps: 50 },
+          position: { x: 0, y: 0 },
+        },
+        { id: 'shore', type: 'shorePower', data: { label: 'Landstrom', rating: 16 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'bat-bus', source: 'b1', target: 'bus', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        { id: 'lader-bus', source: 'lader', target: 'bus', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        {
+          id: 'shore-lader',
+          source: 'shore',
+          target: 'lader',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { edgeDomain: 'AC_230V' },
+        },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id.startsWith('bms-charge-b1'));
+      expect(warning?.type).toBe('critical');
+      expect(warning?.ruleId).toBe('ELE-005-bms-charge');
+      expect(warning?.measuredValue).toBe('50 A');
+    });
+
     // V2-LIMIT-001: Vorher wurde AUSSCHLIESSLICH das BMS geprüft. Jede andere
     // eingetragene Bauteilgrenze war unsichtbar.
     describe('Rule CMP: Bauteilgrenzen (V2-LIMIT-001)', () => {

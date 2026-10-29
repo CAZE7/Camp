@@ -20,8 +20,9 @@ describe('sizeSolarArray', () => {
     expect(result.requiredPeakWatts).toBeCloseTo((500 / 3000) * 1000 * VDE_CHARGE_DERATING_FACTOR, 6);
     expect(result.panelCount).toBe(2);
     expect(result.recommendedPeakWatts).toBe(200);
-    // Ertrag der Empfehlung: 200 Wp · 3,0 kWh/kWp/Tag = 600 Wh gegen 500 Wh Bedarf.
-    expect(result.coverageFactor).toBeCloseTo(((200 / 1000) * 3000) / 500, 6);
+    // Ertrag der Empfehlung: 200 Wp · 3,0 kWh/kWp/Tag = 600 Wh. Bezug ist der
+    // Design-Bedarf inkl. Ladezeit-Aufschlag: 500 Wh · 1,15 = 575 Wh → 104,3 %.
+    expect(result.coverageFactor).toBeCloseTo(((200 / 1000) * 3000) / (500 * VDE_CHARGE_DERATING_FACTOR), 6);
   });
 
   it('legt im Winterfall mit 35 % des Ertrags aus', () => {

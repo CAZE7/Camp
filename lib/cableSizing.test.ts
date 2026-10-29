@@ -58,8 +58,39 @@ describe('sizeCable', () => {
 
     expect(result.requiredCrossSectionMm2).toBeGreaterThan(MAX_STANDARD_CROSS_SECTION_MM2);
     expect(result.exceedsStandardRange).toBe(true);
+    // 200 A liegt zugleich über der thermischen Modellgrenze (120,4 A).
+    expect(result.beyondModeledRange).toBe(true);
     expect(result.fuseA).toBeNull();
     expect(result.maxFuseA).toBeNull();
+  });
+
+  it('meldet auch den THERMISCHEN Modellrand, nicht nur den Spannungsfall-Überlauf', () => {
+    // 200 A auf 0,5 m: Spannungsfall fordert 9,6 mm², thermisch endet die
+    // Tabelle bei 70 mm² / 120,4 A. 70 mm² ist hier KEINE gültige Antwort.
+    const result = sizeCable(200, 0.5);
+
+    expect(result.beyondModeledRange).toBe(true);
+    expect(result.exceedsStandardRange).toBe(true);
+    expect(result.crossSectionMm2).toBe(MAX_STANDARD_CROSS_SECTION_MM2);
+    expect(result.maximumModeledCurrentA).toBeCloseTo(120.4, 6);
+    expect(result.fuseA).toBeNull();
+    expect(result.maxFuseA).toBeNull();
+  });
+
+  it('meldet den thermischen Modellrand auch bei 130 A auf kurzer Strecke', () => {
+    const result = sizeCable(130, 0.5);
+
+    expect(result.beyondModeledRange).toBe(true);
+    expect(result.exceedsStandardRange).toBe(true);
+    expect(result.fuseA).toBeNull();
+  });
+
+  it('bleibt bei 100 A auf kurzer Strecke innerhalb des Modells', () => {
+    const result = sizeCable(100, 2);
+
+    expect(result.beyondModeledRange).toBe(false);
+    expect(result.crossSectionMm2).toBe(70);
+    expect(result.fuseA).toBe(100);
   });
 
   it('wirft bei ungültigen Eingaben, statt zu schätzen (Rule M)', () => {

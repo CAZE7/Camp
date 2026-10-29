@@ -72,6 +72,21 @@ describe('sizeBattery', () => {
     expect(result.sufficient).toBe(false);
   });
 
+  it('prüft die Autonomiezeit, nicht nur einen Tag (Regression)', () => {
+    // 2000 Wh/Tag, 3 Tage, AGM 50 % DoD, 100 A Referenzstrom:
+    // Empfehlung 1000 Ah, nutzbar 460 Ah = 5520 Wh < 6000 Wh für 3 Tage.
+    const result = sizeBattery({
+      dailyEnergyWh: 2000,
+      autonomyDays: 3,
+      systemVoltageV: 12,
+      chemistry: 'AGM',
+      referenceCurrentA: 100,
+    });
+
+    expect(result.recommendedNominalAh).toBe(1000);
+    expect(result.sufficient).toBe(false);
+  });
+
   it('wirft bei ungültigen Eingaben, statt zu schätzen (Rule M)', () => {
     expect(() => sizeBattery({ ...base, dailyEnergyWh: 0 })).toThrow(RangeError);
     expect(() => sizeBattery({ ...base, autonomyDays: Number.NaN })).toThrow(RangeError);

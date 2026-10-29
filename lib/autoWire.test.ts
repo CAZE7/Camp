@@ -696,7 +696,7 @@ describe('autoWire — sizeAcEdges', () => {
   });
 
   it('dimensioniert Landstrom-Leitungen nach dem Ladegerät (min. 16 A CEE)', () => {
-    const nodes = [n('sp', 'shorePower', {}), n('ch', 'acBatteryCharger', { amps: 20 })];
+    const nodes = [n('sp', 'shorePower', { rating: 16 }), n('ch', 'acBatteryCharger', { amps: 20 })];
     const edges: Edge<CableEdgeData>[] = [
       e({
         id: 'ac1',
@@ -708,9 +708,10 @@ describe('autoWire — sizeAcEdges', () => {
       }),
     ];
     sizeAcEdges(edges, nodes);
-    // 20 A bei 2 m (Derating 0,7): thermisch 4 mm²; die Leitung darf nicht am
-    // 16-A-Landstromanschluss vorbeigehen und den 20-A-Lader unterdimensionieren.
-    expect(edges[0]?.data?.crossSection).toBe(4);
+    // 20 A DC-Ladeausgang an 12,8 V = 1,24 A AC-Eingang. Der Querschnitt
+    // folgt der deklarierten 16-A-CEE-Absicherung (2,5 mm²), nicht dem
+    // DC-Ausgangsstrom. Vorher wurden 20 A AC angenommen (4 mm²).
+    expect(edges[0]?.data?.crossSection).toBe(2.5);
   });
 
   it('unterschreitet einen vorhandenen Querschnitt nie (Nutzerwert ist Untergrenze)', () => {
@@ -810,19 +811,19 @@ describe('autoWire — sizeAcEdges', () => {
   });
 
   it('B3: Laststrom über der Anschlussabsicherung wird von der Engine gemeldet (AMP-001)', () => {
-    // 20-A-Ladegerät an einem 16-A-CEE: Die Absicherung bleibt das reale
+    // 20-A-230-V-Last an einem 16-A-CEE: Die Absicherung bleibt das reale
     // Organ der Einspeisestelle (16 A) — aber der Plan ist so nicht
     // betreibbar. Das darf nicht still bleiben: Die Verifikation muss den
     // Betriebsstrom über dem Nennstrom anzeigen (I_b > I_n).
     const nodes = [
       n('sp', 'shorePower', { rating: 16, hasRcd: true }),
-      n('ch', 'acBatteryCharger', { amps: 20 }),
+      n('c1', 'consumer230v', { watts: 4600 }),
     ];
     const edges: Edge<CableEdgeData>[] = [
       e({
         id: 'ac1',
         source: 'sp',
-        target: 'ch',
+        target: 'c1',
         sourceHandle: 'plus',
         targetHandle: 'plus',
         data: { length: 2, edgeDomain: 'AC_230V' },
