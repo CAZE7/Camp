@@ -14,7 +14,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
   slug: 'rechner',
   topicId: 'rechner',
   kind: 'rechner',
-  title: 'Rechner für den Camper-Ausbau',
+  title: 'Rechner für Camper-Elektrik, Solar und Heizlast',
   absoluteTitle: true,
   description:
     'Alle Rechner für den Camper-Ausbau an einer Stelle: Kabelquerschnitt, Spannungsabfall, Batterie, Ladestrom, Solar, Heizlast und Dach.',
@@ -106,7 +106,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
       id: 'methodik',
       heading: 'Woher die Zahlen kommen',
       body: [
-        'Die Rechner und der Planer benutzen dasselbe Modell: Kupfer-Leitfähigkeit κ = 58 m/(Ω·mm²) bei 20 °C, Strombelastbarkeiten nach DIN VDE 0298-4 (Verlegeart B2) mit Derating 0,7, Entladetiefen und Peukert-Exponenten je Chemie sowie die Solar- und Wechselrichter-Kennwerte der Auslieferung. Wo eine Größe eine Annahme ist, steht sie als Annahme in der Rechnung und als Eingabe im Rechner — nicht im Kleingedruckten.',
+        'Die Rechner und der Planer benutzen dasselbe Modell: Kupfer-Leitfähigkeit κ = 58 m/(Ω·mm²) bei 20 °C, Strombelastbarkeiten nach DIN VDE 0298-4 (Verlegeart B2) mit Derating 0,7 als Modellannahme, Entladetiefen und Peukert-Exponenten je Chemie sowie die Solar- und Wechselrichter-Kennwerte der Auslieferung. Wo eine Größe eine Annahme ist, steht sie als Annahme in der Rechnung und als Eingabe im Rechner — nicht im Kleingedruckten.',
       ],
       links: [
         { href: '/ueber-elektroplaner/', label: 'Über Elektroplaner: Methodik, Quellen und Grenzen' },

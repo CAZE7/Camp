@@ -308,3 +308,32 @@ describe('InverterInspector — Leistungs-Label & 100-A-Modellgrenze (H2 / M7 / 
     });
   });
 });
+
+describe('InverterInspector — FI-Typ und Herstellernachweis', () => {
+  it('pflegt Typ und Nachweis des integrierten FI/LS', () => {
+    const onUpdateNodeData = vi.fn<(id: string, patch: NodeDataPatch) => void>();
+    const invNode: InspectorNode<'inverter'> = {
+      id: 'inv-1',
+      type: 'inverter',
+      position: { x: 0, y: 0 },
+      data: { label: 'Wechselrichter', continuousPower: 600, hasRcd: true },
+    };
+    render(<InverterInspector node={invNode} onUpdateNodeData={onUpdateNodeData} />);
+
+    fireEvent.change(screen.getByLabelText(/FI-Typ des integrierten/i), { target: { value: 'B' } });
+    expect(onUpdateNodeData).toHaveBeenCalledWith('inv-1', { rcdType: 'B' });
+
+    fireEvent.click(screen.getByLabelText(/Herstellernachweis/i));
+    expect(onUpdateNodeData).toHaveBeenCalledWith('inv-1', { rcdProofNoSmoothDc: true });
+  });
+});
+
+describe('ShorePowerInspector — Netzform der Einspeisung', () => {
+  it('schreibt TN-S in das Bauteil und macht die PEN-Freiheit damit deklarierbar', () => {
+    const onUpdateNodeData = vi.fn<(id: string, patch: NodeDataPatch) => void>();
+    render(<ShorePowerInspector node={shorePowerNode({})} onUpdateNodeData={onUpdateNodeData} />);
+
+    fireEvent.change(screen.getByLabelText(/Netzform der Einspeisung/i), { target: { value: 'TN-S' } });
+    expect(onUpdateNodeData).toHaveBeenCalledWith('shore-1', { systemForm: 'TN-S' });
+  });
+});

@@ -75,6 +75,7 @@ export type GraphSlice = Pick<
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
+  | 'handleChangeFuseI2'
   | 'setEdgeIntent'
   | 'captureLockedWaypoints'
   | 'handleChangeAcProtection'
@@ -617,7 +618,11 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       withHistoryIfChanged(
         state,
         {
-          edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
+          // Eine andere Nennstromstärke ist ein anderes Produkt — ein alter
+          // Datenblatt-Prüfstrom darf nicht stillschweigend weiter gelten.
+          edges: state.edges.map((e) =>
+            e.id === id ? { ...e, data: { ...e.data!, fuseSize, i2A: undefined } } : e
+          ),
         },
         `edge-fuse-size:${id}`
       )
@@ -642,12 +647,37 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       withHistoryIfChanged(state, {
         // AUDIT DOM-002: Bauform (Abschaltvermögens-Check) — defensiv gegen
         // unbekannte Werte validiert (Import/Persistenz), leeren String als
-        // „Feld zurücksetzen“ lesen.
+        // „Feld zurücksetzen“ lesen. Ein Wechsel der Bauform ändert das
+        // Produkt; der produktspezifische Prüfstrom I₂ wird deshalb geleert.
         edges:
           fuseType === undefined || isFuseType(fuseType)
-            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseType } } : e))
+            ? state.edges.map((e) =>
+                e.id === id ? { ...e, data: { ...e.data!, fuseType, i2A: undefined } } : e
+              )
             : state.edges,
       })
+    ),
+  handleChangeFuseI2: (id, i2A) =>
+    set((state) =>
+      withHistoryIfChanged(
+        state,
+        {
+          // Nur endliche, positive Werte speichern; 0/leer setzt den
+          // Datenblattwert zurück, dann gilt wieder die Produktnorm.
+          edges: state.edges.map((e) =>
+            e.id === id
+              ? {
+                  ...e,
+                  data: {
+                    ...e.data!,
+                    i2A: Number.isFinite(i2A) && i2A > 0 ? i2A : undefined,
+                  },
+                }
+              : e
+          ),
+        },
+        `edge-fuse-i2:${id}`
+      )
     ),
   // V2-INTENT-002: Die Absicht ist Nutzerwissen, kein abgeleiteter Zustand.
   // Geschrieben werden beide Felder, weil `edgeIntentOf` die Sperre als

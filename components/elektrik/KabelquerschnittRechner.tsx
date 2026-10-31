@@ -133,6 +133,27 @@ export function KabelquerschnittRechner() {
 }
 
 function SizingResult({ sizing }: { sizing: CableSizing }) {
+  // Wenn der Spannungsfall selbst über die Normreihe hinausgeht, ist die
+  // konkrete Forderung (z. B. 191,6 mm²) die nützlichere Aussage. Die
+  // Modellgrenze der Belastbarkeitstabelle gilt nur, wenn der Querschnitt
+  // ansonsten innerhalb der Reihe läge (z. B. 200 A auf 0,5 m).
+  if (sizing.exceedsStandardRange && !sizing.voltageDropRequiresBeyondStandard) {
+    return (
+      <div className="space-y-3">
+        <p className="panel-title text-signal">Außerhalb der Belastbarkeitstabelle</p>
+        <p className="text-md text-ink">
+          Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor. Die größte Modellstufe (70 mm²)
+          trägt im Modell {formatNumber(sizing.maximumModeledCurrentA, 1)} A.
+        </p>
+        <p className="text-base text-ink-soft">
+          Lösungen: Leitung aufteilen, mehrere Leitungen parallel verlegen, den Strom senken oder das System
+          auf eine höhere Spannungsebene umstellen. Eine Sicherungsempfehlung wird für diesen Strom nicht
+          ausgewiesen.
+        </p>
+      </div>
+    );
+  }
+
   if (sizing.exceedsStandardRange) {
     return (
       <div className="space-y-3">

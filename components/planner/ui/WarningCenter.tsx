@@ -435,6 +435,11 @@ export function nextStep(warning: ValidationWarning) {
     return 'So löst du es: Verbinde Eingang mit der Starterseite und Ausgang mit dem abgesicherten Pfad zur Aufbaubatterie.';
   if (warning.id.includes('shunt-bypass'))
     return 'So löst du es: Führe alle Minusleitungen der Aufbaubatterie über den Shunt.';
+  // Wechselrichter-Ausgang: kein Planfehler, sondern eine Modellgrenze. Der
+  // generische RCD-Text („FI/LS einplanen“) wäre hier falsch — der Plan hat
+  // bereits ein RCBO; die Abschaltbedingung steht im Datenblatt des Geräts.
+  if (warning.ruleId === 'RCD-005-loop-impedance' && warning.message.includes('inverter-limited'))
+    return 'Kein Fehler im Plan: Wechselrichter-Ausgänge sind elektronisch strombegrenzt und werden nicht als TN-Netz bewertet. Die Abschaltbedingung des konkreten Geräts steht im Wechselrichter-Datenblatt.';
   if (warning.id.includes('rcd-'))
     return 'So löst du es: Lass einen zweipoligen FI/LS-Schutz durch eine Elektrofachkraft einplanen.';
   return 'So löst du es: Zeige die betroffene Stelle im Plan und ergänze die dort beschriebene Komponente.';

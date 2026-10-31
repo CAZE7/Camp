@@ -1,6 +1,7 @@
 import { type Position, getSmoothStepPath } from '@xyflow/react';
 import type { Point } from './pathfinding';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { pathLength } from '../../../lib/routing/geometry/polyline';
 import { compareIds } from '../../../lib/sortOrder';
 
 export const SMOOTH_STEP_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
@@ -47,19 +48,85 @@ export const PARALLEL_LABEL_SPREAD = ROUTING_TOKENS.parallelLabelSpread;
 export const LABEL_BOX_WIDTH = ROUTING_TOKENS.labelBoxWidth;
 export const LABEL_BOX_HEIGHT = ROUTING_TOKENS.labelBoxHeight;
 
+/**
+ * Textmetrik der Kabelbeschriftung (Befund L1/L10, Layout-Runde 27.10.2026).
+ *
+ * `CableEdge` rendert 12 px Inter (500) mit `padding: 2px 6px` und 1 px
+ * Rahmen; gemessen sind das ≈ 6,2 px je Zeichen plus 14 px Rand. Das ist eine
+ * **Schätzung**, keine Messung: Die Platzierung läuft im Routing-Pass, der
+ * keine Schriftmetrik kennt und sie auch nicht kennen soll.
+ *
+ * Sie stehen hier und nicht in `lib/routing/tokens.ts`: Die Tokens
+ * beschreiben Routing-Geometrie (Abstände, Raster) und sind als eingefrorene
+ * Spec-Werte testgestützt. Diese zwei Zahlen beschreiben die **Schrift** der
+ * Darstellungsschicht — ein Themenwechsel im Token-Modell wäre teurer als
+ * die eine Stelle, an der sie gebraucht wird (Platzierung in `routeAll`).
+ */
+export const LABEL_CHAR_WIDTH = 6.2;
+export const LABEL_PADDING_X = 14;
+
+/** Breite eines Labeltexts in Modell-Einheiten (Schätzung, s. o.). */
+export function estimateLabelTextWidth(text: string): number {
+  return Math.ceil(text.length * LABEL_CHAR_WIDTH + LABEL_PADDING_X);
+}
+
 export type LabelBox = { x: number; y: number; width: number; height: number };
 
-export function labelBoundingBox(centerX: number, centerY: number): LabelBox {
+/**
+ * Label-Box um einen Mittelpunkt. `width`/`height` sind optional: Der
+ * Umschlag `LABEL_BOX_WIDTH × LABEL_BOX_HEIGHT` bleibt der konservative
+ * Default (Befund 2026-09-28), ein Aufrufer mit gemessener Breite bekommt
+ * aber die Box, die er auch rendert.
+ */
+export function labelBoundingBox(
+  centerX: number,
+  centerY: number,
+  width = LABEL_BOX_WIDTH,
+  height = LABEL_BOX_HEIGHT
+): LabelBox {
   return {
-    x: centerX - LABEL_BOX_WIDTH / 2,
-    y: centerY - LABEL_BOX_HEIGHT / 2,
-    width: LABEL_BOX_WIDTH,
-    height: LABEL_BOX_HEIGHT,
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
   };
 }
 
 export function boxesOverlap(a: LabelBox, b: LabelBox): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/**
+ * Punkt bei Bruchteil `t` der Zuglänge (L1, Layout-Runde 27.10.2026).
+ *
+ * Die Label-Suche darf nicht am Trassenmittelpunkt kleben: Liegen dort zwei
+ * Labels übereinander, half bisher nur ein senkrechter Versatz am FESTEN x.
+ * Mit dieser Funktion wandert der Kandidat stattdessen entlang der Leitung
+ * (t = 0,5 / 0,35 / 0,65 / …) und sucht dort in Spread-Stufen — die
+ * Beschriftung bleibt an ihrer Leitung, ohne auf der Nachbar-Beschriftung zu
+ * sitzen. Deterministisch: gleiche Waypoints ⇒ gleicher Punkt.
+ */
+export function pointAlongPolyline(points: readonly Point[], t: number): Point {
+  const first = points[0];
+  if (!first) return { x: 0, y: 0 };
+  if (points.length === 1) return { x: first.x, y: first.y };
+  const total = pathLength(points);
+  if (!(total > 0)) return { x: first.x, y: first.y };
+  const clamped = Math.min(Math.max(t, 0), 1);
+  let remaining = clamped * total;
+  for (let i = 0; i < points.length - 1; i++) {
+    const from = points[i];
+    const to = points[i + 1];
+    if (!from || !to) continue;
+    const segment = Math.hypot(to.x - from.x, to.y - from.y);
+    if (remaining <= segment || i === points.length - 2) {
+      const ratio = segment === 0 ? 0 : Math.min(1, remaining / segment);
+      return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
+    }
+    remaining -= segment;
+  }
+  const last = points[points.length - 1];
+  return last ? { x: last.x, y: last.y } : { x: first.x, y: first.y };
 }
 
 export interface PathParams {

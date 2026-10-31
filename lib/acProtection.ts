@@ -90,6 +90,12 @@ export type AcProtectionDescriptor = {
   /** Bemessungs-Abschaltvermögen (Icn) in kA — übliche Stufen 6/10. */
   breakingCapacityKA?: number;
   /**
+   * Anzahl der geschalteten Pole: 1 = nur L, 2 = L+N.
+   * Ohne Angabe bleibt die Polzahl bei einem LS unbekannt (RCD-004 meldet
+   * UNPROVABLE); ein FI/LS ist bauartbedingt zweipolig.
+   */
+  poles?: 1 | 2;
+  /**
    * Fehlerstromtyp eines FI/LS. Die Insel-Prüfung wertet nur den ausdrücklich
    * eingetragenen Typ: `B` erfüllt die formale Bedingung für Halbleiterquellen,
    * `AC` ist unzureichend. Fehlt das Feld, behauptet der Plan keinen Typ.
@@ -126,7 +132,10 @@ export function acCableComposition(phaseCrossSectionMm2: number): AcCableComposi
     phase: phaseCrossSectionMm2,
     neutral: phaseCrossSectionMm2,
     protectiveEarth,
-    label: `3G${format(phaseCrossSectionMm2)}`,
+    label:
+      protectiveEarth === phaseCrossSectionMm2
+        ? `3G${format(phaseCrossSectionMm2)}`
+        : `3x${format(phaseCrossSectionMm2)}/${format(protectiveEarth)}`,
   };
 }
 

@@ -32,9 +32,9 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       id: 'kernantwort',
       heading: 'Wie viel Heizleistung braucht ein Camper?',
       body: [
-        'Die Heizleistung folgt der U-Wert-Rechnung der Dämmung, der Fahrzeuggröße und dem Temperaturunterschied zwischen innen und außen. Bei einem schlecht gedämmten Kastenwagen bei −10 °C kann der Wärmeverlust leicht 2–3 kW überschreiten — eine 4-kW-Standheizung stößt dann an ihre Grenzen.',
+        'Die Heizleistung folgt der U-Wert-Rechnung der Dämmung, der Fahrzeuggröße und dem Temperaturunterschied zwischen innen und außen. Bei 2–3 kW hat eine 4-kW-Standheizung noch Reserve; erst über 4 kW wird sie knapp. Für einen H2L2 mit 19 mm Dämmung und 85 % Abdeckung rechnet das Modell etwa 2,0 kW — dann ist eine 2-kW-Heizung grenzwertig.',
         'Das Modell rechnet die Heizlast aus Oberfläche, U-Wert und Temperaturdifferenz. Dämmung ist deshalb kein optionales Extra, sondern die erste Heizungsentscheidung: Je besser gedämmt, desto kleiner die Heizung.',
-        'Eine Diesel-Standheizung mit 4 kW Heizleistung braucht für Gebläse, Pumpe und Zündglühen im Betrieb meist zwischen 10 und 40 W Strom, beim Anlauf kurz mehr. Über eine kalte Winter-Nacht summiert sich das auf mehrere hundert Wattstunden — das gehört in die Energiebilanz.',
+        'Eine Diesel-Standheizung braucht Strom für Gebläse, Pumpe und Zündglühen. Herstellerangaben für gängige Geräte: 2-kW-Geräte typisch 10–29 W, 4-kW-Geräte 10–57 W; beim Start etwa 6–12 A für 2–3 Minuten. Über eine kalte Winter-Nacht summiert sich das auf mehrere hundert Wattstunden — das gehört in die Energiebilanz.',
       ],
       callout: {
         tone: 'info',
@@ -61,8 +61,8 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       heading: 'Dämmung: die erste Heizungsentscheidung',
       body: [
         'Dämmung bestimmt den U-Wert der Fahrzeughülle und damit den Wärmeverlust. Je geringer der U-Wert, desto weniger Heizleistung braucht die Anlage. Die Wahl des Materials (Armaflex, PIR, XPS, Schafwolle) beeinflusst nicht nur den U-Wert, sondern auch Gewicht, Feuchteverhalten und Einbauaufwand.',
-        'Kondenswasser ist das größte Risiko bei der Dämmung: Wird warme, feuchte Luft an kalte Metallflächen geführt, kondensiert sie im Dämmaufbau. Die Dampfsperre gehört deshalb an die warme Seite der Dämmung — nicht an die kalte.',
-        '[Erfahrung] Bei der Dämmung meines Fahrzeugs habe ich bewusst auf eine Dampfsperre an der warmen Seite gesetzt. Ohne sie hätte sich Feuchte im Dämmaufbau gesammelt und das Fahrzeug von innen beschädigt. Foto: Dämmung im Fahrzeug mit Dampfsperre an der warmen Seite.',
+        'Kondenswasser ist ein zentrales Risiko bei der Dämmung: Wird warme, feuchte Luft an kalte Metallflächen geführt, kann sie im Dämmaufbau kondensieren. Bei offenzelligen Dämmstoffen muss die Feuchteführung deshalb geplant werden; eine Dampfbremse auf der warmen Seite kann sinnvoll sein, muss aber luftdicht ausgeführt werden. Geschlossenzellige Dämmstoffe mit verklebten Stößen wirken selbst als Dampfbremse.',
+        '[Erfahrung] Bei der Dämmung meines Fahrzeugs habe ich die Feuchteführung geplant und die Dämmung an den kalten Flächen geschlossen ausgeführt. Offene Fugen und undichte Anschlüsse sind der Punkt, an dem Feuchte in den Aufbau gelangt.',
       ],
       links: [
         {
@@ -77,8 +77,7 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       heading: 'Heizsysteme im Vergleich',
       body: [
         'Die drei gängigen Systeme im Camper sind Diesel-Standheizung, Gasheizung und Elektroheizung. Sie unterscheiden sich in Anschaffungskosten, Verbrauch, Einbauaufwand und Zulassungsrelevanz.',
-        'Die Diesel-Standheizung heizt mit Kraftstoff aus dem Fahrzeugtank und braucht Strom nur für das Gebläse. Die Gasheizung ist unabhängig vom Motor, braucht aber eine G-607-Prüfung. Die Elektroheizung ist einfach zu installieren, braucht aber viel Batteriekapazität oder Landstrom.',
-        'Bei einer 230-V-Elektroheizung mit Steckdosen im Fahrzeug gilt: „Die 230-V-Anlage (Landstrom, Wechselrichter-Ausgang mit Steckdosen) errichtet, ändert und prüft eine Elektrofachkraft nach DIN VDE 0100-721."',
+        'Die Diesel-Standheizung heizt mit Kraftstoff aus dem Fahrzeugtank und braucht Strom nur für das Gebläse. Die Gasheizung ist unabhängig vom Motor, braucht aber eine G 607-Prüfung. Die Elektroheizung ist einfach zu installieren, braucht aber viel Batteriekapazität oder Landstrom.',
       ],
       callout: {
         tone: 'warning',
@@ -96,9 +95,9 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       id: 'strom',
       heading: 'Stromverbrauch der Heizung',
       body: [
-        'Eine Diesel-Standheizung braucht Strom für Gebläse, Pumpe und Zündglühen — im Betrieb meist zwischen 10 und 40 W, beim Anlauf kurz mehr. Über eine kalte Winter-Nacht summiert sich das auf mehrere hundert Wattstunden.',
+        'Eine Diesel-Standheizung braucht Strom für Gebläse, Pumpe und Zündglühen — 2-kW-Geräte typisch 10–29 W, 4-kW-Geräte 10–57 W; beim Start kurz 6–12 A. Über eine kalte Winter-Nacht summiert sich das auf mehrere hundert Wattstunden.',
         'Der Stromverbrauch der Heizung gehört in die Energiebilanz des Campers. Wer zwei Tage autark stehen will, rechnet den Heizstrom mit ein — sonst fehlt die Kapazität für Kühlbox und Licht.',
-        '[Erfahrung] Das Gebläse meiner Diesel-Standheizung zieht im Betrieb rund 2,9 A über 8 Stunden — bei 12 V sind das etwa 35 W und 280 Wh allein für die Luftzirkulation. Das habe ich erst bemerkt, als die Batterie nach zwei Nächten leer war, obwohl ich kaum andere Verbraucher hatte. Foto: Heizlast-Rechner mit Heizungsauslegung für Ducato.',
+        '[Beispiel] Das Gebläse ist im Planer mit 2,9 A über 8 Stunden angesetzt — bei 12 V sind das etwa 35 W und 280 Wh. Das ist ein Modellwert, keine Messung an einem konkreten Gerät.',
       ],
       links: [
         {
@@ -118,11 +117,11 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
       heading: 'Typische Fehler bei Heizung und Dämmung',
       list: {
         items: [
-          'Dämmung ohne Dampfsperre: Feuchte kondensiert im Dämmaufbau und beschädigt das Fahrzeug von innen.',
-          'Heizung nach Gefühl dimensioniert: Eine 2-kW-Heizung reicht in einem gut gedämmten Kastenwagen, in einem schlecht gedämmten nicht.',
+          'Dämmung ohne geplante Feuchteführung: Feuchte kann im Dämmaufbau kondensieren und das Fahrzeug von innen beschädigen.',
+          'Heizung nach Gefühl dimensioniert: Eine 2-kW-Heizung kann in einem gut gedämmten Kastenwagen reichen; in einem schlecht gedämmten Fahrzeug ist sie oft zu knapp.',
           'Wärmebrücken vergessen: Fenster, Rippen und Metallverstärkungen leiten Wärme nach außen und schaffen lokale Kältepunkte.',
           'Keine Umluft eingeplant: Ohne Luftzirkulation staut sich die Hitze um den Heizer, der Rest des Fahrzeugs bleibt kalt.',
-          'Dieselheizung ohne Abgasführung montiert: Abgas gehört nach außen, nicht unter das Fahrzeug.',
+          'Dieselheizung ohne Abstand zu Fenstern, Türen oder Ansaugöffnungen: Abgas muss nach außen und nach Herstellervorgabe geführt werden.',
         ],
       },
     },
@@ -152,7 +151,7 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
     {
       question: 'Braucht eine Diesel-Standheizung Strom?',
       answer:
-        'Ja, für Gebläse, Pumpe und Zündglühen — im Betrieb meist zwischen 10 und 40 W, beim Anlauf kurz mehr. Über eine Nacht summiert sich das auf mehrere hundert Wattstunden und gehört in die Energiebilanz.',
+        'Ja, für Gebläse, Pumpe und Zündglühen — 2-kW-Geräte typisch 10–29 W, 4-kW-Geräte 10–57 W; beim Start kurz 6–12 A. Über eine Nacht summiert sich das auf mehrere hundert Wattstunden und gehört in die Energiebilanz.',
     },
   ],
   related: [
@@ -175,7 +174,7 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
     },
   ],
   assumptions: [
-    'Der Heizlast-Rechner nutzt einen vereinfachten U-Wert-Ansatz ohne Wärmebrücken und ohne Lüftungswärmeverlust.',
+    'Der Heizlast-Rechner nutzt einen vereinfachten U-Wert-Ansatz; den Lüftungswärmeverlust berücksichtigt er mit n = 0,5–1,0 h⁻¹. Wärmebrücken werden nicht separat modelliert.',
     'Die Ergebnisse sind Planungszahlen, keine Ersatz für eine bauliche Heizlastberechnung nach DIN EN 12831.',
   ],
   limits: [

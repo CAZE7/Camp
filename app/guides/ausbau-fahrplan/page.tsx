@@ -3,11 +3,15 @@ import type { Metadata } from 'next';
 import { metadataForPage } from '@/app/seoMetadata';
 import React from 'react';
 import Link from 'next/link';
-import { SiteHeader } from '@/components/brand/SiteHeader';
-import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { breadcrumbsFor } from '@/components/seo/Breadcrumbs';
+import { pageByPath } from '@/lib/seo/inventory';
 
 export const metadata: Metadata = metadataForPage('/guides/ausbau-fahrplan/');
+
+/** Hauptüberschrift und Brotkrumen kommen aus dem Inventar. */
+const PAGE = pageByPath('/guides/ausbau-fahrplan/');
 
 interface StepData {
   id: string;
@@ -30,7 +34,7 @@ interface StepData {
 
 const StepModule = ({ step }: { step: StepData }) => (
   <section id={step.id} className="scroll-mt-24 border-t border-rule py-12 first:border-t-0 first:pt-0">
-    <h2 className="mb-6 text-lg font-semibold text-ink">{step.title}</h2>
+    <h2 className="h2 mb-6 border-b border-rule pb-3">{step.title}</h2>
 
     <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
       <div>
@@ -164,30 +168,47 @@ const stepsData: StepData[] = [
       'Fenster/Dachluke lückenlos abdichten und einsetzen',
     ],
     typischeFehler:
-      'Falsches Dichtmittel! Dekaseal 8936 bleibt dauerelastisch, Sikaflex 252 ist ein Kleber und lässt sich nie wieder lösen.',
+      'Falsches Dichtmittel: Dekaseal 8936 bleibt dauerelastisch; Sikaflex 252 ist ein Kleber und für eine lösbare Fensterdichtung nicht gedacht.',
     zusatzInfo:
-      'Zusatzinfo Fensteinbau: Besonders hervorheben, dass die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden muss und dass die Dichtung lückenlos sitzen muss, damit weder Zugluft noch Feuchtigkeit eindringen.',
+      'Beim Fenstereinbau muss die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden. Die Dichtung muss lückenlos sitzen, damit weder Zugluft noch Feuchtigkeit eindringen.',
     comparison: {
       title: 'Vergleich: Fenster & Lüftung',
       items: [
         {
           name: 'Fenster',
           description:
-            'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage, Rostschutz an Schnittkanten und vollständiger Abdichtung hervorheben.',
+            'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage; Schnittkanten rostschützen und vollständig abdichten.',
         },
         {
           name: 'Lüftung',
           description:
-            'Fenstergrößen und Position so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke besonders sinnvoll (häufige Größe: 40x40 cm).',
+            'Fenstergrößen und Positionen so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke sinnvoll (häufige Größe: 40 × 40 cm).',
         },
       ],
     },
   },
   {
+    id: 'elektrik',
+    title: '4. Elektrik-Vorbereitung',
+    ziel: 'Alle Kabel und Leerrohre an die richtigen Stellen im Camper legen.',
+    warumJetzt: 'Vor der Dämmung und der Wandverkleidung; danach ist das unsichtbare Verlegen unmöglich.',
+    werkzeugMaterial: ['Wellrohre', 'Kabelzange', 'Kabel in passenden Querschnitten', 'Kabelbinder'],
+    schrittFuerSchritt: [
+      'Verbraucher-Positionen festlegen (Licht, USB, Kühlschrank)',
+      'Leerrohre verlegen',
+      'Kabel einziehen',
+      'Ausreichend Kabellänge als Reserve lassen',
+    ],
+    typischeFehler:
+      'Zu dünne Kabelquerschnitte gewählt: Der Spannungsfall steigt, und eine unzureichend geschützte Leitung kann sich erwärmen. Querschnitt nach Strom und Länge dimensionieren und die Sicherung auf die Leitung abstimmen.',
+    kaufhilfe:
+      'Nutze den Elektroplaner, um Kabelquerschnitte und Komponenten für deine Verbraucher zu bestimmen.',
+  },
+  {
     id: 'daemmung',
-    title: '4. Dämmung',
+    title: '5. Dämmung',
     ziel: 'Kondenswasser vermeiden und angenehme Temperaturen im Sommer sowie Winter schaffen.',
-    warumJetzt: 'Bevor Kabel und Wände reinkommen, muss das Blech isoliert werden.',
+    warumJetzt: 'Nachdem Kabel und Leerrohre liegen, wird das Blech gedämmt.',
     werkzeugMaterial: [
       'Armaflex/Kautschuk',
       'Schere/Cutter',
@@ -212,31 +233,15 @@ const stepsData: StepData[] = [
         {
           name: 'Mineralwolle',
           description:
-            'Nur mit sauberer Dampfsperre verwenden! Ansonsten Gefahr von Schimmel durch Kondenswasser.',
+            'Nur mit luftdicht ausgeführter Dampfbremse verwenden; sonst kann Feuchte im Aufbau kondensieren.',
         },
         {
           name: 'Schafwolle',
           description:
-            'Eher für Nutzer mit Naturmaterial-Fokus. Reguliert das Raumklima gut, erfordert aber ebenfalls sorgfältige Verarbeitung.',
+            'Naturmaterial, das Feuchtigkeit aufnehmen und wieder abgeben kann. Es braucht eine trockene Konstruktion und sorgfältige Verarbeitung.',
         },
       ],
     },
-  },
-  {
-    id: 'elektrik',
-    title: '5. Elektrik-Vorbereitung',
-    ziel: 'Alle Kabel und Leerrohre an die richtigen Stellen im Camper legen.',
-    warumJetzt: 'Nach der Wandverkleidung ist das unsichtbare Verlegen unmöglich.',
-    werkzeugMaterial: ['Wellrohre', 'Kabelzange', 'Kabel in passenden Querschnitten', 'Kabelbinder'],
-    schrittFuerSchritt: [
-      'Verbraucher-Positionen festlegen (Licht, USB, Kühlschrank)',
-      'Leerrohre verlegen',
-      'Kabel einziehen',
-      'Ausreichend Kabellänge als Reserve lassen',
-    ],
-    typischeFehler: 'Zu dünne Kabelquerschnitte gewählt. Das führt zu Spannungsabfall oder Brandgefahr!',
-    kaufhilfe:
-      'Nutze unseren 2D Elektrik-Planer zur genauen Bestimmung der Kabelquerschnitte und Komponenten.',
   },
   {
     id: 'boden',
@@ -285,8 +290,8 @@ const stepsData: StepData[] = [
       'Türen und Schubladen einpassen',
       'Möbel fest mit der Karosserie (Unterkonstruktion) verschrauben',
     ],
-    typischeFehler: 'Möbel aus schwerem MDF oder Spanplatten gebaut – das kostet extrem viel Zuladung.',
-    kaufhilfe: 'Pappelsperrholz (12-15mm) ist der Standard im Camperbau, da es sehr leicht ist.',
+    typischeFehler: 'Möbel aus schwerem MDF oder Spanplatten gebaut – das kostet viel Zuladung.',
+    kaufhilfe: 'Pappelsperrholz (12–15 mm) ist der Standard im Camperbau, da es leicht ist.',
   },
   {
     id: 'kueche-kuehlschrank',
@@ -308,7 +313,7 @@ const stepsData: StepData[] = [
         {
           name: 'Kompressor',
           description:
-            'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12V Strom.',
+            'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12 V Strom.',
         },
         {
           name: 'Absorber',
@@ -321,11 +326,16 @@ const stepsData: StepData[] = [
 ];
 
 export default function AusbauFahrplanPage() {
+  if (!PAGE) throw new Error('SEO-Inventar: /guides/ausbau-fahrplan/ fehlt.');
+  const crumbs = breadcrumbsFor(PAGE);
+
   return (
-    <div className="flex min-h-dvh flex-col bg-paper text-ink">
-      <PageStructuredData path="/guides/ausbau-fahrplan/" />
-      <SiteHeader />
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
+    // Dieselbe Basis wie alle Inhaltsseiten (PageShell): Kopf, Brotkrumen,
+    // Fuß aus einem Stück. Vorher baute die Seite ihr Gerüst selbst und
+    // trug damit einen eigenen Fuß und eine eigene Breite.
+    <PageShell variant="article" breadcrumbs={crumbs} mainClassName="flex flex-col">
+      <PageStructuredData path="/guides/ausbau-fahrplan/" breadcrumbItems={crumbs} />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-5 py-8 md:flex-row md:gap-10 md:px-5 md:py-10">
         <aside
           className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-r md:border-b-0"
           aria-label="Kapitel"
@@ -333,7 +343,7 @@ export default function AusbauFahrplanPage() {
           {/* 48 px = Höhe des klebenden Website-Kopfs. Mit `top-0` verschwand
               die Überschrift „Inhalt“ beim Scrollen hinter dem Kopf
               (Designkonzept 2026-10, Befund Ausbau-Fahrplan). */}
-          <div className="sticky top-12 p-5">
+          <div className="sticky top-12 md:pt-1 md:pr-5">
             <h2 className="text-sm font-medium">Inhalt</h2>
             <nav className="mt-3 space-y-1" aria-label="Sprungmarken">
               {stepsData.map((step) => (
@@ -346,31 +356,33 @@ export default function AusbauFahrplanPage() {
                 </a>
               ))}
             </nav>
-            <Link
-              href="/guides/holzausbau"
-              className="mt-6 inline-flex min-h-11 items-center text-sm text-copper"
-            >
+            <Link href="/guides/" className="mt-6 inline-flex min-h-11 items-center text-sm text-copper">
+              Alle Guides
+            </Link>
+            <Link href="/guides/holzausbau/" className="mt-2 flex min-h-11 items-center text-sm text-copper">
               Holzausbau →
             </Link>
-            <Link href="/planer" className="mt-2 flex min-h-11 items-center text-sm text-copper">
+            <Link href="/planer/" className="mt-2 flex min-h-11 items-center text-sm text-copper">
               Schaltplan zeichnen →
             </Link>
           </div>
         </aside>
 
-        <main id="main" className="flex-1 px-5 py-8 md:px-10 md:py-10">
-          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-2xl">Ausbau-Fahrplan</h1>
-          <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-            Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
-          </p>
+        <div className="min-w-0 flex-1 md:pl-5">
+          <header className="border-b border-rule pb-6">
+            <p className="kicker">LEITFADEN // REIHENFOLGE</p>
+            <h1 className="h1 mt-4">{PAGE.h1}</h1>
+            <p className="prose-measure mt-5 text-base leading-relaxed text-ink-soft md:text-lg">
+              Planung, Rostschutz, Fenster, Kabel, Dämmung, Boden, Wände, Möbel, Küche.
+            </p>
+          </header>
           <div className="mt-8">
             {stepsData.map((step) => (
               <StepModule key={step.id} step={step} />
             ))}
           </div>
-        </main>
+        </div>
       </div>
-      <SiteFooter />
-    </div>
+    </PageShell>
   );
 }

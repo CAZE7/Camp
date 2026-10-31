@@ -30,6 +30,7 @@ export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
   fuseWarning: { type: 'boolean' },
   fuseOffset: { type: 'number', min: 0, max: 100 },
   fuseType: { type: 'string' },
+  i2A: { type: 'number', min: 0, max: 100_000, allowZero: false },
   acProtection: { type: 'object' },
   fuseBreakingCapacity: { type: 'number', min: 0, max: 1_000_000 },
   autoWired: { type: 'boolean' },

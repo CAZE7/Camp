@@ -147,6 +147,26 @@ describe('lib/verify/ampacity — AMP-002 (I_2 ≤ 1,45 · I_z)', () => {
     expect(check.events[0]?.kind).toBe('UNVERIFIABLE');
     expect(check.events[0]?.message).toContain('nicht belegt');
   });
+
+  it('nutzt den Datenblattwert am Kabel, wenn die Bauform allein nicht belegt ist', () => {
+    const plan = withEdge(basePlan(), 'e-fuse-load', { fuseType: 'midi', i2A: 1 });
+    const check = checkI2VsIz(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.events).toEqual([]);
+  });
+
+  it('wertet Class T nach UL 248-15 aus (135 %/1 h) statt UNPROVABLE', () => {
+    const plan = withEdge(basePlan(), 'e-fuse-load', {
+      fuseType: 'classT',
+      fuseSize: 20,
+      crossSection: 70,
+      i2A: undefined,
+    });
+    const check = checkI2VsIz(contextOf(plan));
+    expect(check.status).toBe('PASS');
+    expect(check.events).toEqual([]);
+    expect(check.evaluatedEntities).toBeGreaterThan(0);
+  });
 });
 
 describe('lib/verify/ampacity — AMP-003 (0,2 m ab Quelle)', () => {
@@ -202,6 +222,35 @@ describe('lib/verify/ampacity — AMP-004 (Abschaltvermögen)', () => {
     expect(event?.allowedLimit).toBeGreaterThan(2000);
   });
 
+  it('prüft Solar-Sicherungen nicht gegen den Batterie-Bank-I_k (Regression)', () => {
+    // Der Panelkreis sieht den Panel-I_sc (~10–14 A), nicht den Kurzschluss
+    // der Batteriebank. Die 1-kA-ATO ist dort nicht die richtige Frage.
+    const plan: FixturePlan = {
+      nodes: [
+        fixtureNode('bat1', 'battery', {
+          label: 'Batterie',
+          role: 'house',
+          capacity: 100,
+          chemistry: 'LiFePO4',
+          internalResistance: 4,
+        }),
+        fixtureNode('pv1', 'solar', { label: 'Panel', watts: 200, voc: 22.5, isc: 11.7 }),
+        fixtureNode('mppt1', 'mpptController', { label: 'MPPT', amps: 30, maxPvVoltage: 100 }),
+      ],
+      edges: [
+        fixtureEdge('e-pv', 'pv1', 'plus', 'mppt1', 'plus', {
+          edgeDomain: 'Solar',
+          crossSection: 4,
+          length: 3,
+          fuseSize: 20,
+          fuseType: 'ato',
+        }),
+      ],
+    };
+    const check = checkBreakingCapacity(contextOf(plan));
+    expect(check.events.filter((event) => event.entity.id === 'e-pv')).toEqual([]);
+  });
+
   it('meldet UNPROVABLE ohne Quellenmodell (weder Innenwiderstand noch Kapazität/Chemie)', () => {
     const plan = basePlan();
     plan.nodes = plan.nodes.map((node) =>
@@ -229,6 +278,43 @@ describe('lib/verify/ampacity — AMP-005 (Selektivität)', () => {
     expect(event?.allowedLimit).toBeCloseTo(1.6, 6);
     expect(event?.message).toContain('20 A');
     expect(event?.message).toContain('16 A');
+  });
+
+  it('prüft das NÄCHSTGELEGENE vorgelagerte Organ, nicht das größte (Regression)', () => {
+    // 200 A → 100 A → 80 A: 100/80 = 1,25 ist nicht selektiv. Die frühere
+    // Sortierung nach Nennstrom nahm 200 A und ließ 200/80 = 2,5 bestehen.
+    const plan: FixturePlan = {
+      nodes: [
+        fixtureNode('bat1', 'battery', {
+          label: 'Batterie',
+          role: 'house',
+          capacity: 200,
+          chemistry: 'LiFePO4',
+          internalResistance: 15,
+        }),
+        fixtureNode('f200', 'fuse', { label: 'Hauptsicherung', rating: 200, fuseType: 'classT' }),
+        fixtureNode('f100', 'fuse', { label: 'Verteiler', rating: 100, fuseType: 'classT' }),
+        fixtureNode('load1', 'consumer', { label: 'Last', watts: 100, hours: 4 }),
+      ],
+      edges: [
+        fixtureEdge('e1', 'bat1', 'plus', 'f200', 'plus', {
+          crossSection: 70,
+          length: 0.1,
+          fuseSize: 200,
+          fuseType: 'classT',
+        }),
+        fixtureEdge('e2', 'f200', 'plus', 'f100', 'plus', { crossSection: 70, length: 1 }),
+        fixtureEdge('e3', 'f100', 'plus', 'load1', 'plus', {
+          crossSection: 16,
+          length: 2,
+          fuseSize: 80,
+          fuseType: 'ato',
+        }),
+      ],
+    };
+    const check = checkSelectivity(contextOf(plan));
+    expect(check.status).toBe('FAIL');
+    expect(check.events[0]?.calculatedValue).toBeCloseTo(1.25, 6);
   });
 
   it('meldet UNPROVABLE, wenn das vorgelagerte Organ unter 16 A liegt (Heuristik nicht anwendbar)', () => {

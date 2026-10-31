@@ -220,9 +220,9 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 6,
+          "crossSection": 2.5,
           "edgeDomain": "AC_230V",
-          "fuseSize": 25,
+          "fuseSize": 5,
           "length": 2,
           "lengthIsAssumption": true
         },
@@ -383,7 +383,7 @@
       "e-auto-9": 147.06,
       "e-auto-ac-12": 6.52,
       "e-auto-ac-13": 0,
-      "e-auto-ac-14": 25
+      "e-auto-ac-14": 1.55
     },
     "systemVoltage": 12.8
   },

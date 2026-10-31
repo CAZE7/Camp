@@ -118,6 +118,7 @@ Layout-Engines (schreiben `position`).
 | `fuseWarning?`          | `boolean`                          | selbst größter Normquerschnitt sichert den Laststrom nicht ab    |
 | `fuseOffset?`           | `number` (m)                       | Position der Sicherung ab Batteriepol (20-cm-Regel)              |
 | `fuseType?`             | `string`                           | Bauform (`ato\|midi\|mega\|anl\|mrbf\|classT`)                   |
+| `i2A?`                  | `number` (A)                       | Datenblatt-Prüfstrom I₂ des konkreten Produkts (AMP-002)         |
 | `fuseBreakingCapacity?` | `number` (A)                       | Datenblattwert — **schlägt** die Bauform-Tabelle                 |
 | `acProtection?`         | `AcProtectionDescriptor`           | 230-V-Schutzorgan (kind/characteristic/breakingCapacityKA)       |
 

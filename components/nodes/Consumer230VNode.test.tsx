@@ -39,8 +39,8 @@ describe('Consumer230VNode Component', () => {
 
   it('renders custom watts and hours when provided in data', () => {
     render(<Consumer230VNode id="1" data={{ watts: 1500, hours: 2.5 }} />);
-    expect(screen.getByText('Leistung: 1500 W')).toBeInTheDocument();
-    expect(screen.getByText('Nutzung: 2.5 h/Tag')).toBeInTheDocument();
+    expect(screen.getByText('Leistung: 1.500 W')).toBeInTheDocument();
+    expect(screen.getByText('Nutzung: 2,5 h/Tag')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true', () => {

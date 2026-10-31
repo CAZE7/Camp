@@ -127,7 +127,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       heading: 'Welche Stromklasse: 30, 60 oder 90 A',
       body: [
         'Die C-Rate ist der Ladestrom als Vielfaches der Nennkapazität: 30 A an 330 Ah sind 0,09 C, 90 A sind 0,27 C. LiFePO4-Datenblätter nennen als Dauerladestrom meist 0,3 bis 0,5 C, AGM und Gel 0,1 bis 0,2 C — daran muss die Klasse zur Batterie passen. Das Blei-Fenster des Rechners liegt mit 0,2 bis 0,3 C darüber; es ist eine Modellannahme und keine Datenblattgrenze.',
-        '100 Ah ab leer brauchen mit 30 A gut drei Stunden und mit 50 A zwei; die Konstantspannungsphase am Ende kommt dazu, weil der Strom dort von selbst sinkt. Der Rechner rechnet beides für deine Bank und prüft gleichzeitig die Lichtmaschine — denn die ist die Grenze, nicht das Gerät.',
+        '100 Ah LiFePO4 ab leer brauchen mit 30 A gut drei Stunden und mit 50 A zwei; die Konstantspannungsphase am Ende kommt dazu, weil der Strom dort von selbst sinkt. Bei AGM ist nur die Hälfte der Nennkapazität nutzbar. Der Rechner rechnet beides für deine Bank und prüft gleichzeitig die Lichtmaschine — denn die ist die Grenze, nicht das Gerät.',
       ],
       calculator: 'ladestrom',
       definitions: [

@@ -38,14 +38,14 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
       heading: 'Fehler 1: Sicherung im Verteiler statt am Batteriepol',
       body: [
         'Die Sicherung schützt die Leitung, nicht das Gerät. Sitzt sie erst im Verteiler, ist die Strecke vom Pol zum Verteiler ungeschützt — genau dort fließt bei einem Kurzschluss der größte Strom.',
-        'Gegenmaßnahme: Die Hauptsicherung gehört unmittelbar am Pluspol der Batterie, höchstens 0,2 m entfernt (ISO 10133:2000 § 8.1). Jeder weitere Abzweig bekommt seine eigene Sicherung passend zum Querschnitt.',
+        'Gegenmaßnahme: Die Hauptsicherung gehört unmittelbar am Pluspol der Batterie, höchstens 0,2 m entfernt (ISO 13297:2020 § 8.1, Small Craft; für Caravans eine Praxisempfehlung). Jeder weitere Abzweig bekommt seine eigene Sicherung passend zum Querschnitt.',
       ],
     },
     {
       id: 'fehler-2',
       heading: 'Fehler 2: Kabelquerschnitt nach Verbraucher statt nach Leitung gewählt',
       body: [
-        '„Der Kühlschrank hat eine 15-A-Sicherung, also reicht 2,5 mm²“ dreht die Kette um: I_B ≤ I_n ≤ I_z. Die Sicherung folgt dem Querschnitt, nicht umgekehrt. Eine zu große Sicherung auf einem dünnen Kabel lässt den Leiter überhitzen.',
+        '„Der Kühlschrank hat eine 20-A-Sicherung, also reicht 2,5 mm²” dreht die Kette um: I_B ≤ I_n ≤ I_z. Die Sicherung folgt dem Querschnitt, nicht umgekehrt. Eine zu große Sicherung auf einem dünnen Kabel lässt den Leiter überhitzen.',
         'Gegenmaßnahme: Zuerst den Querschnitt aus Spannungsfall und Belastbarkeit bestimmen, dann die kleinste Sicherung wählen, die über dem Betriebsstrom liegt.',
       ],
       links: [
@@ -130,7 +130,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
       id: 'fehler-10',
       heading: 'Fehler 10: Verlegeart und Temperatur ignoriert',
       body: [
-        'Kabel im Bündel oder im warmen Motorraum tragen weniger als im Freien. Der Tabellenwert der Strombelastbarkeit gilt für Verlegeart B2 bei 30 °C — mit Derating 0,7 im elektroplaner-camper.de-Modell.',
+        'Kabel im Bündel oder im warmen Motorraum tragen weniger als bei der Tabellenverlegeart. Der Tabellenwert der Strombelastbarkeit gilt für Verlegeart B2 bei 30 °C; das Derating 0,7 im elektroplaner-camper.de-Modell ist eine Annahme, kein Normwert.',
         'Gegenmaßnahme: Bei Bündelung und hohen Umgebungstemperaturen den Derating-Faktor anwenden.',
       ],
     },
@@ -154,8 +154,8 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
       id: 'fehler-13',
       heading: 'Fehler 13: LiFePO4 an Blei-Ladegerät oder Lichtmaschine ohne Booster',
       body: [
-        'LiFePO4 braucht eine eigene Ladekurve (Konstantstrom, dann Konstantspannung). Ein Blei-Ladegerät lädt nie vollständig. Die Lichtmaschine ohne Ladebooster begrenzt den Strom nur über ihren eigenen Widerstand — die Lima kann überhitzen.',
-        'Gegenmaßnahme: Ladegerät und Laderegler zur Chemie passen; Lichtmaschine immer über Ladebooster (DC-DC-Lader) an die Bordbatterie koppeln.',
+        'LiFePO4 braucht eine eigene Ladekurve (Konstantstrom, dann Konstantspannung). Ein Blei-Ladegerät lädt LiFePO4 nicht zuverlässig voll. Die Lichtmaschine ohne Ladebooster begrenzt den Strom nur über ihren eigenen Widerstand — die Lima kann überhitzen.',
+        'Gegenmaßnahme: Ladegerät und Laderegler zur Chemie passend wählen; bei LiFePO4 oder intelligenter Lichtmaschine ist ein Ladebooster (DC-DC-Lader) die sichere Lösung.',
       ],
       links: [
         {
@@ -179,7 +179,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
       body: [
         'Landstrom-Einspeisung, Wechselrichter mit Steckdosen und FI-Schutz sind keine Heimwerkerarbeit. Eine falsch installierte 230-V-Anlage ist lebensgefährlich und versicherungstechnisch nicht gedeckt.',
         'Gegenmaßnahme: Die 230-V-Anlage errichtet, ändert und prüft eine Elektrofachkraft nach DIN VDE 0100-721.',
-        '[Erfahrung] Ich habe anfangs versucht, den Wechselrichter mit einer einfachen Steckdose an die 12-V-Anlage zu koppeln. Ein Elektriker hat mich darauf hingewiesen, dass das ohne FI-Schutz und ohne ordnungsgemäße Trennung nicht zulässig ist. Seitdem lasse ich alle 230-V-Arbeiten von einer Fachkraft machen. Foto: 230-V-Einspeisung mit CEE-Dose und FI-Schutz.',
+        '[Erfahrung] Ich habe anfangs versucht, den Wechselrichter mit einer einfachen Steckdose an die 12-V-Anlage zu koppeln. Ein Elektriker hat mich darauf hingewiesen, dass das ohne FI-Schutz und ohne ordnungsgemäße Trennung nicht zulässig ist. Seitdem lasse ich alle 230-V-Arbeiten von einer Fachkraft machen.',
       ],
       callout: {
         tone: 'warning',
@@ -215,7 +215,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
     {
       label: 'Normen und Modellwerte',
       detail:
-        'ISO 10133:2000 § 8.1 (Hauptsicherung ≤ 0,2 m ab Pol) · DIN VDE 0298-4 (Strombelastbarkeit, Derating 0,7) · elektroplaner-camper.de-Modell (κ = 58, 3 % Spannungsfall).',
+        'ISO 13297:2020 § 8.1 (Hauptsicherung ≤ 0,2 m ab Pol, Small Craft; Praxisempfehlung) · DIN VDE 0298-4 (Strombelastbarkeit, Derating 0,7 als Modellannahme) · elektroplaner-camper.de-Modell (κ = 58, 3 % Spannungsfall).',
     },
   ],
   assumptions: [

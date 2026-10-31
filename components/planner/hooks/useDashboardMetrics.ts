@@ -19,7 +19,11 @@ import {
   VDE_SOLAR_VMP_VOLTAGE,
   VDE_CHARGE_DERATING_FACTOR,
 } from '@/lib/vde-standards';
-import { peukertExponentOf, usableCapacityWithPeukertAh } from '../../../lib/peukert'; // DOM-002-Nachpflege
+import {
+  normalizeBatteryChemistry,
+  peukertExponentOf,
+  usableCapacityWithPeukertAh,
+} from '../../../lib/peukert'; // DOM-002-Nachpflege
 
 /** Ohne eingetragenen Verbrauch gibt es keine Autonomiezeit — weder 0 noch „unendlich“. */
 
@@ -100,6 +104,10 @@ export function useDashboardMetrics(
     );
 
     const usableCapacityAh = calculateUsableCapacity(categories.batteries, dailyConsumptionAh / 24);
+    const nominalCapacityAh = categories.batteries.reduce((sum, batteryNode) => {
+      const capacity = Number((batteryNode.data as BatteryNodeData | undefined)?.capacity);
+      return sum + (Number.isFinite(capacity) && capacity > 0 ? capacity : 0);
+    }, 0);
 
     const autarkyStr = calculateAutarky(usableCapacityAh, dailyConsumptionAh);
 
@@ -115,7 +123,7 @@ export function useDashboardMetrics(
       totalSolarAmps,
       seasonalSolarWatts,
       calculatedSolarWatts,
-      usableCapacityAh,
+      nominalCapacityAh,
       categories.solarNodes.length,
       season,
       sysVoltage
@@ -191,7 +199,7 @@ function calculateUsableCapacity(batteries: Node[], averageSystemCurrentA = 0): 
   return batteries.reduce((acc, batteryNode) => {
     const data = batteryNode?.data as BatteryNodeData | undefined;
     const capacityAh = Math.max(0, Number(data?.capacity) || 0);
-    const chemistry = data?.chemistry || 'LiFePO4';
+    const chemistry = normalizeBatteryChemistry(data?.chemistry) ?? 'LiFePO4';
     const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE;
     return acc + usableCapacityWithPeukertAh(capacityAh, dod, shareA, peukertExponentOf(data));
   }, 0);
@@ -333,7 +341,7 @@ function calculateChargingTime(
   totalSolarAmps: number,
   seasonalSolarWatts: number,
   calculatedSolarWatts: number,
-  usableCapacityAh: number,
+  nominalCapacityAh: number,
   solarNodesCount: number,
   season: 'summer' | 'winter',
   sysVoltage: number
@@ -344,9 +352,11 @@ function calculateChargingTime(
   let totalChargerAmps = 0;
   for (const ch of otherChargers) {
     const chData = ch.data as ChargerNodeData;
+    // `amps` ist der AUSGANGS-Nennstrom des Ladegeräts. Der Wirkungsgrad
+    // gehört auf die Eingangsseite; ihn hier abzuziehen verkürzte die
+    // angezeigte Ladezeit künstlich (Regression).
     const rawAmps = Math.max(0, Number(chData?.amps) || 0);
-    const eff = (Math.max(0, Number(chData?.efficiency)) || 90) / 100;
-    totalChargerAmps += rawAmps * eff;
+    totalChargerAmps += rawAmps;
   }
 
   const winterFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
@@ -364,7 +374,9 @@ function calculateChargingTime(
       const mData = mppt.data as ChargerNodeData;
       const rawAmps = Math.max(0, Number(mData?.amps) || 0);
       const eff = (Math.max(0, Number(mData?.efficiency)) || 95) / 100;
-      mpptMaxAmps += rawAmps * eff;
+      // Ausgangsgrenze = Nennstrom des Reglers; der Wirkungsgrad steckt
+      // bereits in der PV→Batterie-Umrechnung (pvBatteryAmps).
+      mpptMaxAmps += rawAmps;
       weightedEffNumerator += rawAmps * eff;
       rawMpptSum += rawAmps;
     }
@@ -382,9 +394,11 @@ function calculateChargingTime(
   }
 
   let chargingTimeStr = 'Kein Ladegerät';
-  if (totalChargerAmps > 0 && usableCapacityAh > 0) {
-    // Ladeverlustfaktor zentral aus VDE_CHARGE_DERATING_FACTOR (1.15 = +15% CC/CV)
-    const chargingTime = (usableCapacityAh / totalChargerAmps) * VDE_CHARGE_DERATING_FACTOR;
+  if (totalChargerAmps > 0 && nominalCapacityAh > 0) {
+    // Ladeverlustfaktor zentral aus VDE_CHARGE_DERATING_FACTOR (1.15 = +15% CC/CV).
+    // „0–100 %" lädt die NENNkapazität. Die nutzbare (DoD-reduzierte)
+    // Kapazität gilt für die Autarkie, nicht für den Ladehub.
+    const chargingTime = (nominalCapacityAh / totalChargerAmps) * VDE_CHARGE_DERATING_FACTOR;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
   } else if (chargers.length > 0 || solarNodesCount > 0 || calculatedSolarWatts > 0) {
     chargingTimeStr = '0 Ladeleistung';

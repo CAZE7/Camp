@@ -68,7 +68,7 @@ export const MPPT_CONTENT: SeoPageContent = {
       id: 'mppt-oder-pwm',
       heading: 'MPPT oder PWM: der Unterschied in Zahlen',
       body: [
-        `Ein 12-V-Modul liefert seine Leistung bei rund ${VDE_SOLAR_VMP_VOLTAGE} V MPP-Spannung, die Batterie nimmt sie bei 12 bis 14,4 V auf. Ein PWM-Regler verbindet beide direkt: Die Spannungsdifferenz von rund 5 V verpufft, es kommen nur etwa 70 bis 80 % der Modulleistung an. Ein MPPT-Regler wandelt die Differenz in zusätzlichen Ladestrom um und nutzt die Leistung weitgehend.`,
+        `Ein 12-V-Modul liefert seine Leistung bei rund ${VDE_SOLAR_VMP_VOLTAGE} V MPP-Spannung, die Batterie nimmt sie bei 12 bis 14,4 V auf. Ein PWM-Regler ist ein Schalter: Er zieht das Modul auf Batteriespannung; das Modul arbeitet dann nicht im MPP, und es kommen nur etwa 70 bis 80 % der möglichen Modulleistung an. Ein MPPT-Regler sucht den MPP und wandelt die Differenz in zusätzlichen Ladestrom um.`,
         'Für eine Bleibank ist der Unterschied deutlich spürbar: Aus 300 Wp werden mit PWM schnell nur 220 W Ladeleistung. Bei Lithium fällt der Vorteil kleiner aus, weil die Batteriespannung höher liegt — aber ein PWM-Regler bleibt die schwächere Wahl.',
       ],
     },
@@ -140,7 +140,7 @@ export const MPPT_CONTENT: SeoPageContent = {
     {
       question: 'Wie viel bringt MPPT gegenüber PWM?',
       answer:
-        'Bei einem 12-V-Modul mit rund 18 V MPP-Spannung und einer Bleibatterie sind es etwa 20 bis 30 % mehr Ladestrom, weil die Spannungsdifferenz nicht verpufft. Bei einer Lithium-Batterie mit höherer Ladespannung fällt der Vorteil kleiner aus — verschwindet aber nicht.',
+        'Bei einem 12-V-Modul mit rund 18 V MPP-Spannung und einer Bleibatterie sind es typischerweise etwa 20 bis 30 % mehr Ladestrom, weil das Modul im MPP arbeiten kann. Der genaue Wert hängt von Vmp, Batteriespannung und Temperatur ab. Bei einer Lithium-Batterie mit höherer Ladespannung fällt der Vorteil kleiner aus — verschwindet aber nicht.',
     },
     {
       question: 'Wie groß muss die String-Sicherung sein?',

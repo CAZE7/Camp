@@ -67,7 +67,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
       ],
       list: {
         items: [
-          'Spannungsfall je Kabel — mit der Planungsgrenze von 3 % (0,36 V bei 12 V) und Meldung ab 4 %.',
+          'Spannungsfall je Kabel — mit der Planungsgrenze von 3 % (0,36 V bei 12 V); ab mehr als 3 % meldet der Planer einen Verstoß, ab mehr als 4 % die kritische Stufe.',
           'Strombelastbarkeit des gewählten Querschnitts mit dem Derating des Modells.',
           'Absicherung: Die Sicherung muss über dem Betriebsstrom und unter der Leitungsgrenze liegen (I_B ≤ I_n ≤ I_z).',
           'Abstand des Schutzorgans zur Quelle: geprüft werden 0,2 m ab dem Pluspol.',
@@ -145,7 +145,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     {
       label: 'Prüfungen in der Auslieferung',
       detail:
-        'Spannungsfall-Grenzen und Absicherung: `lib/electrical.ts` · Schutzorgan am Quellpunkt: `FUSE_MAX_UNPROTECTED_LENGTH_M` (ISO 10133:2000 § 8.1) · Energiebilanz: `lib/verify/powerPath.ts`.',
+        'Spannungsfall-Grenzen und Absicherung: `lib/electrical.ts` · Schutzorgan am Quellpunkt: `FUSE_MAX_UNPROTECTED_LENGTH_M` (ISO 13297:2020 § 8.1, Small Craft) · Energiebilanz: `lib/verify/powerPath.ts`.',
     },
     {
       label: 'DIN VDE 0100-430',

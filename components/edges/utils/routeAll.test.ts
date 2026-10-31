@@ -8,10 +8,12 @@ import {
   portFanOutLanes,
   resolveHandlePoint,
   labelAnchorClearOfNodes,
-  LABEL_HALF_WIDTH,
+  LABEL_CLEARANCE,
+  LABEL_COMPACT_MIN_WIDTH,
   LABEL_HALF_HEIGHT,
   type RouteEdgeRef,
 } from './routeAll';
+import { LABEL_BOX_WIDTH } from './pathUtils';
 import { nodesToObstacles, simplifyWaypoints } from './pathfinding';
 import { GOLDEN_PLANS } from '../../../scripts/goldenmaster/plans';
 import { performAutoWiring } from '../../../lib/autoWire';
@@ -555,11 +557,27 @@ describe('Darstellungs-Knoten sind kein Hindernis (Bug 2026-09-26)', () => {
  * `labelAnchorClearOfNodes` weicht entlang der Leitung aus.
  */
 describe('Beschriftung verdeckt keine fremde Karte (Finding 2026-09-27)', () => {
-  const boxFree = (x: number, y: number, rect: { x: number; y: number; width: number; height: number }) =>
-    x + LABEL_HALF_WIDTH <= rect.x ||
-    x - LABEL_HALF_WIDTH >= rect.x + rect.width ||
-    y + LABEL_HALF_HEIGHT <= rect.y ||
-    y - LABEL_HALF_HEIGHT >= rect.y + rect.height;
+  /**
+   * Die Prüfbox folgt der **gezeichneten** Breite: Seit L10 (Layout-Runde
+   * 27.10.2026) darf eine Beschriftung als Kurzform (nur „16 mm²") erscheinen,
+   * wenn für die Langform kein kollisionsfreier Platz frei war. Mit dem
+   * 156-px-Umschlag gemessen, läge so ein Chip „auf einer Karte", obwohl er
+   * als 60-px-Kurzform daneben sitzt.
+   */
+  const boxFree = (
+    x: number,
+    y: number,
+    rect: { x: number; y: number; width: number; height: number },
+    labelWidth: number = LABEL_BOX_WIDTH
+  ) => {
+    const halfWidth = labelWidth / 2 + LABEL_CLEARANCE;
+    return (
+      x + halfWidth <= rect.x ||
+      x - halfWidth >= rect.x + rect.width ||
+      y + LABEL_HALF_HEIGHT <= rect.y ||
+      y - LABEL_HALF_HEIGHT >= rect.y + rect.height
+    );
+  };
 
   it('weicht einer Karte aus und bleibt auf der Leitung', () => {
     const waypoints: Point[] = [
@@ -606,11 +624,18 @@ describe('Beschriftung verdeckt keine fremde Karte (Finding 2026-09-27)', () => 
       for (const [id, route] of routes) {
         const edge = edges.find((item) => item.id === id);
         if (!edge) continue;
+        // L1 (Layout-Runde 27.10.2026): Eine Beschriftung, für die der Pass
+        // keinen kollisionsfreien Platz gefunden hat, wird NICHT gezeichnet
+        // (`labelHidden`). Ihre `labelX/labelY` bleibt der beste gefundene
+        // Anker — der liegt in so einem Plan zwangsläufig auf einer Karte, er
+        // ist aber kein Bildfehler, weil dort kein Chip erscheint.
+        if (route.labelHidden) continue;
         for (let index = 0; index < nodes.length; index += 1) {
           const node = nodes[index]!;
           if (node.id === edge.source || node.id === edge.target) continue;
           const rect = rects[index];
-          if (rect && !boxFree(route.labelX, route.labelY, rect)) {
+          const width = route.labelCompact ? LABEL_COMPACT_MIN_WIDTH : LABEL_BOX_WIDTH;
+          if (rect && !boxFree(route.labelX, route.labelY, rect, width)) {
             offenders.push(`${planName}:${id} auf ${node.id}`);
           }
         }

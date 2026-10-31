@@ -32,6 +32,7 @@ const ShuntNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Batteriemonitor (Shunt)')}
+          title={data.label || 'Batteriemonitor (Shunt)'}
         >
           {data.label || 'Batteriemonitor (Shunt)'}
         </div>

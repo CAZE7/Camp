@@ -121,13 +121,15 @@ export const DERATE_FACTOR = 0.7;
  * Maximale ungeschützte Leitungslänge ab Batteriepol bis zum Schutzorgan
  * (AUDIT ELE-004 — Normverankerung NACHGEZOGEN 2026-09-08, vorher UNVERIFIED).
  *
- * Die „20-cm-Regel" ist KEINE Faustregel ohne Quelle, sondern der wörtliche
- * Wert aus **ISO 10133:2000, §8.1** (small craft, extra-low-voltage DC):
+ * Die „20-cm-Regel" ist KEINE Faustregel ohne Quelle. Der Wert stammt aus
+ * **ISO 10133:2000, §8.1** (Small Craft, extra-low-voltage DC) und wird in
+ * **ISO 13297:2020 §8.1** (Small Craft, AC/DC) fortgeführt:
  * „A manually reset trip-free circuit-breaker, or a fuse, shall be installed
  * within 200 mm of the source of power for each circuit or conductor of the
  * system or, if impractical, each conductor shall be contained within a
  * protective covering […] for its entire length from the source of power to
- * the circuit-breaker or fuse." — VERIFIED (Wortlaut).
+ * the circuit-breaker or fuse." — historischer Wortlaut; die aktuelle
+ * Small-Craft-Norm ist ISO 13297:2020.
  *
  * Verwandte Referenz (nicht widersprechend, leicht strenger):
  * **ABYC E-11 §11.10.1.1.1**: Schutzorgan innerhalb von 7 in = **178 mm**
@@ -136,9 +138,8 @@ export const DERATE_FACTOR = 0.7;
  * Batteriepol anschließt; ≤ 72 in (183 cm) bei direktem Batterieanschluss
  * im Schutzschlauch; Anlasser-Stromkreis ausgenommen. VERIFIED (Wortlaut-
  * Exzerpt 2010).
- * ISO 10133:2012 (Nachfolgeedition, von REC/COM/Bootspraxis referenziert)
- * nennt die 200 mm nicht mehr explizit und fordert Schutz „at the source of
- * power" — die konkrete Zahl stammt aus der 2000er-Edition.
+ * ISO 10133:2012 (Nachfolgeedition) und ISO 13297:2020 führen den Schutz am
+ * Quellpunkt fort; die konkrete 200-mm-Zahl steht in ISO 13297:2020 §8.1.
  *
  * Für den Fahrzeug-/Camper-Kontext nennt DIN VDE 0100-721 KEINE konkrete
  * Länge (Verweis auf allgemeinen Schutz bei Überlast/Kurzschluss) — die
@@ -151,7 +152,7 @@ export const FUSE_MAX_UNPROTECTED_LENGTH_M = 0.2;
 
 /** Maschinenlesbare Quellenzeile für strukturierte Fehler (UX-001). */
 export const FUSE_MAX_UNPROTECTED_SOURCE =
-  'ISO 10133:2000 §8.1 (200 mm); ABYC E-11 §11.10.1.1.1 (7 in = 178 mm)';
+  'ISO 13297:2020 §8.1 (200 mm, Small Craft); ABYC E-11 §11.10.1.1.1 (7 in = 178 mm)';
 
 /**
  * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).

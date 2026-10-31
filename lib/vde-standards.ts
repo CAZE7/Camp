@@ -53,6 +53,7 @@ export {
 // Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
 import { getEdgeDomain } from './electrical';
 import { safeText } from './safeText'; // AUDIT T1
+import { normalizeBatteryChemistry } from './peukert';
 
 import type { Node, Edge } from './domain/graph'; // ARCH-001: Domäne statt React-Flow-Typen
 import {
@@ -306,21 +307,21 @@ export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Vo
         ...batteries.filter((b) => isStarterBatteryNode(b)),
       ];
 
-  // Explizite nominalVoltage an der Vorrangbatterie gewinnt.
-  // `node.data` stammt aus localStorage/JSON — daher geprüft einlesen und
-  // unbrauchbare Werte (0, negativ, Text) überspringen statt sie zu übernehmen.
-  for (const b of ordered) {
-    const nominalVoltage = parseQuantity((b.data as { nominalVoltage?: unknown })?.nominalVoltage, volts);
-    if (nominalVoltage !== null && nominalVoltage > 0) {
-      return nominalVoltage;
-    }
+  // Explizite nominalVoltage an der VORRANGBATTERIE gewinnt. Vorher lief die
+  // Schleife über ALLE Batterien: fehlte der Wert an der Aufbaubatterie,
+  // konnte eine nachrangige 24-V-Starterbatterie die Auslegungsspannung
+  // liefern — alle DC-Ströme wurden dann halbiert. Die Auslegung folgt der
+  // Priorität, nicht dem ersten parsebaren Fremdwert.
+  const primary = ordered[0];
+  if (!primary) return DEFAULT_SYSTEM_VOLTAGE;
+  const nominalVoltage = parseQuantity((primary.data as { nominalVoltage?: unknown })?.nominalVoltage, volts);
+  if (nominalVoltage !== null && nominalVoltage > 0) {
+    return nominalVoltage;
   }
 
-  // Fallback: chemiebasierte Schätzung der Vorrangbatterie
-  const first = ordered[0];
-  if (!first) return DEFAULT_SYSTEM_VOLTAGE;
-  const chemistry = String((first.data as { chemistry?: string })?.chemistry || '').toLowerCase();
-  if (chemistry === 'agm' || chemistry === 'lead' || chemistry === 'gel') {
+  // Fallback: chemiebasierte Schätzung der Vorrangbatterie.
+  const chemistry = normalizeBatteryChemistry((primary.data as { chemistry?: unknown })?.chemistry);
+  if (chemistry === 'AGM' || chemistry === 'Gel' || chemistry === 'Blei') {
     return LEAD_SYSTEM_VOLTAGE;
   }
 

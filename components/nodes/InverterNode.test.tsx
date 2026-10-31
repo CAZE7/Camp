@@ -41,7 +41,7 @@ describe('InverterNode Component', () => {
 
   it('renders continuous power when > 0', () => {
     render(<InverterNode id="1" data={{ continuousPower: 1500 }} />);
-    expect(screen.getByText('Leistung: 1500 W')).toBeInTheDocument();
+    expect(screen.getByText('Leistung: 1.500 W')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true and not overloaded', () => {

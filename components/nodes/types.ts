@@ -167,6 +167,17 @@ export interface InverterNodeData extends CommonNodeData {
   hours?: number;
   /** Vorhandensein eines FI/LS (RCD ≤ 30 mA) im AC-Ausgangskreis. */
   hasRcd?: boolean;
+  /**
+   * Fehlerstromtyp des integrierten FI/LS. Fehlt der Wert, bleibt der Typ
+   * unbekannt (RCD-002 meldet UNPROVABLE, statt Typ A zu unterstellen).
+   */
+  rcdType?: 'AC' | 'A' | 'F' | 'B';
+  /**
+   * Herstellernachweis: Der Wechselrichter erzeugt keine glatten
+   * Gleichfehlerströme. Damit ist Typ A/F für den integrierten FI belegt;
+   * ohne Nachweis bleibt Typ A/F eine offene Lücke.
+   */
+  rcdProofNoSmoothDc?: boolean;
   /** Speisende 230-V-Quelle am Landstrom-EINGANG (s. `Consumer230VNodeData.acSourceId`). */
   acSourceId?: string;
 }
@@ -176,6 +187,8 @@ export interface ShorePowerNodeData extends CommonNodeData {
   hasRcd?: boolean;
   /** Absicherung/Anschlusswert der Landstromdose in A (ELEC-003). */
   rating?: number;
+  /** Netzform der Einspeisung; TN-S ist die PEN-freie Fahrzeuganforderung. */
+  systemForm?: 'TN-S' | 'TN-C' | 'TT' | 'IT';
   /** Modellierter AC-Verbrauch in A; sonst aus der Last abgeleitet. */
   acCurrentA?: number;
   /**

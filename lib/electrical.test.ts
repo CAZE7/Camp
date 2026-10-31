@@ -211,7 +211,7 @@ describe('AUDIT ELE-004 — 20-cm-Regel normativ verankert', () => {
   });
 
   it('Quellenanker nennt Norm, Paragraf und ABYC-Referenzwert', () => {
-    expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('ISO 10133:2000');
+    expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('ISO 13297:2020');
     expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('§8.1');
     expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('178 mm');
   });

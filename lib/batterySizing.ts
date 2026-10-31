@@ -74,7 +74,7 @@ export type BatterySizingResult = {
   chargeCurrentA: number;
   /** Ladefenster, mit dem gerechnet wurde (h). */
   chargeWindowHours: number;
-  /** Einordnung: trägt die empfohlene Größe den Bedarf? */
+  /** Einordnung: trägt die empfohlene Größe den Bedarf über die Autonomietage? */
   sufficient: boolean;
 };
 
@@ -153,7 +153,9 @@ export function sizeBattery(input: BatterySizingInput): BatterySizingResult {
     referenceCurrentA: averageCurrentA,
     chargeCurrentA,
     chargeWindowHours,
-    sufficient: usableAhOfRecommendation * systemVoltageV + 1e-9 >= dailyEnergyWh,
+    // Der Peukert-Faktor reduziert die nutzbare Kapazität; geprüft wird der
+    // Bedarf über die GESAMTE Autonomiezeit, nicht nur ein Tag.
+    sufficient: usableAhOfRecommendation * systemVoltageV + 1e-9 >= dailyEnergyWh * autonomyDays,
   };
 }
 

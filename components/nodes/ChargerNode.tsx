@@ -5,6 +5,7 @@ import { type ChargerNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<ChargerNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -32,6 +33,7 @@ const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNode
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Ladequelle')}
+          title={data.label || 'Ladequelle'}
         >
           {data.label || 'Ladequelle'}
         </div>
@@ -53,7 +55,7 @@ const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNode
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('amps', data.amps || 0)}>
-            Ladeleistung: {data.amps || 0} A
+            Ladeleistung: {formatNumberDe(data.amps ?? 0)} A
           </div>
         )}
         <div>Effizienz: {data.efficiency ?? 100}%</div>

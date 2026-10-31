@@ -15,7 +15,9 @@ const GroundNode = function ({ id, data, isConnectable, selected }: PlannerNodeP
       className={`node-card de-node-card custom-drag-handle flex w-32 flex-col items-center p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="ground" dinCode={resolvedDesignator(designators, id, data)} />
-      <div className="mb-1 text-center text-sm font-bold">{data.label || 'Massepunkt'}</div>
+      <div className="mb-1 text-center text-sm font-bold" title={data.label || 'Massepunkt'}>
+        {data.label || 'Massepunkt'}
+      </div>
       <div className="measure mb-2 text-xs text-muted-foreground">(Karosserie)</div>
 
       {/* Target handle for connecting to consumers or battery */}

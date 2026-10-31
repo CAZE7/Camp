@@ -193,6 +193,21 @@ describe('useLiveValidation', () => {
       expect(result.current.some((w) => w.id === 'solar-voc-window-m')).toBe(false);
     });
 
+    it('nennt bei fehlendem maxPvVoltage die Auslegungstemperatur −20 °C (nicht −10 °C)', () => {
+      const nodes: Node[] = [
+        {
+          id: 'm',
+          type: 'mpptController',
+          data: { label: 'MPPT', amps: 20 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      const warning = result.current.find((w) => w.id === 'solar-voc-window-unknown-m');
+      expect(warning?.message).toContain('-20');
+      expect(warning?.message).not.toContain('-10');
+    });
+
     it('fordert fehlende Voc-Datenblattwerte als Hinweis an (nicht still schätzen)', () => {
       const nodes = [
         panel('p1', { label: 'Panel 1', watts: 100 }), // ohne voc
@@ -278,7 +293,7 @@ describe('useLiveValidation', () => {
       expect(warning!.message).toContain('ohne Schutzorgan');
       // Abhilfe kommt als fertiger Vorschlag aus dem Ereignis (kein zweiter Textpfad).
       expect(warning!.remedy).toContain('Sicherung');
-      expect(warning!.source).toContain('ISO 10133');
+      expect(warning!.source).toContain('ISO 13297');
     });
 
     it('meldet dieselbe Aussage nicht mehr unter der alten Planer-ID', () => {
@@ -635,6 +650,68 @@ describe('useLiveValidation', () => {
       expect(warning?.ruleId).toBe('ELE-005-bms-discharge');
     });
 
+    it('erkennt die BMS-LADEGRENZE auch auf der AutoWire-Kante Batterie→Schiene', () => {
+      // AutoWire zeichnet Batterie→Schiene. Der Ladestrom fließt in
+      // Gegenrichtung; die alte Prüfung sah nur „source= battery“ und
+      // verglich ihn mit der ENTLADEgrenze — die Ladegrenze war nie wirksam.
+      const nodes: Node[] = [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: {
+            label: 'Batterie',
+            capacity: 100,
+            nominalVoltage: 12.8,
+            bmsContinuousDischarge: 200,
+            bmsContinuousCharge: 20,
+          },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'bus',
+          type: 'busbar',
+          data: { label: 'Plus-Schiene', role: 'positive' },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'lader',
+          type: 'acBatteryCharger',
+          data: { label: 'AC-Ladegerät', amps: 50 },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'shore',
+          type: 'shorePower',
+          data: { label: 'Landstrom', rating: 16 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'bat-bus', source: 'b1', target: 'bus', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        {
+          id: 'lader-bus',
+          source: 'lader',
+          target: 'bus',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: {},
+        },
+        {
+          id: 'shore-lader',
+          source: 'shore',
+          target: 'lader',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { edgeDomain: 'AC_230V' },
+        },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id.startsWith('bms-charge-b1'));
+      expect(warning?.type).toBe('critical');
+      expect(warning?.ruleId).toBe('ELE-005-bms-charge');
+      expect(warning?.measuredValue).toBe('50 A');
+    });
+
     // V2-LIMIT-001: Vorher wurde AUSSCHLIESSLICH das BMS geprüft. Jede andere
     // eingetragene Bauteilgrenze war unsichtbar.
     describe('Rule CMP: Bauteilgrenzen (V2-LIMIT-001)', () => {
@@ -766,5 +843,25 @@ describe('useLiveValidation', () => {
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage')).toBeDefined();
     });
+  });
+});
+
+/**
+ * Der große Standardplan ist die Referenz, die ein Erstbesucher sieht. Er
+ * darf keine Warnungen und keine behebbaren Datenlücken zeigen: Batterie-
+ * Nennspannungen, MIDI-I₂ und Class-T-I₂ sind in der Vorlage belegt. Übrig
+ * bleibt allein die benannte Modellgrenze am Wechselrichter-Ausgang — sie ist
+ * kein Planfehler und wird ausdrücklich als solche angezeigt.
+ */
+describe('Autark-Vorlage — großer Standardplan', () => {
+  it('zeigt keine Warnungen, sondern nur die Wechselrichter-Modellgrenze', () => {
+    const { result } = renderHook(() => useLiveValidation(TEMPLATE_AUTARK.nodes, TEMPLATE_AUTARK.edges));
+
+    expect(result.current.filter((warning) => warning.type !== 'info')).toEqual([]);
+    expect(result.current.some((warning) => warning.ruleId === 'AMP-002-i2-vs-iz')).toBe(false);
+    expect(result.current.some((warning) => warning.ruleId === 'ELE-008-voltage-unknown')).toBe(false);
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0]?.ruleId).toBe('RCD-005-loop-impedance');
+    expect(result.current[0]?.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
   });
 });

@@ -5,6 +5,7 @@ import { type BatteryNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<BatteryNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -32,6 +33,7 @@ const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNode
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Batterie')}
+          title={data.label || 'Batterie'}
         >
           {data.label || 'Batterie'}
         </div>
@@ -56,7 +58,7 @@ const BatteryNode = function ({ id, data, isConnectable, selected }: PlannerNode
             className="cursor-text"
             onDoubleClick={() => handleDoubleClick('capacity', data.capacity || 0)}
           >
-            Kapazität: {data.capacity || 0} Ah
+            Kapazität: {formatNumberDe(data.capacity ?? 0)} Ah
           </div>
         )}
         {editingField === 'chemistry' ? (

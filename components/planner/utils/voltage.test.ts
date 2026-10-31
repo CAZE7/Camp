@@ -15,12 +15,20 @@ describe('getSystemVoltage', () => {
     expect(getSystemVoltage([])).toBe(12.8);
   });
 
-  it('should return explicit nominalVoltage if set on any battery', () => {
+  it('should use the explicit nominalVoltage of the priority battery (not any battery)', () => {
+    // Regression: Eine nachrangige 24-V-Batterie darf die Auslegung einer
+    // 12,8-V-Vorrangbatterie nicht überschreiben.
     const nodes: Node[] = [
       { id: '1', type: 'battery', data: { chemistry: 'lifepo4' }, position: { x: 0, y: 0 } },
       { id: '2', type: 'battery', data: { nominalVoltage: 24, chemistry: 'agm' }, position: { x: 0, y: 0 } },
     ];
-    expect(getSystemVoltage(nodes)).toBe(24);
+    expect(getSystemVoltage(nodes)).toBe(12.8);
+
+    const firstIs24: Node[] = [
+      { id: '1', type: 'battery', data: { nominalVoltage: 24 }, position: { x: 0, y: 0 } },
+      { id: '2', type: 'battery', data: { nominalVoltage: 12 }, position: { x: 0, y: 0 } },
+    ];
+    expect(getSystemVoltage(firstIs24)).toBe(24);
   });
 
   it('should return 12.0V for AGM chemistry when no explicit voltage is set', () => {

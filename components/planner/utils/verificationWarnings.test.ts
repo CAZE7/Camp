@@ -79,6 +79,21 @@ describe('verificationWarning — ein Ereignis, ein Befund', () => {
     expect(warning.message).toContain('Kritisch');
   });
 
+  it('nennt einen Wechselrichter-Ausgang Modellgrenze statt „fehlende Angabe“', () => {
+    const warning = verificationWarning(
+      event({
+        ruleId: 'RCD-005-loop-impedance',
+        kind: 'UNVERIFIABLE',
+        message:
+          'Abschaltbedingung auf Leitung e-inv nicht entscheidbar (inverter-limited): Wechselrichter-Ausgänge sind elektronisch strombegrenzt.',
+      }),
+      2
+    );
+    expect(warning.type).toBe('info');
+    expect(warning.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
+    expect(warning.unverified).toBe(true);
+  });
+
   it('stuft eine DATENLÜCKE als Hinweis ein — nicht als Verletzung', () => {
     const gap = verificationWarning(
       event({
@@ -122,7 +137,7 @@ describe('verificationWarning — ein Ereignis, ein Befund', () => {
 
   it('nennt die Klausel nicht zweimal, wenn sie schon im Normtext steht', () => {
     const warning = verificationWarning(
-      event({ standard: 'ISO 10133:2000 §8.1 (200 mm); CAMP-Planungsvorgabe', clause: '§8.1' }),
+      event({ standard: 'ISO 13297:2020 §8.1 (200 mm, Small Craft); CAMP-Planungsvorgabe', clause: '§8.1' }),
       5
     );
     expect(warning.source?.match(/§8\.1/g)).toHaveLength(1);

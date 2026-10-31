@@ -391,7 +391,7 @@ export function edgeOvercurrentDevice(data: CableEdgeData | undefined): Protecti
     productClass: variant ? productClassOfFuseType(variant) : null,
     variant,
     ratedCurrentA: size,
-    i2A: null,
+    i2A: numberField(data, 'i2A'),
     breakingCapacityA: typeof data?.fuseBreakingCapacity === 'number' ? data.fuseBreakingCapacity : null,
   };
 }
@@ -415,7 +415,12 @@ export function edgeAcDevices(data: CableEdgeData | undefined): ProtectionDevice
       i2A: null,
       breakingCapacityKA:
         typeof descriptor?.breakingCapacityKA === 'number' ? descriptor.breakingCapacityKA : null,
-      poles: descriptor?.kind === 'rcbo' ? 2 : null,
+      poles:
+        descriptor?.poles === 1 || descriptor?.poles === 2
+          ? descriptor.poles
+          : descriptor?.kind === 'rcbo'
+            ? 2
+            : null,
     });
   }
   if (descriptor?.kind === 'rcbo') {

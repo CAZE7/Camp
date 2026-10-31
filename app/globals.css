@@ -896,8 +896,12 @@
     left: calc(var(--planner-sidebar-w) - 2.75rem);
   }
   .planner-inspector-toggle--open {
-    /* Match the 44px control width so its center stays on the panel edge. */
-    right: calc(var(--planner-inspector-w) - 2.75rem);
+    /* Mitte auf der Panelkante, nicht das ganze Feld im Panel: Der Knopf ist
+       44 px breit (w-11), ein Versatz von 2.75rem schob ihn vollständig in
+       die Spalte hinein — er lag auf Eingabefeldern, dem M19-Hinweis und dem
+       Fachwissen-Panel (Befund L2, Layout-Runde 27.10.2026). 1.375rem = halbe
+       Knopfbreite ⇒ die Knopfmitte sitzt auf der Kante. */
+    right: calc(var(--planner-inspector-w) - 1.375rem);
   }
 
   /* Bottom-Navigation: iOS-Home-Indicator darf nichts verdecken.
@@ -1250,13 +1254,20 @@
      statt sie über Nachbarn zu schieben. `overflow: visible` (statt hidden):
      Anschlusspunkte sitzen auf der Rahmenlinie und der Touch-Drag-Griff
      ragt über die Kartenkante hinaus — beides würde mit hidden abgeschnitten
-     (Griff war auf Touch praktisch unsichtbar). Brechen übernimmt
-     `overflow-wrap: anywhere`. */
+     (Griff war auf Touch praktisch unsichtbar).
+
+     Brechen übernimmt `overflow-wrap: break-word` mit Silbentrennung —
+     nicht `anywhere`. `anywhere` darf innerhalb eines Wortes trennen und
+     erzeugte damit Brüche wie „Ladegerä/t“; außerdem wuchs die Karte mit
+     langen Namen in die Nachbarkarte (Befund L3, Layout-Runde 27.10.2026,
+     Stresstest „Victron MultiPlus-II 12/3000/120-32 …“). */
   .react-flow__node .custom-drag-handle,
   .react-flow__node [data-testid='planner-node'] {
     min-width: 12rem;
     overflow: visible;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
   }
 
   /* Auto-layout animates position changes; collision resolution uses the same
@@ -2752,7 +2763,19 @@ summary:active {
 
 .planner-shell .node-card > .node-symbol + div {
   margin-bottom: 0.5rem;
-  overflow-wrap: anywhere;
+  /* Kartentitel auf zwei Zeilen begrenzt (Befund L3, Layout-Runde
+     27.10.2026): Ein Bauteilname wie „Victron MultiPlus-II 12/3000/120-32
+     Wechselrichter/Ladegerät“ wuchs sonst über drei und mehr Zeilen und
+     schob die Karte in die Nachbarkarte, weil das Layout mit der
+     Standardgröße rechnet. Der volle Name bleibt als `title` am Element
+     (Node-Komponenten) und in der Auswahl im Inspector lesbar. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
   text-align: left;
 }
 
@@ -4910,3 +4933,227 @@ html.planner-root-active body {
 
 /* Editorial start-page layer: typography, information hierarchy, warm paper,
    and a restrained lime signal borrowed from the supplied magazine reference. */
+
+/* ==========================================================================
+   LAYOUT-RUNDE 27.10.2026 — Befunde L2, L4–L9, L11, L14, L15
+   --------------------------------------------------------------------------
+   Grundlage: Audit-PDF „Planer-Layout-klein.pdf“ (Prüfung 27.10.2026,
+   Chromium/WebKit/Firefox, 360–1920 px, Zoom 125/150/200 %, Dark Mode,
+   Druckansicht). 18 Befunde L1–L18; die elektrische Logik ist von keinem
+   davon betroffen — es sind ausschließlich Darstellungsfehler.
+
+   Diese Regeln stehen bewusst am Ende der Datei: Mehrere Befunde sind
+   Korrekturen an Abfragen weiter oben (Mobil-Overrides, Breitenbudget der
+   Werkzeugleiste), und Medienabfragen erhöhen die Spezifität nicht — es
+   gewinnt die spätere Regel derselben Stufe.
+   ========================================================================== */
+
+/* L2 — Der Inspector-Umschalter verschwindet, solange das Fachwissen-Panel
+   offen ist. Der Knopf sitzt auf der Panelkante und lag sonst über dem
+   Panelinhalt (Beleg lay_toggle_hilfe.png). Der Zustand steckt in der
+   Klasse des Panels, deshalb hier über `:has` statt neuem Store-Feld. */
+body:has(.planner-expert-panel--open) .planner-inspector-toggle {
+  display: none !important;
+}
+
+/* L4 — Strompfad-Kachel auf dem Handy (Hochformat).
+   Gemessen 390×844: Modus-Beschriftung y 165–208, Kachel y 185, die
+   „React Flow“-Attribution (y ≈ 169, z-index über dem Panel) darüber.
+   Die Kachel rückt deshalb unter den Modus-Block (7rem ≈ 112 px in der
+   Canvas-Spalte ⇒ y ≈ 217). Nur Hochformat: Im flachen Querformat gelten
+   weiter die knapperen Werte der Blöcke „Flaches Querformat“. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .react-flow__panel:has([data-testid='circuit-trace-info']) {
+    top: 7rem !important;
+    right: 0.35rem !important;
+    bottom: auto !important;
+    left: 0.35rem !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 2.25rem !important;
+    margin: 0 !important;
+    z-index: 4 !important;
+  }
+}
+
+/* L5 — Stückliste: Fußleiste muss bei wenig Höhe erreichbar bleiben.
+   Ursache: `max-h-[min(100dvh-1rem,90dvh)] overflow-hidden` am Dialog — bei
+   390 px Höhe blieben ~140 px Inhalt, „Druckbericht (PDF)“ war abgeschnitten
+   und nicht erreichbar, weil nur `bom-scroll-body` scrollte. Unter 520 px
+   Höhe scrollt deshalb das ganze Blatt, die klebrige Fußzeile wird normaler
+   Inhalt (sie überdeckte sonst beim Scrollen Zeilen).
+   Keine Zeilenklemmung an `.planner-dialog__description`: der Prüfbericht
+   verlangt einen unbeschnittenen Untertitel
+   (`tests/e2e/mobile-geometry.spec.ts`: `scrollHeight > clientHeight` ist
+   dort ein Fehler), und das scrollende Blatt holt die Fußzeile auch mit
+   vollem Text. */
+@media (max-height: 520px) {
+  .planner-dialog {
+    overflow-y: auto !important;
+  }
+  .planner-dialog [data-testid='bom-scroll-body'] {
+    flex: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  /* Mit scrollendem Blatt ist die klebrige Fußleiste wirkungslos und würde
+     nur Inhalt überdecken. */
+  [data-testid='bom-actions'] {
+    position: static !important;
+  }
+}
+
+/* L6 — Werkzeugleiste unter 400 px. Gemessen 360×740 und 390×844: Der
+   Auto-verbinden-Knopf war rechts angeschnitten, und das Speicher-Häkchen
+   schien darauf zu liegen.
+   Ursache: `.cad-toolbar__actions` scrollt waagerecht (`overflow-x: auto`),
+   das rechts festgenagelte Statusfeld (`__status`) ist aber **transparent** —
+   die weggescrollten Knöpfe malen deshalb unter Häkchen und Chip weiter.
+   Das Feld bekommt seine deckende Fläche zurück (Leiste = Flächenfarbe);
+   unter 400 px kommen die Abstände auf das Minimum. Nichts wird ausgeblendet:
+   Das Häkchen und das Auto-verbinden-Symbol sind beide Testvertrag
+   (`tests/e2e/mobile-geometry.spec.ts`), und die Aktionen stehen zusätzlich im
+   „⋯“-Menü bzw. in der Schrittleiste. */
+@media (max-width: 767px) {
+  .cad-toolbar__status {
+    background: var(--surface-panel);
+  }
+}
+
+@media (max-width: 399.98px) {
+  .cad-toolbar__status {
+    gap: 0.05rem;
+    padding-inline-start: 0.05rem;
+  }
+  .cad-toolbar__actions > .cad-toolbar__sep {
+    margin-inline: 0;
+  }
+  .cad-toolbar [data-testid='save-indicator'] {
+    min-width: 0;
+    padding-inline: 0.125rem;
+  }
+}
+
+/* L7 — Wortmarke der Menüleiste. Ab 768 px setzte `min-width: 0` die Marke
+   frei schrumpfbar, damit brach „Elektroplaner / Elektrikplan“ zweizeilig in
+   die Menüleiste. Die Marke ist der Ausgang der Anwendung und bleibt jetzt
+   starr; dafür entfällt der Projektname zwischen 768 und 1099 px — er
+   gewinnt die ~90 px, die die Marke braucht (Beleg lay_tablet_768.png). */
+@media (min-width: 768px) {
+  .cad-menubar__brand {
+    flex-shrink: 0;
+  }
+}
+@media (min-width: 768px) and (max-width: 1099.98px) {
+  .cad-menubar__project-name {
+    display: none;
+  }
+}
+
+/* L8 — Tablet 768–1099 px: Die Modus-Beschriftung lag unter der Status-Karte
+   („Aktueller Status“, oben rechts). Statt die Karte zu versenken, rückt der
+   Modus-Block nach links (wie unter 768 px) und die Beschriftung bleibt so
+   schmal, dass sie die Karte nicht erreicht: Bei 768 px sind das 288 px
+   (Canvas 520 px, Karte ≈ 197 px rechts). Beleg lay_tablet_768.png. */
+@media (min-width: 768px) and (max-width: 1099.98px) {
+  .planner-mode-switch-panel {
+    left: 0.5rem !important;
+    right: auto !important;
+    transform: none !important;
+  }
+  [data-testid='planner-mode-caption'] {
+    max-width: min(22rem, calc(100vw - 30rem));
+    text-align: left;
+  }
+}
+
+/* L9 — Hinweis „Erster Anschluss gewählt…“ und die Aktionsmeldung („Link zum
+   Plan kopiert…“) lagen aufeinander: Der Hinweis saß bei `md:bottom-6`
+   (24 px), die Meldung bei Statuszeile + 0.75rem und ist rund 70 px hoch. Ab
+   768 px sitzt der Hinweis deshalb über der Meldungszeile und bleibt auf die
+   Canvas-Breite begrenzt (Belege lay_hint_1280.png, lay_share_toast.png). */
+@media (min-width: 768px) {
+  .planner-mobile-feedback {
+    bottom: calc(var(--cad-statusbar-h, 28px) + 7rem) !important;
+    max-width: min(36rem, calc(100% - 2rem));
+  }
+}
+
+/* L11 — Sehr kleine Fenster (Zoom 200 % ⇒ 640×400 CSS-px, Breite < 700 px
+   oder Höhe ≤ 480 px): Die mittlere Beschriftungsstufe „Vorlage laden“ wurde
+   angeschnitten („Vorlage la…“). Es bleibt die Kurzform bzw. das Symbol; der
+   volle Name steht in `aria-label` und `title`. */
+@media (max-width: 699.98px), (max-height: 480px) {
+  .cad-toolbar .tb-label--mittel {
+    display: none;
+  }
+  .cad-toolbar .tb-label--kurz {
+    display: inline;
+  }
+}
+
+/* L14 — Browser-Druck (Strg + P). Es gab keine `@media print`-Regel: Menü-,
+   Werkzeug- und Schrittleiste, Seitenleiste, Inspector, schwebende Griffe
+   und der SEO-Text wurden mitgedruckt, der Plan war rechts abgeschnitten.
+   Gedruckt wird die Zeichenfläche; gefüllte Knöpfe (weiße Schrift auf
+   dunkler Fläche) werden auf hell umgestellt, weil Browser
+   Hintergrundfarben im Druck standardmäßig unterdrücken. Der eigene
+   „Druckbericht (PDF)“ der Anwendung ist davon nicht betroffen. */
+@media print {
+  .cad-menubar,
+  .cad-toolbar,
+  .cad-rail,
+  .cad-statusbar,
+  .planner-sidebar,
+  .planner-inspector,
+  .planner-inspector-toggle,
+  .planner-bottom-nav,
+  .planner-mobile-history,
+  .planner-action-feedback,
+  .planner-expert-panel,
+  .react-flow__panel,
+  .react-flow__controls,
+  .react-flow__minimap,
+  .de-warning-center {
+    display: none !important;
+  }
+  .planner-shell {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* Der Erklärteil unter der Anwendung (`PlanerSeoContent`) füllte drei
+     Seiten. Gedruckt wird nur der erste Bildschirm — die Anwendung. */
+  main#main > *:not([aria-label='Camper-Elektroplaner']) {
+    display: none !important;
+  }
+  /* `height: auto` würde die Zeichenfläche auf 0 px zusammenziehen (der
+     Inhalt ist absolut positioniert) — der Plan wäre gar nicht im Druck.
+     Eine feste Höhe hält ihn auf einer Seite. */
+  .react-flow {
+    width: 100% !important;
+    height: 60vh !important;
+  }
+  .planner-shell .cad-btn,
+  .planner-shell button {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #999 !important;
+  }
+}
+
+/* L15 — Undo/Redo im Querformat doppelt: Der schwebende Griff war zusätzlich
+   zur Werkzeugleiste sichtbar (Beleg lay_undo_dup.png, 844×390 und 932×430).
+   Der Fix aus dem Bericht (schwebende Gruppe überall außer Handy-Hochformat
+   ausblenden) greift hier zu kurz und brach das E2E-Gate: Im flachen
+   Querformat (ab Zeile ~3989, 360–480 px Höhe) wird die schwebende Gruppe
+   bewusst WIEDER eingeblendet, weil die Bottom-Tabs dort fehlen und sie der
+   einzig erreichbare Weg zu Rückgängig/Übersicht ist — `mobile-overview` und
+   `mobile-undo` sind Testvertrag (tests/e2e/mobile-geometry.spec.ts,
+   touch.spec.ts). Es entfällt deshalb die KOPIE in der Werkzeugleiste, und
+   zwar genau in dem Band, in dem beide sichtbar sind. */
+@media (orientation: landscape) and (max-height: 480px) and (min-height: 360px) {
+  .cad-toolbar__group:has(> [data-testid='toolbar-undo']) {
+    display: none !important;
+  }
+}

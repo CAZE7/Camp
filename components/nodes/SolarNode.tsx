@@ -5,6 +5,7 @@ import { type SolarNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 import { DesignatorContext, resolvedDesignator } from './designators';
+import { formatNumberDe } from './formatNumber';
 
 const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<SolarNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
@@ -32,13 +33,14 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
         <div
           className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Solarmodul')}
+          title={data.label || 'Solarmodul'}
         >
           {data.label || 'Solarmodul'}
         </div>
       )}
       <div className="measure flex flex-col gap-1 text-xs text-muted-foreground">
         {data.watts !== undefined && (
-          <div className="font-semibold text-copper">Leistung: {data.watts} W</div>
+          <div className="font-semibold text-copper">Leistung: {formatNumberDe(data.watts)} W</div>
         )}
         {editingField === 'voltage' ? (
           <div className="flex items-center gap-1">
@@ -56,7 +58,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('voltage', data.voltage || 0)}>
-            Spannung: {data.voltage || 0} V
+            Spannung: {formatNumberDe(data.voltage ?? 0)} V
           </div>
         )}
         {editingField === 'amps' ? (
@@ -75,7 +77,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
           </div>
         ) : (
           <div className="cursor-text" onDoubleClick={() => handleDoubleClick('amps', data.amps || 0)}>
-            Strom: {data.amps || 0} A
+            Strom: {formatNumberDe(data.amps ?? 0)} A
           </div>
         )}
       </div>

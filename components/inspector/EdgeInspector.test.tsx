@@ -68,6 +68,37 @@ describe('EdgeInspector Component', () => {
 
     expect(mockOnChangeLength).not.toHaveBeenCalled();
   });
+
+  it('zeigt den Datenblatt-Prüfstrom I₂ und meldet Änderungen', () => {
+    const onChangeFuseI2 = vi.fn();
+    render(
+      <EdgeInspector
+        edge={{ ...defaultEdge, data: { fuseSize: 40, fuseType: 'midi', i2A: 54 } }}
+        onChangeLength={mockOnChangeLength}
+        onChangeFuseI2={onChangeFuseI2}
+      />
+    );
+
+    const input = screen.getByLabelText(/Prüfstrom I₂/i) as HTMLInputElement;
+    expect(input.value).toBe('54');
+
+    fireEvent.change(input, { target: { value: '60' } });
+    expect(onChangeFuseI2).toHaveBeenCalledWith('edge-1', 60);
+  });
+
+  it('leert den Prüfstrom, damit wieder die Produktnorm gilt', () => {
+    const onChangeFuseI2 = vi.fn();
+    render(
+      <EdgeInspector
+        edge={{ ...defaultEdge, data: { fuseSize: 40, fuseType: 'midi', i2A: 54 } }}
+        onChangeLength={mockOnChangeLength}
+        onChangeFuseI2={onChangeFuseI2}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Prüfstrom I₂/i), { target: { value: '' } });
+    expect(onChangeFuseI2).toHaveBeenCalledWith('edge-1', 0);
+  });
 });
 
 /**
@@ -118,5 +149,56 @@ describe('V2-INTENT-002: Verbindlichkeit', () => {
     render(<EdgeInspector edge={edge({})} onChangeLength={vi.fn()} onChangeIntent={onChangeIntent} />);
     fireEvent.click(screen.getByTestId('edge-intent-locked'));
     expect(onChangeIntent).toHaveBeenCalledWith('edge-1', 'locked');
+  });
+});
+
+describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
+  const acEdge = (data: CableEdgeData): Edge<CableEdgeData> => ({
+    id: 'edge-1',
+    source: 'node-1',
+    target: 'node-2',
+    data,
+  });
+
+  it('meldet die gewählte Polzahl und behält die übrigen Descriptor-Felder', () => {
+    const onChangeAcProtection = vi.fn();
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={onChangeAcProtection}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Polzahl/i), { target: { value: '2' } });
+    expect(onChangeAcProtection).toHaveBeenCalledWith(
+      'edge-1',
+      expect.objectContaining({ kind: 'mcb', characteristic: 'B', poles: 2 })
+    );
+  });
+
+  it('meldet den Fehlerstromtyp des RCBO und behält die übrigen Felder', () => {
+    const onChangeAcProtection = vi.fn();
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={onChangeAcProtection}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Fehlerstromtyp/i), { target: { value: 'B' } });
+    expect(onChangeAcProtection).toHaveBeenCalledWith(
+      'edge-1',
+      expect.objectContaining({ kind: 'rcbo', residualType: 'B' })
+    );
   });
 });
