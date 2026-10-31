@@ -15,8 +15,7 @@ export default function DatenschutzPage() {
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
         <p className="caption-sm mt-2 text-ink-soft">
-          Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von
-          elektroplaner-camper.de.
+          Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von 12v-planer.de.
         </p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">

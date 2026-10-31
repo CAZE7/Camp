@@ -118,7 +118,7 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       id: 'autor',
       heading: 'Autor: Jonas Rieckhoff',
       body: [
-        'Ich bin Jonas Rieckhoff, Selbstausbauer und Betreiber von elektroplaner-camper.de. Die Erfahrungswerte auf diesen Seiten stammen aus meinem eigenen Ausbau eines Ducato L2H2 — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.',
+        'Ich bin Jonas Rieckhoff, Selbstausbauer und Betreiber von 12v-planer.de. Die Erfahrungswerte auf diesen Seiten stammen aus meinem eigenen Ausbau eines Ducato L2H2 — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.',
         'Ich schreibe die Artikel als Erfahrungsberichte, nicht als generische Ratgeber. Jede Rechnung habe ich selbst nachgerechnet, jeder Fehler habe ich selbst gemacht und korrigiert. Wo ich keine eigene Messung habe, steht das als Annahme oder [PRÜFEN] daneben.',
       ],
     },

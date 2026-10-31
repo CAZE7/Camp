@@ -130,7 +130,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
       id: 'fehler-10',
       heading: 'Fehler 10: Verlegeart und Temperatur ignoriert',
       body: [
-        'Kabel im Bündel oder im warmen Motorraum tragen weniger als bei der Tabellenverlegeart. Der Tabellenwert der Strombelastbarkeit gilt für Verlegeart B2 bei 30 °C; das Derating 0,7 im elektroplaner-camper.de-Modell ist eine Annahme, kein Normwert.',
+        'Kabel im Bündel oder im warmen Motorraum tragen weniger als bei der Tabellenverlegeart. Der Tabellenwert der Strombelastbarkeit gilt für Verlegeart B2 bei 30 °C; das Derating 0,7 im 12v-planer.de-Modell ist eine Annahme, kein Normwert.',
         'Gegenmaßnahme: Bei Bündelung und hohen Umgebungstemperaturen den Derating-Faktor anwenden.',
       ],
     },
@@ -215,12 +215,12 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
     {
       label: 'Normen und Modellwerte',
       detail:
-        'ISO 13297:2020 § 8.1 (Hauptsicherung ≤ 0,2 m ab Pol, Small Craft; Praxisempfehlung) · DIN VDE 0298-4 (Strombelastbarkeit, Derating 0,7 als Modellannahme) · elektroplaner-camper.de-Modell (κ = 58, 3 % Spannungsfall).',
+        'ISO 13297:2020 § 8.1 (Hauptsicherung ≤ 0,2 m ab Pol, Small Craft; Praxisempfehlung) · DIN VDE 0298-4 (Strombelastbarkeit, Derating 0,7 als Modellannahme) · 12v-planer.de-Modell (κ = 58, 3 % Spannungsfall).',
     },
   ],
   assumptions: [
     'Die Liste basiert auf typischen Selbstausbau-Fehlern, nicht auf einer statistischen Erhebung.',
-    'Normwerte beziehen sich auf das elektroplaner-camper.de-Modell und sind keine Rechtsauskunft.',
+    'Normwerte beziehen sich auf das 12v-planer.de-Modell und sind keine Rechtsauskunft.',
   ],
   limits: [
     'Kein Ersatz für eine Prüfung durch eine Elektrofachkraft.',

@@ -15,7 +15,7 @@ export type ExportResult = { type: 'success' | 'error' | 'info'; message: string
  * seines Schaltplans in Forum oder Gruppe lädt, nennt die Quelle — dezent
  * unten rechts, ohne den Plan zu überdecken.
  */
-export const PLAN_WATERMARK_TEXT = 'Erstellt mit elektroplaner-camper.de';
+export const PLAN_WATERMARK_TEXT = 'Erstellt mit 12v-planer.de';
 export const PLAN_WATERMARK_SUBTEXT = 'Kostenloser 12V/24V Online-Planer';
 
 /** Badge-Geometrie in Fluss-Koordinaten (unten rechts in den Plan-Bounds). */
@@ -162,7 +162,7 @@ async function renderAndDownload(
       removeWatermark();
     }
     const link = document.createElement('a');
-    link.download = 'elektroplaner-camper-schaltplan.png';
+    link.download = '12v-planer-schaltplan.png';
     link.href = dataUrl;
     link.click();
     return {

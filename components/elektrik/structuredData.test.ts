@@ -99,9 +99,9 @@ describe('mit Basis-Pfad der Auslieferung', () => {
       const graph = module.buildElektrikPlanungJsonLd();
       const page = graph['@graph'].find((node) => node['@type'] === 'WebPage')!;
 
-      expect(page['@id']).toBe('https://elektroplaner-camper.de/Camp/elektrik-planung/#webpage');
-      expect(page['url']).toBe('https://elektroplaner-camper.de/Camp/elektrik-planung/');
-      expect(page['isPartOf']).toEqual({ '@id': 'https://elektroplaner-camper.de/Camp/#website' });
+      expect(page['@id']).toBe('https://12v-planer.de/Camp/elektrik-planung/#webpage');
+      expect(page['url']).toBe('https://12v-planer.de/Camp/elektrik-planung/');
+      expect(page['isPartOf']).toEqual({ '@id': 'https://12v-planer.de/Camp/#website' });
     } finally {
       vi.unstubAllEnvs();
       vi.resetModules();

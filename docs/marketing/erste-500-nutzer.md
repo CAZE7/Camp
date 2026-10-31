@@ -1,6 +1,8 @@
 # Die ersten 500 aktiven Nutzer — bevor SEO greift
 
-Stand: nach dem Canonical-Fix auf `https://elektroplaner-camper.de`. Bis Google
+Stand: nach dem Canonical-Fix auf `https://elektroplaner-camper.de`, seit dem
+2026-10-31 umgezogen auf `https://12v-planer.de` (Umzugs-Checkliste:
+`docs/seo/SEARCH-CONSOLE.md`). Bis Google
 die Seiten nach der Korrektur hochrankt, vergehen Wochen. Die ersten echten
 Nutzer kommen dorther, wo täglich nach genau dieser Lösung gefragt wird:
 Foren, Facebook-Gruppen, Reddit. Dieses Dokument ist die Arbeitsliste dafür —
@@ -10,21 +12,22 @@ Plan-Link ohne Konto).
 
 ## Sofort nach dem Deployment (einmalig, ca. 30 Minuten)
 
-1. Prüfen, dass die Auslieferung unter `https://elektroplaner-camper.de/`
+1. Prüfen, dass die Auslieferung unter `https://12v-planer.de/`
    antwortet und `public/CNAME` im Export liegt (`out/CNAME`). GitHub:
-   Repo → Settings → Pages → Custom domain = `elektroplaner-camper.de`,
+   Repo → Settings → Pages → Custom domain = `12v-planer.de`,
    „Enforce HTTPS“ aktivieren. DNS beim Registrar: A-Records auf die
    GitHub-Pages-IPs bzw. CNAME für `www` auf `caze7.github.io` — danach muss
-   `https://elektroplaner-camper.de/planer/` den Planer zeigen, nicht
+   `https://12v-planer.de/planer/` den Planer zeigen, nicht
    `…/Camp/planer/`.
-2. Google Search Console: Property `elektroplaner-camper.de` anlegen (falls
-   noch nicht geschehen), Sitemap `https://elektroplaner-camper.de/sitemap.xml`
+2. Google Search Console: Property `12v-planer.de` anlegen (falls
+   noch nicht geschehen), Sitemap `https://12v-planer.de/sitemap.xml`
    einreichen.
 3. Für `/`, `/planer/` und `/elektrik-planung/` manuell „Indexierung
-   beantragen“. Alte Property (`caze7.github.io`) nicht löschen — sie zeigt,
+   beantragen“. Alte Property (`caze7.github.io`, nach dem Umzug auch
+   `elektroplaner-camper.de`) nicht löschen — sie zeigt,
    ob noch irgendwo auf die alte Adresse verlinkt wird.
 4. Kontrollblick: Quelltext von `/planer/` muss als Canonical
-   `https://elektroplaner-camper.de/planer/` zeigen (nicht github.io).
+   `https://12v-planer.de/planer/` zeigen (nicht github.io).
    Genau dieser falsche Verweis hat die Domain aus dem Index geworfen.
 
 ## Der „Draw.io-Ersatz“ in Gruppen und Foren (laufend)
@@ -68,7 +71,7 @@ Subreddits: r/wohnmobil, r/camping, r/selbermachen.
   Welches Bauteil fehlt euch noch?“
 - Im Post: Was er rechnet (Querschnitt, Sicherung, Spannungsabfall), was er
   nicht tut (keine Elektroinstallation ersetzen, Grenzen nennen), Link auf
-  `https://elektroplaner-camper.de/planer/?template=kastenwagen`, damit
+  `https://12v-planer.de/planer/?template=kastenwagen`, damit
   niemand vor einer leeren Fläche landet.
 - Auf jede Antwort eingehen; Bauteil-Wünsche sammeln und sichtbar umsetzen.
   Der Thread ist Produktforschung, nicht nur Reichweite.

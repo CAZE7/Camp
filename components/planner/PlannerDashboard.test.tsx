@@ -619,7 +619,7 @@ describe('PlannerDashboard - Image Export', () => {
     await waitFor(() => {
       expect(toPng).toHaveBeenCalledWith(mockReactFlowElem, expect.any(Object));
       expect(createElementSpy).toHaveBeenCalledWith('a');
-      expect(mockLink.download).toBe('elektroplaner-camper-schaltplan.png');
+      expect(mockLink.download).toBe('12v-planer-schaltplan.png');
       expect(mockLink.href).toBe('data:image/png;base64,mocked');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
     });
