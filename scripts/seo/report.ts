@@ -496,7 +496,7 @@ function visionBlocks(): PdfBlock[] {
     {
       kind: 'list',
       items: [
-        'Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Diese Zahlen entstehen bei jedem Bau neu (docs/seo/AUDIT.md).',
+        'Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Der Bau prüft diese Zahlen (npm run seo:audit); in docs/seo/AUDIT.md landen sie erst durch einen eigenen Lauf von npx tsx scripts/seo/report.ts.',
         'Was nur die Search Console messen kann: Impressionen, Klicks, durchschnittliche Position je Anfrage, welche Seiten tatsächlich in den Index kommen. Der Ablauf steht in docs/seo/SEARCH-CONSOLE.md.',
         'Erfolgskriterium 90 Tage: Für die zehn wichtigsten Anfragen des Elektrik-Themas steht mindestens eine Seite in den Top-20 der Search Console, und der Planer erhält messbar mehr Aufrufe aus organischer Suche als vorher (Basiswert beim Anschließen festhalten).',
         'Erfolgskriterium Inhalt: Kein Cluster unter 700 Wörtern ohne JavaScript, jeder Rechner mit Formel, Annahmen, Grenzen und mindestens zwei Rechenbeispielen.',

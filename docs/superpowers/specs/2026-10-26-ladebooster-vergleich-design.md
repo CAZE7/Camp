@@ -456,6 +456,32 @@ selbst und besteht danach gegen seine eigene Datei. Ein Lauf hat hier 88 solche
 PNGs erzeugt; sie wurden gelöscht und nicht committet. Die optische Abnahme läuft
 deshalb über Screenshots und den Betreiber, nicht über diese Baselines.
 
+### Abnahme Paket 5 — gemessen am 2026-10-31
+
+Beide Exporte frisch gebaut (`353efd5` im Worktree `Camp-baseline` mit eigenem
+`npm ci`, `642400e` im Hauptbaum), ausgeliefert von `scripts/e2e/static-server.mjs`,
+aufgenommen mit Chromium/Playwright: Ganzseite, erster Bildschirm und eine
+35-%-Übersicht, je 375/768/1440 px in hell und dunkel.
+
+| Breite  | Seitenhöhe vorher | Seitenhöhe nachher | Veränderung |
+| ------- | ----------------- | ------------------ | ----------- |
+| 375 px  | 30.329 px         | 14.881 px          | −50,9 %     |
+| 768 px  | 17.881 px         | 10.081 px          | −43,6 %     |
+| 1440 px | 16.754 px         | 9.283 px           | −44,6 %     |
+
+Die ersten Bildschirme und die beiden 1440er-Übersichten liegen im Repo unter
+`docs/screenshots/abnahme-ladebooster-2026-10-31/` (14 PNGs, 2,3 MB) samt
+Herkunfts-README; die Ganzseiten in voller Auflösung bleiben aus Gewichtsgründen
+außerhalb des Repos. Der erste Bildschirm zeigt vorher nur Fließtext, nachher die
+Rangliste mit Filtern — das ist die Zusage, die M11-1 abnimmt.
+
+Weiter in Paket 5: ADR 0039 (`docs/adr/0039-vergleich-im-content-modell.md`) mit
+Eintrag in der README-Tabelle; die falsche Behauptung in `scripts/seo/report.ts`
+(„Diese Zahlen entstehen bei jedem Bau neu") korrigiert — der Bau prüft die Zahlen
+(`auditExport`), schreibt sie aber nicht nach `docs/seo/AUDIT.md`, das tut nur ein
+eigener Lauf von `report.ts`. Die drei Berichte samt PDFs werden danach in einem
+eigenen Commit neu erzeugt.
+
 ## 12. Abweichungen und Ergänzungen während der Umsetzung
 
 Der Entwurf oben ist die Absicht; hier steht, was beim Bauen anders wurde und
@@ -498,13 +524,17 @@ falscher Zusage wie der Kommentar in `jsonLd.ts`.
 
 ## 14. Bewusst nicht ändern
 
-- Keine Sterne, keine Noten, kein „Testsieger". Der Satz „Die Tabelle bewertet keine
-  Geräte mit Sternen" (`LadeboosterVergleich.tsx:290-294`) bleibt und wird
-  sichtbarer platziert — er ist ein Vertrauensargument.
+- Keine Sterne, keine Noten, kein „Testsieger". Der Satz steht als `noRatingNote`
+  über der Rangliste (`lib/seo/comparisons/ladebooster.ts:207-208`) — sichtbarer als
+  vorher, wo er mitten in der alten Komponente stand (`LadeboosterVergleich.tsx:290-294`,
+  Datei in Paket 3 gelöscht). Er ist ein Vertrauensargument.
 - Keine Affiliate-Links; es bleibt bei Hersteller-Datenblättern und neutralen
-  Preisportalen (`LadeboosterVergleich.tsx:1188-1190`).
+  Preisportalen (`QUELLEN_HERSTELLER`/`QUELLEN_PREISE`,
+  `lib/seo/comparisons/ladebooster.ts:21` und `:134`).
 - Kein `Review`-, `Offer`- oder `aggregateRating`-Schema: nichts davon ist auf der
-  Seite belegt, und `lib/seo/jsonLd.ts:11-16` verbietet Schema ohne sichtbaren Beleg.
-- Die Rechenformel des Ladestrom-Rechners bleibt inhaltlich unverändert (G12).
-- Das Schaltplan-SVG bleibt, nur ohne inline wiederholte `fontFamily`-Attribute.
+  Seite belegt, und `lib/seo/jsonLd.ts` verbietet Schema ohne sichtbaren Beleg.
+- Die Rechenformel des Ladestrom-Rechners bleibt inhaltlich unverändert (G12);
+  ihr Ort ist jetzt `lib/boosterSizing.ts`.
+- Das Schaltplan-SVG entfällt (siehe §12); seine drei Aussagen stehen als Text und
+  Definition im Abschnitt `leitung`.
 - `SeoPage` behält seine bestehenden Slots `afterHeader` und `children`.
