@@ -325,10 +325,15 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
 export const TECHNICAL_PAGES: readonly string[] = ['/404/', '/_not-found/'];
 
 /** Strukturierte Daten, die jede inhaltsgetriebene Seite trägt. */
-function structuredDataOf(hasFaq: boolean, hasCalculator: boolean): StructuredDataType[] {
+function structuredDataOf(
+  hasFaq: boolean,
+  hasCalculator: boolean,
+  hasComparison: boolean
+): StructuredDataType[] {
   const types: StructuredDataType[] = ['WebPage', 'BreadcrumbList'];
   if (hasFaq) types.push('FAQPage');
   if (hasCalculator) types.push('WebApplication');
+  if (hasComparison) types.push('ItemList');
   return types;
 }
 
@@ -348,7 +353,11 @@ function entryOfContent(page: (typeof CONTENT_PAGES)[number]): PageEntry {
     topicId: page.topicId,
     priority: page.priority,
     targetQueries: queriesForPage(page.path),
-    structuredData: structuredDataOf((page.faq?.length ?? 0) > 0, hasCalculator),
+    structuredData: structuredDataOf(
+      (page.faq?.length ?? 0) > 0,
+      hasCalculator,
+      page.comparison !== undefined
+    ),
     sitemap: { changeFrequency: page.changeFrequency, priority: page.sitemapPriority },
     source: `lib/seo/content/${page.slug}.ts`,
     title: page.title,

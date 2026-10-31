@@ -10,10 +10,19 @@
  *
  * Grundsätze:
  *   - Verweise über `@id`, nicht über wiederholte Adressen.
- *   - Nur Typen, die der sichtbare Inhalt belegt (keine Bewertungen, keine
- *     Autoren, keine Preise — es gibt sie in Camp nicht).
+ *   - Nur Typen, die der sichtbare Inhalt belegt: keine Bewertungen, keine
+ *     Autoren, keine Angebote.
  *   - Texte kommen aus derselben Quelle wie die Anzeige; sonst beschreibt die
  *     Maschinenfassung etwas anderes als die Seite.
+ *
+ * Zu Preisen — hier stand früher „keine Preise, es gibt sie in Camp nicht".
+ * Das stimmt seit dem Ladebooster-Vergleich nicht mehr: Neun Geräte stehen mit
+ * beobachteten Straßenpreisen und Stichtag sichtbar auf der Seite. Ins Schema
+ * kommen sie trotzdem nicht, und das ist eine Entscheidung, keine Lücke: Ein
+ * `Offer` ist eine maschinelle Zusage, die niemand nachzieht, wenn der Preis
+ * fällt — und `checkStructuredData` verbietet zusätzlich jede fremde Adresse
+ * (`json-ld-adresse`), also auch `sameAs` auf Händler- oder Herstellerseiten.
+ * Sichtbar mit Stand-Datum, maschinell gar nicht, ist die ehrlichere Hälfte.
  */
 
 import { siteNodeId, siteUrl } from '@/lib/site';
@@ -146,6 +155,64 @@ export function webApplicationNode(input: {
     isAccessibleForFree: true,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
     ...(input.features && input.features.length > 0 ? { featureList: [...input.features] } : {}),
+  };
+}
+
+/**
+ * Ein Produkt der Vergleichsliste. Bewusst ohne `offers`, `review` und
+ * `aggregateRating` — die Begründung steht im Dateikopf.
+ */
+export type JsonLdProduct = {
+  /** Anker des Produkts im Dokument (`p-<kennung>`) — wird zur `@id`. */
+  anchor: string;
+  name: string;
+  brand: string;
+  /** Merkmale, die sichtbar in der Tabelle oder der Produktkarte stehen. */
+  properties: readonly { name: string; value: string | number; unitText?: string }[];
+};
+
+/**
+ * Produktliste als `ItemList`.
+ *
+ * Die Produkte stehen INLINE in den Listeneinträgen, nicht als eigene Knoten im
+ * `@graph`. Das ist keine Geschmacksfrage: `checkStructuredData` verlangt je
+ * angekündigtem Typ genau einen Knoten (`json-ld-inventar`), neun
+ * `Product`-Knoten auf oberster Ebene wären also neun. Inline ist
+ * schema.org-konform und lässt die Zusage des Prüfers unverändert.
+ *
+ * Die Reihenfolge kommt sortiert vom Aufrufer (`lib/seo/comparisons/schema.ts`)
+ * und ist dieselbe wie in der Rangliste der Seite.
+ */
+export function itemListNode(input: {
+  path: string;
+  name: string;
+  description: string;
+  products: readonly JsonLdProduct[];
+}): JsonLdNode {
+  return {
+    '@type': 'ItemList',
+    '@id': pageNodeId(input.path, 'geraeteliste'),
+    url: siteUrl(input.path),
+    name: input.name,
+    description: input.description,
+    inLanguage: 'de-DE',
+    numberOfItems: input.products.length,
+    itemListElement: input.products.map((product, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Product',
+        '@id': pageNodeId(input.path, product.anchor),
+        name: product.name,
+        brand: { '@type': 'Brand', name: product.brand },
+        additionalProperty: product.properties.map((property) => ({
+          '@type': 'PropertyValue',
+          name: property.name,
+          value: property.value,
+          ...(property.unitText ? { unitText: property.unitText } : {}),
+        })),
+      },
+    })),
   };
 }
 

@@ -70,7 +70,22 @@ test('Ladebooster-Vergleich liefert Inhalt ohne JavaScript', async ({ page }) =>
   await page.goto('/camper-elektrik/ladebooster/');
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText(h1Of('/camper-elektrik/ladebooster/'));
+
+  // Der Vergleich steht VOR dem Ratgebertext und ist ohne Skript vollständig
+  // lesbar: Rangliste, Entscheidungshilfe, Karten mit Belegen.
   await expect(page.locator('main')).toContainText('Ladebooster im Vergleich: 30, 60 oder 90 A?');
-  await expect(page.locator('main')).toContainText('Die Kurzentscheidung');
   await expect(page.locator('main')).toContainText('Geräteüberblick');
+  await expect(page.locator('main')).toContainText('Welcher passt zu mir?');
+  await expect(page.locator('main')).toContainText('Die Geräte im Detail');
+  await expect(page.locator('[data-vergleich-liste="karten"] > article')).toHaveCount(9);
+
+  // Die Steuerknöpfe kommen mit `hidden` vom Server und werden erst vom Skript
+  // eingeblendet. Ohne JavaScript darf es sie nicht geben — ein Filter, der
+  // nichts tut, wäre schlechter als keiner.
+  await expect(page.getByRole('button', { name: '50–70 A', includeHidden: true })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '50–70 A' })).toHaveCount(0);
+
+  // Der Ratgeber steht dahinter, nicht davor.
+  await expect(page.locator('main')).toContainText('Trennrelais oder Ladebooster: die Entscheidung');
+  await expect(page.locator('main')).toContainText('Messen nach dem Einbau');
 });

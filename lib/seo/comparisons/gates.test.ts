@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { LADEBOOSTER_CONTENT } from '../content/ladebooster';
 import { LADEBOOSTER_VERGLEICH } from './ladebooster';
 import {
   attributLuecken,
@@ -14,13 +15,14 @@ import {
   vergleichsTexte,
   woerter,
   wortBudget,
+  WORTBUDGET_RATGEBER,
   WORTBUDGET_VERGLEICH,
 } from './gates';
 import type { ComparisonProduct, ComparisonSpec } from './types';
 
 /**
  * Die drei Wiederholungen, die im Bestand tatsächlich standen —
- * `components/seo/LadeboosterVergleich.tsx` vor dem Umbau. Sie sind hier
+ * `components/seo/LadeboosterVergleich.tsx`, mit Paket 3 gelöscht. Sie sind hier
  * Fixtures, keine ausgedachten Beispiele: Eine Regel, die den Fehler nicht
  * meldet, den sie verhindern soll, ist Dekoration.
  */
@@ -274,12 +276,30 @@ describe('Ladebooster-Vergleich hält die Gates', () => {
     expect(attributLuecken(LADEBOOSTER_VERGLEICH)).toHaveLength(0);
   });
 
-  it('wiederholt keine Aussage — auch nicht über die Quellenliste hinweg', () => {
+  it('wiederholt keine Aussage — auch nicht zwischen Vergleich und Ratgeber', () => {
     const funde = doppelteAussagen([
       { name: 'Vergleich', texte: vergleichsTexte(LADEBOOSTER_VERGLEICH) },
       { name: 'Quellen', texte: quellenTexte(LADEBOOSTER_VERGLEICH) },
+      { name: 'Ratgeber', texte: ratgeberTexte(LADEBOOSTER_CONTENT) },
     ]);
     expect(funde).toEqual([]);
+  });
+
+  it('bleibt im Wortbudget des Ratgebers und der FAQ-Antworten', () => {
+    const texte = ratgeberTexte(LADEBOOSTER_CONTENT);
+    expect(wortBudget(texte, WORTBUDGET_RATGEBER, 'Ratgeber')).toEqual([]);
+    expect(faqZuLang(LADEBOOSTER_CONTENT)).toEqual([]);
+    // Gegenstück zur Mindestschwelle des Exports (THIN_WORDS = 300): Verdichten
+    // darf nicht in eine leere Seite münden.
+    expect(woerter(texte.join(' '))).toBeGreaterThanOrEqual(300);
+  });
+
+  it('trägt den Vergleich im Inhalt und den Ladestrom-Rechner im Ratgeber', () => {
+    expect(LADEBOOSTER_CONTENT.comparison).toBe(LADEBOOSTER_VERGLEICH);
+    expect(LADEBOOSTER_CONTENT.sections).toHaveLength(4);
+    expect(
+      LADEBOOSTER_CONTENT.sections.filter((abschnitt) => abschnitt.calculator === 'ladestrom')
+    ).toHaveLength(1);
   });
 
   it('bleibt im Wortbudget der Vergleichszone', () => {

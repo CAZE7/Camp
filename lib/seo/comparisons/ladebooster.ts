@@ -203,7 +203,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
   id: 'ladebooster',
   heading: 'Ladebooster im Vergleich: 30, 60 oder 90 A?',
   tableLabel: 'Geräteüberblick',
-  tableCaption: 'Neun Ladebooster von 30 bis 120 A, sortierbar nach Ladestrom und Preis.',
+  tableCaption: 'Neun Ladebooster von 30 bis 110 A, sortierbar nach Ladestrom und Preis.',
   noRatingNote:
     'Keine Sterne, keine Noten, kein Testsieger. Die Rangliste nennt Daten, Preise und die Punkte, an denen ich hängen geblieben bin. Diese Seite enthält keine Affiliate-Links und keine Shop-Empfehlung.',
   priceAsOf:

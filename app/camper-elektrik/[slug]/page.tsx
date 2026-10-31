@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { metadataFor } from '@/app/seoMetadata';
-import { LadeboosterVergleich } from '@/components/seo/LadeboosterVergleich';
 import { SeoPage } from '@/components/seo/SeoPage';
 import { CONTENT_PAGES } from '@/lib/seo/content';
 import type { SeoPageContent } from '@/lib/seo/types';
@@ -18,6 +17,10 @@ import type { SeoPageContent } from '@/lib/seo/types';
  * Warum eine Route statt elf Dateien: Elf Dateien mit identischem Gerüst wären
  * elf Gelegenheiten, eine Brotkrume oder die strukturierte Beschreibung zu
  * vergessen. Der Inhalt bleibt trotzdem je Seite eigenständig.
+ *
+ * Es gibt hier deshalb auch keine Ausnahme pro Thema mehr: Ein Produktvergleich
+ * steht als `comparison` im Inhalt und wird vom Gerüst gerendert
+ * (`components/seo/SeoPage.tsx`) — dieselbe Zustellung für alle Seiten.
  */
 
 const PILLAR_PFAD = '/camper-elektrik/';
@@ -47,5 +50,5 @@ export default async function Themenseite({ params }: { params: Promise<{ slug: 
   const page = THEMEN.find((entry) => entry.slug === slug);
   if (!page) notFound();
 
-  return <SeoPage page={page}>{slug === 'ladebooster' ? <LadeboosterVergleich /> : null}</SeoPage>;
+  return <SeoPage page={page} />;
 }

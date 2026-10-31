@@ -1,28 +1,26 @@
 /**
  * lib/seo/content/ladebooster.ts — Themenseite `/camper-elektrik/ladebooster/`.
  *
- * Sie beantwortet die Frage, die vor jedem Booster-Einbau steht: Braucht die
- * Bordbatterie überhaupt einen Ladebooster, oder tut es ein Trennrelais? Und
- * wenn ja — 30 A oder 50 A, und welcher Querschnitt gehört dazu?
+ * Die Seite vergleicht zuerst und erklärt danach. Der Gerätevergleich steht als
+ * `comparison` im Export VOR diesen Abschnitten (Gate G4); die vier Abschnitte
+ * erklären die Entscheidung dahinter: Relais oder Booster, welche Stromklasse,
+ * welche Leitung, welche Messung.
  *
- * Zwei Zusagen dieser Seite:
- *   1. Alle Querschnitte, Sicherungen und Spannungsfälle in der Tabelle werden
+ * Zwei Zusagen:
+ *   1. Alle Querschnitte, Sicherungen und Spannungsfälle in den Tabellen werden
  *      beim Import aus `lib/cableSizing.ts` GERECHNET, nicht getippt. Eine
  *      Themenseite, die andere Zahlen zeigt als der Rechner daneben, wäre
  *      schlimmer als keine Tabelle.
- *   2. Kein Markenvergleich. Die Seite nennt Bauformen, Ströme und
- *      Anschlussbedingungen; Produktdaten (Wirkungsgrad eines konkreten
- *      Geräts, Kabelquerschnitt der Herstellerempfehlung) stammen aus
- *      Datenblättern und stehen nicht im Modell.
+ *   2. Der Gerätevergleich wird hier nicht nacherzählt. Geräte, Preise,
+ *      Datenblatt-Widersprüche und Forenfunde stehen in
+ *      `lib/seo/comparisons/ladebooster.ts`; Gate G1 meldet jede Aussage ab 60
+ *      Zeichen und jede gemeinsame Wortfolge ab 6 Wörtern, die in beiden
+ *      Schichten steht.
  */
 
 import { sizeCable } from '@/lib/cableSizing';
-import {
-  DERATE_FACTOR,
-  FUSE_MAX_UNPROTECTED_LENGTH_M,
-  VOLTAGE_DROP_PCT_PLAN_LIMIT,
-  calculateMaxFuse,
-} from '@/lib/electrical';
+import { DERATE_FACTOR, FUSE_MAX_UNPROTECTED_LENGTH_M, VOLTAGE_DROP_PCT_PLAN_LIMIT } from '@/lib/electrical';
+import { LADEBOOSTER_VERGLEICH } from '../comparisons/ladebooster';
 
 import type { SeoPageContent } from '../types';
 
@@ -43,6 +41,10 @@ const CRITERION_LABELS: Record<string, string> = {
  * Die Bemessungstabelle: Ladestrom, Leitungslänge, Querschnitt, Spannungsfall,
  * Sicherung — alles aus dem Modell, nichts von Hand.
  *
+ * Die drei Ströme sind die drei Klassen, um die es auf dieser Seite geht
+ * (30, 60 und 90 A — gerechnet mit 50 A, weil das die nächstliegende
+ * Normstufe zwischen 30 und 90 ist und die Geräte dort liegen).
+ *
  * Gerechnet wird die EINFACHE Länge (Batterie → Booster) bei 12 V; das Modell
  * verdoppelt sie intern für Hin- und Rückleitung. Beispiel: Der Kastenwagen
  * mit 30-A-Booster hinter dem Fahrersitz liegt bei 4 bis 6 m einfacher Länge.
@@ -54,6 +56,9 @@ const KABEL_BEISPIELE: readonly { currentA: number; lengthM: number }[] = [
   { currentA: 50, lengthM: 2 },
   { currentA: 50, lengthM: 4 },
   { currentA: 50, lengthM: 6 },
+  { currentA: 90, lengthM: 2 },
+  { currentA: 90, lengthM: 4 },
+  { currentA: 90, lengthM: 6 },
 ];
 
 const KABEL_ROWS = KABEL_BEISPIELE.map(({ currentA, lengthM }) => {
@@ -68,121 +73,123 @@ const KABEL_ROWS = KABEL_BEISPIELE.map(({ currentA, lengthM }) => {
   ];
 });
 
-/** Querschnitt für Strom und Länge als Text — dieselbe Rechnung wie die Tabelle unten. */
-const querschnitt = (currentA: number, lengthM: number): string =>
-  `${de(sizeCable(currentA, lengthM).crossSectionMm2)} mm²`;
-
-/** Größte zulässige Sicherung eines Querschnitts als Text (Modellwert). */
-const maxSicherung = (crossSectionMm2: number): string => `${calculateMaxFuse(crossSectionMm2)} A`;
-
-/** Werte, die auch in FAQ und Fließtext auftauchen — aus derselben Rechnung. */
+/** Werte, die auch in der FAQ auftauchen — aus derselben Rechnung. */
 const BEISPIEL_30A_2M = sizeCable(30, 2);
 const BEISPIEL_30A_6M = sizeCable(30, 6);
 const BEISPIEL_50A_4M = sizeCable(50, 4);
 
 /** Der Text der Querschnitts-FAQ, vollständig aus dem Modell abgeleitet. */
 const FAQ_KABELQUERSCHNITT =
-  `Der Querschnitt folgt aus zwei Grenzen, und die strengere gewinnt. Mit ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % ` +
-  `Planungsgrenze und dem Derating von ${DERATING_DE} fordert das Modell bei 30 A über 2 m Leitung ` +
-  `${de(BEISPIEL_30A_2M.crossSectionMm2)} mm² (Spannungsfall der gewählten Leitung ` +
-  `${de(BEISPIEL_30A_2M.voltageDropPercent)} %), über 6 m ${de(BEISPIEL_30A_6M.crossSectionMm2)} mm² — ` +
-  `und bei 50 A über 4 m ${de(BEISPIEL_50A_4M.crossSectionMm2)} mm². Maßgeblich ist immer der größere ` +
-  `der beiden Werte: Die Strombelastbarkeit fordert bei 30 A dauerhaft mindestens ` +
-  `${de(sizeCable(30, 2).requiredCrossSectionMm2)} mm², der Spannungsfall wächst mit der Länge.`;
+  `Mit ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % Planungsgrenze und Derating ${DERATING_DE} fordert das Modell ` +
+  `bei 30 A über 2 m ${de(BEISPIEL_30A_2M.crossSectionMm2)} mm², über 6 m ` +
+  `${de(BEISPIEL_30A_6M.crossSectionMm2)} mm² und bei 50 A über 4 m ` +
+  `${de(BEISPIEL_50A_4M.crossSectionMm2)} mm². Maßgeblich ist der größere Wert aus ` +
+  `Strombelastbarkeit und Spannungsfall.`;
 
 export const LADEBOOSTER_CONTENT: SeoPageContent = {
   path: '/camper-elektrik/ladebooster/',
   slug: 'ladebooster',
   topicId: 'ladebooster',
   kind: 'cluster',
-  title: 'Ladebooster im Camper: Vergleich 30–90 A',
+  title: 'Ladebooster-Vergleich: 9 Geräte, 30–110 A',
   description:
-    'Ladebooster auslegen und vergleichen: 30, 60 oder 90 A, Victron, Votronic, ECTIVE, Schaudt, Renogy und Sterling – mit Preisen, Forenwissen und Rechenweg.',
-  h1: 'Ladebooster im Camper auslegen',
-  lead: 'Der Ladebooster löst ein Problem, das ein Trennrelais offen lässt: Er lädt die Bordbatterie während der Fahrt mit geregeltem Strom und passender Kennlinie — auch dann, wenn die Lichtmaschine oder eine lange Leitung es sonst nicht zulassen. Diese Seite zeigt, wann welcher Ladestrom passt, welcher Querschnitt dazugehört — und welches Gerät in welcher Klasse sinnvoll ist. Der Gerätevergleich weiter unten ordnet 30, 60 und 90 A sowie die wichtigsten Geräte ein.',
+    'Neun Ladebooster mit Ladestrom, Preis, D+-Bedingung und Datenblattlage — plus Querschnitt, Sicherung und ein Rechner für die passende Stromklasse.',
+  h1: 'Ladebooster vergleichen und auslegen',
+  lead: 'Oben stehen die Geräte mit Ladestrom, Preis, Steuerleitung und Datenblattlage — sortierbar und mit Belegen. Darunter die Auslegung: Trennrelais oder Booster, welche Stromklasse zur Batterie passt, welche Leitung und welche Sicherung dazugehören und was nach dem Einbau gemessen wird.',
   priority: 'P2',
   changeFrequency: 'monthly',
   sitemapPriority: 0.7,
   contentRevision: '2026-10',
+  comparison: LADEBOOSTER_VERGLEICH,
   sections: [
     {
       id: 'relais-oder-booster',
       heading: 'Trennrelais oder Ladebooster: die Entscheidung',
       body: [
-        'Ein Trennrelais verbindet Starter- und Bordbatterie direkt, sobald der Motor läuft. Damit ist der Ladestrom nicht geregelt: Er stellt sich aus dem Spannungsunterschied und dem Widerstand der Leitungen ein. Das funktioniert, solange die Bordbatterie eine Bleibatterie ist und die Leitung kurz — beide Batterien vertragen die entstehende Spannungslage.',
-        'Ein Ladebooster setzt dazwischen ein eigenes Ladegerät: Er nimmt die Spannung der Lichtmaschine und gibt sie mit einer Ladekennlinie auf einem eingestellten Niveau an die Bordbatterie weiter. Das ist mehr als Bequemlichkeit — es ist bei LiFePO4 die Voraussetzung dafür, dass die Batterie überhaupt voll wird und die Lichtmaschine nicht überlastet.',
+        'Ein Trennrelais verbindet Starter- und Bordbatterie, sobald der Motor läuft. Der Ladestrom ist nicht geregelt — er stellt sich aus dem Spannungsunterschied und dem Widerstand der Leitungen ein. Bei einer Bleibatterie und einer kurzen Leitung kann das genügen.',
+        'Ein Booster setzt ein eigenes Ladegerät dazwischen und gibt die Spannung mit einer Ladekennlinie weiter. Bei LiFePO4 ist das die Voraussetzung dafür, dass die Batterie überhaupt voll wird: Ohne Regelung bestimmt die Lichtmaschine den Strom, und sie arbeitet dann außerhalb ihres Auslegungspunkts.',
       ],
       list: {
         items: [
-          'Bleibatterie (AGM/Gel), kurze Leitung, einfache Anlage: Das Relais kann genügen — der Ladestrom bleibt begrenzt und die Batterie nimmt die Spannung der Lichtmaschine an.',
-          'LiFePO4-Bordbatterie: Ein Ladebooster ist der Regelfall. Ohne ihn begrenzt nur der Leitungswiderstand den Strom, und die Lichtmaschine arbeitet außerhalb ihres Auslegungspunkts.',
-          'Moderne Lichtmaschinen mit Spannungsmanagement (Euro 6d und neuer) regeln die Ladespannung im Teillastbetrieb bewusst herunter — häufig so weit, dass eine Bordbatterie über eine lange Leitung nicht mehr voll wird. Der Booster hebt die Spannung auf das Niveau an, das die Batterie laut ihrer Kennlinie braucht.',
-          'Lange Leitungen (Heckgarage statt Fahrersitz) oder zwei parallel geladene Batteriebanken: Der Booster macht den Ladestrom unabhängig vom Spannungsabfall der Leitung.',
+          'Geregelte Lichtmaschine (Euro 6d und neuer): Sie fährt die Ladespannung im Teillastbetrieb bewusst herunter, häufig so weit, dass eine Bordbatterie über eine lange Leitung nicht mehr voll wird. Der Booster hebt sie auf das Niveau der Kennlinie.',
+          'Lange Leitung oder zwei Banken: Der Booster macht den Ladestrom unabhängig vom Spannungsabfall der Leitung.',
+          'Zwei Geräte parallel sind erlaubt, teilen die Last aber nicht von selbst — kleine Toleranzen entscheiden, welches zuerst in die Strombegrenzung läuft. Abhilfe sind gleiche Leitungslängen und ein gemeinsamer Abgreifpunkt, keine Einstellung.',
+          'Ein Relais an einer LiFePO4-Bank ist der häufigste Fehlgriff: Die Batterie wird nie voll, und die Lichtmaschine wird warm.',
         ],
       },
       callout: {
         tone: 'info',
-        text: 'Ein Booster ersetzt keine Sicherung und keinen Querschnitt: Er begrenzt seinen Ausgangsstrom, seine Zuleitung von der Starterbatterie führt aber weiterhin den vollen Eingangsstrom plus Verluste. Gerechnet wird die Zuleitung mit dem Eingangsstrom.',
+        text: 'Ein Booster ersetzt keine Sicherung und keinen Querschnitt. Er begrenzt seinen Ausgangsstrom; die Zuleitung von der Starterbatterie führt aber den vollen Eingangsstrom und wird mit diesem Wert bemessen.',
       },
     },
     {
-      id: 'ladestrom',
-      heading: 'Wie viel Ladestrom: 30 A oder 50 A',
+      id: 'stromklasse',
+      heading: 'Welche Stromklasse: 30, 60 oder 90 A',
       body: [
-        'Der Ladestrom bestimmt, wie viel Fahrzeit eine leere Bordbatterie braucht. Die Rechnung ist einfach: Kapazität geteilt durch Strom — 100 Ah mit 30 A sind gut drei Stunden, mit 50 A zwei. Dazu kommt die Konstantspannungsphase am Ende, in der der Strom von selbst sinkt und die letzten Prozent langsamer fließen; praktisch landen 100 Ah deshalb bei etwa vier Stunden mit dem 30-A-Booster und gut zweieinhalb mit dem 50-A-Gerät.',
-        'Gegen den größeren Booster sprechen nicht die Kosten allein: Der Ladestrom muss zur Batterie passen (LiFePO4-Datenblätter nennen häufig 0,3 bis 0,5 C als Dauerstrom, also 30 bis 50 A bei 100 Ah), zur Lichtmaschine und zur Zuleitung.',
-        'Die Faustregel, die aus beidem folgt: Der Booster darf den Ladestrom der Batterie ausschöpfen, aber nicht überfordern. Wer dauerhaft mit 50 A in eine 100-Ah-Batterie lädt, fährt am oberen Rand des Datenblattwerts — wer mit 30 A lädt, liegt sicher darunter und braucht eine Querschnittsstufe weniger. Die folgende Gegenüberstellung zeigt, was das für Fahrzeit und Leitung bedeutet.',
+        'Die C-Rate ist der Ladestrom als Vielfaches der Nennkapazität: 30 A an 330 Ah sind 0,09 C, 90 A sind 0,27 C. LiFePO4-Datenblätter nennen als Dauerladestrom meist 0,3 bis 0,5 C — das ist das Fenster, in dem die Klasse zur Batterie passen muss.',
+        '100 Ah ab leer brauchen mit 30 A gut drei Stunden und mit 50 A zwei; die Konstantspannungsphase am Ende kommt dazu, weil der Strom dort von selbst sinkt. Der Rechner rechnet beides für deine Bank und prüft gleichzeitig die Lichtmaschine — denn die ist die Grenze, nicht das Gerät.',
       ],
-      table: {
-        caption:
-          'Ladeleistung, Fahrzeit und Zuleitungsquerschnitt im Vergleich (gerechnet mit dem Modell dieser Auslieferung)',
-        head: [
-          'Ladestrom',
-          'Fahrzeit für 100 Ah ab leer',
-          'Kabelquerschnitt ab 4 m',
-          'Kabelquerschnitt ab 6 m',
-        ],
-        rows: [
-          ['20 A', 'gut 5 Stunden', querschnitt(20, 4), querschnitt(20, 6)],
-          ['30 A', 'etwa 4 Stunden', querschnitt(30, 4), querschnitt(30, 6)],
-          ['50 A', 'etwa 2,5 Stunden', querschnitt(50, 4), querschnitt(50, 6)],
-        ],
-        note: 'Fahrzeiten ohne Konstantspannungsphase (die letzten 20 bis 30 % Füllstand fließen langsamer) und ohne Solar-Ertrag während der Fahrt. Die Querschnitte stammen aus der Bemessungstabelle unten — dieselbe Rechnung für dieselben Ströme.',
+      calculator: 'ladestrom',
+      definitions: [
+        {
+          term: 'Bedarfsstrom',
+          description:
+            'Was das Gerät abgeben müsste, damit die Batterie nach der Fahrzeit voll ist. Ein kleineres Gerät lädt ebenfalls, nur länger.',
+        },
+        {
+          term: 'Eingangsstrom',
+          description:
+            'Ausgangsstrom geteilt durch den Wirkungsgrad, zuzüglich der Fahrzeuglast. Ein 90-A-Booster zieht eingangsseitig rund 100 A; die Zuleitung von der Starterbatterie wird mit diesem Wert bemessen.',
+        },
+        {
+          term: 'Drosselung',
+          description:
+            'Geräte mit einstellbarem Strom lassen sich zurücknehmen, sobald die Lichtmaschine warm wird. Das ist Reserve für den Winter, ohne dauerhaft am Limit zu fahren.',
+        },
+      ],
+      callout: {
+        tone: 'info',
+        text: 'Mein Ausbau: 330 Ah LiFePO4, Induktionskochfeld über Wechselrichter, Euro-6-Fahrzeug mit geregelter Lichtmaschine. 30 A sind daran 0,09 C — zwei Stunden Fahrt brachten rechnerisch 0,8 kWh, das Kochfeld braucht 1 bis 2 kWh am Tag. 60 A waren der härteste Gegenkandidat mit 0,18 C. Geworden sind es 90 A, die ich bei warmer Lichtmaschine auf 75 A zurücknehme.',
       },
     },
     {
-      id: 'leitungen',
-      heading: 'Kabelquerschnitt: was die Leitung leisten muss',
+      id: 'leitung',
+      heading: 'Kabel, Sicherung und Steuerleitung',
       body: [
-        'Die Zuleitung zum Booster ist der anspruchsvollste Teil der Anlage: Sie führt den vollen Ladestrom über die größte Strecke im Fahrzeug und darf dabei nur wenige Prozent Spannung verlieren. Gerechnet wird mit zwei Grenzen — der Strombelastbarkeit der Leitung (DIN VDE 0298-4 mit einem Derating von ' +
+        'Die Zuleitung zum Booster ist der anspruchsvollste Teil der Anlage: Sie führt den vollen Ladestrom über die größte Strecke im Fahrzeug. Gerechnet wird mit zwei Grenzen — der Strombelastbarkeit nach DIN VDE 0298-4 mit einem Derating von ' +
           DERATING_DE +
-          ' für Bündelung und Wärme im Motorraum) und dem Spannungsfall als Planungsgrenze (' +
+          ' für Bündelung und Wärme im Motorraum und dem Spannungsfall als Planungsgrenze von ' +
           VOLTAGE_DROP_PCT_PLAN_LIMIT +
-          ' % der Nennspannung). Maßgeblich ist das größere der beiden Ergebnisse.',
+          ' % der Nennspannung. Maßgeblich ist das größere der beiden Ergebnisse.',
+        'Der häufigste Fehler ist ein Querschnitt nach dem Ausgangsstrom, obwohl die Eingangsleitung den höheren Strom führt. Der zweithäufigste ist eine Sicherung am Booster statt am Batteriepol: Dann liegt die längste ungeschützte Strecke direkt an der Quelle.',
       ],
-      // (Der Absatz zur Spalte „Bestimmt durch" steht unten in `subsections` —
-      // nach der Tabelle, weil er sich auf ihre Spalten bezieht.)
       table: {
         caption:
           'Bemessung der Zuleitung bei 12 V, einfache Länge (Batterie → Booster), gerechnet mit dem Modell dieser Auslieferung',
         head: ['Ladestrom', 'Länge (einfach)', 'Querschnitt', 'Spannungsfall', 'Sicherung', 'Bestimmt durch'],
         rows: KABEL_ROWS,
-        note: `Fortsetzung: Bei 30 A über 8 m fordert die Rechnung ${de(sizeCable(30, 8).crossSectionMm2)} mm², bei 50 A über 8 m ${de(sizeCable(50, 8).crossSectionMm2)} mm². Alle Werte sind Normgrößen der Reihe 1,5 bis 70 mm²; ist mehr nötig, meldet der Planer das statt zu runden.`,
+        note: `Über 8 m fordert dieselbe Rechnung ${de(sizeCable(30, 8).crossSectionMm2)} mm² bei 30 A und ${de(sizeCable(90, 8).crossSectionMm2)} mm² bei 90 A. Alle Werte sind Normgrößen der Reihe 1,5 bis 70 mm²; ist mehr nötig, meldet der Planer das statt zu runden.`,
       },
-      subsections: [
+      definitions: [
         {
-          heading: 'Welche Grenze den Querschnitt bestimmt',
-          body: [
-            'Die Spalte „Bestimmt durch" ist die eigentliche Lehre der Tabelle: Bei kurzen Leitungen und hohem Strom entscheidet die Strombelastbarkeit, ab einer gewissen Länge der Spannungsfall. Wer nur nach Tabellen für „30 A = soundsoviel mm²" verlegt, übersieht genau den Fall, in dem die Länge den Querschnitt diktiert — 30 A über 2 m brauchen 10,0 mm², über 6 m dagegen 25,0 mm².',
-            'Dieselbe Überlegung erklärt, warum ein Booster an der Heckgarage teurer wird als einer hinter dem Fahrersitz: Es ist nicht das Gerät, es ist der Kupferquerschnitt.',
-          ],
+          term: 'Sicherung am Batteriepol',
+          description: `Sie schützt die Leitung, nicht das Gerät, und sitzt im Modell höchstens ${Math.round(FUSE_MAX_UNPROTECTED_LENGTH_M * 100)} cm vom Pol entfernt. Die Größe folgt der Leitung: über dem Betriebsstrom des Boosters, unter dem, was die Leitung dauerhaft führen kann.`,
+        },
+        {
+          term: 'Steuerleitung D+',
+          description:
+            'Viele Booster starten am D+-Signal oder an der Zündung. Fehlt beides und das Gerät erkennt den Motor nur über die Eingangsspannung, läuft es bei Solar-Einspeisung oder am Landstromladegerät ungewollt an. Bei Euro 6 ist D+ die sichere Wahl.',
+        },
+        {
+          term: 'Masseleitung',
+          description:
+            'Sie gehört zum Stromkreis und braucht denselben Querschnitt wie die Plusleitung. Ein dünnerer Rückweg hebt den Querschnitt der Plusleitung auf, und ein loser Massepunkt ist eine Wärmestelle.',
         },
       ],
       list: {
         items: [
           'Beide Adern rechnen: Der Spannungsfall entsteht über Hin- und Rückleitung. Das Modell verdoppelt die einfache Länge, deshalb steht sie so in der Tabelle.',
-          'Die Masseleitung gehört zum Kreis: Sie muss denselben Querschnitt haben wie die Plusleitung — ein dünnerer Rückweg hebt den Querschnitt der Plusleitung auf.',
-          'Übergangswiderstände (Klemmen, Kabelschuhe, Massepunkt am Chassis) zählen zum Spannungsfall. Ein sauberer, angezogener Massepunkt mit vollem Querschnitt ist Teil der Bemessung, nicht Zubehör.',
+          'Übergangswiderstände zählen mit — Klemmen, Kabelschuhe und der Massepunkt am Chassis. Ein sauberer, angezogener Massepunkt in vollem Querschnitt ist Teil der Bemessung.',
           'Quetschverbinder und Aderendhülsen in passender Größe: Ein 16-mm²-Kabelschuh an einer 25-mm²-Leitung ist ein Widerstand und eine Wärmestelle.',
         ],
       },
@@ -193,104 +200,30 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
           description: 'Formel, Normreihe und die Rolle von Strom und Länge.',
         },
         {
-          href: '/rechner/spannungsabfall-12v/',
-          label: 'Spannungsabfall einer Leitung nachrechnen',
+          href: '/camper-elektrik/sicherungen/',
+          label: 'Sicherungen im Camper',
+          description: 'Größte zulässige Sicherung je Querschnitt und Abschaltvermögen.',
         },
+        { href: '/rechner/ladestrom/', label: 'Ladestrom berechnen' },
       ],
     },
     {
-      id: 'absicherung',
-      heading: 'Absicherung: am Batteriepol, nicht am Booster',
+      id: 'messen',
+      heading: 'Messen nach dem Einbau',
       body: [
-        `Die Plusleitung von der Starter- oder Bordbatterie zum Booster ist eine Leitung an einer Quelle mit sehr hohem Kurzschlussstrom. Sie wird deshalb an ihrem Anfang abgesichert — so nah wie möglich an der Batterie, im Modell höchstens ${Math.round(FUSE_MAX_UNPROTECTED_LENGTH_M * 100)} cm entfernt. Der Booster selbst schützt diese Leitung nicht: Seine Eingangssicherung wäre im Fehlerfall stromabwärts der Fehlerstelle.`,
-        `Die Sicherungsgröße folgt der Leitung, nicht dem Booster: Sie muss über dem Betriebsstrom des Boosters liegen und unter dem, was die Leitung dauerhaft führen kann. Die größte zulässige Sicherung je Querschnitt im Modell dieser Auslieferung: 16 mm² bis ${maxSicherung(16)}, 25 mm² bis ${maxSicherung(25)}, 35 mm² bis ${maxSicherung(35)}.`,
-      ],
-      table: {
-        caption: 'Sicherungswahl: Leitungsgrenze und Boosterstrom zusammenbringen (Modellwerte)',
-        head: ['Querschnitt', 'Größte zulässige Sicherung', 'Passender Ladestrom (Beispiel)'],
-        rows: [
-          ['10,0 mm²', maxSicherung(10), '30 A (kurze Leitung)'],
-          ['16,0 mm²', maxSicherung(16), '30 A'],
-          ['25,0 mm²', maxSicherung(25), '50 A'],
-          ['35,0 mm²', maxSicherung(35), '50 A (lange Leitung)'],
-        ],
-        note: 'Modellwerte aus `lib/electrical.ts` (Belastbarkeit × Derating, auf die Normgrößen der Sicherungsreihe abgebildet). Das Abschaltvermögen der Sicherung muss zum Kurzschlussstrom der Batterie passen — bei LiFePO4 regelmäßig eine Bauform ab MIDI/MEGA, nicht die Flachsicherung.',
-      },
-      subsections: [
-        {
-          heading: 'Zwei Sicherungen pro Leitung',
-          body: [
-            'Die Sicherung an der Quelle schützt die Leitung, die Sicherung am Booster-Ausgang schützt die Leitung zur Bordbatterie — das ist kein Widerspruch, sondern dieselbe Regel zweimal angewendet: Jede Leitung wird an ihrem Anfang abgesichert.',
-            'Die Ausgangsseite liegt spannungslos, wenn der Booster nicht arbeitet. Die Absicherung dort ist deshalb Teil des Anlagenschutzes (Leitungsschutz bei einem Fehler im Ladegerät), nicht des Personenschutzes.',
-          ],
-        },
-      ],
-    },
-    {
-      id: 'bauformen',
-      heading: 'Bauformen und Anschlussbedingungen',
-      definitions: [
-        {
-          term: 'Trennrelais (Relais zwischen den Batteriepluspolen)',
-          description:
-            'Verbindet die Batterien direkt, sobald die Steuerleitung (D+, Klemme 15 oder Spannungserkennung) das Relais schaltet. Kein geregelter Strom, keine Kennlinie, keine Verluste im Ladepfad außer den Kontakten und Leitungen.',
-        },
-        {
-          term: 'Ladebooster mit einer Ladeleitung (DC-DC-Lader)',
-          description:
-            'Eingang von der Starter- oder Bordbatterie, geregelter Ausgang zur Zielbatterie. Eingangsstrom und Ausgangsstrom hängen über den Wirkungsgrad zusammen; bei 12 V auf 12 V liegt der Eingangsstrom über dem Ausgangsstrom. Beide Leitungen werden bemessen, nicht nur die Ausgangsseite.',
-        },
-        {
-          term: 'Ladebooster mit Solar-Eingang',
-          description:
-            'Kombination aus DC-DC-Lader und MPPT-Regler in einem Gehäuse. Praktisch, weil ein Kabelweg entfällt; zu prüfen ist, ob beide Quellen gleichzeitig laden können und wie die Priorität geregelt ist.',
-        },
-        {
-          term: 'Ladebooster mit umschaltbarer Kennlinie',
-          description:
-            'Ladeschlussspannung und Kennlinie sind einstellbar (Blei, Gel, LiFePO4, teilweise frei). Bei LiFePO4 gehört das zur Grundausstattung — die Batterie nimmt die Ladeschlussspannung sonst nicht vollständig an.',
-        },
-      ],
-      list: {
-        items: [
-          'Steuerleitung: Viele Booster starten an der Spannung der Zündung oder an einem D+-Signal. Wird der Booster nur an der Eingangsspannung erkannt, kann er bei Solar-Einspeisung oder Ladegerät am Landstrom ungewollt anlaufen — die Steuerleitung ist deshalb Teil der Planung.',
-          'Wärme: Booster arbeiten mit Leistungselektronik und brauchen Luft. Ein Einbauort ohne Luftbewegung — zugebaute Sitzbank, geschlossene Elektrobox — kostet Ladestrom über die Temperaturregelung.',
-          'Rückstromsperre: Eine Diode oder ein Relais im Booster verhindert, dass die Bordbatterie über den Ladepfad entladen wird. Bei Trennrelais ohne Sperre entlädt sich die Bordbatterie über die Starterbatterie, wenn die Batterien unterschiedlich gealtert sind.',
-          'Anordnung: Kurze Wege und getrennte Kabelführung (Plus und Minus nicht als loses Paar durch Blechkanten) sind billiger als der nächste Querschnitt.',
-        ],
-      },
-    },
-    {
-      id: 'pruefung',
-      heading: 'Was nach dem Einbau gemessen wird',
-      body: [
-        'Zwei Messungen entscheiden, ob die Anlage das tut, was die Rechnung verspricht — beide mit einem Multimeter und beide im Betrieb, nicht im Stand.',
+        'Zwei Messungen entscheiden, ob die Anlage das tut, was die Rechnung verspricht — beide mit dem Multimeter und beide im Betrieb, nicht im Stand.',
       ],
       list: {
         ordered: true,
         items: [
-          'Spannungsfall der Zuleitung: Spannung am Batteriepol und Spannung am Boostereingang im Moment des vollen Ladestroms messen. Die Differenz ist der Verlust der Leitung. Liegt sie deutlich über der Rechnung aus der Tabelle, sind Klemmen, Querschnitt oder Massepunkt die Ursache.',
-          'Ladestrom und Ladespannung an der Bordbatterie: Der Booster regelt den Strom auf seinen eingestellten Wert. Erreicht die Ladespannung die Ladeschlussspannung der Batterie nicht, ist die Kennlinie falsch eingestellt — nicht die Lichtmaschine zu schwach.',
-          'Übergangswiderstände prüfen: Nach einer Fahrt die Klemmen und Kabelschuhe auf Wärme prüfen (vorsichtig, nicht mit dem Finger). Eine warme Klemme ist ein Widerstand, und der frisst Ladestrom und Querschnitt.',
+          'Spannungsfall der Zuleitung: Spannung am Batteriepol und am Boostereingang bei vollem Ladestrom messen. Die Differenz ist der Verlust der Leitung. Liegt sie deutlich über der Rechnung, sind Klemmen, Querschnitt oder Massepunkt die Ursache.',
+          'Ladestrom und Ladespannung an der Bordbatterie: Erreicht die Spannung die Ladeschlussspannung der Batterie nicht, ist die Kennlinie falsch eingestellt — nicht die Lichtmaschine zu schwach.',
+          'Nach einer Fahrt Klemmen und Kabelschuhe auf Wärme prüfen, vorsichtig und nicht mit dem bloßen Finger. Eine warme Klemme ist ein Widerstand.',
         ],
       },
       callout: {
         tone: 'warning',
-        text: 'Arbeiten an der Fahrzeuganlage nur bei abgeklemmter Starterbatterie, und Arbeiten an 230-V-Anlagen ausschließlich durch eine Elektrofachkraft. Die 12-V-Seite dieser Seite ersetzt keine Fachplanung, sie macht die Rechenwege nachvollziehbar.',
-      },
-    },
-    {
-      id: 'fehler',
-      heading: 'Typische Fehler bei der Auslegung',
-      list: {
-        items: [
-          'Querschnitt nach dem Booster-Ausgangsstrom wählen, obwohl die Eingangsleitung den höheren Strom führt.',
-          'Nur die Plusleitung dick verlegen und den Masseweg über ein dünnes Chassisblech oder die Fahrzeugkarosserie mit unbekanntem Querschnitt führen.',
-          'Die Sicherung erst am Booster setzen statt am Batteriepol — die längste, ungeschützte Strecke liegt dann direkt an der Batterie.',
-          'Ein Trennrelais für eine LiFePO4-Batterie einbauen und sich wundern, dass die Batterie nie voll wird und die Lichtmaschine warm wird.',
-          'Kennlinie und Ladeschlussspannung nicht auf die Chemie einstellen — die Batterie bleibt bei 80 % hängen.',
-          'Booster ohne Steuerleitung betreiben und ihn bei jeder Solar-Ladung anlaufen lassen; die Bordbatterie entlädt sich dann über die Starterbatterie, wenn die Anlage steht.',
-        ],
+        text: 'Arbeiten an der Fahrzeuganlage nur bei abgeklemmter Starterbatterie, Arbeiten an 230-V-Anlagen ausschließlich durch eine Elektrofachkraft. Diese Seite ersetzt keine Fachplanung, sie macht die Rechenwege nachvollziehbar.',
       },
     },
   ],
@@ -298,7 +231,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
     {
       question: 'Brauche ich einen Ladebooster oder reicht ein Trennrelais?',
       answer:
-        'Das hängt an der Bordbatterie und der Lichtmaschine. Bei Bleibatterie, kurzer Leitung und einfacher Anlage kann ein Relais genügen. Sobald LiFePO4 im Spiel ist, die Lichtmaschine spannungsgeregelt arbeitet (Euro 6d und neuer) oder die Leitung lang ist, übernimmt der Booster: Er lädt mit geregelter Kennlinie und begrenztem Strom, statt den Ladestrom dem Spannungsunterschied zu überlassen.',
+        'Bei Bleibatterie, kurzer Leitung und einfacher Anlage kann ein Relais genügen. Bei LiFePO4, geregelter Lichtmaschine oder langer Leitung übernimmt der Booster: Er lädt mit Kennlinie und begrenztem Strom, statt den Strom dem Spannungsunterschied zu überlassen.',
     },
     {
       question: 'Welcher Kabelquerschnitt gehört zu einem Ladebooster?',
@@ -307,36 +240,32 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
     {
       question: 'Reicht ein 30-A-Booster für eine 100-Ah-LiFePO4-Batterie?',
       answer:
-        'Für eine leere 100-Ah-Batterie braucht ein 30-A-Booster rechnerisch gut drei Stunden Ladestrom — in der Praxis etwa vier, weil die Konstantspannungsphase am Ende langsamer füllt; mit 50 A sind es rechnerisch zwei, praktisch gut zweieinhalb Stunden. 30 A liegt im sicheren Bereich üblicher Datenblattangaben (0,3 C), 50 A am oberen Rand (0,5 C). Wer nur kurze Strecken fährt, gewinnt mit Solar und einem kleineren Booster mehr als mit dem größten Gerät.',
+        'Rechnerisch ja: 30 A sind 0,3 C und liegen im üblichen Datenblattfenster. Eine leere 100-Ah-Batterie braucht damit gut drei Stunden plus Konstantspannungsphase. Wer nur kurze Etappen fährt, gewinnt mit Solar mehr als mit einem größeren Gerät.',
     },
     {
       question: 'Kann man zwei Ladebooster parallel schalten?',
       answer:
-        'Victron erlaubt den Parallelbetrieb für die Orion-Tr-Smart-Reihe ausdrücklich. In der Praxis verteilt sich die Last aber nicht automatisch: Der Booster regelt seine Ausgangsspannung, kleine Toleranzen entscheiden, welches Gerät zuerst in die Strombegrenzung läuft. Gleiche Leitungslängen, ein gemeinsamer Abgreifpunkt, ausreichender Querschnitt und eine stillgelegte EBL-Ladung sind Pflicht. Außerdem verdoppelt sich der Eingangsstrom — die Lichtmaschine muss das dauerhaft tragen.',
+        'Victron erlaubt es für die Orion-Tr-Smart-Reihe ausdrücklich. Die Last verteilt sich aber nicht automatisch, und der Eingangsstrom verdoppelt sich — gleiche Leitungslängen, ein gemeinsamer Abgreifpunkt und eine stillgelegte EBL-Ladung sind Pflicht.',
     },
     {
       question: 'Welcher Ladebooster für 300 Ah LiFePO4?',
       answer:
-        'Nach der Faustregel von 0,3 bis 0,5 C wären das 90 bis 150 A. Praktisch ist die Klasse mit 60 bis 90 A relevant: ECTIVE BB 60, Schaudt WA 121545 und Votronic VCC 1212-70 oder -90. Entscheidend sind zusätzlich die vom Hersteller empfohlene Batteriekapazität, der maximale Ladestrom deines BMS und die Lichtmaschine. Ein 90-A-Booster zieht eingangsseitig rund 100 A plus Fahrzeuglast; eine 90-A-Lima ist damit überfordert.',
+        'Nach 0,3 bis 0,5 C wären das 90 bis 150 A; praktisch relevant ist die Klasse 60 bis 90 A. Entscheidend sind zusätzlich der maximale Ladestrom des BMS und die Lichtmaschine — ein 90-A-Gerät zieht eingangsseitig rund 100 A.',
     },
     {
       question: 'Braucht man bei Euro 6 unbedingt D+?',
       answer:
-        'Nicht bei jedem Fahrzeug, aber bei einer intelligenten Lichtmaschine ist D+ oder ein Zündsignal die zuverlässigere Steuerung. Reine Spannungserkennung kann den Booster abschalten lassen, obwohl der Motor läuft, und beim Rekuperieren wieder zuschalten. Der Victron Orion-Tr Smart hat keinen D+-Eingang und erkennt den Motor über die Eingangsspannung. Schaudt und ECTIVE verlangen D+, Votronic kann D+, Zündung oder Spannung. Für Euro 6 ist D+ die sichere Wahl, wenn dein Fahrzeug es hergibt.',
+        'Nicht jedes Fahrzeug, aber bei einer intelligenten Lichtmaschine ist D+ oder ein Zündsignal die zuverlässigere Steuerung. Reine Spannungserkennung kann den Booster abschalten, obwohl der Motor läuft, und beim Rekuperieren wieder zuschalten.',
     },
     {
       question: 'Was kostet ein guter Ladebooster?',
       answer:
-        'Grob gerechnet: 25–30 A ab etwa 150 €, 60 A ab etwa 260 €, 90 A ab etwa 500 €, 100–120 A ab etwa 711 €. Dazu kommen je nach Fahrzeug 100–300 € für Kabel, Sicherungen, Kabelschuhe und Halterungen. Das ist eine Orientierung, keine Kaufberatung: Die Preise schwanken stark, und ein günstigeres Gerät mit falschem Querschnitt oder fehlendem D+ wird schnell teurer als die Differenz zum nächstgrößeren Modell.',
-    },
-    {
-      question: 'Wird die Lichtmaschine durch einen Ladebooster stärker belastet?',
-      answer:
-        'Die Leistung, die in die Bordbatterie fließt, muss die Lichtmaschine liefern — plus Verluste, die als Wärme im Booster bleiben. Die Belastung wird aber berechenbar und begrenzt: Ohne Booster zieht eine leere LiFePO4-Batterie je nach Spannungsabfall einen Strom, den die Lichtmaschine nicht regelt; mit Booster steht der Ladestrom fest und die Lichtmaschine liefert nur die zugehörige Eingangsleistung. Ein Blick auf die Leistungsdaten der Lichtmaschine (üblich 120 bis 180 A bei modernen Fahrzeugen) gehört trotzdem zum Vorhaben.',
+        'Das Gerät ist die kleinere Hälfte: 30 A gibt es ab rund 150 €, 90 A ab rund 500 €. Dazu kommen je nach Fahrzeug 100 bis 300 € für Kabel, Sicherungen und Kabelschuhe — der Querschnitt steigt mit dem Strom.',
     },
   ],
   related: [
-    { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
+    { href: '/rechner/ladestrom/', label: 'Ladestrom berechnen' },
+    { href: '/camper-elektrik/laden/', label: 'Bordbatterie laden: die drei Wege' },
     {
       href: '/camper-elektrik/lifepo4/',
       label: 'LiFePO4 im Camper',
@@ -347,12 +276,8 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       label: 'Kabelquerschnitt berechnen',
       description: 'Strombelastbarkeit und Spannungsfall als zwei Grenzen.',
     },
-    {
-      href: '/camper-elektrik/sicherungen/',
-      label: 'Sicherungen im Camper',
-      description: 'Schutzorgan am Pol, Sicherungsgröße nach Leitung.',
-    },
-    { href: '/camper-elektrik/batterie/', label: 'Batteriekapazität bestimmen' },
+    { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
+    { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
     {
       href: '/planer/',
       label: 'kostenlosen Camper-Schaltplan erstellen',
@@ -361,9 +286,9 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
   ],
   sources: [
     {
-      label: 'Gerätevergleich',
+      label: 'Geräte und Preise',
       detail:
-        'Herstellerdatenblätter, Handbücher, Forenthreads und Preisstände: siehe Quellen im Abschnitt „Ladebooster im Vergleich“. Preise sind Momentaufnahmen vom 23.10.2026.',
+        'Datenblätter, Handbücher, Forenthreads und Preisstände stehen im Quellenblock des Vergleichs oben auf dieser Seite.',
     },
     {
       label: 'DIN VDE 0298-4',
@@ -386,12 +311,12 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
     },
   ],
   assumptions: [
-    'Gerechnet wird mit 12 V und dem Nennstrom des Boosters (30 A bzw. 50 A) als Dauerstrom.',
+    'Gerechnet wird mit 12 V und dem Nennstrom des Boosters als Dauerstrom.',
     'Länge ist die einfache Strecke zwischen den Polen; das Modell verdoppelt sie für Hin- und Rückleitung.',
     'Derating 0,7 und Planungsgrenze 3 % Spannungsfall sind Modellannahmen, keine Herstellerangaben.',
   ],
   limits: [
-    'Der Rechenteil nennt keine Produkte; der Vergleichsabschnitt nennt Geräte, Preise und Forenstimmen als redaktionelle Einordnung. Er ersetzt keine Messung am Fahrzeug.',
+    'Der Vergleich oben nennt Geräte, Preise und Forenstimmen als redaktionelle Einordnung. Er ersetzt keine Messung am Fahrzeug und keine Kaufberatung.',
     'Wirkungsgrad, Temperaturregelung und Kennlinien konkreter Geräte sind Datenblattangaben und nicht im Modell.',
     'Fahrzeugspezifische Anschlüsse (D+-Signal, Klemmenbelegung, Absicherung ab Werk) stehen hier nicht.',
   ],

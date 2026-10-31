@@ -89,7 +89,7 @@ export const BATTERIE_CONTENT: SeoPageContent = {
       heading: 'Autarkie: Tage, nicht Stunden',
       body: [
         'Autarkie heißt hier: wie viele Tage die Batterie den Tagesbedarf deckt, ohne Ladung. Die Rechnung ist einfach — Kapazität × Entladetiefe × Peukert-Faktor gegen den Tagesbedarf —, die Annahmen sind es nicht: Im Winter sinkt der Solarertrag auf 35 % des Sommerwerts, und eine Bleibatterie verliert bei Kälte zusätzlich nutzbare Kapazität.',
-        'Für ein Wochenendfahrzeug sind ein bis zwei Tage Autarkie üblich, für ein Reisefahrzeug mit Solar drei. Eine größere Batterie ist selten der günstigste Weg dorthin: Mehr Ladung (Solar, Fahren) hilft meist mehr als mehr Speicher.',
+        'Für ein Wochenendfahrzeug sind ein bis zwei Tage Autarkie üblich, für ein Reisefahrzeug mit Solar drei. Eine größere Batterie ist selten der günstigste Weg dorthin: Mehr Ladung (Solar, Fahren) hilft meist mehr als mehr Speicher — für den Weg über die Lichtmaschine steht der [Ladebooster-Vergleich](/camper-elektrik/ladebooster/).',
       ],
       links: [
         { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },

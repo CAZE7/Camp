@@ -49,7 +49,8 @@ export type StructuredDataType =
   | 'SoftwareApplication'
   | 'Article'
   | 'HowTo'
-  | 'CollectionPage';
+  | 'CollectionPage'
+  | 'ItemList';
 
 /**
  * Fließtext mit optionalen internen Verweisen in der Schreibweise

@@ -21,11 +21,12 @@ import { Vergleichszone } from './Vergleichszone';
 const darstellungen = (produktId: string): Element[] =>
   Array.from(document.querySelectorAll(`[data-vergleich-produkt="${produktId}"]`));
 
-const SEITE: SeoPageContent = { ...LADEBOOSTER_CONTENT, comparison: LADEBOOSTER_VERGLEICH };
+/** Dieselbe Seite ohne Vergleich — der Slot muss dann spurlos bleiben. */
+const OHNE_VERGLEICH: SeoPageContent = { ...LADEBOOSTER_CONTENT, comparison: undefined };
 
 describe('G4 — der Vergleich steht vor dem Ratgebertext', () => {
   it('rendert die Rangliste vor dem ersten Ratgeber-Abschnitt', () => {
-    const { container } = render(<SeoPage page={SEITE} />);
+    const { container } = render(<SeoPage page={LADEBOOSTER_CONTENT} />);
 
     const titel = Array.from(container.querySelectorAll('h2')).map((element) => element.id);
     const rangliste = titel.indexOf('ladebooster-rangliste-titel');
@@ -37,8 +38,10 @@ describe('G4 — der Vergleich steht vor dem Ratgebertext', () => {
   });
 
   it('lässt eine Seite ohne Vergleich unverändert', () => {
-    const { container } = render(<SeoPage page={LADEBOOSTER_CONTENT} />);
+    const { container } = render(<SeoPage page={OHNE_VERGLEICH} />);
     expect(container.querySelector('[data-vergleich]')).toBeNull();
+    // Der Ratgeber steht trotzdem da — der Slot ist eine Ergänzung, kein Ersatz.
+    expect(container.querySelector('#relais-oder-booster')).not.toBeNull();
   });
 });
 

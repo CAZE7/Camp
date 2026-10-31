@@ -4,9 +4,11 @@ import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
 import { PageShell } from '@/components/brand/PageShell';
 import { Vergleichszone } from '@/components/vergleich/Vergleichszone';
+import { vergleichsProdukte } from '@/lib/seo/comparisons/schema';
 import {
   breadcrumbNode,
   faqNode,
+  itemListNode,
   jsonLdGraph,
   pageNodeId,
   serializeJsonLd,
@@ -52,6 +54,7 @@ export function jsonLdFor(page: SeoPageContent) {
   const calculatorId = page.sections.find((section) => section.calculator)?.calculator;
 
   const faqEntries = page.faq ?? [];
+  const vergleich = page.comparison;
 
   return jsonLdGraph([
     webPageNode({
@@ -61,11 +64,22 @@ export function jsonLdFor(page: SeoPageContent) {
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
       hasPartIds: [
+        ...(vergleich ? [pageNodeId(page.path, 'geraeteliste')] : []),
         ...(faqEntries.length > 0 ? [pageNodeId(page.path, 'faq')] : []),
         pageNodeId(page.path, 'breadcrumb'),
       ],
     }),
     breadcrumbNode({ path: page.path, items: breadcrumb }),
+    ...(vergleich
+      ? [
+          itemListNode({
+            path: page.path,
+            name: vergleich.heading,
+            description: vergleich.tableCaption,
+            products: vergleichsProdukte(vergleich),
+          }),
+        ]
+      : []),
     ...(hasCalculator && calculatorId
       ? [
           webApplicationNode({
