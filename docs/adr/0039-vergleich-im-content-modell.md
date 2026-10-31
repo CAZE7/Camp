@@ -2,7 +2,9 @@
 
 - **Status:** Angenommen
 - **Datum:** 2026-10-31
-- **Bezug:** `AGENTS.md` §5, §8, M11-1, `docs/ai/ARCHITECTURE-RULES.md` Regel D und M,
+- **Bezug:** `AGENTS.md` §5, §8 und M11-1 (Stand `353efd5`; die gestraffte Fassung
+  auf `main` führt die Screenshot-Pflicht nicht mehr — die optische Freigabe bleibt
+  Zusage an den Betreiber), `docs/ai/ARCHITECTURE-RULES.md` Regel D und M,
   `docs/superpowers/specs/2026-10-26-ladebooster-vergleich-design.md`,
   ADR 0001 (Static Export), ADR 0005 (geprüftes Token-System)
 
@@ -14,12 +16,13 @@ verzweigte für genau einen Slug auf `components/seo/LadeboosterVergleich.tsx`
 (19.846 Byte) **global** über `app/layout.tsx` lud. Jede andere Inhaltsseite lief
 durch `SeoPage`.
 
-Gemessen mit `scripts/seo/measureExport.ts` am Export von `353efd5` — Paket 0 am
-2026-10-26 und erneut am 2026-10-31 am frisch gebauten Export, identisch:
+Gemessen mit `scripts/seo/measureExport.ts` am Export von `ef7a679` (main, Stand
+2026-10-31, mit den Inhaltskorrekturen aus #581). Die Paket-0-Messung vom
+2026-10-26 auf `353efd5` lag bei 5.828 Wörtern:
 
 | Kennzahl                        | Vorher                                       |
 | ------------------------------- | -------------------------------------------- |
-| Sichtbarer Text ohne JavaScript | 5.828 Wörter                                 |
+| Sichtbarer Text ohne JavaScript | 5.964 Wörter                                 |
 | `h1/h2/h3/h4`                   | 1/12/13/27                                   |
 | Eingehende interne Verweise     | 3                                            |
 | Darstellungen desselben Geräts  | 4 (Tabelle, Karte, Kurzentscheidung, Detail) |
@@ -109,7 +112,7 @@ Bestand **stand**:
 | Gate | Regel                                       | Fundstelle im Bestand                        |
 | ---- | ------------------------------------------- | -------------------------------------------- |
 | G1   | keine doppelte Aussage auf einer Seite      | Parallelbetrieb dreifach, 180-€-Fund doppelt |
-| G3   | Wortbudget Zone/Ratgeber/FAQ                | 5.828 Wörter                                 |
+| G3   | Wortbudget Zone/Ratgeber/FAQ                | 5.964 Wörter                                 |
 | G4   | Rangliste im DOM vor dem ersten Ratgeber    | Vergleich stand hinter dem Text              |
 | G6   | ein Filter wirkt auf Tabelle **und** Karten | Filter blendete nur die Karten aus           |
 
@@ -142,7 +145,8 @@ in `components/vergleich/**`, `tabular-nums` in Rangliste und Produktkarte.
 - **Pixel-Baselines als optische Abnahme.** Die Baselines im Repo sind `-linux.png`.
   Auf Windows schreibt Playwright beim ersten Lauf selbst `-win32.png` und besteht
   danach gegen die eigene Datei — das ist kein Beleg. Die optische Abnahme läuft
-  über Vorher/Nachher-Screenshots und den Betreiber (M11-1).
+  über Vorher/Nachher-Screenshots und den Betreiber (M11-1 im Stand `353efd5`,
+  auf `main` gestrichen; die Zusage bleibt).
 
 ## Konsequenzen
 
@@ -151,7 +155,7 @@ Gemessen nach dem Umbau (`npm run build` inklusive `auditExport`, danach
 
 | Kennzahl                        | Vorher      | Nachher                    |
 | ------------------------------- | ----------- | -------------------------- |
-| Sichtbarer Text ohne JavaScript | 5.828       | **3.236** Wörter (−44,5 %) |
+| Sichtbarer Text ohne JavaScript | 5.964       | **3.408** Wörter (−42,9 %) |
 | `h1/h2/h3/h4`                   | 1/12/13/27  | **1/11/15/0**              |
 | Eingehende interne Verweise     | 3           | **6**                      |
 | Darstellungen je Gerät          | 4           | **2**, mobil **1**         |

@@ -456,24 +456,38 @@ selbst und besteht danach gegen seine eigene Datei. Ein Lauf hat hier 88 solche
 PNGs erzeugt; sie wurden gelöscht und nicht committet. Die optische Abnahme läuft
 deshalb über Screenshots und den Betreiber, nicht über diese Baselines.
 
-### Abnahme Paket 5 — gemessen am 2026-10-31
+### Abnahme Paket 5 — gemessen am 2026-10-31, zweite Runde gegen `main`
 
-Beide Exporte frisch gebaut (`353efd5` im Worktree `Camp-baseline` mit eigenem
-`npm ci`, `642400e` im Hauptbaum), ausgeliefert von `scripts/e2e/static-server.mjs`,
-aufgenommen mit Chromium/Playwright: Ganzseite, erster Bildschirm und eine
-35-%-Übersicht, je 375/768/1440 px in hell und dunkel.
+Zwischen den Runden ist `main` von `353efd5` auf `ef7a679` gezogen (19 Commits:
+Marken-Hülle über `PageShell`, Layout-Runden, Rechenfehler-Audit #582,
+Inhaltskorrekturen #581, neue Pixel-Baselines #583). Die Korrekturen aus #581 sind
+vor dem Merge in das Vergleichs-Modell portiert (`90386b7`), der Merge ist
+`53c961f`. Die erste Runde gegen `353efd5`/`642400e` ist damit ersetzt — ein
+Vergleich gegen den alten Kopf wäre keiner gegen den Stand, der gemergt wird.
 
-| Breite  | Seitenhöhe vorher | Seitenhöhe nachher | Veränderung |
-| ------- | ----------------- | ------------------ | ----------- |
-| 375 px  | 30.329 px         | 14.881 px          | −50,9 %     |
-| 768 px  | 17.881 px         | 10.081 px          | −43,6 %     |
-| 1440 px | 16.754 px         | 9.283 px           | −44,6 %     |
+Beide Exporte frisch gebaut (`ef7a679` im Worktree `Camp-baseline`, `53c961f` im
+Hauptbaum), ausgeliefert von `scripts/e2e/static-server.mjs`, aufgenommen mit
+Chromium/Playwright: Ganzseite, erster Bildschirm und eine 35-%-Übersicht, je
+375/768/1440 px in hell und dunkel.
+
+| Kennzahl                        | Vorher `ef7a679` | Nachher `53c961f`                     |
+| ------------------------------- | ---------------- | ------------------------------------- |
+| Sichtbarer Text ohne JavaScript | 5.964 Wörter     | **3.408** (−42,9 %)                   |
+| `h1/h2/h3/h4`                   | 1/12/13/27       | **1/11/15/0**                         |
+| Eingehende interne Verweise     | 3                | **6**                                 |
+| JS der Seite                    | 602 KB           | **601 KB**                            |
+| Seitenhöhe 375 px               | 31.717 px        | **16.596** (−47,7 %)                  |
+| Seitenhöhe 768 px               | 19.006 px        | **11.377** (−40,1 %)                  |
+| Seitenhöhe 1440 px              | 17.624 px        | **10.291** (−41,6 %)                  |
+| Wortbudget Zone / Ratgeber      | —                | **696 / 1.168** (Grenzen 700 / 1.300) |
 
 Die ersten Bildschirme und die beiden 1440er-Übersichten liegen im Repo unter
 `docs/screenshots/abnahme-ladebooster-2026-10-31/` (14 PNGs, 2,3 MB) samt
 Herkunfts-README; die Ganzseiten in voller Auflösung bleiben aus Gewichtsgründen
 außerhalb des Repos. Der erste Bildschirm zeigt vorher nur Fließtext, nachher die
-Rangliste mit Filtern — das ist die Zusage, die M11-1 abnimmt.
+Rangliste mit Filtern und den korrigierten Preisen — das ist die Zusage, die die
+optische Freigabe abnimmt (AGENTS.md M11-1 im Stand `353efd5`; die gestraffte
+Fassung auf `main` führt die Pflicht nicht mehr, die Zusage an den Betreiber bleibt).
 
 Weiter in Paket 5: ADR 0039 (`docs/adr/0039-vergleich-im-content-modell.md`) mit
 Eintrag in der README-Tabelle; die falsche Behauptung in `scripts/seo/report.ts`
@@ -511,6 +525,11 @@ falscher Zusage wie der Kommentar in `jsonLd.ts`.
 | `tableCaption` der Daten               | „Neun Ladebooster von 30 bis 120 A"               | „… von 30 bis 110 A"                                                                                                    | Beim Schreiben des Ratgebers aufgefallen: Die Bildunterschrift wiederholte die Herstellerseiten-Angabe, die die Daten bewusst NICHT verwenden (Handbuch Sterling: 110 A, `stromA: 110`). Eine Zahl, die der Vergleich selbst ablehnt, darf nicht in seiner Zusammenfassung stehen                                         |
 | Ort von G10                            | `tests/e2e/responsive.spec.ts` erweitern          | eigener Test in `tests/e2e/ladebooster-vergleich.spec.ts`                                                               | Die Regel gilt für diese Seite, nicht für das Layout allgemein. Im Vergleichs-Spec steht sie neben G6 und G12 und läuft mit ihnen                                                                                                                                                                                         |
 | G1-Reichweite                          | Vergleich + Quellen                               | Vergleich + Quellen + **Ratgeber**                                                                                      | Erst mit dem geschriebenen Ratgeber ist die Regel vollständig: Wiederholt wird zwischen den Schichten, nicht innerhalb einer. Gemessen: null Funde bei 695 + 1.053 Wörtern                                                                                                                                                |
+| Upstream-Korrekturen (#581)            | nicht vorgesehen (Spec vor dem Merge geschrieben) | vor dem Merge in Datenmodell und Ratgeber portiert (`90386b7`)                                                          | `main` hatte Preise (168/210/959 €), Büttner-Baureihe, Gewährleistung, ISO 13297:2020, zweite Sicherung am Bordbatterie-Pol, 25 % Reserve, MRBF/Class T und AGM 0,1–0,2 C korrigiert. Der Rewrite zeigte noch den alten Stand; ohne Port hätte der Merge Fakten zurückgesetzt                                             |
+| Blei-Fenster vs. Datenblatt            | stillschweigend 0,2–0,3 C                         | Fenster bleibt (G12), wird aber als Modellannahme benannt — im Ratgeber und in den Annahmen von `/rechner/ladestrom/`   | Upstream nennt AGM/Gel-Dauerstrom 0,1–0,2 C, lässt das Rechenfenster aber bei 0,2–0,3 C. Die Formel gehört nicht diesem Umbau (G12); der Widerspruch wird sichtbar gemacht statt versteckt                                                                                                                                |
+| Zonen-Wortbudget nach dem Port         | 695 Wörter                                        | 696 Wörter; der Import-Detail verliert seinen letzten Satz                                                              | Der Port brachte die Zone auf 706 > 700 (G3). Der gestrichene Satz wiederholte die jetzt korrigierte Caveat („kein Ansprechpartner, keine Rücksendung") — die Kürzung ist damit auch inhaltlich richtig                                                                                                                   |
+| Sortier-Erwartung                      | feste Kennung `victron-buck-boost-100a`           | teuerstes Gerät wird aus `priceEur` abgeleitet                                                                          | Mit Büttner 959 € ist nicht mehr Victron das teuerste Gerät. Eine fest verdrahtete Kennung würde bei jedem korrigierten Preisstand rot, ohne dass die Sortierung falsch wäre                                                                                                                                              |
+| Abnahme-Bezug                          | `353efd5` gegen `642400e`                         | `ef7a679` gegen `53c961f`, zweite Screenshot-Runde                                                                      | `main` baute Kopf/Fuß über `PageShell` neu und `SeoPage` trägt die Hülle; die erste Runde zeigte einen Kopf, der nicht gemergt wird. AGENTS.md M11-1 ist in der gestrafften Fassung auf `main` entfallen — die optische Freigabe bleibt Zusage an den Betreiber                                                           |
 
 ## 13. Risiken
 
