@@ -1,54 +1,61 @@
 # CAMP SEO GROWTH REPORT
 
-_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-15 · Commit d31044e_
+_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-31 · Commit daad396_
 
-Stand: 2026-10-15 · Commit: `d31044e` (2026-10-15) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-31 · Commit: `daad396` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ergebnis
 
-Vor dieser Arbeit hatte die Auslieferung 10 indexierbare Seiten: Startseite, Planer, zwei Werkzeuge, drei Guides und die Pflichtseiten. Es gab keine Seite für „Kabelquerschnitt 12 V", keine für „Spannungsabfall", keine für „LiFePO4 im Camper" — die Fragen, mit denen die Zielgruppe sucht, hatten kein Ziel. Diese Arbeit baut die Inhalts- und Rechnerebene auf, verbindet sie mit dem vorhandenen Planer und sichert die Zusagen maschinell ab. Sie erfindet keine zweite technische Infrastruktur: Kopfdaten, Sitemap, Robotik und die Exportprüfung bleiben die bestehenden Systeme, sie lesen jetzt nur aus einer gemeinsamen Datenquelle (lib/seo/).
+Vor dieser Arbeit hatte die Auslieferung 12 indexierbare Seiten: Startseite, Planer, zwei Werkzeuge, drei Guides und die Pflichtseiten. Es gab keine Seite für „Kabelquerschnitt 12 V", keine für „Spannungsabfall", keine für „LiFePO4 im Camper" — die Fragen, mit denen die Zielgruppe sucht, hatten kein Ziel. Diese Arbeit baut die Inhalts- und Rechnerebene auf, verbindet sie mit dem vorhandenen Planer und sichert die Zusagen maschinell ab. Sie erfindet keine zweite technische Infrastruktur: Kopfdaten, Sitemap, Robotik und die Exportprüfung bleiben die bestehenden Systeme, sie lesen jetzt nur aus einer gemeinsamen Datenquelle (lib/seo/).
 
 ## Kennzahlen
 
 | Kennzahl                         | Wert      | Anmerkung                                                                                                                                            |
 | -------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Indexierbare Seiten              | 28        | 33 Dateien im Export, davon 5 ohne Indexaufnahme (zwei Ansichten, zwei Fehlerseiten).                                                                |
-| Pillar-Seiten                    | 1         | Eine Übersichtsseite trägt das Thema Camper-Elektrik — sie verlinkt alle Unterthemen.                                                                |
-| Rechner-Landingpages             | 4         | Vier Rechnerseiten mit eigenem Text, Formel, Quellen und Grenzen; dazu die beiden Werkzeuge Dach und Heizlast.                                       |
+| Indexierbare Seiten              | 37        | 42 Dateien im Export, davon 5 ohne Indexaufnahme (zwei Ansichten, zwei Fehlerseiten).                                                                |
+| Pillar-Seiten                    | 5         | Eine Übersichtsseite trägt das Thema Camper-Elektrik — sie verlinkt alle Unterthemen.                                                                |
+| Rechner-Landingpages             | 5         | Vier Rechnerseiten mit eigenem Text, Formel, Quellen und Grenzen; dazu die beiden Werkzeuge Dach und Heizlast.                                       |
 | Suchintentionen abgedeckt        | 34 von 39 | 4 teilweise abgedeckt, 1 offen. Keine offene P0-Intention (0).                                                                                       |
 | Waisenseiten                     | 0         | Seiten ohne einen einzigen internen Verweis. Jede indexierbare Seite ist über mindestens einen Verweis erreichbar.                                   |
 | Dünne Seiten                     | 0         | Unter 300 Wörtern ohne JavaScript gemessen. —                                                                                                        |
 | Doppelte Metadaten               | 0         | Titel und Beschreibungen sind über alle Seiten eindeutig (Prüfregeln `titel-doppelt` und `beschreibung-doppelt`).                                    |
-| Interne Verlinkung               | 100 %     | Jede indexierbare Seite hat mindestens einen eingehenden Verweis; im Mittel 14.9. Größte Tiefe ab Startseite: 2 Klicks.                              |
-| Inhalt ohne JavaScript           | 28 von 28 | Jede indexierbare Seite liefert im Roh-HTML genau eine H1 und ihren Text — geprüft ohne Skriptausführung.                                            |
+| Interne Verlinkung               | 100 %     | Jede indexierbare Seite hat mindestens einen eingehenden Verweis; im Mittel 21.3. Größte Tiefe ab Startseite: 2 Klicks.                              |
+| Inhalt ohne JavaScript           | 37 von 37 | Jede indexierbare Seite liefert im Roh-HTML genau eine H1 und ihren Text — geprüft ohne Skriptausführung.                                            |
 | Strukturierte Daten              | bestanden | JSON-LD jeder Seite ist gültig, nennt schema.org und beschreibt nur, was sichtbar ist (Prüfregeln `strukturierte-daten-*`).                          |
-| Sitemap und Robots               | bestanden | Sitemap führt genau die indexierbaren Seiten (28 Einträge) unter dem Basis-Pfad; robots.txt verweist darauf.                                         |
+| Sitemap und Robots               | bestanden | Sitemap führt genau die indexierbaren Seiten (37 Einträge) unter dem Basis-Pfad; robots.txt verweist darauf.                                         |
 | Planner-Bundle auf Inhaltsseiten | bestanden | Keine Inhaltsseite lädt elkjs, dagre, react-flow oder GSAP im Erstaufbau (Prüfregel `bundle-schwer`). Werkzeuge dürfen ihre eigene Bibliothek laden. |
 
 ## Was entstanden ist
 
 Die Inhalte liegen als Daten in `lib/seo/content/` und werden von gemeinsamen Gerüsten gerendert. Ein Themenbaum (`lib/seo/topics.ts`) bestimmt Verlinkung, Brotkrumen und Reihenfolge; die Suchintentionen stehen in `lib/seo/opportunities.ts`; das Inventar (`lib/seo/inventory.ts`) speist Sitemap und Prüfung aus einer Quelle.
 
-| Seite                              | Art       | Bediente Anfrage                                | Absicht                                                              |
-| ---------------------------------- | --------- | ----------------------------------------------- | -------------------------------------------------------------------- |
-| /camper-elektrik/                  | pillar    | camper elektrik planen                          | Eine Elektrik im Camper wird nicht gezeichnet, sondern gerechnet: E… |
-| /camper-elektrik/kabelquerschnitt/ | cluster   | 12v kabelquerschnitt berechnen                  | Bei 12 V entscheidet nicht die Strombelastbarkeit über den Querschn… |
-| /camper-elektrik/spannungsabfall/  | cluster   | spannungsabfall 12v berechnen                   | Eine Leitung ist kein idealer Leiter: Über Hin- und Rückleitung fäl… |
-| /camper-elektrik/sicherungen/      | cluster   | camper sicherung richtig dimensionieren         | Eine Sicherung schützt nicht das Gerät, sondern die Leitung — und s… |
-| /camper-elektrik/batterie/         | cluster   | camper batterie dimensionieren                  | Nicht die Nennkapazität auf dem Etikett entscheidet über die Autark… |
-| /camper-elektrik/lifepo4/          | cluster   | lifepo4 camper dimensionieren                   | Lithium-Eisenphosphat liefert fast die doppelte nutzbare Kapazität … |
-| /camper-elektrik/agm/              | cluster   | agm oder lifepo4 camper                         | AGM und Gel sind robust, günstig und in fast jedem Fahrzeug zu find… |
-| /camper-elektrik/solar/            | cluster   | solar camper winter auslegung                   | Die Frage „wie viel Watt passen aufs Dach?" ist die falsche Reihenf… |
-| /camper-elektrik/mppt/             | cluster   | mppt laderegler camper auslegen                 | Der Laderegler ist die Schnittstelle zwischen Modul und Batterie. W… |
-| /camper-elektrik/wechselrichter/   | cluster   | wechselrichter camper auslegen kabel            | Ein Wechselrichter zieht bei 12 V Ströme, die jede andere Last im F… |
-| /camper-elektrik/230v/             | cluster   | 230v camper fi schutzschalter                   | Die 230-V-Seite ist der Teil der Camper-Elektrik, der nicht in Eige… |
-| /camper-elektrik/schaltplan/       | cluster   | schaltplan camper 12v                           | Ein Schaltplan ist kein Dokument für die Schublade: Er ist die Arbe… |
-| /camper-elektrik/ladebooster/      | cluster   | ladebooster camper lichtmaschine dimensionieren | Der Ladebooster löst ein Problem, das ein Trennrelais offen lässt: … |
-| /rechner/                          | rechner   | rechner camper ausbau                           | Sechs Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom K… |
-| /rechner/spannungsabfall-12v/      | rechner   | spannungsabfall rechner 12v                     | Dieser Rechner bewertet eine Leitung, die es schon gibt oder geben … |
-| /rechner/batteriekapazitaet/       | rechner   | batteriekapazität camper berechnen ah           | Dieser Rechner beantwortet die Frage, wie groß die Aufbaubatterie s… |
-| /rechner/solaranlage/              | rechner   | camper solar wie viel watt                      | Dieser Rechner beantwortet zwei Fragen in einer: Wie viel Modulleis… |
-| /ueber-elektroplaner/              | vertrauen | wie genau rechnet der camper planer             | Elektroplaner ist ein kostenloses Planungs- und Rechenwerkzeug für … |
+| Seite                                  | Art       | Bediente Anfrage                                | Absicht                                                              |
+| -------------------------------------- | --------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| /guides/                               | pillar    | —                                               | die passenden Leitfäden für den Camper-Ausbau finden.                |
+| /camper-elektrik/                      | pillar    | camper elektrik planen                          | Eine Elektrik im Camper wird nicht gezeichnet, sondern gerechnet: E… |
+| /camper-elektrik/kabelquerschnitt/     | cluster   | 12v kabelquerschnitt berechnen                  | Bei 12 V entscheidet bei längeren Leitungen oft der Spannungsfall ü… |
+| /camper-elektrik/spannungsabfall/      | cluster   | spannungsabfall 12v berechnen                   | Eine Leitung ist kein idealer Leiter: Über Hin- und Rückleitung fäl… |
+| /camper-elektrik/sicherungen/          | cluster   | camper sicherung richtig dimensionieren         | Eine Sicherung schützt nicht das Gerät, sondern die Leitung — und s… |
+| /camper-elektrik/batterie/             | cluster   | camper batterie dimensionieren                  | Nicht die Nennkapazität auf dem Etikett entscheidet über die Autark… |
+| /camper-elektrik/lifepo4/              | cluster   | lifepo4 camper dimensionieren                   | Lithium-Eisenphosphat liefert bei gleicher Nennkapazität rund die d… |
+| /camper-elektrik/agm/                  | cluster   | agm oder lifepo4 camper                         | AGM und Gel sind robust, günstig und in fast jedem Fahrzeug zu find… |
+| /camper-elektrik/solar/                | cluster   | solar camper winter auslegung                   | Die Frage „wie viel Watt passen aufs Dach?" ist die falsche Reihenf… |
+| /camper-elektrik/mppt/                 | cluster   | mppt laderegler camper auslegen                 | Der Laderegler ist die Schnittstelle zwischen Modul und Batterie. W… |
+| /camper-elektrik/wechselrichter/       | cluster   | wechselrichter camper auslegen kabel            | Ein Wechselrichter zieht bei 12 V Ströme, die jede andere Last im F… |
+| /camper-elektrik/230v/                 | cluster   | 230v camper fi schutzschalter                   | Die 230-V-Seite ist der Teil der Camper-Elektrik, der nicht in Eige… |
+| /camper-elektrik/schaltplan/           | cluster   | schaltplan camper 12v                           | Ein Schaltplan ist kein Dokument für die Schublade: Er ist die Arbe… |
+| /rechner/                              | rechner   | rechner camper ausbau                           | Sieben Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom … |
+| /rechner/spannungsabfall-12v/          | rechner   | spannungsabfall rechner 12v                     | Dieser Rechner bewertet eine Leitung, die es schon gibt oder geben … |
+| /rechner/batteriekapazitaet/           | rechner   | batteriekapazität camper berechnen ah           | Dieser Rechner beantwortet die Frage, wie groß die Aufbaubatterie s… |
+| /rechner/ladestrom/                    | rechner   | —                                               | Dieser Rechner beantwortet, welche Stromklasse ein Ladebooster habe… |
+| /rechner/solaranlage/                  | rechner   | camper solar wie viel watt                      | Dieser Rechner beantwortet zwei Fragen in einer: Wie viel Modulleis… |
+| /camper-elektrik/stromverbrauch/       | cluster   | —                                               | Bevor du Batterie, Solar oder Ladebooster dimensionierst, musst du … |
+| /camper-elektrik/laden/                | pillar    | —                                               | Die Bordbatterie muss unterwegs, am Stellplatz und zu Hause geladen… |
+| /camper-elektrik/ladebooster/          | cluster   | ladebooster camper lichtmaschine dimensionieren | Oben stehen die Geräte mit Ladestrom, Preis, Steuerleitung und Date… |
+| /ueber-elektroplaner/                  | vertrauen | wie genau rechnet der camper planer             | Elektroplaner ist ein kostenloses Planungs- und Rechenwerkzeug für … |
+| /heizung-daemmung/                     | pillar    | —                                               | Die Heizung steht nicht allein — sie hängt von Dämmung, Fahrzeuggrö… |
+| /heizung-daemmung/diesel-standheizung/ | cluster   | —                                               | Eine Diesel-Standheizung heizt mit Kraftstoff aus dem Tank — Strom … |
+| /wohnmobilzulassung/                   | pillar    | —                                               | Wer einen Camper selbst ausbaut und als Wohnmobil zulassen will, br… |
 
 ## Prüfungen und ihre Aussage
 

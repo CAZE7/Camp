@@ -1,8 +1,8 @@
 # Camp SEO — Analyse und Vision
 
-_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-15 · Commit d31044e_
+_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-31 · Commit daad396_
 
-Stand: 2026-10-15 · Commit: `d31044e` (2026-10-15) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-31 · Commit: `daad396` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ausgangslage
 
@@ -26,9 +26,9 @@ Zwei Absichten fehlen bewusst: „Kaufen" (Produkt- und Preisvergleiche) und „
 
 ## Befunde aus dem Audit
 
-- Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 28 — Pillar, elf Cluster, vier Rechner-Landingpages und eine Vertrauensseite.
+- Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 37 — Pillar, elf Cluster, vier Rechner-Landingpages und eine Vertrauensseite.
 - Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der Spannungsabfall hatte keine eigene Rechnerseite, Batterie- und Solarrechnung existierten nur als Formeln.
-- Die Werkzeuge erklären sich nicht: /tools/dach/ (207 Wörter) und /tools/heizung/ (436 Wörter) haben keine Zwischenüberschrift und keinen erklärenden Text — sie liefern die Funktion, aber nicht die Antwort auf „wofür und wie lese ich das?".
+- Die Werkzeuge erklären sich nicht: /tools/dach/ (243 Wörter) und /tools/heizung/ (468 Wörter) haben keine Zwischenüberschrift und keinen erklärenden Text — sie liefern die Funktion, aber nicht die Antwort auf „wofür und wie lese ich das?".
 - Der Ausbauguide lud GSAP (rund 136 KB) im Erstaufbau einer Textseite; die Animation ist Dekoration und wird jetzt nachgeladen.
 - Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt und wo er irrt — diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-elektroplaner/.
 - Die Verlinkung war sternförmig: Alles hing an der Startseite. Jetzt führt ein Themenbaum von der Pillar in die Cluster und von jedem Cluster über ein bis zwei Schritte in den Planer.
@@ -57,7 +57,7 @@ Der Übergang von der Rechnung in den Planer ist der wichtigste Klick der ganzen
 
 ## Messung und Erfolgskriterien
 
-- Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Diese Zahlen entstehen bei jedem Bau neu (docs/seo/AUDIT.md).
+- Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Der Bau prüft diese Zahlen (npm run seo:audit); in docs/seo/AUDIT.md landen sie erst durch einen eigenen Lauf von npx tsx scripts/seo/report.ts.
 - Was nur die Search Console messen kann: Impressionen, Klicks, durchschnittliche Position je Anfrage, welche Seiten tatsächlich in den Index kommen. Der Ablauf steht in docs/seo/SEARCH-CONSOLE.md.
 - Erfolgskriterium 90 Tage: Für die zehn wichtigsten Anfragen des Elektrik-Themas steht mindestens eine Seite in den Top-20 der Search Console, und der Planer erhält messbar mehr Aufrufe aus organischer Suche als vorher (Basiswert beim Anschließen festhalten).
 - Erfolgskriterium Inhalt: Kein Cluster unter 700 Wörtern ohne JavaScript, jeder Rechner mit Formel, Annahmen, Grenzen und mindestens zwei Rechenbeispielen.

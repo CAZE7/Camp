@@ -13,9 +13,9 @@ endobj
 << /Length 5792 >>
 stream
 BT /F2 21 Tf 1 0 0 1 56.00 756.89 Tm (Camp SEO - Analyse und Vision) Tj ET
-BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Suchraum, Befunde und Zielbild für die organische Sichtbarkeit - Stand 2026-10-15 - Commit) Tj ET
-BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (d31044e) Tj ET
-BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-15 - Commit: `d31044e` \(2026-10-15\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Suchraum, Befunde und Zielbild für die organische Sichtbarkeit - Stand 2026-10-31 - Commit) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (daad396) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-31 - Commit: `daad396` \(2026-10-31\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
 BT /F1 9 Tf 1 0 0 1 56.00 676.04 Tm (JavaScript gemessen.) Tj ET
 BT /F2 14 Tf 1 0 0 1 56.00 640.54 Tm (Ausgangslage) Tj ET
 0.85 0.85 0.85 RG 0.8 w 56 632.54 m 539.28 632.54 l S
@@ -89,14 +89,14 @@ stream
 BT /F2 14 Tf 1 0 0 1 56.00 751.89 Tm (Befunde aus dem Audit) Tj ET
 0.85 0.85 0.85 RG 0.8 w 56 743.89 m 539.28 743.89 l S
 BT /F1 10 Tf 1 0 0 1 56.00 725.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 725.89 Tm (Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 28 - Pillar, elf Cluster, vier) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 725.89 Tm (Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 37 - Pillar, elf Cluster, vier) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 710.89 Tm (Rechner-Landingpages und eine Vertrauensseite.) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 693.89 Tm (-) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 693.89 Tm (Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 678.89 Tm (Spannungsabfall hatte keine eigene Rechnerseite, Batterie- und Solarrechnung existierten nur als) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 663.89 Tm (Formeln.) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 646.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 646.89 Tm (Die Werkzeuge erklären sich nicht: /tools/dach/ \(207 Wörter\) und /tools/heizung/ \(436 Wörter\) haben) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 646.89 Tm (Die Werkzeuge erklären sich nicht: /tools/dach/ \(243 Wörter\) und /tools/heizung/ \(468 Wörter\) haben) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 631.89 Tm (keine Zwischenüberschrift und keinen erklärenden Text - sie liefern die Funktion, aber nicht die Antwort) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 616.89 Tm (auf "wofür und wie lese ich das?".) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 599.89 Tm (-) Tj ET
@@ -162,7 +162,7 @@ BT /F1 9 Tf 1 0 0 1 412.79 90.39 Tm (teilt den Link weiter) Tj ET
 endstream
 endobj
 6 0 obj
-<< /Length 5312 >>
+<< /Length 5440 >>
 stream
 BT /F1 10 Tf 1 0 0 1 56.00 767.89 Tm (Der Übergang von der Rechnung in den Planer ist der wichtigste Klick der ganzen Struktur. Deshalb steht er) Tj ET
 BT /F1 10 Tf 1 0 0 1 56.00 752.89 Tm (auf jeder Inhaltsseite als eigener Abschnitt, und deshalb gibt es keine Popups und keine Zwischenseiten: Wer) Tj ET
@@ -171,60 +171,61 @@ BT /F2 14 Tf 1 0 0 1 56.00 701.89 Tm (Messung und Erfolgskriterien) Tj ET
 0.85 0.85 0.85 RG 0.8 w 56 693.89 m 539.28 693.89 l S
 BT /F1 10 Tf 1 0 0 1 56.00 675.89 Tm (-) Tj ET
 BT /F1 10 Tf 1 0 0 1 74.00 675.89 Tm (Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 660.89 Tm (Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Diese) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 645.89 Tm (Zahlen entstehen bei jedem Bau neu \(docs/seo/AUDIT.md\).) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 628.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 628.89 Tm (Was nur die Search Console messen kann: Impressionen, Klicks, durchschnittliche Position je Anfrage,) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 613.89 Tm (welche Seiten tatsächlich in den Index kommen. Der Ablauf steht in docs/seo/SEARCH-CONSOLE.md.) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 596.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 596.89 Tm (Erfolgskriterium 90 Tage: Für die zehn wichtigsten Anfragen des Elektrik-Themas steht mindestens eine) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 581.89 Tm (Seite in den Top-20 der Search Console, und der Planer erhält messbar mehr Aufrufe aus organischer) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 566.89 Tm (Suche als vorher \(Basiswert beim Anschließen festhalten\).) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 549.89 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 549.89 Tm (Erfolgskriterium Inhalt: Kein Cluster unter 700 Wörtern ohne JavaScript, jeder Rechner mit Formel,) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 534.89 Tm (Annahmen, Grenzen und mindestens zwei Rechenbeispielen.) Tj ET
-BT /F2 14 Tf 1 0 0 1 56.00 497.89 Tm (Roadmap) Tj ET
-0.85 0.85 0.85 RG 0.8 w 56 489.89 m 539.28 489.89 l S
-0.94 0.94 0.94 rg 56 462.19 483.28 19.70 re f 0 g
-BT /F2 9 Tf 1 0 0 1 60.00 468.89 Tm (Stufe) Tj ET
-BT /F2 9 Tf 1 0 0 1 108.33 468.89 Tm (Inhalt) Tj ET
-BT /F2 9 Tf 1 0 0 1 470.79 468.89 Tm (Zustand) Tj ET
-0.8 0.8 0.8 RG 0.5 w 56 462.19 m 539.28 462.19 l S
-BT /F1 9 Tf 1 0 0 1 60.00 449.19 Tm (P0) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 449.19 Tm (Suchraum inventarisieren, Pillar und elf Cluster, Rechnerseiten, Verlinkung, Waisen- und) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 437.49 Tm (Dublettenprüfung, Vertrauensseite) Tj ET
-BT /F1 9 Tf 1 0 0 1 470.79 449.19 Tm (erledigt) Tj ET
-0.8 0.8 0.8 RG 0.5 w 56 430.79 m 539.28 430.79 l S
-BT /F1 9 Tf 1 0 0 1 60.00 417.79 Tm (P1) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 417.79 Tm (Werkzeugseiten erklären, echte Bilder und Diagramme, Search Console anschließen, Titel) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 406.09 Tm (anhand von Daten schärfen) Tj ET
-BT /F1 9 Tf 1 0 0 1 470.79 417.79 Tm (offen) Tj ET
-0.8 0.8 0.8 RG 0.5 w 56 399.39 m 539.28 399.39 l S
-BT /F1 9 Tf 1 0 0 1 60.00 386.39 Tm (P2) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 386.39 Tm (Ladebooster/DC-DC, Sinus-Wechselrichter-Vergleich, englische Fassung der stärksten) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 374.69 Tm (Seiten) Tj ET
-BT /F1 9 Tf 1 0 0 1 470.79 386.39 Tm (offen) Tj ET
-0.8 0.8 0.8 RG 0.5 w 56 367.99 m 539.28 367.99 l S
-BT /F1 9 Tf 1 0 0 1 60.00 354.99 Tm (P3) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 354.99 Tm (Fahrzeugspezifische Seiten mit belegbarem Inhalt, weitere Rechner \(Kabelverluste,) Tj ET
-BT /F1 9 Tf 1 0 0 1 108.33 343.29 Tm (Laderegler-Auslegung\)) Tj ET
-BT /F1 9 Tf 1 0 0 1 470.79 354.99 Tm (offen) Tj ET
-0.8 0.8 0.8 RG 0.5 w 56 336.59 m 539.28 336.59 l S
-BT /F2 14 Tf 1 0 0 1 56.00 300.59 Tm (Risiken und ihre Behandlung) Tj ET
-0.85 0.85 0.85 RG 0.8 w 56 292.59 m 539.28 292.59 l S
-BT /F1 10 Tf 1 0 0 1 56.00 274.59 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 274.59 Tm (Fachliche Genauigkeit: Alle Zahlen kommen aus dem Modell der Anwendung, nicht aus fremden Quellen.) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 259.59 Tm (Wo das Modell etwas nicht weiß \(Ladespannungen, Temperaturfenster einzelner Chemien\), steht es als) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 244.59 Tm (Herstellerangabe gekennzeichnet oder fehlt bewusst.) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 227.59 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 227.59 Tm (Regulatorik: 230-V-Anlagen sind abnahmepflichtig. Jede Seite mit Landstrombezug nennt das; die) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 212.59 Tm (Vertrauensseite wiederholt es.) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 195.59 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 195.59 Tm (Erwartungen: Kein Ranking-Versprechen. Die Prüfungen belegen technische Zusagen, nicht Platzierungen) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 180.59 Tm (- der Bericht sagt das ausdrücklich.) Tj ET
-BT /F1 10 Tf 1 0 0 1 56.00 163.59 Tm (-) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 163.59 Tm (Überproduktion: Neue Seiten entstehen nur für belegte oder klar benannte Intentionen. Die Anfrageliste ist) Tj ET
-BT /F1 10 Tf 1 0 0 1 74.00 148.59 Tm (die Bremse gegen beliebige Textmengen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 660.89 Tm (Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Der Bau prüft) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 645.89 Tm (diese Zahlen \(npm run seo:audit\); in docs/seo/AUDIT.md landen sie erst durch einen eigenen Lauf von) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 630.89 Tm (npx tsx scripts/seo/report.ts.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 613.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 613.89 Tm (Was nur die Search Console messen kann: Impressionen, Klicks, durchschnittliche Position je Anfrage,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 598.89 Tm (welche Seiten tatsächlich in den Index kommen. Der Ablauf steht in docs/seo/SEARCH-CONSOLE.md.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 581.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 581.89 Tm (Erfolgskriterium 90 Tage: Für die zehn wichtigsten Anfragen des Elektrik-Themas steht mindestens eine) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 566.89 Tm (Seite in den Top-20 der Search Console, und der Planer erhält messbar mehr Aufrufe aus organischer) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 551.89 Tm (Suche als vorher \(Basiswert beim Anschließen festhalten\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 534.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 534.89 Tm (Erfolgskriterium Inhalt: Kein Cluster unter 700 Wörtern ohne JavaScript, jeder Rechner mit Formel,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 519.89 Tm (Annahmen, Grenzen und mindestens zwei Rechenbeispielen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 482.89 Tm (Roadmap) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 474.89 m 539.28 474.89 l S
+0.94 0.94 0.94 rg 56 447.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 453.89 Tm (Stufe) Tj ET
+BT /F2 9 Tf 1 0 0 1 108.33 453.89 Tm (Inhalt) Tj ET
+BT /F2 9 Tf 1 0 0 1 470.79 453.89 Tm (Zustand) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 447.19 m 539.28 447.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 434.19 Tm (P0) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 434.19 Tm (Suchraum inventarisieren, Pillar und elf Cluster, Rechnerseiten, Verlinkung, Waisen- und) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 422.49 Tm (Dublettenprüfung, Vertrauensseite) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 434.19 Tm (erledigt) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 415.79 m 539.28 415.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 402.79 Tm (P1) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 402.79 Tm (Werkzeugseiten erklären, echte Bilder und Diagramme, Search Console anschließen, Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 391.09 Tm (anhand von Daten schärfen) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 402.79 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 384.39 m 539.28 384.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 371.39 Tm (P2) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 371.39 Tm (Ladebooster/DC-DC, Sinus-Wechselrichter-Vergleich, englische Fassung der stärksten) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 359.69 Tm (Seiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 371.39 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 352.99 m 539.28 352.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 339.99 Tm (P3) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 339.99 Tm (Fahrzeugspezifische Seiten mit belegbarem Inhalt, weitere Rechner \(Kabelverluste,) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 328.29 Tm (Laderegler-Auslegung\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 339.99 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 321.59 m 539.28 321.59 l S
+BT /F2 14 Tf 1 0 0 1 56.00 285.59 Tm (Risiken und ihre Behandlung) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 277.59 m 539.28 277.59 l S
+BT /F1 10 Tf 1 0 0 1 56.00 259.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 259.59 Tm (Fachliche Genauigkeit: Alle Zahlen kommen aus dem Modell der Anwendung, nicht aus fremden Quellen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 244.59 Tm (Wo das Modell etwas nicht weiß \(Ladespannungen, Temperaturfenster einzelner Chemien\), steht es als) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 229.59 Tm (Herstellerangabe gekennzeichnet oder fehlt bewusst.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 212.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 212.59 Tm (Regulatorik: 230-V-Anlagen sind abnahmepflichtig. Jede Seite mit Landstrombezug nennt das; die) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 197.59 Tm (Vertrauensseite wiederholt es.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 180.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 180.59 Tm (Erwartungen: Kein Ranking-Versprechen. Die Prüfungen belegen technische Zusagen, nicht Platzierungen) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 165.59 Tm (- der Bericht sagt das ausdrücklich.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 148.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 148.59 Tm (Überproduktion: Neue Seiten entstehen nur für belegte oder klar benannte Intentionen. Die Anfrageliste ist) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 133.59 Tm (die Bremse gegen beliebige Textmengen.) Tj ET
 0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (Camp SEO - Analyse und Vision) Tj ET 0 g
 0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 3 von 3) Tj ET 0 g
 endstream
@@ -245,7 +246,7 @@ endobj
 << /Type /Catalog /Pages 10 0 R >>
 endobj
 12 0 obj
-<< /Title (Camp SEO - Analyse und Vision) /Author (Elektroplaner - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261015000000Z) >>
+<< /Title (Camp SEO - Analyse und Vision) /Author (Elektroplaner - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261031000000Z) >>
 endobj
 xref
 0 13
@@ -256,14 +257,14 @@ xref
 0000000309 00000 n 
 0000006153 00000 n 
 0000012443 00000 n 
-0000017807 00000 n 
-0000017959 00000 n 
-0000018111 00000 n 
-0000018263 00000 n 
-0000018333 00000 n 
-0000018384 00000 n 
+0000017935 00000 n 
+0000018087 00000 n 
+0000018239 00000 n 
+0000018391 00000 n 
+0000018461 00000 n 
+0000018512 00000 n 
 trailer
 << /Size 13 /Root 11 0 R /Info 12 0 R >>
 startxref
-18539
+18667
 %%EOF

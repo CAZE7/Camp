@@ -550,10 +550,17 @@ function visionBlocks(): PdfBlock[] {
  * brechen — nicht wegen des Inhalts, sondern wegen fehlender Ausrichtung in
  * Tabellen. Fehlt Prettier (etwa in einer Umgebung ohne dev-Abhängigkeiten),
  * bleibt der Rohtext stehen; der Bericht ist auch dann vollständig.
+ *
+ * Aufgerufen wird die CLI direkt mit dem Node-Prozess, nicht über `npx`:
+ * unter Windows ist `npx` eine `.cmd`-Verknüpfung, die `execFileSync` ohne
+ * Shell nicht starten kann. Der Catch griffe dann immer, und der Bericht
+ * bliebe stillschweigend unformatiert — genau der Zustand, den das Gate
+ * ablehnt.
  */
 function formatMarkdown(markdown: string, name: string): string {
+  const prettierCli = join(process.cwd(), 'node_modules', 'prettier', 'bin', 'prettier.cjs');
   try {
-    return execFileSync('npx', ['prettier', '--stdin-filepath', `${name}.md`], {
+    return execFileSync(process.execPath, [prettierCli, '--stdin-filepath', `${name}.md`], {
       input: markdown,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'ignore'],

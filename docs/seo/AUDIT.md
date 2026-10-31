@@ -2,7 +2,7 @@
 
 _Seiteninventar, Verweise und Bündel des gebauten Exports. Automatisch erzeugt von scripts/seo/report.ts._
 
-Stand: 2026-10-15 · Commit: `d31044e` (2026-10-15) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-31 · Commit: `daad396` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Wie gemessen wird
 
@@ -17,52 +17,61 @@ Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte le
 ```
 | Seite | Art | Wörter | H1/H2 | ein/aus | Tiefe | JS (KB) | schwer |
 |---|---|---:|---|---:|---:|---:|---|
-| `/camper-elektrik/230v/` | cluster | 1054 | 1/10 | 3/14 | 2 | 596 | — |
-| `/camper-elektrik/agm/` | cluster | 952 | 1/10 | 4/17 | 2 | 596 | — |
-| `/camper-elektrik/batterie/` | cluster | 1116 | 1/11 | 11/17 | 2 | 596 | — |
-| `/camper-elektrik/` | pillar | 1887 | 1/13 | 29/25 | 1 | 596 | — |
-| `/camper-elektrik/kabelquerschnitt/` | cluster | 1438 | 1/11 | 11/15 | 2 | 596 | — |
-| `/camper-elektrik/ladebooster/` | cluster | 2371 | 1/11 | 2/16 | 2 | 596 | — |
-| `/camper-elektrik/lifepo4/` | cluster | 1103 | 1/11 | 5/16 | 2 | 596 | — |
-| `/camper-elektrik/mppt/` | cluster | 995 | 1/9 | 5/15 | 2 | 596 | — |
-| `/camper-elektrik/schaltplan/` | cluster | 944 | 1/10 | 6/14 | 2 | 596 | — |
-| `/camper-elektrik/sicherungen/` | cluster | 1445 | 1/11 | 15/15 | 2 | 596 | — |
-| `/camper-elektrik/solar/` | cluster | 1128 | 1/10 | 6/14 | 2 | 596 | — |
-| `/camper-elektrik/spannungsabfall/` | cluster | 1208 | 1/11 | 6/15 | 2 | 596 | — |
-| `/camper-elektrik/wechselrichter/` | cluster | 1036 | 1/10 | 2/16 | 2 | 596 | — |
-| `/datenschutz/` | rechtliches | 98 | 1/2 | 28/9 | 1 | 593 | — |
-| `/design-system/` | ansicht | 567 | 1/6 | 0/0 | — | 625 | — |
-| `/elektrik-planung/` | werkzeug | 1586 | 1/6 | 19/16 | 2 | 644 | — |
-| `/guides/ausbau-fahrplan/` | ratgeber | 896 | 1/10 | 29/10 | 1 | 593 | — |
-| `/guides/camper-ausbauguide/` | ratgeber | 1070 | 1/9 | 2/12 | 1 | 600 | — |
-| `/guides/holzausbau/` | ratgeber | 410 | 1/6 | 2/10 | 1 | 593 | — |
-| `/impressum/` | rechtliches | 121 | 1/4 | 28/9 | 1 | 593 | — |
-| `/` | start | 242 | 1/3 | 30/14 | 0 | 595 | — |
-| `/ki-assistent/` | ansicht | 58 | 1/1 | 0/7 | — | 611 | — |
-| `/planer/` | werkzeug | 1120 | 1/6 | 30/11 | 1 | 609 | — |
-| `/rechner/batteriekapazitaet/` | rechner | 1028 | 1/10 | 11/16 | 1 | 596 | — |
-| `/rechner/` | rechner | 692 | 1/9 | 29/16 | 1 | 596 | — |
-| `/rechner/solaranlage/` | rechner | 928 | 1/10 | 9/14 | 1 | 596 | — |
-| `/rechner/spannungsabfall-12v/` | rechner | 1049 | 1/10 | 7/15 | 1 | 596 | — |
-| `/tools/dach/` | werkzeug | 207 | 1/0 | 30/9 | 1 | 967 | react-flow |
-| `/tools/heizung/` | werkzeug | 436 | 1/0 | 30/9 | 1 | 797 | — |
-| `/ueber-elektroplaner/` | vertrauen | 1062 | 1/10 | 29/11 | 1 | 596 | — |
-| `/ueber-werft/` | ansicht | 31 | 1/0 | 0/1 | — | 602 | — |
+| `/camper-ausbau/` | ratgeber | 1198 | 1/17 | 38/20 | 1 | 601 | — |
+| `/camper-elektrik/230v/` | cluster | 1143 | 1/10 | 4/20 | 2 | 601 | — |
+| `/camper-elektrik/agm/` | cluster | 1008 | 1/10 | 4/21 | 2 | 601 | — |
+| `/camper-elektrik/batterie/` | cluster | 1174 | 1/11 | 14/22 | 2 | 601 | — |
+| `/camper-elektrik/fehler/` | ratgeber | 1313 | 1/20 | 2/22 | 2 | 601 | — |
+| `/camper-elektrik/` | pillar | 2063 | 1/13 | 38/32 | 1 | 601 | — |
+| `/camper-elektrik/kabelquerschnitt/` | cluster | 1960 | 1/12 | 17/19 | 2 | 601 | — |
+| `/camper-elektrik/ladebooster/` | cluster | 3408 | 1/11 | 6/22 | 2 | 601 | — |
+| `/camper-elektrik/laden/` | pillar | 1016 | 1/13 | 4/22 | 2 | 601 | — |
+| `/camper-elektrik/lifepo4/` | cluster | 1193 | 1/11 | 7/22 | 2 | 601 | — |
+| `/camper-elektrik/mppt/` | cluster | 1051 | 1/9 | 5/20 | 2 | 601 | — |
+| `/camper-elektrik/schaltplan/` | cluster | 995 | 1/10 | 7/21 | 2 | 601 | — |
+| `/camper-elektrik/sicherungen/` | cluster | 1548 | 1/11 | 21/21 | 2 | 601 | — |
+| `/camper-elektrik/solar/` | cluster | 1453 | 1/12 | 7/19 | 2 | 601 | — |
+| `/camper-elektrik/spannungsabfall/` | cluster | 1281 | 1/11 | 8/20 | 2 | 601 | — |
+| `/camper-elektrik/stromverbrauch/` | cluster | 1286 | 1/10 | 3/19 | 2 | 601 | — |
+| `/camper-elektrik/wechselrichter/` | cluster | 1209 | 1/10 | 2/21 | 2 | 601 | — |
+| `/datenschutz/` | rechtliches | 526 | 1/9 | 39/16 | 1 | 595 | — |
+| `/design-system/` | ansicht | 567 | 1/6 | 0/0 | — | 629 | — |
+| `/elektrik-planung/` | werkzeug | 1621 | 1/6 | 39/22 | 1 | 628 | — |
+| `/guides/ausbau-fahrplan/` | ratgeber | 960 | 1/10 | 8/18 | 1 | 595 | — |
+| `/guides/camper-ausbauguide/` | ratgeber | 1246 | 1/9 | 3/20 | 1 | 603 | — |
+| `/guides/holzausbau/` | ratgeber | 567 | 1/6 | 3/18 | 1 | 598 | — |
+| `/guides/` | pillar | 505 | 1/4 | 38/19 | 1 | 598 | — |
+| `/heizung-daemmung/diesel-standheizung/` | cluster | 1441 | 1/11 | 1/22 | 2 | 601 | — |
+| `/heizung-daemmung/` | pillar | 1082 | 1/11 | 38/20 | 1 | 601 | — |
+| `/impressum/` | rechtliches | 168 | 1/4 | 39/16 | 1 | 595 | — |
+| `/` | start | 466 | 1/4 | 39/20 | 0 | 598 | — |
+| `/ki-assistent/` | ansicht | 134 | 1/1 | 0/17 | — | 601 | — |
+| `/planer/` | werkzeug | 1150 | 1/6 | 39/14 | 1 | 614 | — |
+| `/rechner/batteriekapazitaet/` | rechner | 1063 | 1/10 | 39/20 | 1 | 601 | — |
+| `/rechner/` | rechner | 769 | 1/9 | 38/20 | 1 | 601 | — |
+| `/rechner/ladestrom/` | rechner | 1078 | 1/9 | 5/21 | 1 | 601 | — |
+| `/rechner/solaranlage/` | rechner | 997 | 1/10 | 39/18 | 1 | 601 | — |
+| `/rechner/spannungsabfall-12v/` | rechner | 1088 | 1/10 | 39/19 | 1 | 601 | — |
+| `/tools/dach/` | werkzeug | 243 | 1/0 | 39/16 | 1 | 950 | react-flow |
+| `/tools/heizung/` | werkzeug | 468 | 1/0 | 39/16 | 1 | 782 | — |
+| `/ueber-elektroplaner/` | vertrauen | 1193 | 1/11 | 39/17 | 1 | 601 | — |
+| `/ueber-werft/` | ansicht | 31 | 1/0 | 0/1 | — | 603 | — |
+| `/wohnmobilzulassung/` | pillar | 1002 | 1/12 | 38/19 | 1 | 601 | — |
 ```
 
 ## Kennzahlen
 
 | Kennzahl                         | Wert      |
 | -------------------------------- | --------- |
-| Indexierbare Seiten              | 28        |
-| Pillar-Seiten                    | 1         |
-| Rechner-Landingpages             | 4         |
+| Indexierbare Seiten              | 37        |
+| Pillar-Seiten                    | 5         |
+| Rechner-Landingpages             | 5         |
 | Suchintentionen abgedeckt        | 34 von 39 |
 | Waisenseiten                     | 0         |
 | Dünne Seiten                     | 0         |
 | Doppelte Metadaten               | 0         |
 | Interne Verlinkung               | 100 %     |
-| Inhalt ohne JavaScript           | 28 von 28 |
+| Inhalt ohne JavaScript           | 37 von 37 |
 | Strukturierte Daten              | bestanden |
 | Sitemap und Robots               | bestanden |
 | Planner-Bundle auf Inhaltsseiten | bestanden |
@@ -113,7 +122,7 @@ Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte le
 
 ## Befunde
 
-- Dünnste Seite: /tools/dach/ (207 Wörter), / (242 Wörter), /guides/holzausbau/ (410 Wörter).
+- Dünnste Seite: /tools/dach/ (243 Wörter), / (466 Wörter), /tools/heizung/ (468 Wörter).
 - Seiten ohne H2: /tools/dach/, /tools/heizung/.
-- Größte Bündel: /tools/dach/ (967 KB), /tools/heizung/ (797 KB), /elektrik-planung/ (644 KB).
+- Größte Bündel: /tools/dach/ (950 KB), /tools/heizung/ (782 KB), /elektrik-planung/ (628 KB).
 - Sockel aller Seiten sind rund 593 KB Skript (React, Next-Laufzeit, Grundgerüst) — unkomprimiert gemessen; komprimiert liegt der Wert deutlich niedriger.
