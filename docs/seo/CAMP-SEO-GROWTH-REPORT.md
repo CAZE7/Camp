@@ -1,8 +1,8 @@
 # CAMP SEO GROWTH REPORT
 
-_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-31 · Commit daad396_
+_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-31 · Commit 61e0e20_
 
-Stand: 2026-10-31 · Commit: `daad396` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-31 · Commit: `61e0e20` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ergebnis
 

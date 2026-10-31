@@ -2,7 +2,7 @@
 
 _Seiteninventar, Verweise und Bündel des gebauten Exports. Automatisch erzeugt von scripts/seo/report.ts._
 
-Stand: 2026-10-31 · Commit: `daad396` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-31 · Commit: `61e0e20` (2026-10-31) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Wie gemessen wird
 
