@@ -488,6 +488,10 @@ außerhalb des Repos. Der erste Bildschirm zeigt vorher nur Fließtext, nachher 
 Rangliste mit Filtern und den korrigierten Preisen — das ist die Zusage, die die
 optische Freigabe abnimmt (AGENTS.md M11-1 im Stand `353efd5`; die gestraffte
 Fassung auf `main` führt die Pflicht nicht mehr, die Zusage an den Betreiber bleibt).
+**Die Freigabe hat der Betreiber am 2026-10-31 erteilt**, nachdem die Gegenüberstellung
+gegen `ef7a679` präsentiert war. Zwei Auflagen bleiben bis zum Merge: neue
+Pixel-Baselines für `start` aus `baselines.yml` (Linux, Artefakt, optische Prüfung)
+und DNS der neuen Domain auf GitHub Pages, bevor der Deploy läuft.
 
 Weiter in Paket 5: ADR 0039 (`docs/adr/0039-vergleich-im-content-modell.md`) mit
 Eintrag in der README-Tabelle; die falsche Behauptung in `scripts/seo/report.ts`
