@@ -164,7 +164,7 @@ const QUELLEN_PREISE = [
   },
   {
     href: 'https://www.campingwagner.de/de/p/buettner-elektronik-bcb-iuou-lader-booster-kombination-batterie-control-booster_m7469',
-    label: 'CampingWagner: Büttner 25/20, 702 €',
+    label: 'CampingWagner: Büttner 25/20, 702 € (nicht die MT-BCB-Baureihe 30/30/20–60/40/40)',
     kind: 'price',
   },
   {
@@ -284,7 +284,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       fit: { label: 'kleine Bank, kurze Fahrten', tone: 'plain' },
       caveats: [{ text: 'Die 16-mm²-Klemmen sind die harte Grenze.', tone: 'warn' }],
       stromA: 30,
-      priceEur: 150,
+      priceEur: 168,
       priceChecked: '2026-10-23',
       detail: ['Spitze 40 A für 10 s, Leistung 430 W / 360 W. Bluetooth-Konfiguration.'],
       links: [
@@ -354,9 +354,9 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       fit: { label: 'Solar und Lima in einem Gerät', tone: 'plain' },
       caveats: [{ text: 'Im Hybridbetrieb liefert jede Quelle maximal 25 A.', tone: 'warn' }],
       stromA: 50,
-      priceEur: 169,
+      priceEur: 210,
       priceChecked: '2026-10-23',
-      detail: ['Beobachtet ab 169 €, der Herstellershop nannte am selben Stichtag 209,99 €.'],
+      detail: ['Beobachtet ab ca. 210 €; der Herstellershop nannte am selben Stichtag 209,99 €.'],
       links: [
         {
           href: 'https://de.renogy.com/cdn/shop/files/RBC30D1S-G3_G4_RBC50D1S-G6_DC-DC_with_MPPT_EN__UM_B4.pdf',
@@ -456,7 +456,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       name: 'MT BCB',
       classId: '50-70',
       specs: {
-        ladestrom: '20–60 A plus 230-V-Lader',
+        ladestrom: '30/30/20–60/40/40 plus 230-V-Lader',
         dplus: 'ja',
         batterie: null,
         ladespannung: null,
@@ -468,10 +468,10 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       fit: { label: '3-in-1 mit Netzteil', tone: 'plain' },
       caveats: [{ text: 'Kein 90-A-Modell; in Fahrzeugen mit EBL Einschränkungen.', tone: 'warn' }],
       stromA: 60,
-      priceEur: 702,
+      priceEur: 959,
       priceChecked: '2026-10-23',
       detail: [
-        'Beim 40/40/30 muss in Fahrzeugen mit EBL auf 30 A begrenzt werden; der 30/30/20 braucht ein Hochlastrelais. 702–1.289 € je nach Modell.',
+        'Beim 40/40/30 muss in Fahrzeugen mit EBL auf 30 A begrenzt werden; der 30/30/20 braucht ein Hochlastrelais. 959–1.289 € je nach Modell.',
       ],
       links: [
         {
@@ -579,7 +579,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       fit: { label: 'Risikokauf', tone: 'plain' },
       caveats: [
         {
-          text: 'Datenblatt, Firmware und Dauerleistung nicht prüfbar; kein Ansprechpartner, keine Gewährleistung.',
+          text: 'Datenblatt, Firmware und Dauerleistung nicht prüfbar; Support und Rücksendung praktisch schwer durchsetzbar — die gesetzliche Gewährleistung bei Kauf in Deutschland bleibt bestehen.',
           tone: 'block',
         },
       ],
@@ -587,7 +587,7 @@ export const LADEBOOSTER_VERGLEICH: ComparisonSpec = {
       priceEur: 180,
       priceChecked: '2026-10-23',
       detail: [
-        'Angebote um 180 € für Geräte, die äußerlich und laut Datenblatt einem 110–120-A-Wandler entsprechen. Rechnerisch war das der günstigste Wert im ganzen Vergleich — genommen habe ich ihn trotzdem nicht. Das war eine Risikoentscheidung, keine technische: Im Fehlerfall gab es keinen Ansprechpartner und keine realistische Rücksendung.',
+        'Angebote um 180 € für Geräte, die äußerlich und laut Datenblatt einem 110–120-A-Wandler entsprechen. Rechnerisch war das der günstigste Wert im ganzen Vergleich — genommen habe ich ihn trotzdem nicht. Das war eine Risikoentscheidung, keine technische.',
         'Ein unabhängiger Test zu diesen Geräten war nicht auffindbar. Die Aussage bleibt eine Beobachtung, kein Messergebnis.',
       ],
       links: [],

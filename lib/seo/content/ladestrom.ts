@@ -154,6 +154,7 @@ export const LADESTROM_CONTENT: SeoPageContent = {
     'Die Batterie ist zu Beginn der Fahrzeit leer genug, um den vollen Strom anzunehmen.',
     'Die Lichtmaschine liefert ihren Nennstrom — Leerlaufdrehzahl, Temperatur und Abregelung sind nicht modelliert.',
     'Der Booster begrenzt den Strom selbst auf das Ladefenster der Chemie.',
+    'Das Ladefenster ist eine Modellannahme: 0,3 bis 0,5 C für LiFePO4, 0,2 bis 0,3 C für Blei. Datenblätter für AGM und Gel nennen oft 0,1 bis 0,2 C Dauerstrom — das Datenblatt der konkreten Batterie geht vor.',
   ],
   limits: [
     'Keine Aussage über Kabelquerschnitt und Sicherung — dafür steht der Kabelquerschnitt-Rechner.',

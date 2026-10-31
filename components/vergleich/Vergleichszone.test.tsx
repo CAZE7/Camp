@@ -126,8 +126,15 @@ describe('Sortierung', () => {
     fireEvent.click(knopf);
     fireEvent.click(knopf);
 
-    const letzteZeile = document.querySelector('[data-vergleich-liste="zeilen"] tr');
-    expect(letzteZeile?.getAttribute('data-vergleich-produkt')).toBe('victron-buck-boost-100a');
+    // Absteigend steht das teuerste Gerät zuerst. Die Erwartung wird aus den
+    // Daten abgeleitet: Preise sind Momentaufnahmen und werden korrigiert
+    // (Upstream #581); eine fest verdrahtete Kennung würde beim nächsten
+    // Preisstand rot, ohne dass die Sortierung falsch wäre.
+    const teuerstes = LADEBOOSTER_VERGLEICH.products.reduce((a, b) =>
+      (b.priceEur ?? 0) > (a.priceEur ?? 0) ? b : a
+    );
+    const ersteZeile = document.querySelector('[data-vergleich-liste="zeilen"] tr');
+    expect(ersteZeile?.getAttribute('data-vergleich-produkt')).toBe(teuerstes.id);
     expect(document.querySelector('[data-vergleich-spalte="preis"]')?.getAttribute('aria-sort')).toBe(
       'descending'
     );

@@ -126,7 +126,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       id: 'stromklasse',
       heading: 'Welche Stromklasse: 30, 60 oder 90 A',
       body: [
-        'Die C-Rate ist der Ladestrom als Vielfaches der Nennkapazität: 30 A an 330 Ah sind 0,09 C, 90 A sind 0,27 C. LiFePO4-Datenblätter nennen als Dauerladestrom meist 0,3 bis 0,5 C — das ist das Fenster, in dem die Klasse zur Batterie passen muss.',
+        'Die C-Rate ist der Ladestrom als Vielfaches der Nennkapazität: 30 A an 330 Ah sind 0,09 C, 90 A sind 0,27 C. LiFePO4-Datenblätter nennen als Dauerladestrom meist 0,3 bis 0,5 C, AGM und Gel 0,1 bis 0,2 C — daran muss die Klasse zur Batterie passen. Das Blei-Fenster des Rechners liegt mit 0,2 bis 0,3 C darüber; es ist eine Modellannahme und keine Datenblattgrenze.',
         '100 Ah ab leer brauchen mit 30 A gut drei Stunden und mit 50 A zwei; die Konstantspannungsphase am Ende kommt dazu, weil der Strom dort von selbst sinkt. Der Rechner rechnet beides für deine Bank und prüft gleichzeitig die Lichtmaschine — denn die ist die Grenze, nicht das Gerät.',
       ],
       calculator: 'ladestrom',
@@ -173,7 +173,12 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
       definitions: [
         {
           term: 'Sicherung am Batteriepol',
-          description: `Sie schützt die Leitung, nicht das Gerät, und sitzt im Modell höchstens ${Math.round(FUSE_MAX_UNPROTECTED_LENGTH_M * 100)} cm vom Pol entfernt. Die Größe folgt der Leitung: über dem Betriebsstrom des Boosters, unter dem, was die Leitung dauerhaft führen kann.`,
+          description: `Sie schützt die Leitung, nicht das Gerät, und sitzt im Modell höchstens ${Math.round(FUSE_MAX_UNPROTECTED_LENGTH_M * 100)} cm vom Pol entfernt. Die Größe folgt der Leitung: über dem Betriebsstrom des Boosters, unter dem, was die Leitung dauerhaft führen kann. Für Dauerlast sind etwa 25 % Reserve üblich; die größte zulässige Sicherung je Querschnitt ist die Obergrenze, nicht automatisch die richtige Wahl. Bei LiFePO4-Bänken muss das Abschaltvermögen zum Kurzschlussstrom passen — regelmäßig mindestens MRBF oder Class T, nicht die Flachsicherung; BMS und Datenblatt der Batterie bleiben maßgeblich.`,
+        },
+        {
+          term: 'Zweite Sicherung an der Bordbatterie',
+          description:
+            'Zwischen Booster und Bordbatterie speist die Bordbatterie den Kurzschlussstrom — deshalb sitzt die zweite Sicherung an ihrem Pol, nicht am Booster-Ausgang. Diese Leitung liegt auch im Stand an Batteriespannung; die Sicherung schützt die Leitung, nicht Personen.',
         },
         {
           term: 'Steuerleitung D+',
@@ -260,7 +265,7 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
     {
       question: 'Was kostet ein guter Ladebooster?',
       answer:
-        'Das Gerät ist die kleinere Hälfte: 30 A gibt es ab rund 150 €, 90 A ab rund 500 €. Dazu kommen je nach Fahrzeug 100 bis 300 € für Kabel, Sicherungen und Kabelschuhe — der Querschnitt steigt mit dem Strom.',
+        'Das Gerät ist die kleinere Hälfte: 30 A gibt es ab rund 168 €, 90 A ab rund 500 €. Dazu kommen je nach Fahrzeug 100 bis 300 € für Kabel, Sicherungen und Kabelschuhe — der Querschnitt steigt mit dem Strom.',
     },
   ],
   related: [
@@ -301,13 +306,13 @@ export const LADEBOOSTER_CONTENT: SeoPageContent = {
         'Schutz bei Überstrom: Koordination von Betriebsstrom, Sicherungsgröße und Leitungsbelastbarkeit.',
     },
     {
-      label: 'ISO 10133 § 8.1',
+      label: 'ISO 13297:2020 § 8.1',
       detail: 'Schutzorgan unmittelbar am Quellpunkt — im Modell 0,2 m ab dem Batteriepol.',
     },
     {
       label: 'DIN VDE 0100-721',
       detail:
-        'Kleinspannungsanlagen in Caravans und Motorcaravans: Bezugsrahmen für Absicherung und Leitungsschutz in dieser Auslieferung.',
+        'Elektrische Anlagen in Caravans und Motorcaravans: Bezugsrahmen für Absicherung und Leitungsschutz in dieser Auslieferung.',
     },
   ],
   assumptions: [
