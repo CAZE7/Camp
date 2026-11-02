@@ -56,9 +56,30 @@ jobs:
       - name: Build (Static Export)
         run: npm run build
 
+      - name: Exportstand und lokalen Server prüfen
+        # Der Workflow darf nur den frisch gebauten Export fotografieren. Ein
+        # gesetztes E2E_BASE_URL würde sonst die Live-Seite aufnehmen; ein
+        # veralteter Export würde alte Markenbilder als Baselines hochladen.
+        run: |
+          node scripts/e2e/static-server.mjs 4175 out &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4175/ -o /tmp/startseite.html; then
+              break
+            fi
+            sleep 1
+          done
+          if ! grep -q '12V-Planer' /tmp/startseite.html; then
+            echo '::error file=out/index.html::Die Startseite aus ./out trägt nicht die erwartete Marke 12V-Planer.'
+            exit 1
+          fi
+
       - name: Baselines neu aufnehmen
         # Nur die beiden Pixel-Specs: die Kennzeichnung „hält die Baseline" ist
         # hier zweitrangig, die Dateiauswahl entscheidet, was neu geschrieben wird.
+        env:
+          E2E_BASE_URL: http://127.0.0.1:4173
         run: npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts --update-snapshots
 
       - name: Baselines hochladen
