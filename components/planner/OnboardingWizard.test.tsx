@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { OnboardingWizard, recommendedTemplateId } from './OnboardingWizard';
+import { PLANNER_TEMPLATES } from './templates';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
@@ -44,6 +45,41 @@ describe('OnboardingWizard (B-06, B-23, Nachtest)', () => {
     for (const box of within(consumerStep).getAllByRole('checkbox')) {
       expect(box).not.toBeChecked();
     }
+  });
+
+  /**
+   * UX-Audit 02.11.2026: Ohne `aria-label` hieß der Knopf „Autarker Kastenwagen
+   * Empfohlen Verkabelter Kastenwagen mit …“ — Label, Abzeichen und Ganztext
+   * verschmolzen zu einem Ansage-Satz. Der Name bleibt die Vorlage, der Text
+   * kommt separat über `aria-describedby`.
+   */
+  it('nennt die Vorlagen-Knöpfe kurz und sagt die Beschreibung separat an', () => {
+    render(<OnboardingWizard />);
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const step = screen.getByRole('region', { name: '3. Wähle deine Basis' });
+    const buttons = within(step).getAllByRole('button');
+    expect(buttons).toHaveLength(PLANNER_TEMPLATES.length);
+
+    for (const button of buttons) {
+      const name = button.getAttribute('aria-label') ?? '';
+      const [label, suffix] = name.split(', ');
+      expect(PLANNER_TEMPLATES.map((template) => template.label)).toContain(label);
+      expect(suffix === undefined || suffix === 'empfohlen').toBe(true);
+
+      const describedBy = button.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      const description = document.getElementById(describedBy!);
+      expect(description?.textContent).toBe(
+        PLANNER_TEMPLATES.find((template) => template.label === label)?.description
+      );
+      expect(name).not.toContain(description?.textContent ?? '@unmoeglich@');
+    }
+
+    expect(
+      buttons.filter((button) => button.getAttribute('aria-label')?.endsWith(', empfohlen'))
+    ).toHaveLength(1);
   });
 });
 

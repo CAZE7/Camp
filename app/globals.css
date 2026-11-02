@@ -1953,7 +1953,10 @@ body:has(.de-warning-center [role='dialog']) .planner-action-feedback {
 .chat-window {
   position: fixed;
   z-index: var(--z-toast);
-  top: max(1rem, env(safe-area-inset-top));
+  /* `SiteHeader` ist `sticky top-0` und 48 px hoch (zzgl. 1 px Rand). Der
+     Assistent liegt mit --z-toast darüber; startete das Fenster bei 16 px, sind
+     Logo und „Menü öffnen" unter ihm nicht mehr erreichbar (375 px, 02.11.2026). */
+  top: calc(3.0625rem + max(0rem, env(safe-area-inset-top)));
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom));
   left: max(1rem, env(safe-area-inset-left));

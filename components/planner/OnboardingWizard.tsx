@@ -203,6 +203,14 @@ export function OnboardingWizard() {
                     type="button"
                     key={template.id}
                     onClick={() => void handleApplyTemplate(template.id)}
+                    // Ohne aria-label hieße die Schaltfläche „Wochenend-Camper
+                    // Empfohlen Ein Wochenende mit …“ — Name, Abzeichen und
+                    // Ganztext verschmolzen. Der Name bleibt kurz, der Text wird
+                    // über aria-describedby separat angesagt.
+                    aria-label={
+                      template.id === recommendedId ? `${template.label}, empfohlen` : template.label
+                    }
+                    aria-describedby={`onboarding-template-desc-${template.id}`}
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                       template.id === recommendedId
                         ? 'border-moss bg-moss/10 ring-1 ring-moss'
@@ -220,7 +228,12 @@ export function OnboardingWizard() {
                         </>
                       )}
                     </span>
-                    <span className="text-sm text-muted-foreground">{template.desc}</span>
+                    <span
+                      id={`onboarding-template-desc-${template.id}`}
+                      className="text-sm text-muted-foreground"
+                    >
+                      {template.desc}
+                    </span>
                   </button>
                 ))}
             </div>

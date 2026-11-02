@@ -154,7 +154,9 @@ export function PlanerSeoContent() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{template.description}</p>
                 <Link
                   href={template.href}
-                  className="mt-3 inline-block text-sm font-medium underline underline-offset-2 hover:text-muted-foreground"
+                  // 44 px Touch-Höhe: als `inline-block`-Textlink war das Ziel
+                  // auf dem Handy 20 px hoch (375 px, 02.11.2026).
+                  className="mt-3 inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-2 hover:text-muted-foreground"
                 >
                   {template.label} im Planer öffnen
                 </Link>
