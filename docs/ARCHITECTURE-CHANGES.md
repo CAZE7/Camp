@@ -1,6 +1,6 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
-## LEDGER 2026-11-02 (7) — Miniaturübersicht: Rahmen als Leselinie
+## LEDGER 2026-11-02 (8) — Miniaturübersicht: Rahmen als Leselinie
 
 **Anlass:** Nutzeraudit. Die Übersicht unten links zeigte den
 Hauptstromkreis-Rahmen als schwarzen Block — `nodeMinimapColorFrom` fällt auf
@@ -19,7 +19,7 @@ Inline-Style, eine CSS-Klasse verliert dagegen.
 **Tests:** `components/planner/` 511 Tests grün; Screenshots hell und dunkel
 (`prefers-color-scheme: dark`), weil beide Werte Tokens sind.
 
-## LEDGER 2026-11-02 (6) — Nachlese des mobilen Audits
+## LEDGER 2026-11-02 (7) — Nachlese des mobilen Audits
 
 Vier Befunde aus demselben Audit, jeder an der betroffenen Stelle behoben.
 Alle Größen sind bei 375 × 667 px im Browser gemessen, nicht aus Klassen abgeleitet.
@@ -42,7 +42,7 @@ Alle Größen sind bei 375 × 667 px im Browser gemessen, nicht aus Klassen abge
   dem Vorlagennamen, die Beschreibung separat über `aria-describedby`.
   Regressionstest schlägt ohne die Änderung fehl.
 
-## LEDGER 2026-11-02 (5) — Externe Belege im neuen Tab
+## LEDGER 2026-11-02 (6) — Externe Belege im neuen Tab
 
 **Anlass:** Die Belegliste im Ladebooster-Vergleich verlinkt auf Hersteller- und
 Normseiten. Jeder Link öffnete im selben Tab — wer nach einem Beleg
@@ -55,7 +55,7 @@ zurückkehren wollte, stand vor einer anderen Seite.
 **Tests:** `LadeboosterVergleich.test.tsx` zählt die gerenderten externen Anker
 und prüft Ziel und `rel` an jedem einzelnen.
 
-## LEDGER 2026-11-02 (4) — Rückfrage vor dem Ersetzen in der App
+## LEDGER 2026-11-02 (5) — Rückfrage vor dem Ersetzen in der App
 
 **Anlass:** „Vorlage laden" und der geteilte Plan fragten mit
 `window.confirm` — Systemdialog, ohne Titel, ohne Bezug zum Plan, auf dem
@@ -71,7 +71,7 @@ Rückfrage offen ist, kann der Plan weiterbearbeitet worden sein. Der
 bei Absage bleibt der Plan erhalten, bei Zusage lädt die Vorlage, und der
 Bearbeitungsstand nach der Rückfrage entscheidet.
 
-## LEDGER 2026-11-02 (3) — Rechner: Grenzen durchsetzen und deutsch formatieren
+## LEDGER 2026-11-02 (4) — Rechner: Grenzen durchsetzen und deutsch formatieren
 
 **Anlass:** Nutzeraudit. Die Rechner nahmen 840 Autarkietage und 30 000 Wp an:
 `DecimalInput` erzwingt `type="text"` (Komma-Eingabe), damit läuft das
@@ -89,7 +89,7 @@ Handanstrich — Tausendertrenner inklusive. „1 Panel à 100 Wp" statt
 Feld, gültiger Fall rechnet weiter, `min`/`max` an der Eingabe spiegeln die
 Tabelle, Gruppenpunkt, Einzahl).
 
-## LEDGER 2026-11-02 (2) — Eigene Größe für den noch nicht gemessenen Einfüge-Kandidaten
+## LEDGER 2026-11-02 (3) — Eigene Größe für den noch nicht gemessenen Einfüge-Kandidaten
 
 **Anlass:** Nutzeraudit auf 12v-planer.de (02.11.2026). Batterie einfügen, dann
 Wechselrichter einfügen: die beiden Karten überlappen sich um 74 Plan-Pixel
@@ -110,6 +110,20 @@ Kachel (`charger`) und Dach-Elemente bleiben beim Pauschalwert.
 Tabelleneintrag fehl), `layout.test.ts` pinnt die gemessenen Werte und verlangt
 einen Eintrag für jedes einfügbare Bauteil. Kein Eingriff in Messwerte als
 Planinhalt (Rule R), keine Änderung an elektrischer Semantik (Rule C/D).
+
+## LEDGER 2026-11-02 (2) — Markenwechsel auf 12V-Planer
+
+**Anlass:** Aufbauend auf dem Domainumzug (#592) wird die sichtbare Marke von
+„Elektroplaner“ auf „12V-Planer“ umgestellt. Die Domain bleibt 12v-planer.de.
+
+**Verhalten:** `SITE_NAME` ist „12V-Planer“; Titel, Wortmarke, Footer,
+Impressum, Datenschutz, SEO-Inhalte, Wasserzeichen und Download-Dateiname
+folgen. Die Vertrauensseite liegt unter `/ueber-12v-planer/`; die früheren
+Pfade `/ueber-elektroplaner/` und `/ueber-werft/` bleiben als noindex-
+Weiterleitungen. OG-Karten, Logo, Favicon und Apple-Icon sind neu. Technische
+IDs (localStorage, Projektformat) bleiben kompatibel.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
 
 ## LEDGER 2026-11-02 — Auslieferung unter 12v-planer.de
 

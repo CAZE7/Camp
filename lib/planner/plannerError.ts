@@ -1,5 +1,5 @@
 /**
- * lib/planner/plannerError.ts — STRUKTURIERTE FEHLER DES ELEKTROPLANERS.
+ * lib/planner/plannerError.ts — STRUKTURIERTE FEHLER DES 12V-PLANERS.
  *
  * Befund V2-ERR-001: Kritische Fehler wurden als freie Strings in
  * `setSystemMessage` geworfen. Ein String trägt keine Kategorie, keine

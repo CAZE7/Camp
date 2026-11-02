@@ -7,7 +7,7 @@
  * A = (2 · L · I) / (κ · ΔU) mit κ = 58 m/(Ω·mm²), ΔU = 0,36 V (3 % bei 12 V)
  * und Derating 0,7 nach DIN VDE 0298-4 (Verlegeart B2).
  *
- * Information Gain: Die Zahlen stammen aus dem eigenen 12V-Elektroplaner,
+ * Information Gain: Die Zahlen stammen aus dem eigenen 12V-Planer,
  * nicht aus generischen KI-Tabellen. Praxis-Entscheidungen und Normverweise
  * sind als solche gekennzeichnet.
  */
@@ -53,7 +53,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
   title: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge mit PDF',
   absoluteTitle: true,
   description:
-    'Kabelquerschnitt-Tabelle 12 V für Camper und Wohnmobile: Formel, Normreihe, PDF-Speicherung und Rechenbeispiele. Berechnet mit dem eigenen 12V-Elektroplaner.',
+    'Kabelquerschnitt-Tabelle 12 V für Camper und Wohnmobile: Formel, Normreihe, PDF-Speicherung und Rechenbeispiele. Berechnet mit dem eigenen 12V-Planer.',
   h1: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge',
   lead: 'Bei 12 V entscheidet bei längeren Leitungen oft der Spannungsfall über den Querschnitt; bei hohen Strömen und kurzen Wegen bleibt die Strombelastbarkeit maßgeblich. Diese Seite zeigt, wie man den Querschnitt für Strom und Leitungslänge berechnet, welche Normgröße gewählt wird und welche Sicherung dazu gehört.',
   priority: 'P0',
@@ -71,7 +71,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/planer/) — eigenen Strom und eigene Länge eingeben, Querschnitt und Sicherung direkt berechnen lassen.',
+        text: '[12V-Planer öffnen](/planer/) — eigenen Strom und eigene Länge eingeben, Querschnitt und Sicherung direkt berechnen lassen.',
       },
       calculator: 'kabelquerschnitt',
     },
@@ -108,7 +108,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       id: 'beispiele',
       heading: 'Rechenbeispiele für typische Camper-Verbraucher',
       body: [
-        'Die Tabelle unten zeigt die Bemessung über 5 m einfache Leitungslänge bei 12 V, berechnet mit dem eigenen 12V-Elektroplaner. Alle Werte folgen der Formel und werden auf verfügbare Normgrößen aufgerundet.',
+        'Die Tabelle unten zeigt die Bemessung über 5 m einfache Leitungslänge bei 12 V, berechnet mit dem eigenen 12V-Planer. Alle Werte folgen der Formel und werden auf verfügbare Normgrößen aufgerundet.',
         'Was die Tabelle zeigt: Bei 10 A über 5 m bestimmt der Spannungsfall die Wahl, nicht die Wärme. Die hier modellierte Normreihe endet bei 70 mm² — reicht sie nicht, helfen eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.',
         '[Erfahrung] In meinem Ducato habe ich zuerst eine 1,5 mm²-Leitung zur Kühlbox verlegt. Bei laufendem Kompressor schaltete die Box in die Unterspannungsabschaltung, obwohl die Batterie voll war. Nach Neuverlegung mit 2,5 mm² ist der Fehler nicht mehr aufgetreten (5 Monate Betrieb, keine Abschaltung).',
       ],
@@ -147,11 +147,11 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       heading: 'Tabelle als PDF speichern',
       body: [
         'Die Tabelle auf dieser Seite wird aus dem Modell berechnet und lässt sich direkt aus dem Browser als PDF speichern: Drucken öffnen, als Ziel „PDF speichern" wählen und die Seitenzahl auf die Tabelle eingrenzen.',
-        'Für eine PDF-Vorlage mit vorausgefüllten Werten (Strom, Länge, Querschnitt, Sicherung) ist der Elektroplaner der richtige Ort. Dort lässt sich der komplette Schaltplan mit allen berechneten Leitungen als Stückliste exportieren.',
+        'Für eine PDF-Vorlage mit vorausgefüllten Werten (Strom, Länge, Querschnitt, Sicherung) ist der 12V-Planer der richtige Ort. Dort lässt sich der komplette Schaltplan mit allen berechneten Leitungen als Stückliste exportieren.',
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/planer/) — berechnete Querschnitte und Sicherungen direkt im Schaltplan verwenden und als PDF exportieren.',
+        text: '[12V-Planer öffnen](/planer/) — berechnete Querschnitte und Sicherungen direkt im Schaltplan verwenden und als PDF exportieren.',
       },
       links: [
         {
@@ -193,11 +193,11 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       id: 'naechster-schritt',
       heading: 'Vom Querschnitt in den Plan',
       body: [
-        'Einzelne Leitungen lassen sich von Hand rechnen. Ab dem dritten Verbraucher lohnt der Plan: Der Camper-Elektroplaner rechnet für jede Kabelverbindung Strom, Querschnitt und Spannungsfall, setzt passende Sicherungen und erzeugt daraus die Stückliste.',
+        'Einzelne Leitungen lassen sich von Hand rechnen. Ab dem dritten Verbraucher lohnt der Plan: Der 12V-Planer rechnet für jede Kabelverbindung Strom, Querschnitt und Spannungsfall, setzt passende Sicherungen und erzeugt daraus die Stückliste.',
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/planer/) — die berechneten Querschnitte lassen sich dort direkt im Schaltplan verwenden.',
+        text: '[12V-Planer öffnen](/planer/) — die berechneten Querschnitte lassen sich dort direkt im Schaltplan verwenden.',
       },
     },
   ],
@@ -229,7 +229,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/rechner/spannungsabfall-12v/', label: 'Spannungsabfall-Rechner' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

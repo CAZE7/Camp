@@ -59,7 +59,7 @@ export function downloadRawPlannerBackup(): boolean {
 }
 
 export function PlannerCrashFallback({
-  title = 'Der Elektroplaner konnte nicht geladen werden.',
+  title = 'Der 12V-Planer konnte nicht geladen werden.',
   description = 'Ein ungültiger Planwert (z. B. aus einem defekten Teilen-Link oder alten Browserdaten) hat die Berechnung unterbrochen.',
   onRetry,
 }: PlannerCrashFallbackProps) {

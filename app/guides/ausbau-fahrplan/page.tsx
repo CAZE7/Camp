@@ -202,7 +202,7 @@ const stepsData: StepData[] = [
     typischeFehler:
       'Zu dünne Kabelquerschnitte gewählt: Der Spannungsfall steigt, und eine unzureichend geschützte Leitung kann sich erwärmen. Querschnitt nach Strom und Länge dimensionieren und die Sicherung auf die Leitung abstimmen.',
     kaufhilfe:
-      'Nutze den Elektroplaner, um Kabelquerschnitte und Komponenten für deine Verbraucher zu bestimmen.',
+      'Nutze den 12V-Planer, um Kabelquerschnitte und Komponenten für deine Verbraucher zu bestimmen.',
   },
   {
     id: 'daemmung',

@@ -79,10 +79,10 @@ export function PlanerSeoContent() {
 
         <section aria-labelledby="planer-anleitung-titel">
           <h2 id="planer-anleitung-titel" className="font-display text-2xl font-semibold tracking-tight">
-            Camper-Schaltplan online zeichnen — so funktioniert der Elektroplaner
+            Camper-Schaltplan online zeichnen — so funktioniert der 12V-Planer
           </h2>
           <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-            Ein kostenloses Programm für den Camper-Schaltplan ist dieser Elektroplaner: Er zeichnet die
+            Ein kostenloses Programm für den Camper-Schaltplan ist dieser 12V-Planer: Er zeichnet die
             komplette 12V- und 24V-Anlage deines Campers als Schaltplan und rechnet dabei elektrisch mit. Jede
             Leitung bekommt ihren Kabelquerschnitt aus Spannungsabfall und Strombelastbarkeit, jede Quelle
             ihre Sicherung, jede Batterie ihre Energiebilanz. Ohne Konto, ohne Installation, ohne Download —

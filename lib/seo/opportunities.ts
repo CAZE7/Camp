@@ -383,7 +383,7 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     id: 'elektroplaner-methodik',
     query: 'wie genau rechnet der camper planer',
     intent: 'vertrauen',
-    page: '/ueber-elektroplaner/',
+    page: '/ueber-12v-planer/',
     coverage: 'abgedeckt',
     gap: null,
     priority: 'P1',

@@ -39,7 +39,7 @@ export default function ImpressumPage() {
                   eingefrorenen Baseline (tests/e2e/visual.spec.ts-snapshots/
                   route-impressum-{light,dark}.png) — ein Textwechsel hier
                   verschiebt das visuelle Gate und braucht UI-Freigabe. */}
-              <p>Elektroplaner — Betreiberangaben werden ergänzt.</p>
+              <p>12V-Planer — Betreiberangaben werden ergänzt.</p>
               <p>Name und Anschrift des Betreibers werden vor der Veröffentlichung ergänzt.</p>
             </>
           )}
@@ -62,7 +62,7 @@ export default function ImpressumPage() {
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Haftungshinweis</h2>
           <p>
-            Elektroplaner ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen (Heizlast,
+            12V-Planer ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen (Heizlast,
             Kabelquerschnitt, Solarleistung) sind Näherungen und ersetzen keine Elektrofachkraft. Für
             Landstrom-Anlagen gehören Errichtung und Erstprüfung in die Hände einer Elektrofachkraft; die
             Errichtung folgt DIN VDE 0100-721, die Erstprüfung DIN VDE 0100-600.

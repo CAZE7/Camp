@@ -8,7 +8,7 @@ import { PageStructuredData } from '@/components/seo/PageStructuredData';
 import { pageByPath } from '@/lib/seo/inventory';
 
 /**
- * app/planer/page.tsx — der Camper-Elektroplaner als eigene Seite.
+ * app/planer/page.tsx — der 12V-Planer als eigene Seite.
  *
  * Warum eine eigene Route und kein Abschnitt auf `/elektrik-planung/`:
  * Der Planer ist ein Editor mit eigener Anwendungsshell (Menüleiste,
@@ -66,7 +66,7 @@ export default function PlanerSeite() {
         {/* Die Anwendung als erster Bildschirm: volle dynamische Fensterhöhe,
             eigenes Scrollen nur in ihren Panels. Erst darunter scrollt das
             Dokument in den Erklärteil. */}
-        <section aria-label="Camper-Elektroplaner" className="flex h-dvh w-full flex-col overflow-hidden">
+        <section aria-label="12V-Planer" className="flex h-dvh w-full flex-col overflow-hidden">
           {/*
             Die Anwendung trägt ihre Überschrift in der Menüleiste, nicht als
             Dokument-Überschrift — für Screenreader und für die Exportprüfung

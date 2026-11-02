@@ -159,7 +159,7 @@ export const HEIZUNG_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
     { href: '/camper-elektrik/stromverbrauch/', label: 'Stromverbrauch typischer Verbraucher' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

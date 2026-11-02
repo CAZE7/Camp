@@ -39,7 +39,7 @@ export type LayoutV2Outcome =
 export type PlannerDetailLevel = 'overview' | 'detail';
 
 /**
- * Arbeitsmodus des Elektroplaners (V2).
+ * Arbeitsmodus des 12V-Planers (V2).
  *
  * Der Planer beantwortet drei verschiedene Fragen, die bisher gleichzeitig auf
  * einem Bildschirm standen — mit dem Ergebnis, dass keine davon gut zu

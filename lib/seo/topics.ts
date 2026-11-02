@@ -218,8 +218,8 @@ export const TOPICS: readonly Topic[] = [
   },
   {
     id: 'vertrauen',
-    label: 'Über Elektroplaner',
-    path: '/ueber-elektroplaner/',
+    label: 'Über 12V-Planer',
+    path: '/ueber-12v-planer/',
     role: 'nebenbereich',
     summary: 'Wie Camp rechnet, worauf es sich stützt und wo die Grenzen des Modells liegen.',
   },

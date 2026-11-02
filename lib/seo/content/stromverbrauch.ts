@@ -4,10 +4,10 @@
  *
  * Tabelle typischer 12-V-Verbraucher im Camper mit Verbrauchswerten,
  * Tagesenergie und dem Weg zur Batteriegröße. Alle Zahlen sind Beispielwerte
- * aus dem 12V-Elektroplaner oder Herstellerangaben — als solche gekennzeichnet.
+ * aus dem 12V-Planer oder Herstellerangaben — als solche gekennzeichnet.
  *
  * Information Gain: Eigene Verbraucher-Beispielrechnungen mit dem
- * 12V-Elektroplaner, Praxis-Entscheidung zur Standheizung, Normverweise.
+ * 12V-Planer, Praxis-Entscheidung zur Standheizung, Normverweise.
  */
 
 import type { SeoPageContent } from '../types';
@@ -74,7 +74,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       id: 'tabelle',
       heading: 'Tabelle: typische 12-V-Verbraucher und ihr Tagesverbrauch',
       body: [
-        'Die Werte unten sind Beispielwerte aus dem 12V-Elektroplaner und Herstellerangaben — keine Messwerte deines Fahrzeugs. Deine eigenen Geräte können deutlich abweichen, besonders bei Kompressor-Kühlboxen, deren Laufzeit von Umgebungstemperatur und Öffnungsdauer abhängt.',
+        'Die Werte unten sind Beispielwerte aus dem 12V-Planer und Herstellerangaben — keine Messwerte deines Fahrzeugs. Deine eigenen Geräte können deutlich abweichen, besonders bei Kompressor-Kühlboxen, deren Laufzeit von Umgebungstemperatur und Öffnungsdauer abhängt.',
         'Die Spalte „Energie" ist bereits gerechnet (Watt × Stunden). Die Gesamtsumme ist der Eingabewert für die Batteriedimensionierung.',
         'Die Standheizung trägt 280 Wh zum Tagesbedarf bei — nicht weil sie elektrisch heizt, sondern weil das Gebläse Stunden läuft. Die eigentliche Heizleistung kommt aus dem Diesel, nicht aus der Batterie. Das ist ein häufiger Denkfehler: Die Standheizung wird als reiner Stromverbraucher eingeplant, obwohl sie nur das Gebläse mit Strom versorgt.',
         'Wer zwei Tage autark stehen will, braucht doppelt so viel nutzbare Energie: rund 2 148 Wh. Bei 90 % Entladetiefe (LiFePO4 im Modell) und 12 V Nennspannung sind das etwa 200 Ah Nennkapazität.',
@@ -100,7 +100,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
       body: [
         'Einige Verbraucher ziehen kurzzeitig mehr Strom als im Dauerbetrieb. Eine Kompressor-Kühlbox hat einen Anlaufstrom, der für Sekunden höher liegt als der Nennstrom. Ein Wechselrichter für 230-V-Geräte kann kurz das Mehrfache seiner Dauerleistung ziehen.',
         'Für den Kabelquerschnitt zählt der Dauerstrom. Für die Sicherung zählt ebenfalls der Dauerstrom — die Sicherung muss im Normalbetrieb nicht auslösen, bei Kurzschluss aber sicher abschalten.',
-        'Anlaufströme sind keine Planungsgröße im 12V-Elektroplaner. Wer einen Wechselrichter mit 1 000 W betreiben will, rechnet mit dem Dauerstrom des Wechselrichters, nicht mit dem Anlauf des angeschlossenen Geräts.',
+        'Anlaufströme sind keine Planungsgröße im 12V-Planer. Wer einen Wechselrichter mit 1 000 W betreiben will, rechnet mit dem Dauerstrom des Wechselrichters, nicht mit dem Anlauf des angeschlossenen Geräts.',
       ],
       callout: {
         tone: 'warning',
@@ -143,7 +143,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
         },
         {
           href: '/planer/',
-          label: 'Camper-Elektroplaner öffnen',
+          label: '12V-Planer öffnen',
           description: 'Den Verbrauch als Plan zeichnen und Querschnitt sowie Sicherung ableiten.',
         },
       ],
@@ -171,13 +171,13 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/camper-elektrik/solar/', label: 'Solar auslegen' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {
       label: 'Modellwerte für Verbraucher',
       detail:
-        'Beispielwerte aus dem 12V-Elektroplaner (Kompressor-Kühlbox 4,5 A, LED 1 A, Wasserpumpe 5 A, Laptop 5,4 A, Gebläse 2,9 A). Keine Messwerte.',
+        'Beispielwerte aus dem 12V-Planer (Kompressor-Kühlbox 4,5 A, LED 1 A, Wasserpumpe 5 A, Laptop 5,4 A, Gebläse 2,9 A). Keine Messwerte.',
     },
     {
       label: 'Rechenweg',
@@ -186,7 +186,7 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
     },
   ],
   assumptions: [
-    'Alle Verbraucherwerte sind Beispielwerte aus dem 12V-Elektroplaner oder Herstellerangaben, keine Messwerte eines bestimmten Fahrzeugs.',
+    'Alle Verbraucherwerte sind Beispielwerte aus dem 12V-Planer oder Herstellerangaben, keine Messwerte eines bestimmten Fahrzeugs.',
     'Die Laufzeiten pro Tag sind Annahmen für einen typischen Weekend-Einsatz.',
     'Der Spannungsverlauf der Batterie über den Tag ist nicht modelliert; die Rechnung verwendet konstante 12 V.',
   ],

@@ -5045,8 +5045,8 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 }
 
 /* L7 — Wortmarke der Menüleiste. Ab 768 px setzte `min-width: 0` die Marke
-   frei schrumpfbar, damit brach „Elektroplaner / Elektrikplan“ zweizeilig in
-   die Menüleiste. Die Marke ist der Ausgang der Anwendung und bleibt jetzt
+   frei schrumpfbar, damit brach die Wortmarke neben „Elektrikplan“ zweizeilig
+   in die Menüleiste. Die Marke ist der Ausgang der Anwendung und bleibt jetzt
    starr; dafür entfällt der Projektname zwischen 768 und 1099 px — er
    gewinnt die ~90 px, die die Marke braucht (Beleg lay_tablet_768.png). */
 @media (min-width: 768px) {
@@ -5134,7 +5134,7 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
   }
   /* Der Erklärteil unter der Anwendung (`PlanerSeoContent`) füllte drei
      Seiten. Gedruckt wird nur der erste Bildschirm — die Anwendung. */
-  main#main > *:not([aria-label='Camper-Elektroplaner']) {
+  main#main > *:not([aria-label='12V-Planer']) {
     display: none !important;
   }
   /* `height: auto` würde die Zeichenfläche auf 0 px zusammenziehen (der

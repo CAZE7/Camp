@@ -6,7 +6,7 @@ import type { PageEntry, PageKind } from '../../lib/seo/types';
 
 export const PLANNER_PATH = '/elektrik-planung/';
 
-/** Wissensziele, auf die der zentrale Elektroplaner fachlich zurückverweisen soll. */
+/** Wissensziele, auf die der zentrale 12V-Planer fachlich zurückverweisen soll. */
 export const PLANNER_KNOWLEDGE_PATHS = [
   '/camper-elektrik/kabelquerschnitt/',
   '/camper-elektrik/spannungsabfall/',
@@ -390,7 +390,7 @@ export function analyzeInternalLinkGraph(input: {
         findings,
         page.path,
         'rechner-ohne-planner-link',
-        `${page.path} enthält einen Rechner, aber keinen kontextuellen/inhaltlichen Link zum Elektroplaner.`
+        `${page.path} enthält einen Rechner, aber keinen kontextuellen/inhaltlichen Link zum 12V-Planer.`
       );
     }
   }

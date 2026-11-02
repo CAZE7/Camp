@@ -1,6 +1,6 @@
-# Elektroplaner — Schaltplan und Elektrik für den Camper-Ausbau
+# 12V-Planer — Schaltplan und Elektrik für den Camper-Ausbau
 
-Elektroplaner ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
+12V-Planer ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
 per Klick oder Ziehen auf die Zeichenfläche, Leitungen automatisch
 verlegen lassen — und Querschnitte, Sicherungen und Spannungsfall rechnen
 sich nach konservativen VDE-Modellen selbst nach. Ohne Konto, ohne Server,
@@ -19,21 +19,19 @@ in `lib/` und wird von Unit-, Property-, Golden-Master- und
 Routing-Invarianten-Gates festgehalten. **Stand dieses README:** Commit-Stand
 dieses PR; die Zahlen im Abschnitt „Qualitätsstand“ sind mit Datum belegt.
 
-**Demo:** [caze7.github.io/Camp](https://caze7.github.io/Camp/) ·
-Planer direkt: [caze7.github.io/Camp/planer](https://caze7.github.io/Camp/planer/)
-(belegt: Pages-API `build_type: workflow` + Live-Abruf, 2026-10-12)
+**Demo:** [12v-planer.de](https://12v-planer.de/) ·
+Planer direkt: [12v-planer.de/planer](https://12v-planer.de/planer/)
 
 ---
 
 ## Screenshots
 
 Frisch aufgenommen aus dem gebauten Static Export (`npm run build` → `./out`),
-Chromium headless, 2026-10-12, 1440×900 bzw. 375×812. Planzustand: der
-Onboarding-Flow der Anwendung (Stromquelle Solar, Geräte Kühlschrank + LED,
-Vorlage „Allround“ = 13 Bauteile · 13 Leitungen) — kein Mockup, keine
-nachbearbeiteten Bilder.
+Chromium headless, 2026-11-02, 1440×900 bzw. 375×812. Planzustand: die
+Vorlage „Autarker Kastenwagen“ (13 Bauteile · 13 Leitungen) — kein Mockup,
+keine nachbearbeiteten Bilder.
 
-![Elektroplaner im Vollbild: links der Bauteilkatalog, auf der Zeichenfläche ein automatisch verdrahteter Schaltplan mit Kabellabels für Querschnitt und Länge](docs/screenshots/planer-vollbild.png)
+![12V-Planer im Vollbild: links der Bauteilkatalog, auf der Zeichenfläche ein automatisch verdrahteter Schaltplan mit Kabellabels für Querschnitt und Länge](docs/screenshots/planer-vollbild.png)
 
 _Die Anwendung als eigene Route (`/planer/`) im ganzen Browserfenster: Katalog
 links, Zeichenfläche mit automatischer Verdrahtung, an jedem Kabel Querschnitt
@@ -55,7 +53,7 @@ Zeichengesten und die Prüfung bleiben dieselben._
 _`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
 Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
 
-![Startseite des Elektroplaners mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
+![Startseite des 12V-Planers mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
 
 _Die Startseite bündelt Werkzeuge und Guides; jeder Kartenlink führt in eine
 indexierbare Wissens- oder Werkzeugseite — der Linkgraph ist Teil des
@@ -309,8 +307,8 @@ Branch Protection: `docs/CI.md`.
 - `docs/COMPONENT-REGISTRY.md` — Analyse der Bauteildefinitionen
 - `docs/E2E-TESTS.md` — Playwright-Setup und Grenzen der Geräteemulation
 - `docs/INVENTORY.md`, `docs/RESTMISSION-REPORT.md` — Bestandsaufnahme aus Mission 1
-- `docs/AUDIT-*.md` — historische Fach-Audits (Routing, Auto-Wire, Elektroplaner, Extrem-System)
-- `docs/screenshots/` — die README-Bilder, aufgenommen aus dem gebauten Export (Chromium, keine Mockups; 2026-10-12)
+- `docs/AUDIT-*.md` — historische Fach-Audits (Routing, Auto-Wire, 12V-Planer, Extrem-System)
+- `docs/screenshots/` — die README-Bilder, aufgenommen aus dem gebauten Export (Chromium, keine Mockups; 2026-11-02)
 - `docs/showcase-readiness-checkliste.md` — **Checkliste dieses Vorbereitungs-PR (#524)**: erledigt, offen, Entscheidungen
 - `docs/branch-inventory-2026-10-12.md` — alle 412 Remote-Branches mit PR-Status und Lösch-Vorschlag
 - `AGENTS.md` — Arbeitsauftrag und Definition of Done
