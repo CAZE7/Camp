@@ -1,5 +1,19 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-02 — Auslieferung unter 12v-planer.de
+
+**Anlass:** Domainumzug. GitHub Pages trägt nur eine Custom Domain; die
+Auslieferung wechselt von elektroplaner-camper.de auf 12v-planer.de.
+
+**Verhalten:** `SITE_ORIGIN` in `lib/site.ts` ist `https://12v-planer.de`.
+Darüber hängen Canonical, Open Graph, strukturierte Daten, Sitemap und die
+Sitemap-Zeile in `robots.txt`. `public/CNAME` und der Deploy-Kommentar nennen
+dieselbe Domain. Das Plan-Wasserzeichen lautet „Erstellt mit 12v-planer.de“.
+Datenschutz und Über-Seite nennen den Betreiber von 12v-planer.de. Der
+sichtbare Markenname „Elektroplaner“ bleibt.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-26 (2) — Ein Prüf-Einstieg statt zweier Zahl-Plaketten
 
 **Anlass:** Fortsetzung der Nutzer-Rückmeldung zur Werkzeugleiste. Nach dem

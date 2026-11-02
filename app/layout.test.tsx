@@ -62,7 +62,7 @@ describe('RootLayout', () => {
   });
 
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {
-    expect(metadata.metadataBase?.toString()).toBe('https://elektroplaner-camper.de/');
+    expect(metadata.metadataBase?.toString()).toBe('https://12v-planer.de/');
     expect(metadata.title).toEqual({
       default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Elektroplaner',
       template: '%s | Elektroplaner',

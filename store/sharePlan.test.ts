@@ -33,8 +33,8 @@ describe('Plan-Link teilen (#plan=)', () => {
   });
 
   it('baut eine vollständige Adresse und ersetzt einen alten Hash', async () => {
-    const url = await buildShareUrl(PLAN, 'https://elektroplaner-camper.de/planer/#plan=alt');
-    expect(url.startsWith('https://elektroplaner-camper.de/planer/#plan=')).toBe(true);
+    const url = await buildShareUrl(PLAN, 'https://12v-planer.de/planer/#plan=alt');
+    expect(url.startsWith('https://12v-planer.de/planer/#plan=')).toBe(true);
     expect(url).not.toContain('plan=alt');
     await expect(decodeSharePlan(new URL(url).hash)).resolves.toMatchObject({ ok: true });
   });

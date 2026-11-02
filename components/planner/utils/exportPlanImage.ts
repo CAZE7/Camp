@@ -1,5 +1,7 @@
 import { getNodesBounds, getViewportForBounds, type Node } from '@xyflow/react';
 
+import { SITE_HOST } from '@/lib/site';
+
 /**
  * Bild-Export des Plans (`Datei → Plan als Bild exportieren`).
  *
@@ -15,7 +17,7 @@ export type ExportResult = { type: 'success' | 'error' | 'info'; message: string
  * seines Schaltplans in Forum oder Gruppe lädt, nennt die Quelle — dezent
  * unten rechts, ohne den Plan zu überdecken.
  */
-export const PLAN_WATERMARK_TEXT = 'Erstellt mit elektroplaner-camper.de';
+export const PLAN_WATERMARK_TEXT = `Erstellt mit ${SITE_HOST}`;
 export const PLAN_WATERMARK_SUBTEXT = 'Kostenloser 12V/24V Online-Planer';
 
 /** Badge-Geometrie in Fluss-Koordinaten (unten rechts in den Plan-Bounds). */
