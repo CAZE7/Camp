@@ -75,19 +75,30 @@ jobs:
             exit 1
           fi
 
+      - name: Alte Linux-Baselines entfernen
+        # Playwright aktualisiert vorhandene Linux-Snapshots auf dem Runner
+        # nicht zuverlässig; ohne die alten Dateien erzwingt der Lauf neue.
+        run: |
+          rm -rf tests/e2e/visual.spec.ts-snapshots
+          rm -rf tests/e2e/visual-de-pixel.spec.ts-snapshots
+
       - name: Baselines neu aufnehmen
         # Nur die beiden Pixel-Specs: die Kennzeichnung „hält die Baseline" ist
         # hier zweitrangig, die Dateiauswahl entscheidet, was neu geschrieben wird.
+        continue-on-error: true
         env:
           E2E_BASE_URL: http://127.0.0.1:4173
-        run: npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts --update-snapshots
+        run: npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts --update-snapshots=all
 
       - name: Baseline-Hash protokollieren
+        if: always()
+        continue-on-error: true
         run: |
           ls -l tests/e2e/visual.spec.ts-snapshots/route-start-light-desktop-1440-linux.png
           sha256sum tests/e2e/visual.spec.ts-snapshots/route-start-light-desktop-1440-linux.png
 
       - name: Baselines hochladen
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pixel-baselines
@@ -97,6 +108,7 @@ jobs:
           retention-days: 14
 
       - name: Befund zusammenfassen
+        if: always()
         run: |
           {
             echo "## Pixel-Baselines"
