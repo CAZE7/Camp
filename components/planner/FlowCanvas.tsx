@@ -971,6 +971,10 @@ export function FlowCanvas() {
     void isDarkPlanner;
     return {
       mask: cssToken('--canvas-minimap-mask', 'var(--canvas-minimap-mask)'),
+      // Der Darstellungs-Rahmen wird in der Miniatur zur Leselinie statt zur
+      // schwarzen Fläche: Panel-Füllung, 1-px-Umriss.
+      frameFill: cssToken('--surface-panel', 'var(--surface-panel)'),
+      frameLine: cssToken('--rule-strong', 'var(--rule-strong)'),
       palette: resolveMinimapPalette(),
     };
   }, [isDarkPlanner]);
@@ -1160,7 +1164,18 @@ export function FlowCanvas() {
                 position="bottom-left"
                 className={`planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block ${minimapOpen ? 'planner-minimap--open' : ''}`}
                 ariaLabel="Miniaturübersicht des Plans"
-                nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
+                nodeColor={(node) =>
+                  isPresentationOnlyNode(node)
+                    ? minimapColors.frameFill
+                    : nodeMinimapColorFrom(minimapColors.palette, node)
+                }
+                // React Flow schreibt Füllung als Inline-Style — nur über die
+                // Props, nicht über eine CSS-Klasse, wird der Rahmen hell.
+                nodeStrokeColor={(node) =>
+                  isPresentationOnlyNode(node) ? minimapColors.frameLine : 'transparent'
+                }
+                nodeStrokeWidth={1}
+                nodeBorderRadius={2}
                 maskColor={minimapColors.mask}
                 style={{ backgroundColor: 'var(--surface-panel)' }}
               />

@@ -1472,12 +1472,19 @@
   color: var(--oxide);
 }
 
-/* D-4: MiniMap im Werkzeug-Stil — Panel-Fläche, 1-px-Linie, Radius 4. */
+/* D-4: MiniMap im Werkzeug-Stil — Panel-Fläche, 1-px-Linie, Radius 4.
+   Die Kante in --rule-strong, sonst verschwindet sie gegen die Zeichenfläche
+   und das Feld liest sich als Ausschnitt statt als Instrument. */
 .planner-shell .react-flow__minimap {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-strong);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: none;
+}
+/* Innenabstand: ohne ihn stoßen die Bauteilblöcke an die 1-px-Linie und die
+   Übersicht wirkt wie ein Vollbild statt wie ein Instrumentenfeld. */
+.planner-shell .react-flow__minimap svg {
+  padding: 6px;
 }
 .planner-shell .react-flow__minimap-mask {
   stroke: var(--accent-line);
