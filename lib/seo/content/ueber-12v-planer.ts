@@ -1,11 +1,11 @@
 /**
- * lib/seo/content/ueber-elektroplaner.ts — Vertrauensseite
- * `/ueber-elektroplaner/` (§19).
+ * lib/seo/content/ueber-12v-planer.ts — Vertrauensseite
+ * `/ueber-12v-planer/` (§19).
  *
- * Die Seite trug bis Oktober 2026 den Pfad `/ueber-werft/` nach dem früheren
- * Namen des Werkzeugs. Der alte Pfad bleibt als Umleitungsseite erreichbar
- * (`app/ueber-werft/page.tsx`), damit bestehende Verweise weiterlaufen; im
- * Index steht nur noch diese Adresse.
+ * Die Seite trug bis Oktober 2026 den Pfad `/ueber-werft/` und danach
+ * `/ueber-elektroplaner/`. Beide bleiben als Umleitungsseiten erreichbar
+ * (`app/ueber-werft/page.tsx`, `app/ueber-elektroplaner/page.tsx`), damit
+ * bestehende Verweise weiterlaufen; im Index steht nur noch diese Adresse.
  *
  * Sie beantwortet die Frage „warum kann ich diesen Zahlen glauben?" mit dem,
  * was im Projekt tatsächlich nachprüfbar ist: Quellen, Rechenwege, Grenzen,
@@ -24,17 +24,17 @@ const CAPACITY_ROWS = (['ato', 'midi', 'anl', 'mrbf'] as const).map((type) => [
   `${FUSE_BREAKING_CAPACITY_A[type].toLocaleString('de-DE')} A`,
 ]);
 
-export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
-  path: '/ueber-elektroplaner/',
-  slug: 'ueber-elektroplaner',
+export const UEBER_12V_PLANER_CONTENT: SeoPageContent = {
+  path: '/ueber-12v-planer/',
+  slug: 'ueber-12v-planer',
   topicId: 'vertrauen',
   kind: 'vertrauen',
-  title: 'Über Elektroplaner: Projekt, Methodik und Grenzen',
+  title: 'Über 12V-Planer: Projekt, Methodik und Grenzen',
   absoluteTitle: true,
   description:
-    'Elektroplaner ist ein kostenloses Planungswerkzeug für den Camper-Ausbau: was es rechnet, worauf es sich stützt und wo die Grenzen liegen.',
-  h1: 'Über Elektroplaner',
-  lead: 'Elektroplaner ist ein kostenloses Planungs- und Rechenwerkzeug für den Camper-Ausbau: Elektrik, Dach, Heizlast. Diese Seite erklärt, wie die Zahlen entstehen, worauf sie sich stützen und wo die Grenzen liegen — damit jede Zahl auf ihre Weise überprüfbar bleibt.',
+    '12V-Planer ist ein kostenloses Planungswerkzeug für den Camper-Ausbau: was es rechnet, worauf es sich stützt und wo die Grenzen liegen.',
+  h1: 'Über 12V-Planer',
+  lead: '12V-Planer ist ein kostenloses Planungs- und Rechenwerkzeug für den Camper-Ausbau: Elektrik, Dach, Heizlast. Diese Seite erklärt, wie die Zahlen entstehen, worauf sie sich stützen und wo die Grenzen liegen — damit jede Zahl auf ihre Weise überprüfbar bleibt.',
   priority: 'P1',
   changeFrequency: 'monthly',
   sitemapPriority: 0.6,
@@ -44,8 +44,8 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       id: 'projekt',
       heading: 'Das Projekt',
       body: [
-        'Elektroplaner entstand aus einer wiederkehrenden Beobachtung: Beim Camper-Ausbau entscheidet die PLANUNG über Sicherheit und Kosten — und gleichzeitig ist die Planung der Teil, für den es die wenigsten Werkzeuge gibt. Ein Kabelquerschnitt wird über den Daumen gewählt, eine Batterie nach Bauchgefühl, und der Fehler fällt im ersten Winter auf.',
-        'Deshalb ist Elektroplaner kein Katalog und kein Blog mit Rechnern, sondern eine Werkstatt: Der Kern ist der Camper-Elektroplaner — Bauteile setzen, verbinden lassen, und dabei werden Querschnitt, Sicherung, Spannungsfall und Energiebilanz für jede Leitung geprüft. Dazu kommen Einzelrechner für die Fragen, die man vor dem Plan beantwortet: Kabel, Batterie, Solar, Heizlast, Dachbelegung.',
+        '12V-Planer entstand aus einer wiederkehrenden Beobachtung: Beim Camper-Ausbau entscheidet die PLANUNG über Sicherheit und Kosten — und gleichzeitig ist die Planung der Teil, für den es die wenigsten Werkzeuge gibt. Ein Kabelquerschnitt wird über den Daumen gewählt, eine Batterie nach Bauchgefühl, und der Fehler fällt im ersten Winter auf.',
+        'Deshalb ist 12V-Planer kein Katalog und kein Blog mit Rechnern, sondern eine Werkstatt: Der Kern ist der interaktive Planer — Bauteile setzen, verbinden lassen, und dabei werden Querschnitt, Sicherung, Spannungsfall und Energiebilanz für jede Leitung geprüft. Dazu kommen Einzelrechner für die Fragen, die man vor dem Plan beantwortet: Kabel, Batterie, Solar, Heizlast, Dachbelegung.',
       ],
     },
     {
@@ -106,7 +106,7 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       heading: 'Grenzen',
       list: {
         items: [
-          'Elektroplaner ersetzt keine Elektrofachkraft: Die 230-V-Anlage im Fahrzeug braucht Aufbau und Abnahme durch eine qualifizierte Person.',
+          '12V-Planer ersetzt keine Elektrofachkraft: Die 230-V-Anlage im Fahrzeug braucht Aufbau und Abnahme durch eine qualifizierte Person.',
           'Das Modell kennt keine Alterung, keine Zyklenzahl und keine Garantien von Bauteilen.',
           'Mechanische Fragen — Verlegung, Scheuerschutz, Befestigung, Brandverhalten, Zuladung — sind keine Rechengrößen.',
           'Batteriedaten einzelner Produkte (Ladespannungen, Temperaturfenster, BMS-Schwellen) stehen nicht im Modell; die Datenblätter der Hersteller sind dort die Quelle.',
@@ -118,7 +118,7 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
       id: 'autor',
       heading: 'Autor: Jonas Rieckhoff',
       body: [
-        'Ich bin Jonas Rieckhoff, Selbstausbauer und Betreiber von elektroplaner-camper.de. Die Erfahrungswerte auf diesen Seiten stammen aus meinem eigenen Ausbau eines Ducato L2H2 — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.',
+        'Ich bin Jonas Rieckhoff, Selbstausbauer und Betreiber von 12v-planer.de. Die Erfahrungswerte auf diesen Seiten stammen aus meinem eigenen Ausbau eines Ducato L2H2 — vom ersten falsch gewählten Kabelquerschnitt bis zum funktionierenden 12-V-System mit LiFePO4, Ladebooster und Solaranlage.',
         'Ich schreibe die Artikel als Erfahrungsberichte, nicht als generische Ratgeber. Jede Rechnung habe ich selbst nachgerechnet, jeder Fehler habe ich selbst gemacht und korrigiert. Wo ich keine eigene Messung habe, steht das als Annahme oder [PRÜFEN] daneben.',
       ],
     },
@@ -151,7 +151,7 @@ export const UEBER_ELEKTROPLANER_CONTENT: SeoPageContent = {
     { href: '/', label: 'Startseite' },
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen' },
     { href: '/rechner/', label: 'Alle Rechner' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
     { href: '/impressum/', label: 'Impressum' },
     { href: '/datenschutz/', label: 'Datenschutz' },
   ],

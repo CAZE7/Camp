@@ -1,8 +1,9 @@
-"""Markenbilder des Elektroplaners erzeugen (Vorschaukarte 1200×630, Logo 512×512).
+"""Markenbilder des 12V-Planers erzeugen (Vorschaukarte, Themenkarten, Logo, Apple-Icon).
 
 Hintergrund: Die Dateien hießen bis Oktober 2026 `werft.png`/`werft-mark.png`
-und trugen die alte Wortmarke. Sie sind umbenannt; dieses Skript erzeugt den
-Inhalt neu — in denselben Maßen, mit demselben Aufbau und mit den Farben und
+und danach `elektroplaner*.png`; sie trugen die jeweilige alte Wortmarke. Mit
+dem Domain- und Markenwechsel auf 12V-Planer erzeugt dieses Skript den Inhalt
+neu — in denselben Maßen, mit demselben Aufbau und mit den Farben und
 Schriften der Markenebene (`app/globals.css`):
 
     Fläche   #eceef0  (--surface-canvas hell)
@@ -19,7 +20,7 @@ Aufruf (Pillow und fontTools nötig):
     python scripts/design/buildOgImages.py
 
 Die Schriften werden beim ersten Lauf aus `node_modules/@fontsource*` gezogen
-und im Zwischenspeicher (`OG_FONTS_DIR`, Vorgabe `/tmp/elektroplaner-fonts`)
+und im Zwischenspeicher (`OG_FONTS_DIR`, Vorgabe `/tmp/12v-planer-fonts`)
 abgelegt — der Lauf ist damit reproduzierbar, ohne dass Schriftdateien im
 Repository liegen.
 """
@@ -33,7 +34,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-FONTS_DIR = pathlib.Path(os.environ.get("OG_FONTS_DIR", "/tmp/elektroplaner-fonts"))
+FONTS_DIR = pathlib.Path(os.environ.get("OG_FONTS_DIR", "/tmp/12v-planer-fonts"))
 
 # ── Markenwerte aus app/globals.css ──────────────────────────────────────
 BG = (236, 238, 240)  # --surface-canvas (hell)
@@ -117,7 +118,7 @@ def build_og_card(fonts: dict[str, pathlib.Path]) -> None:
     left = 72
 
     eyebrow = text_layer(
-        "ELEKTROPLANER", fonts["mono-bold"], 24, tracking_for("ELEKTROPLANER", fonts["mono-bold"], 24, 300)
+        "12V-PLANER", fonts["mono-bold"], 24, tracking_for("12V-PLANER", fonts["mono-bold"], 24, 300)
     )
     place(canvas, eyebrow, left - 2, 85, OXIDE)
 
@@ -141,7 +142,7 @@ def build_og_card(fonts: dict[str, pathlib.Path]) -> None:
     footer = text_layer(footer_text, fonts["mono"], 25, tracking_for(footer_text, fonts["mono"], 25, 556))
     place(canvas, footer, left, 482, INK_SOFT)
 
-    target = ROOT / "public/og/elektroplaner.png"
+    target = ROOT / "public/og/12v-planer.png"
     canvas.save(target, optimize=True)
     print(f"{target.relative_to(ROOT)} — {canvas.width}×{canvas.height}")
 
@@ -151,14 +152,78 @@ def build_logo(fonts: dict[str, pathlib.Path]) -> None:
     size = 512
     canvas = Image.new("RGB", (size, size), SOOT)
 
-    glyph = text_layer("EP", fonts["display"], 300, -6)
+    glyph = text_layer("12V", fonts["display"], 300, -6)
     # Auf die Kantenlänge der Vorgängermarke bringen, damit das Logo in
     # Ergebnislisten gleich groß erscheint (rund 350 px).
     scale = 350 / max(glyph.size)
     glyph = glyph.resize((max(1, round(glyph.width * scale)), max(1, round(glyph.height * scale))))
     place(canvas, glyph, (size - glyph.width) // 2, (size - glyph.height) // 2, OXIDE)
 
-    target = ROOT / "public/og/elektroplaner-mark.png"
+    target = ROOT / "public/og/12v-planer-mark.png"
+    canvas.save(target, optimize=True)
+    print(f"{target.relative_to(ROOT)} — {canvas.width}×{canvas.height}")
+
+
+TOPIC_CARDS = (
+    "ausbau-fahrplan.png",
+    "camper-guide.png",
+    "dach.png",
+    "elektrik-planung.png",
+    "heizung.png",
+    "holzausbau.png",
+)
+
+
+def refresh_topic_cards(fonts: dict[str, pathlib.Path]) -> None:
+    """Ersetzt nur die Wortmarke in den bestehenden Themenkarten.
+
+    Titel, Untertitel und Gestaltung bleiben pixelgleich; die Wortmarke steht
+    im freien Bereich oben links. Die Karten werden nicht neu komponiert,
+    damit sich die inhaltliche Gestaltung nicht unbemerkt verschiebt.
+    """
+    wordmark = "12V-PLANER"
+    tracking = tracking_for(wordmark, fonts["mono-bold"], 24, 230)
+
+    for name in TOPIC_CARDS:
+        target = ROOT / "public/og" / name
+        canvas = Image.open(target).convert("RGB")
+        background = canvas.getpixel((0, 0))
+
+        region = canvas.crop((0, 0, 500, 150))
+        pixels = region.load()
+        xs: list[int] = []
+        ys: list[int] = []
+        for y in range(region.height):
+            for x in range(region.width):
+                red, green, blue = pixels[x, y]
+                if abs(red - OXIDE[0]) <= 20 and abs(green - OXIDE[1]) <= 20 and abs(blue - OXIDE[2]) <= 20:
+                    xs.append(x)
+                    ys.append(y)
+
+        if not xs:
+            raise RuntimeError(f"Wortmarke in {target.name} nicht gefunden")
+
+        left, top, right, bottom = min(xs), min(ys), max(xs), max(ys)
+        ImageDraw.Draw(canvas).rectangle(
+            [left - 4, top - 4, right + 4, bottom + 4], fill=background
+        )
+        layer = text_layer(wordmark, fonts["mono-bold"], 24, tracking)
+        place(canvas, layer, left - 2, top, OXIDE)
+        canvas.save(target, optimize=True)
+        print(f"{target.relative_to(ROOT)} — Wortmarke aktualisiert")
+
+
+def build_app_icon(fonts: dict[str, pathlib.Path]) -> None:
+    """Apple-Touch-Icon: dasselbe Monogramm wie das Logo, 180×180."""
+    size = 180
+    canvas = Image.new("RGB", (size, size), SOOT)
+
+    glyph = text_layer("12V", fonts["display"], 96, -3)
+    scale = 120 / glyph.width
+    glyph = glyph.resize((max(1, round(glyph.width * scale)), max(1, round(glyph.height * scale))))
+    place(canvas, glyph, (size - glyph.width) // 2, (size - glyph.height) // 2, OXIDE)
+
+    target = ROOT / "app/apple-icon.png"
     canvas.save(target, optimize=True)
     print(f"{target.relative_to(ROOT)} — {canvas.width}×{canvas.height}")
 
@@ -167,3 +232,5 @@ if __name__ == "__main__":
     schriften = ensure_fonts()
     build_og_card(schriften)
     build_logo(schriften)
+    refresh_topic_cards(schriften)
+    build_app_icon(schriften)

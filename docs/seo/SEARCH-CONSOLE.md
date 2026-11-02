@@ -14,17 +14,21 @@ Diese Datei beschreibt, wie aus `annahme` belastbare Daten werden.
 
 ## Nach dem Domainwechsel (einmalig, vor der ersten Auswertung)
 
-Seit dem Canonical-Fix ist `https://elektroplaner-camper.de` die einzige
-öffentliche Adresse (`SITE_ORIGIN` in `lib/site.ts`, Auslieferung an der
-Wurzel ohne Basis-Pfad, `public/CNAME`). Vorher zeigte der Canonical auf
-`caze7.github.io` — Google wertete die eigene Domain dadurch als Kopie und
-indexierte `site:elektroplaner-camper.de` mit 0 Seiten. Deshalb einmalig:
+Seit dem Wechsel ist `https://12v-planer.de` die einzige öffentliche Adresse
+(`SITE_ORIGIN` in `lib/site.ts`, Auslieferung an der Wurzel ohne Basis-Pfad,
+`public/CNAME`). Die frühere Domain `elektroplaner-camper.de` muss per 301
+auf die neue Adresse zeigen — GitHub Pages bedient nur eine Custom Domain.
+Ohne diesen 301 verliert die Seite ihre bisherige Indexhistorie. Deshalb
+einmalig:
 
-1. Search-Console-Property für `elektroplaner-camper.de` anlegen/bestätigen.
-2. `https://elektroplaner-camper.de/sitemap.xml` einreichen.
+1. Search-Console-Property für `12v-planer.de` anlegen/bestätigen.
+2. `https://12v-planer.de/sitemap.xml` einreichen.
 3. Für `/`, `/planer/` und `/elektrik-planung/` „Indexierung beantragen“.
 4. Im Quelltext einer ausgelieferten Seite kontrollieren, dass Canonical,
-   `og:url`, Sitemap und `robots.txt` auf `elektroplaner-camper.de` zeigen.
+   `og:url`, Sitemap und `robots.txt` auf `12v-planer.de` zeigen.
+5. Die alte Property `elektroplaner-camper.de` (und die frühere
+   `caze7.github.io`-Property) nicht löschen: Sie zeigen, ob der 301 greift
+   und ob noch Verweise auf alte Adressen existieren.
 
 Die Arbeitsliste für die Nutzergewinnung bis zum Wirken der Indexierung
 steht in `docs/marketing/erste-500-nutzer.md`.

@@ -29,8 +29,8 @@ function PlannerStartScreen() {
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-5 bg-background px-6 text-center">
       <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-moss" aria-hidden="true" />
       <p role="status" className="max-w-md text-sm leading-relaxed text-muted-foreground">
-        Der Elektroplaner lädt: Bauteilkatalog, Zeichenfläche und Stückliste erscheinen, sobald das Modul
-        bereit ist. Dein Plan bleibt lokal im Browser — ohne Konto, ohne Server.
+        Der 12V-Planer lädt: Bauteilkatalog, Zeichenfläche und Stückliste erscheinen, sobald das Modul bereit
+        ist. Dein Plan bleibt lokal im Browser — ohne Konto, ohne Server.
       </p>
       <Link
         href="/elektrik-planung/"

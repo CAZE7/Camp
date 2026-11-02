@@ -47,7 +47,7 @@ const FOOTER_COLUMNS = [
   {
     title: 'Über uns',
     links: [
-      { href: '/ueber-elektroplaner/', label: 'Über Elektroplaner' },
+      { href: '/ueber-12v-planer/', label: 'Über 12V-Planer' },
       { href: '/impressum/', label: 'Impressum' },
       { href: '/datenschutz/', label: 'Datenschutz' },
     ],
@@ -88,9 +88,8 @@ export function SiteFooter() {
         </div>
 
         <p className="caption-xs mt-8 border-t border-rule pt-4 text-ink-soft">
-          Elektroplaner ersetzt keine Elektrofachkraft. Alle Berechnungen sind Näherungen — für
-          Landstrom-Anlagen (230 V) ist eine Abnahme nach DIN VDE 0100-721 durch eine qualifizierte Person
-          Pflicht.
+          12V-Planer ersetzt keine Elektrofachkraft. Alle Berechnungen sind Näherungen — für Landstrom-Anlagen
+          (230 V) ist eine Abnahme nach DIN VDE 0100-721 durch eine qualifizierte Person Pflicht.
         </p>
       </div>
     </footer>

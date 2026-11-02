@@ -77,8 +77,8 @@ export const WOHNMOBILZULASSUNG_CONTENT: SeoPageContent = {
       body: [
         'Für die 230-V-Anlage kann die Prüfstelle Schaltplan, Absicherung und Schutzleiterkonzept verlangen. Für 12 V gibt es keine allgemeine Dokumentationspflicht; ein Schaltplan und ein Kabelverzeichnis sind trotzdem sinnvoll, weil sie Fehlersuche und spätere Änderungen erleichtern.',
         'Fehlende Unterlagen können die Eintragung verzögern. Kläre den konkreten Umfang deshalb vor dem Termin mit der Prüfstelle.',
-        '[Erfahrung] Beim TÜV-Termin für meinen Ducato fehlte anfangs die Kabelquerschnitts-Liste im Schaltplan. Der Prüfer hat die Eintragung zurückgestellt. Erst mit der automatischen Stückliste aus dem Elektroplaner wurde die Elektrik akzeptiert.',
-        'Der Camper-Elektroplaner erzeugt Schaltplan und Stückliste aus dem Plan und liefert die Grundlage für diese Dokumentation.',
+        '[Erfahrung] Beim TÜV-Termin für meinen Ducato fehlte anfangs die Kabelquerschnitts-Liste im Schaltplan. Der Prüfer hat die Eintragung zurückgestellt. Erst mit der automatischen Stückliste aus dem 12V-Planer wurde die Elektrik akzeptiert.',
+        'Der 12V-Planer erzeugt Schaltplan und Stückliste aus dem Plan und liefert die Grundlage für diese Dokumentation.',
       ],
       links: [
         {
@@ -88,7 +88,7 @@ export const WOHNMOBILZULASSUNG_CONTENT: SeoPageContent = {
         },
         {
           href: '/planer/',
-          label: 'Camper-Elektroplaner öffnen',
+          label: '12V-Planer öffnen',
           description: 'Schaltplan mit Querschnitt, Sicherung und Stückliste automatisch.',
         },
       ],
@@ -132,14 +132,14 @@ export const WOHNMOBILZULASSUNG_CONTENT: SeoPageContent = {
     {
       question: 'Welche Dokumente braucht der TÜV für die Elektrik?',
       answer:
-        'Für die 230-V-Anlage können Schaltplan, Absicherung und Schutzleiterkonzept verlangt werden. Für 12 V ist ein Kabelverzeichnis vor allem für Fehlersuche und Dokumentation sinnvoll. Der Elektroplaner erzeugt Schaltplan und Stückliste aus dem Plan.',
+        'Für die 230-V-Anlage können Schaltplan, Absicherung und Schutzleiterkonzept verlangt werden. Für 12 V ist ein Kabelverzeichnis vor allem für Fehlersuche und Dokumentation sinnvoll. Der 12V-Planer erzeugt Schaltplan und Stückliste aus dem Plan.',
     },
   ],
   related: [
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen — Überblick' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
     { href: '/guides/ausbau-fahrplan/', label: 'Ausbau-Fahrplan' },
   ],
   sources: [
@@ -150,7 +150,7 @@ export const WOHNMOBILZULASSUNG_CONTENT: SeoPageContent = {
     },
     {
       label: 'Elektrik-Dokumentation',
-      detail: 'Schaltplan, Kabelquerschnitte und Sicherungen — erzeugt aus dem Camper-Elektroplaner.',
+      detail: 'Schaltplan, Kabelquerschnitte und Sicherungen — erzeugt aus dem 12V-Planer.',
     },
   ],
   assumptions: [

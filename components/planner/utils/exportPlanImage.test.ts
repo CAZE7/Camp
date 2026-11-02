@@ -64,8 +64,8 @@ describe('exportPlanImage — Foren-Export mit Wasserzeichen', () => {
 
     expect(result.type).toBe('success');
     expect(badgeTextDuringCapture).toContain(PLAN_WATERMARK_TEXT);
-    expect(badgeTextDuringCapture).toContain('elektroplaner-camper.de');
+    expect(badgeTextDuringCapture).toContain('12v-planer.de');
     expect(document.querySelector('[data-plan-watermark]')).toBeNull();
-    expect(clicks).toEqual(['elektroplaner-camper-schaltplan.png']);
+    expect(clicks).toEqual(['12v-planer-schaltplan.png']);
   });
 });

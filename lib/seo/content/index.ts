@@ -28,7 +28,7 @@ import { SOLAR_CONTENT } from './solar';
 import { SPANNUNGSABFALL_CONTENT } from './spannungsabfall';
 import { SPANNUNGSABFALL_12V_CONTENT } from './spannungsabfall-12v';
 import { STROMVERBRAUCH_CONTENT } from './stromverbrauch';
-import { UEBER_ELEKTROPLANER_CONTENT } from './ueber-elektroplaner';
+import { UEBER_12V_PLANER_CONTENT } from './ueber-12v-planer';
 import { WECHSELRICHTER_CONTENT } from './wechselrichter';
 import { WOHNMOBILZULASSUNG_CONTENT } from './wohnmobilzulassung';
 import type { SeoPageContent } from '../types';
@@ -55,7 +55,7 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   ELEKTRIK_FEHLER_CONTENT,
   LADEN_CONTENT,
   LADEBOOSTER_CONTENT,
-  UEBER_ELEKTROPLANER_CONTENT,
+  UEBER_12V_PLANER_CONTENT,
   HEIZUNG_CONTENT,
   DIESEL_STANDHEIZUNG_CONTENT,
   WOHNMOBILZULASSUNG_CONTENT,

@@ -157,7 +157,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
       links: [
         { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
         { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen dimensionieren' },
-        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: '12V-Planer öffnen' },
       ],
     },
   ],
@@ -184,7 +184,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/rechner/spannungsabfall-12v/', label: 'Spannungsabfall-Rechner' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

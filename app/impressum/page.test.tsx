@@ -20,10 +20,10 @@ vi.mock('next/navigation', () => ({
 }));
 
 const filled: SiteLegal = {
-  providerName: 'Elektroplaner Ausbau GmbH',
+  providerName: '12V-Planer Ausbau GmbH',
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
-  email: 'kontakt@elektroplaner.example',
+  email: 'kontakt@12v-planer.example',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 
@@ -36,7 +36,7 @@ afterEach(() => {
 describe('Impressum — solange die Angaben fehlen', () => {
   it('zeigt die offenen Betreiberangaben', () => {
     render(<ImpressumPage />);
-    expect(screen.getByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeTruthy();
+    expect(screen.getByText('12V-Planer — Betreiberangaben werden ergänzt.')).toBeTruthy();
     expect(
       screen.getByText('Name und Anschrift des Betreibers werden vor der Veröffentlichung ergänzt.')
     ).toBeTruthy();
@@ -46,11 +46,11 @@ describe('Impressum — solange die Angaben fehlen', () => {
 
   it('zeigt keine Platzhalter-Marke und keine halbe Anschrift', () => {
     // Nur die E-Mail eingetragen: Der Anbieterblock bleibt beim
-    // Aufforderungstext, statt „Elektroplaner Ausbau GmbH" ohne Anschrift zu zeigen.
+    // Aufforderungstext, statt „12V-Planer Ausbau GmbH" ohne Anschrift zu zeigen.
     Object.assign(SITE_LEGAL, original, { email: filled.email });
     render(<ImpressumPage />);
-    expect(screen.getByText('E-Mail: kontakt@elektroplaner.example')).toBeTruthy();
-    expect(screen.queryByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeTruthy();
+    expect(screen.getByText('E-Mail: kontakt@12v-planer.example')).toBeTruthy();
+    expect(screen.queryByText('12V-Planer — Betreiberangaben werden ergänzt.')).toBeTruthy();
     expect(screen.queryByText(filled.street)).toBeNull();
     expect(document.body.textContent).not.toContain('BITTE-EINTRAGEN');
   });
@@ -60,15 +60,15 @@ describe('Impressum — mit eingetragenen Angaben', () => {
   it('zeigt Anbieter, Anschrift, Kontakt und Inhaltsverantwortung', () => {
     Object.assign(SITE_LEGAL, filled);
     render(<ImpressumPage />);
-    expect(screen.getByText('Elektroplaner Ausbau GmbH')).toBeTruthy();
+    expect(screen.getByText('12V-Planer Ausbau GmbH')).toBeTruthy();
     expect(screen.getByText('Hafenstraße 12')).toBeTruthy();
     expect(screen.getByText('28217 Bremen')).toBeTruthy();
-    expect(screen.getByText('E-Mail: kontakt@elektroplaner.example')).toBeTruthy();
+    expect(screen.getByText('E-Mail: kontakt@12v-planer.example')).toBeTruthy();
     expect(
       screen.getByText('Nach § 18 Abs. 2 MStV: Mareike Jensen, Hafenstraße 12, 28217 Bremen')
     ).toBeTruthy();
     // Die Aufforderungstexte verschwinden, sobald die Angaben da sind.
-    expect(screen.queryByText('Elektroplaner — Betreiberangaben werden ergänzt.')).toBeNull();
+    expect(screen.queryByText('12V-Planer — Betreiberangaben werden ergänzt.')).toBeNull();
     expect(screen.queryByText('E-Mail: wird ergänzt.')).toBeNull();
   });
 

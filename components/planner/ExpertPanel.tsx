@@ -39,7 +39,7 @@ import type { CableEdgeData } from '../edges/CableEdge';
 
 interface ExpertTip {
   title: string;
-  /** Lucide statt Emoji: der Planer ist eine Ingenieur-Oberfläche (Elektroplaner,
+  /** Lucide statt Emoji: der Planer ist eine Ingenieur-Oberfläche (12V-Planer,
    *  D-2) — Icons bleiben in Farbe/Gewicht kontrollierbar und brauchen kein
    *  Emoji-Font auf dem Gerät. */
   icon: LucideIcon;

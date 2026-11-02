@@ -162,13 +162,13 @@ export const LADEN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/ladebooster/', label: 'Ladebooster: Größe, Anschluss, Absicherung' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage und Landstrom' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {
       label: 'Modellwerte für Laden',
       detail:
-        'Ladestrom als Faustregel 10 % der Nennkapazität · LiFePO4 mit 90 % Entladetiefe · Ladezeit-Aufschlag 1,15 im elektroplaner-camper.de-Modell.',
+        'Ladestrom als Faustregel 10 % der Nennkapazität · LiFePO4 mit 90 % Entladetiefe · Ladezeit-Aufschlag 1,15 im 12v-planer.de-Modell.',
     },
   ],
   assumptions: [

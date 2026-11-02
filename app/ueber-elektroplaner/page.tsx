@@ -1,19 +1,52 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
-import { metadataFor } from '@/app/seoMetadata';
-import { SeoPage } from '@/components/seo/SeoPage';
-import { UEBER_ELEKTROPLANER_CONTENT } from '@/lib/seo/content/ueber-elektroplaner';
+import { metadataForPage } from '@/app/seoMetadata';
+import { SITE_BASE_PATH } from '@/lib/site';
 
 /**
- * app/ueber-elektroplaner/page.tsx — Vertrauensseite: Projekt, Methodik,
- * Quellen, Grenzen und Kontakt (§19).
+ * app/ueber-elektroplaner/page.tsx — Umleitung der früheren Vertrauensadresse.
  *
- * Der Pfad trägt den Produktnamen; die frühere Adresse `/ueber-werft/`
- * antwortet als Umleitungsseite (`app/ueber-werft/page.tsx`) und steht nicht
- * in der Sitemap.
+ * Die Seite hieß bis 2026-10 `/ueber-werft/` und danach `/ueber-elektroplaner/`.
+ * Sie liegt jetzt unter `/ueber-12v-planer/`; diese Route hält die alte
+ * Adresse am Leben, damit bestehende Verweise aus Foren, Lesezeichen und dem
+ * Suchindex nicht ins Leere laufen.
+ *
+ * Bewusst KEIN 301: Ein statischer Export kennt keine Serverumleitung. Die
+ * Umleitung steht stattdessen als `meta http-equiv="refresh"` mit 0 Sekunden
+ * im Dokument — Suchmaschinen behandeln das wie eine permanente Umleitung —
+ * und zusätzlich als gewöhnlicher Verweis für alle, deren Browser der
+ * Auffrischung nicht folgt. Diese Adresse steht deshalb auf `noindex` und
+ * nicht in der Sitemap (`lib/seo/inventory.ts`).
+ *
+ * Das Ziel ist basispfad-fest: Im Export unter einem Repository-Pfad lautet
+ * die Adresse `/Camp/ueber-12v-planer/`, unter der eigenen Domain
+ * `/ueber-12v-planer/` — die Zusammensetzung kommt aus `lib/site.ts`, nicht
+ * aus einer zweiten Zeichenketten-Verkettung.
  */
-export const metadata: Metadata = metadataFor(UEBER_ELEKTROPLANER_CONTENT);
+export const metadata: Metadata = metadataForPage('/ueber-elektroplaner/');
 
-export default function UeberElektroplanerPage() {
-  return <SeoPage page={UEBER_ELEKTROPLANER_CONTENT} />;
+const ZIEL = `${SITE_BASE_PATH}/ueber-12v-planer/`;
+
+export default function UeberElektroplanerUmleitung() {
+  return (
+    <>
+      <meta httpEquiv="refresh" content={`0; url=${ZIEL}`} />
+      <main id="main" className="container-page flex min-h-screen flex-col justify-center bg-paper text-ink">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Weiterleitung: Über 12V-Planer</h1>
+        <p className="mt-3 max-w-3xl text-md text-ink-soft">
+          Diese Seite ist umgezogen. Die Vertrauensseite mit Methodik, Quellen und Grenzen des Modells liegt
+          jetzt unter
+        </p>
+        <p className="mt-4">
+          <Link
+            href="/ueber-12v-planer/"
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+          >
+            Über 12V-Planer — Projekt, Methodik und Grenzen
+          </Link>
+        </p>
+      </main>
+    </>
+  );
 }

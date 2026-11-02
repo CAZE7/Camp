@@ -233,7 +233,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Der Camper-Elektroplaner prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. Hier kannst du einen [kostenlosen Camper-Schaltplan erstellen](/planer/).',
+        text: 'Der 12V-Planer prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. Hier kannst du einen [kostenlosen Camper-Schaltplan erstellen](/planer/).',
       },
     },
   ],
