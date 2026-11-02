@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
+import { SOLAR_BOUNDS, isWithinBounds, rangeMessage } from '@/components/rechner/inputBounds';
 import { DEFAULT_YIELD_KWH_PER_KWP_DAY, type SolarSizingResult, sizeSolarArray } from '@/lib/solarSizing';
 
 /**
@@ -26,7 +27,19 @@ function parseInput(raw: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-const format = (value: number, digits: number): string => value.toFixed(digits).replace('.', ',');
+/**
+ * Deutsche Schreibweise mit Tausendergruppen — „1.161.620 Wp", nicht „1161620 Wp".
+ * `toFixed` + Komma-Ersetzung ließ die Gruppen weg, während der Rest der Seite
+ * (Knoten, Stückliste, SEO-Tabellen) über `toLocaleString('de-DE')` gruppiert.
+ */
+const format = (value: number, digits: number): string =>
+  value.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+/** „1 Panel à 100 Wp", aber „2 Panels à 100 Wp". */
+function panelCountLabel(count: number): string {
+  const n = format(count, 0);
+  return count === 1 ? `${n} Panel à` : `${n} Panels à`;
+}
 
 export function SolaranlageRechner() {
   const [energyRaw, setEnergyRaw] = useState('');
@@ -45,10 +58,17 @@ export function SolaranlageRechner() {
     state = { kind: 'empty' };
   } else if (energy === null || yieldPerKwp === null || panelWatts === null) {
     state = { kind: 'invalid', message: 'Bitte für Bedarf, Ertrag und Panelgröße Zahlen eingeben.' };
-  } else if (energy <= 0 || yieldPerKwp <= 0 || panelWatts <= 0) {
-    state = { kind: 'invalid', message: 'Bedarf, Ertrag und Panelgröße müssen größer als null sein.' };
-  } else if (derate < 0 || derate > 70) {
-    state = { kind: 'invalid', message: 'Der Abschlag liegt zwischen 0 und 70 %.' };
+  } else if (!isWithinBounds(energy, SOLAR_BOUNDS.energyWh)) {
+    state = { kind: 'invalid', message: rangeMessage('Der Tagesbedarf', SOLAR_BOUNDS.energyWh, 'Wh') };
+  } else if (!isWithinBounds(yieldPerKwp, SOLAR_BOUNDS.yieldKwhPerKwpDay)) {
+    state = {
+      kind: 'invalid',
+      message: rangeMessage('Der spezifische Ertrag', SOLAR_BOUNDS.yieldKwhPerKwpDay, 'kWh/kWp/Tag'),
+    };
+  } else if (!isWithinBounds(panelWatts, SOLAR_BOUNDS.panelWatts)) {
+    state = { kind: 'invalid', message: rangeMessage('Ein Panel', SOLAR_BOUNDS.panelWatts, 'Wp') };
+  } else if (!isWithinBounds(derate, SOLAR_BOUNDS.deratePercent)) {
+    state = { kind: 'invalid', message: rangeMessage('Der Abschlag', SOLAR_BOUNDS.deratePercent, '%') };
   } else {
     state = {
       kind: 'result',
@@ -71,8 +91,8 @@ export function SolaranlageRechner() {
           <DecimalInput
             id="solar-energie"
             inputMode="decimal"
-            min="1"
-            max="20000"
+            min={SOLAR_BOUNDS.energyWh.min}
+            max={SOLAR_BOUNDS.energyWh.max}
             step="10"
             autoComplete="off"
             value={energyRaw}
@@ -90,8 +110,8 @@ export function SolaranlageRechner() {
           <DecimalInput
             id="solar-ertrag"
             inputMode="decimal"
-            min="0.1"
-            max="8"
+            min={SOLAR_BOUNDS.yieldKwhPerKwpDay.min}
+            max={SOLAR_BOUNDS.yieldKwhPerKwpDay.max}
             step="0.1"
             autoComplete="off"
             value={yieldRaw}
@@ -110,8 +130,8 @@ export function SolaranlageRechner() {
             <DecimalInput
               id="solar-panel"
               inputMode="decimal"
-              min="5"
-              max="600"
+              min={SOLAR_BOUNDS.panelWatts.min}
+              max={SOLAR_BOUNDS.panelWatts.max}
               step="5"
               autoComplete="off"
               value={panelRaw}
@@ -124,8 +144,8 @@ export function SolaranlageRechner() {
             <DecimalInput
               id="solar-abschlag"
               inputMode="decimal"
-              min="0"
-              max="70"
+              min={SOLAR_BOUNDS.deratePercent.min}
+              max={SOLAR_BOUNDS.deratePercent.max}
               step="5"
               autoComplete="off"
               value={derateRaw}
@@ -169,8 +189,8 @@ export function SolaranlageRechner() {
                 {format(state.result.recommendedPeakWatts, 0)} Wp
               </p>
               <p className="mt-1 text-base text-ink-soft">
-                {state.result.panelCount} Panels à {format(state.result.panelWatts, 0)} Wp · rechnerisch nötig{' '}
-                {format(state.result.requiredPeakWatts, 0)} Wp
+                {panelCountLabel(state.result.panelCount)} {format(state.result.panelWatts, 0)} Wp ·
+                rechnerisch nötig {format(state.result.requiredPeakWatts, 0)} Wp
               </p>
             </div>
 

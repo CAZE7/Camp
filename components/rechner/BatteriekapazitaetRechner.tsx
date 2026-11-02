@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
+import { BATTERY_BOUNDS, isWithinBounds, rangeMessage } from '@/components/rechner/inputBounds';
 import {
   BATTERY_CHEMISTRIES,
   type BatteryChemistry,
@@ -38,7 +39,13 @@ function parseInput(raw: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-const format = (value: number, digits: number): string => value.toFixed(digits).replace('.', ',');
+/**
+ * Deutsche Schreibweise mit Tausendergruppen — „93.520 Ah", nicht „93520 Ah".
+ * `toFixed` + Komma-Ersetzung ließ die Gruppen weg, während der Rest der Seite
+ * über `toLocaleString('de-DE')` gruppiert.
+ */
+const format = (value: number, digits: number): string =>
+  value.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 export function BatteriekapazitaetRechner() {
   const [energyRaw, setEnergyRaw] = useState('');
@@ -56,10 +63,21 @@ export function BatteriekapazitaetRechner() {
     state = { kind: 'empty' };
   } else if (energy === null || days === null) {
     state = { kind: 'invalid', message: 'Bitte für Tagesbedarf und Autarkietage Zahlen eingeben.' };
-  } else if (energy <= 0 || days <= 0) {
-    state = { kind: 'invalid', message: 'Tagesbedarf und Autarkietage müssen größer als null sein.' };
-  } else if (reserve < 0 || reserve > 50) {
-    state = { kind: 'invalid', message: 'Der Reservezuschlag liegt zwischen 0 und 50 %.' };
+  } else if (!isWithinBounds(energy, BATTERY_BOUNDS.energyWh)) {
+    state = {
+      kind: 'invalid',
+      message: rangeMessage('Der Tagesbedarf', BATTERY_BOUNDS.energyWh, 'Wh'),
+    };
+  } else if (!isWithinBounds(days, BATTERY_BOUNDS.autonomyDays)) {
+    state = {
+      kind: 'invalid',
+      message: rangeMessage('Die Zahl autarker Tage', BATTERY_BOUNDS.autonomyDays),
+    };
+  } else if (!isWithinBounds(reserve, BATTERY_BOUNDS.reservePercent)) {
+    state = {
+      kind: 'invalid',
+      message: rangeMessage('Der Reservezuschlag', BATTERY_BOUNDS.reservePercent, '%'),
+    };
   } else {
     state = {
       kind: 'result',
@@ -81,8 +99,8 @@ export function BatteriekapazitaetRechner() {
           <DecimalInput
             id="batterie-energie"
             inputMode="decimal"
-            min="1"
-            max="20000"
+            min={BATTERY_BOUNDS.energyWh.min}
+            max={BATTERY_BOUNDS.energyWh.max}
             step="10"
             autoComplete="off"
             value={energyRaw}
@@ -100,8 +118,8 @@ export function BatteriekapazitaetRechner() {
           <DecimalInput
             id="batterie-tage"
             inputMode="decimal"
-            min="0.5"
-            max="14"
+            min={BATTERY_BOUNDS.autonomyDays.min}
+            max={BATTERY_BOUNDS.autonomyDays.max}
             step="0.5"
             autoComplete="off"
             value={daysRaw}
@@ -150,8 +168,8 @@ export function BatteriekapazitaetRechner() {
           <DecimalInput
             id="batterie-reserve"
             inputMode="decimal"
-            min="0"
-            max="50"
+            min={BATTERY_BOUNDS.reservePercent.min}
+            max={BATTERY_BOUNDS.reservePercent.max}
             step="5"
             autoComplete="off"
             value={reserveRaw}
