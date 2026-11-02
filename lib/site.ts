@@ -2,7 +2,7 @@
  * lib/site.ts — Herkunft und Basis-Pfad der Auslieferung an genau einer Stelle.
  *
  * Die Anwendung wird als statischer Export über GitHub Pages ausgeliefert,
- * öffentlich aber unter der eigenen Domain `elektroplaner-camper.de` an der
+ * öffentlich aber unter der eigenen Domain `12v-planer.de` an der
  * Wurzel (`public/CNAME`, Deploy baut ohne Basis-Pfad). Die frühere Herkunft
  * `caze7.github.io` darf hier NICHT wieder auftauchen: Als Canonical hätte sie
  * Google ausdrücklich gesagt, die eigene Domain sei nur die Kopie — genau
@@ -18,8 +18,11 @@
  * (Entwicklung, Prüfbau und die Auslieferung unter der eigenen Domain).
  */
 
+/** Öffentlicher Hostname der Auslieferung, ohne Schema und ohne Pfad. */
+export const SITE_HOST = '12v-planer.de';
+
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
-export const SITE_ORIGIN = 'https://elektroplaner-camper.de';
+export const SITE_ORIGIN = `https://${SITE_HOST}`;
 
 /**
  * Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD, Titelvorlage).

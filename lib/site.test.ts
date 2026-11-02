@@ -6,10 +6,10 @@ describe('siteUrl', () => {
   it('zeigt mit Canonical, Sitemap und robots auf die eigene Domain — nie auf github.io', () => {
     // Regressionsschutz für den SEO-Befund: Stand hier wieder
     // `caze7.github.io`, würde Google die eigene Domain als Kopie werten
-    // und elektroplaner-camper.de aus dem Index werfen.
-    expect(SITE_ORIGIN).toBe('https://elektroplaner-camper.de');
-    expect(siteUrl('/planer/', '')).toBe('https://elektroplaner-camper.de/planer/');
-    expect(siteUrl('/sitemap.xml', '')).toBe('https://elektroplaner-camper.de/sitemap.xml');
+    // und 12v-planer.de aus dem Index werfen.
+    expect(SITE_ORIGIN).toBe('https://12v-planer.de');
+    expect(siteUrl('/planer/', '')).toBe('https://12v-planer.de/planer/');
+    expect(siteUrl('/sitemap.xml', '')).toBe('https://12v-planer.de/sitemap.xml');
     expect(siteUrl('/planer/', '')).not.toContain('github.io');
   });
 

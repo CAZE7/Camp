@@ -249,7 +249,7 @@ describe('GitHub-Actions-Workflows', () => {
   it('Pages-Build läuft ohne Basis-Pfad — eigene Domain statt github.io/Camp', () => {
     // Regressionsschutz für den Canonical-Befund: Mit dem von configure-pages
     // gelieferten `/Camp` zeigten Canonical, Sitemap und Assets unter
-    // elektroplaner-camper.de ins Leere, und Google bekam zuvor die
+    // 12v-planer.de ins Leere, und Google bekam zuvor die
     // github.io-Adresse als Original genannt.
     const workflow = readWorkflow('deploy.yml');
     const buildSteps = workflow.jobs.build?.steps ?? [];
@@ -264,9 +264,7 @@ describe('GitHub-Actions-Workflows', () => {
     expect(staticBuild?.env).toEqual({
       NEXT_PUBLIC_BASE_PATH: '',
     });
-    expect(readFileSync(join(process.cwd(), 'public', 'CNAME'), 'utf8').trim()).toBe(
-      'elektroplaner-camper.de'
-    );
+    expect(readFileSync(join(process.cwd(), 'public', 'CNAME'), 'utf8').trim()).toBe('12v-planer.de');
   });
 
   it('basePath steht in Paarform — configure-pages ersetzt sonst den Schlüssel', () => {
