@@ -9,7 +9,7 @@ import { buildCleanEntryUrl, usePlannerEntryPlan } from './usePlannerEntryPlan';
 const applyTemplate = vi.fn();
 const importProject = vi.fn(() => true);
 const setHasOnboarded = vi.fn();
-const requestConfirm = vi.fn((): Promise<boolean> => Promise.resolve(false));
+const requestConfirm = vi.fn((_message: string): Promise<boolean> => Promise.resolve(false));
 
 vi.mock('../../ui/ConfirmDialog', () => ({
   requestConfirm: (message: string) => requestConfirm(message),

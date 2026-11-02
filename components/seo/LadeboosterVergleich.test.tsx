@@ -43,7 +43,7 @@ describe('LadeboosterVergleich', () => {
     render(<LadeboosterVergleich />);
 
     const external = Array.from(
-      document.querySelectorAll('a[href^="http"], a[href^="https"]') as HTMLAnchorElement[]
+      document.querySelectorAll<HTMLAnchorElement>('a[href^="http"], a[href^="https"]')
     ).filter((a) => !a.href.startsWith(window.location.origin));
 
     expect(external.length).toBeGreaterThan(0);

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { usePlannerActions } from './usePlannerActions';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 
-const requestConfirm = vi.fn((): Promise<boolean> => Promise.resolve(false));
+const requestConfirm = vi.fn((_message: string): Promise<boolean> => Promise.resolve(false));
 
 vi.mock('../../ui/ConfirmDialog', () => ({
   requestConfirm: (message: string) => requestConfirm(message),
