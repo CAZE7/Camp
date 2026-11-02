@@ -31,7 +31,6 @@ import {
   PLANNER_INITIAL_FIT_MIN_ZOOM,
   PLANNER_FOCUS_MAX_ZOOM,
   PLANNER_SNAP_GRID,
-  NODE_FOOTPRINT,
   NODE_TOUCH_MARGIN,
 } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
@@ -64,6 +63,7 @@ import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
 import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
+import { getNodeLayoutSize } from './utils/layout';
 import { DesignatorContext, designatorMapFor } from '../nodes/designators';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
@@ -616,12 +616,18 @@ export function FlowCanvas() {
         x: bounds.left + bounds.width / 2,
         y: Math.min(bounds.bottom - 48, Math.max(bounds.top + 48, preferredY)),
       });
-      const initialPosition = { x: center.x - 96, y: center.y - 60 };
+      // Der Kandidat ist noch nicht montiert und damit nirgends gemessen. Seine
+      // Box kommt aus der Größen-Tabelle (`utils/layout.ts`); ein einheitlicher
+      // Rückfall hielte z. B. eine 202 px hohe Wechselrichterkarte für 120 px und
+      // ließe sie auf eine bereits belegte Fläche setzen.
+      const candidate: Node = { id: 'new-component', type, data: {}, position: { x: 0, y: 0 } };
+      const footprint = getNodeLayoutSize(candidate);
+      const initialPosition = {
+        x: center.x - footprint.width / 2,
+        y: center.y - footprint.height / 2,
+      };
       const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
-      const position = findNearestFreePosition(
-        { id: 'new-component', type, data: {}, position: initialPosition },
-        domainNodes
-      );
+      const position = findNearestFreePosition({ ...candidate, position: initialPosition }, domainNodes);
       state.addNode(type, label, position, watts);
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
 
@@ -645,8 +651,8 @@ export function FlowCanvas() {
       const outsideVisibleArea =
         position.x < visibleTopLeft.x ||
         position.y < visibleTopLeft.y ||
-        position.x + NODE_FOOTPRINT.width > visibleBottomRight.x ||
-        position.y + NODE_FOOTPRINT.height > visibleBottomRight.y;
+        position.x + footprint.width > visibleBottomRight.x ||
+        position.y + footprint.height > visibleBottomRight.y;
       if (outsideVisibleArea) {
         void fitView({ duration: 300, padding: PLANNER_FIT_PADDING, minZoom: PLANNER_INITIAL_FIT_MIN_ZOOM });
       }

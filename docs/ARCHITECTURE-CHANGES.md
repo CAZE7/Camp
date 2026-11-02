@@ -1,5 +1,27 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-02 (2) — Eigene Größe für den noch nicht gemessenen Einfüge-Kandidaten
+
+**Anlass:** Nutzeraudit auf 12v-planer.de (02.11.2026). Batterie einfügen, dann
+Wechselrichter einfügen: die beiden Karten überlappen sich um 74 Plan-Pixel
+(nachgemessen: 148 Bildschirm-Pixel bei Zoom 2). Die Platzierungssuche bekam den
+Kandidaten als `{ id: 'new-component', type, data: {}, position }` — ohne Messung,
+ohne gesetzte Größe. `getNodeLayoutSize` fiel deshalb auf 120 px zurück, während
+die Wechselrichterkarte 202 px misst, und erklärte eine Fläche frei, die die
+146 px hohe Batterie längst belegt.
+
+**Verhalten:** `NODE_SIZE_BY_TYPE` ist die einzige Quelle für die Größe
+noch nicht gemessener Knoten und deckt jetzt jedes einfügbare Bauteil der Sidebar
+ab — Elektrik und Wasser, an den gerenderten Karten gemessen. Der Zusatzpfad in
+`FlowCanvas.placeAtCanvasCenter` zentriert und prüft die Sichtbarkeit mit
+derselben Box; das pauschale `NODE_FOOTPRINT` (192 × 120) ist weg. Alttypen ohne
+Kachel (`charger`) und Dach-Elemente bleiben beim Pauschalwert.
+
+**Tests:** `collision.test.ts` reproduziert den Überlappungsfall (schlägt ohne
+Tabelleneintrag fehl), `layout.test.ts` pinnt die gemessenen Werte und verlangt
+einen Eintrag für jedes einfügbare Bauteil. Kein Eingriff in Messwerte als
+Planinhalt (Rule R), keine Änderung an elektrischer Semantik (Rule C/D).
+
 ## LEDGER 2026-11-02 — Auslieferung unter 12v-planer.de
 
 **Anlass:** Domainumzug. GitHub Pages trägt nur eine Custom Domain; die

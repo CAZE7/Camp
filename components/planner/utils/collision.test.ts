@@ -41,4 +41,22 @@ describe('node collision resolution', () => {
     expect(collidingNodeIds({ ...dragged, position: free }, blockers)).toEqual([]);
     expect(Math.hypot(free.x, free.y)).toBeLessThanOrEqual(48);
   });
+
+  /**
+   * Live nachgestellt am 02.11.2026 auf 12v-planer.de: Batterie einfügen, dann
+   * Wechselrichter einfügen — die Karten überlappen sich um 74 Plan-Pixel
+   * (148 Bildschirm-Pixel bei Zoom 2). Der Kandidat ist beim Suchlauf noch nicht
+   * gemessen und fiel auf die pauschale Rückfallhöhe von 120 px zurück; die
+   * 202 px hohe Karte wurde deshalb auf einer Fläche abgelegt, die die 146 px
+   * hohe Batterie längst belegt.
+   */
+  it('weicht auch einem ungemessenen Kandidaten nach seiner echten Kartenhöhe aus', () => {
+    const existing = node('battery-1', 0, 0, 192, 146);
+    const candidate: Node = { id: 'new-component', type: 'inverter', data: {}, position: { x: 0, y: 0 } };
+
+    const free = findNearestFreePosition(candidate, [existing]);
+    // React Flow misst die Karte erst nach dem Einfügen — dann darf nichts überlappen.
+    const mounted = { ...candidate, position: free, measured: { width: 192, height: 202 } };
+    expect(collidingNodeIds(mounted, [existing])).toEqual([]);
+  });
 });

@@ -48,13 +48,6 @@ export { PLANNER_SNAP_GRID } from './grid';
 export const PANE_WAIT_FRAMES = 30;
 
 /**
- * Fußabdruck eines neu platzierten Bauteils. `placeAtCanvasCenter` zentriert
- * den Knoten mit der Hälfte davon auf den Pane-Mittelpunkt — die Zahl ist also
- * bereits im Versatz `initialPosition` enthalten und darf nicht auseinanderlaufen.
- */
-export const NODE_FOOTPRINT = { width: 192, height: 120 } as const;
-
-/**
  * Halbe Trefferfläche in Plan-Koordinaten: `app/globals.css` setzt den Handle
  * auf 60 × 60 Plan-Pixel. Die Prüfung unten multipliziert diesen Rand mit dem
  * aktuellen Zoom, bevor sie ihn in Bildschirm-Koordinaten umrechnet.

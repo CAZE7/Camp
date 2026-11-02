@@ -8,7 +8,9 @@ import {
   LAYOUT_NODESEP,
   LAYOUT_RANKSEP,
   LAYOUT_MARGIN,
+  NODE_SIZE_BY_TYPE,
 } from './layout';
+import { listSelectableSpecs } from '../../registry';
 import { type Node, type Edge } from '@xyflow/react';
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}): Node => ({
@@ -33,12 +35,29 @@ describe('three-column cleanup layout', () => {
       width: 300,
       height: 40,
     });
-    expect(getNodeLayoutSize(node('g', 'ground'))).toEqual({ width: 128, height: 88 });
-    expect(getNodeLayoutSize(node('c', 'conduit'))).toEqual({ width: 256, height: 148 });
-    expect(getNodeLayoutSize(node('b', 'battery'))).toEqual({
+    expect(getNodeLayoutSize(node('g', 'ground'))).toEqual({ width: 192, height: 134 });
+    expect(getNodeLayoutSize(node('c', 'conduit'))).toEqual({ width: 256, height: 247 });
+    expect(getNodeLayoutSize(node('b', 'battery'))).toEqual({ width: 192, height: 146 });
+    // Ein Typ ohne Registry-Eintrag (z. B. Dach-Element) bleibt beim Pauschalwert.
+    expect(getNodeLayoutSize(node('r', 'roofSolar'))).toEqual({
       width: DEFAULT_NODE_WIDTH,
       height: DEFAULT_NODE_HEIGHT,
     });
+  });
+
+  /**
+   * Die Tabellenwerte sind Messungen an den gerenderten Karten, keine Typo-
+   * Vorgabe. Fehlt ein Typ, fällt seine Karte still auf 120 px zurück — genau
+   * der Überlappungsfehler, der am 02.11.2026 live auffiel. Guard ist die
+   * Sidebar, nicht die Registry: Alttypen wie `charger` werden nur in alten
+   * Plänen gerendert, nie neu eingefügt und bleiben beim Pauschalwert.
+   */
+  it('deckt jedes einfügbare Bauteil mit einer gemessenen Karte ab', () => {
+    const insertable = [...listSelectableSpecs('electric'), ...listSelectableSpecs('water')].map(
+      (spec) => spec.id
+    );
+    const missing = insertable.filter((type) => !NODE_SIZE_BY_TYPE[type]);
+    expect(missing).toEqual([]);
   });
 
   it('handles an empty graph and preserves edge identities', () => {
