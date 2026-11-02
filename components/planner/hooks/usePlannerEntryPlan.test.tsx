@@ -9,6 +9,11 @@ import { buildCleanEntryUrl, usePlannerEntryPlan } from './usePlannerEntryPlan';
 const applyTemplate = vi.fn();
 const importProject = vi.fn(() => true);
 const setHasOnboarded = vi.fn();
+const requestConfirm = vi.fn((): Promise<boolean> => Promise.resolve(false));
+
+vi.mock('../../ui/ConfirmDialog', () => ({
+  requestConfirm: (message: string) => requestConfirm(message),
+}));
 
 const plannerState = {
   nodes: [] as unknown[],
@@ -115,17 +120,48 @@ describe('usePlannerEntryPlan — Einstieg in den Planer', () => {
       waterNodes: [],
       waterEdges: [],
     });
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    requestConfirm.mockResolvedValueOnce(false);
     try {
       window.history.pushState({}, '', `/planer/#${hash}`);
       render(<Probe />);
 
-      await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(requestConfirm).toHaveBeenCalledTimes(1));
       expect(importProject).not.toHaveBeenCalled();
       expect(window.location.hash).toBe('');
     } finally {
-      confirmSpy.mockRestore();
+      requestConfirm.mockResolvedValue(false);
     }
+  });
+
+  it('öffnet keinen nativen Browser-Dialog mehr, bevor ein Plan ersetzt wird', async () => {
+    const nativeConfirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    requestConfirm.mockResolvedValueOnce(false);
+    // ein bearbeitetes Starter-Setup zählt als eigener Plan — nur dann fragt der Einstieg
+    plannerState.nodes = TEMPLATE_KASTENWAGEN.nodes.map((node) =>
+      node.id === 'battery-1' ? { ...node, data: { ...node.data, capacity: 300 } } : node
+    );
+    plannerState.edges = [...TEMPLATE_KASTENWAGEN.edges];
+
+    window.history.pushState({}, '', '/planer/?template=autark');
+    render(<Probe />);
+
+    await waitFor(() => expect(requestConfirm).toHaveBeenCalledTimes(1));
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(applyTemplate).not.toHaveBeenCalled();
+    nativeConfirm.mockRestore();
+  });
+
+  it('wendet die Vorlage an, wenn die In-App-Rückfrage bestätigt wird', async () => {
+    requestConfirm.mockResolvedValueOnce(true);
+    plannerState.nodes = TEMPLATE_KASTENWAGEN.nodes.map((node) =>
+      node.id === 'battery-1' ? { ...node, data: { ...node.data, capacity: 300 } } : node
+    );
+    plannerState.edges = [...TEMPLATE_KASTENWAGEN.edges];
+
+    window.history.pushState({}, '', '/planer/?template=autark');
+    render(<Probe />);
+
+    await waitFor(() => expect(applyTemplate).toHaveBeenCalled());
   });
 
   it('N7: erhält utm_*-Parameter beim Bereinigen von ?template= und #plan=', () => {

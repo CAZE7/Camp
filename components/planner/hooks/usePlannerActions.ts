@@ -388,20 +388,23 @@ export function usePlannerActions({
    * diese eine Aktion über den Store). Ein eigener Plan wird nur nach
    * Rückfrage ersetzt; das vorgeladene Beispiel-Setup zählt nicht als eigen.
    */
-  const loadTemplate = useCallback(
-    (templateId: string) => {
-      const state = usePlannerStore.getState();
+  const loadTemplateAsync = useCallback(
+    async (templateId: string) => {
+      const current = usePlannerStore.getState();
       const template = PLANNER_TEMPLATES.find((entry) => entry.id === templateId);
       const hasOwnPlan =
-        state.waterNodes.length > 0 || (state.nodes.length > 0 && !isStarterPlan(state.nodes, state.edges));
+        current.waterNodes.length > 0 ||
+        (current.nodes.length > 0 && !isStarterPlan(current.nodes, current.edges));
       if (
         hasOwnPlan &&
-        !window.confirm(
+        !(await requestConfirm(
           'Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?'
-        )
+        ))
       )
         return;
-      state.applyTemplate(templateId);
+      // Nach der Rückfrage neu lesen: während sie offen ist, kann der Plan
+      // weiterbearbeitet worden sein. `current` wäre ein Stand von vorher.
+      usePlannerStore.getState().applyTemplate(templateId);
       setHasOnboarded(true);
       fitViewAfterEntry();
       onFeedback({
@@ -410,6 +413,19 @@ export function usePlannerActions({
       });
     },
     [onFeedback, setHasOnboarded]
+  );
+
+  /**
+   * Bewusst `void` in der Signatur: Menüpunkte und Toolbar übergeben die Aktion
+   * an Stellen, die eine synchron endende Funktion erwarten. Die Rückfrage selbst
+   * läuft asynchron — der Aufrufer hat nichts abzuwarten, das Ergebnis ist eine
+   * Feedback-Zeile im Planer.
+   */
+  const loadTemplate = useCallback(
+    (templateId: string) => {
+      void loadTemplateAsync(templateId);
+    },
+    [loadTemplateAsync]
   );
 
   /**
