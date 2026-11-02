@@ -18,8 +18,11 @@
  * (Entwicklung, Prüfbau und die Auslieferung unter der eigenen Domain).
  */
 
+/** Öffentlicher Hostname der Auslieferung, ohne Schema und ohne Pfad. */
+export const SITE_HOST = '12v-planer.de';
+
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
-export const SITE_ORIGIN = 'https://12v-planer.de';
+export const SITE_ORIGIN = `https://${SITE_HOST}`;
 
 /**
  * Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD, Titelvorlage).

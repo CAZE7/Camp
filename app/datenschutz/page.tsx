@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { metadataForPage } from '@/app/seoMetadata';
+import { SITE_HOST } from '@/lib/site';
 
 import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
@@ -15,7 +16,7 @@ export default function DatenschutzPage() {
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
         <p className="caption-sm mt-2 text-ink-soft">
-          Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von 12v-planer.de.
+          {`Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von ${SITE_HOST}.`}
         </p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
@@ -25,7 +26,7 @@ export default function DatenschutzPage() {
             <Link href="/impressum/" className="underline underline-offset-2 hover:text-ink">
               Impressum
             </Link>{' '}
-            genannte Betreiber. Dort stehen auch Anschrift und Kontaktweg.
+            {`genannte Betreiber von ${SITE_HOST}. Dort stehen auch Anschrift und Kontaktweg.`}
           </p>
         </section>
 

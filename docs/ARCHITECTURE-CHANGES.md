@@ -1,5 +1,33 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-02 (2) — Markenwechsel auf 12V-Planer
+
+**Anlass:** Aufbauend auf dem Domainumzug (#592) wird die sichtbare Marke von
+„Elektroplaner“ auf „12V-Planer“ umgestellt. Die Domain bleibt 12v-planer.de.
+
+**Verhalten:** `SITE_NAME` ist „12V-Planer“; Titel, Wortmarke, Footer,
+Impressum, Datenschutz, SEO-Inhalte, Wasserzeichen und Download-Dateiname
+folgen. Die Vertrauensseite liegt unter `/ueber-12v-planer/`; die früheren
+Pfade `/ueber-elektroplaner/` und `/ueber-werft/` bleiben als noindex-
+Weiterleitungen. OG-Karten, Logo, Favicon und Apple-Icon sind neu. Technische
+IDs (localStorage, Projektformat) bleiben kompatibel.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
+## LEDGER 2026-11-02 — Auslieferung unter 12v-planer.de
+
+**Anlass:** Domainumzug. GitHub Pages trägt nur eine Custom Domain; die
+Auslieferung wechselt von elektroplaner-camper.de auf 12v-planer.de.
+
+**Verhalten:** `SITE_ORIGIN` in `lib/site.ts` ist `https://12v-planer.de`.
+Darüber hängen Canonical, Open Graph, strukturierte Daten, Sitemap und die
+Sitemap-Zeile in `robots.txt`. `public/CNAME` und der Deploy-Kommentar nennen
+dieselbe Domain. Das Plan-Wasserzeichen lautet „Erstellt mit 12v-planer.de“.
+Datenschutz und Über-Seite nennen den Betreiber von 12v-planer.de. Der
+sichtbare Markenname „Elektroplaner“ bleibt.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-26 (2) — Ein Prüf-Einstieg statt zweier Zahl-Plaketten
 
 **Anlass:** Fortsetzung der Nutzer-Rückmeldung zur Werkzeugleiste. Nach dem
