@@ -63,6 +63,10 @@ for (const scheme of SCHEMES) {
     for (const route of ROUTES) {
       test(`${route.name} ${PIXEL_MARKER}`, async ({ page }) => {
         await page.goto(route.path, { waitUntil: 'load' });
+        // Der visuelle Vertrag gilt nur für den gebauten Export: Ein alter
+        // Live-Stand darf keine Baselines schreiben.
+        await expect(page).toHaveURL(/^http:\/\/127\.0\.0\.1:\d+\//);
+        await expect(page.locator('body')).toContainText('12V-Planer');
         // Onboarding-Dialoge sind Teil des Erstbesuchs-Erlebnisses und damit
         // deterministisch — sie werden NICHT weggeklickt. Gewartet wird nur
         // auf Zustände: fertiges DOM, montierte App-Shell, gebündelte
