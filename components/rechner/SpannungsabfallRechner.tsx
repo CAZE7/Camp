@@ -35,7 +35,12 @@ function parseInput(raw: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-const format = (value: number, digits: number): string => value.toFixed(digits).replace('.', ',');
+/**
+ * Deutsche Schreibweise mit Tausendergruppen, wie die anderen Rechner-Felder
+ * und der Rest der Seite es schon immer gemacht haben.
+ */
+const format = (value: number, digits: number): string =>
+  value.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 export function SpannungsabfallRechner() {
   const [currentRaw, setCurrentRaw] = useState('');

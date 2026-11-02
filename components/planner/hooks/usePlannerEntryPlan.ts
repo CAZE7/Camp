@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppStore } from '../../../lib/store';
+import { requestConfirm } from '../../ui/ConfirmDialog';
 import { decodeSharePlan } from '../../../store/sharePlan';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { PlannerFlowNode, PlannerWaterEdge } from '../../../store/slices/types';
@@ -149,11 +150,18 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       );
     };
 
-    const confirmReplace = (was: string) =>
-      !hasOwnPlan() ||
-      window.confirm(
+    /**
+     * Rückfrage vor dem Ersetzen eines eigenen Plans. `requestConfirm` statt
+     * `window.confirm`: ein nativer Browser-Dialog ist auf dem Handy ein
+     * Systemfenster ohne das Design der Anwendung, blockiert die Seite und
+     * entzieht sich der Fokusfallle, die jeder andere Overlay hier bietet.
+     */
+    const confirmReplace = async (was: string): Promise<boolean> => {
+      if (!hasOwnPlan()) return true;
+      return requestConfirm(
         `${was} ersetzt den aktuellen Plan auf der Zeichenfläche. Du kannst das anschließend rückgängig machen. Fortfahren?`
       );
+    };
 
     const clearEntryFromUrl = () => {
       window.history.replaceState(null, '', buildCleanEntryUrl(window.location));
@@ -177,7 +185,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
           result.plan.waterNodes,
           result.plan.waterEdges
         ) &&
-        !confirmReplace('Der geteilte Plan')
+        !(await confirmReplace('Der geteilte Plan'))
       ) {
         clearEntryFromUrl();
         return true;
@@ -219,7 +227,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         const targetTemplate = TEMPLATES_DICT[templateId];
         const alreadyLoaded =
           targetTemplate !== undefined && isSameAsCurrentPlan(targetTemplate.nodes, targetTemplate.edges);
-        if (alreadyLoaded || confirmReplace('Die Vorlage')) {
+        if (alreadyLoaded || (await confirmReplace('Die Vorlage'))) {
           usePlannerStore.getState().applyTemplate(templateId);
           setHasOnboarded(true);
           scheduleFit();

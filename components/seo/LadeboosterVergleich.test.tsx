@@ -32,4 +32,25 @@ describe('LadeboosterVergleich', () => {
     expect(orion).toHaveClass('is-hidden');
     expect(ective).not.toHaveClass('is-hidden');
   });
+
+  /**
+   * Regressionstest Audit 2026-11-02: alle 54 externen Links der Seite —
+   * „Handbuch", „Preis / Händler", „Datenblatt", Forum-Beiträge — öffneten im
+   * selben Tab. Wer mitten in der Vergleichstabelle einen Beleg anklickte,
+   * verließ die Seite und stand danach vor einem leeren Browserverlauf.
+   */
+  it('öffnet jeden externen Beleg in einem neuen Tab und verschluckt die Seite nicht', () => {
+    render(<LadeboosterVergleich />);
+
+    const external = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('a[href^="http"], a[href^="https"]')
+    ).filter((a) => !a.href.startsWith(window.location.origin));
+
+    expect(external.length).toBeGreaterThan(0);
+    for (const anchor of external) {
+      expect(anchor.target).toBe('_blank');
+      expect(anchor.rel).toContain('noopener');
+      expect(anchor.rel).toContain('noreferrer');
+    }
+  });
 });

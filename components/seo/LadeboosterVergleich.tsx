@@ -367,10 +367,18 @@ export function LadeboosterVergleich() {
                 und zwei Sicherungen — nicht einfach ein dickeres Kabel.
               </p>
               <div className="lb-device__links">
-                <a href="https://www.victronenergy.de/upload/documents/Datasheet-Orion-Tr-Smart-DC-DC-chargers-non-isolated-360-400W-DE.pdf">
+                <a
+                  href="https://www.victronenergy.de/upload/documents/Datasheet-Orion-Tr-Smart-DC-DC-chargers-non-isolated-360-400W-DE.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Datenblatt
                 </a>
-                <a href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html">
+                <a
+                  href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Forum: Parallelbetrieb
                 </a>
               </div>
@@ -428,10 +436,18 @@ export function LadeboosterVergleich() {
                 bei Schaudt oder Votronic — das ist kein Qualitätsurteil, sondern eine Datenlage.
               </p>
               <div className="lb-device__links">
-                <a href="https://www.ective.de/ladetechnik/ladebooster/bb-60-12v-auf-12v-ladebooster-60a">
+                <a
+                  href="https://www.ective.de/ladetechnik/ladebooster/bb-60-12v-auf-12v-ladebooster-60a"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Herstellerseite
                 </a>
-                <a href="https://www.ective.de/mediafiles/Datenblatt/ective/ladebooster/ECTIVE-BB%2BSBB-Bedienungsanleitung-DE-2026-02-27.pdf">
+                <a
+                  href="https://www.ective.de/mediafiles/Datenblatt/ective/ladebooster/ECTIVE-BB%2BSBB-Bedienungsanleitung-DE-2026-02-27.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Handbuch
                 </a>
               </div>
@@ -488,10 +504,18 @@ export function LadeboosterVergleich() {
                 deutlich über dem Votronic.
               </p>
               <div className="lb-device__links">
-                <a href="https://www.ivt-hirschau.de/media/products/920000_Bedienungsanleitung_Ladebooster-SCHAUDT-WA121545.pdf">
+                <a
+                  href="https://www.ivt-hirschau.de/media/products/920000_Bedienungsanleitung_Ladebooster-SCHAUDT-WA121545.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Handbuch
                 </a>
-                <a href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121545-inkl-Anschluss-und-Temperaturfuehler-Set::1217.html">
+                <a
+                  href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121545-inkl-Anschluss-und-Temperaturfuehler-Set::1217.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Preis / Händler
                 </a>
               </div>
@@ -549,10 +573,18 @@ export function LadeboosterVergleich() {
                 das eigentliche Problem — nicht das Gerät.
               </p>
               <div className="lb-device__links">
-                <a href="https://www.offgridtec.com/media/product_attachements/Votronic_VCC_3326-3328-3329_Bedienungsanleitung.pdf">
+                <a
+                  href="https://www.offgridtec.com/media/product_attachements/Votronic_VCC_3326-3328-3329_Bedienungsanleitung.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Handbuch
                 </a>
-                <a href="https://www.sprinter-forum.de/viewtopic.php?t=23955">
+                <a
+                  href="https://www.sprinter-forum.de/viewtopic.php?t=23955"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Forum: 70-A-Langzeiterfahrung
                 </a>
               </div>
@@ -651,10 +683,22 @@ export function LadeboosterVergleich() {
                     Toleranzen entscheiden, welches Gerät zuerst in die Strombegrenzung läuft. Abhilfe sind
                     gleiche Leitungslängen, ein anderer Abgreifpunkt und ausreichender Querschnitt — keine
                     Einstellung.{' '}
-                    <a href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html">
+                    <a
+                      href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Thread
                     </a>
-                    , <a href="https://www.wohnmobilforum.de/w-t157920.html">Einbaubericht</a>.
+                    ,{' '}
+                    <a
+                      href="https://www.wohnmobilforum.de/w-t157920.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Einbaubericht
+                    </a>
+                    .
                   </p>
                 </div>
               </article>
@@ -667,11 +711,19 @@ export function LadeboosterVergleich() {
                     Spannungserkennung kann den Booster abschalten lassen, obwohl der Motor läuft. Der Orion
                     hat keinen D+-Eingang; Schaudt und ECTIVE verlangen D+; Votronic kann D+, Zündung oder
                     Spannung. Wer Euro 6 fährt, sollte die Steuerleitung genauso planen wie den Querschnitt.{' '}
-                    <a href="https://www.vanovizen.de/ladebooster-bei-euro-6-ducato-baujahr-2022-mit-intelligenter-lichtmaschine/">
+                    <a
+                      href="https://www.vanovizen.de/ladebooster-bei-euro-6-ducato-baujahr-2022-mit-intelligenter-lichtmaschine/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Fallbericht Ducato
                     </a>
                     ,{' '}
-                    <a href="https://www.sprinter-forum.de/viewtopic.php?t=27536&amp;start=30">
+                    <a
+                      href="https://www.sprinter-forum.de/viewtopic.php?t=27536&amp;start=30"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Sprinter-Forum
                     </a>
                     .
@@ -687,10 +739,22 @@ export function LadeboosterVergleich() {
                     drosseln Nutzer einen VCC 1212-90 an einer 90-A-Lichtmaschine bewusst auf 60–65 A, weil
                     die Lima bis 100 °C warm wird. Ein 70-A-Votronic an einer 180-A-Lima läuft seit zwei
                     Jahren mit 71 A. Die Kombination muss zur Lichtmaschine passen, nicht nur zur Batterie.{' '}
-                    <a href="https://www.segeln-forum.de/thread/83239-votronic-ladebooster-vcc-1212-70-an-115a-lichtmaschine-z-b-vp-d1-20-oder-d1-30/">
+                    <a
+                      href="https://www.segeln-forum.de/thread/83239-votronic-ladebooster-vcc-1212-70-an-115a-lichtmaschine-z-b-vp-d1-20-oder-d1-30/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Segeln-Forum
                     </a>
-                    , <a href="https://www.sprinter-forum.de/viewtopic.php?t=23955">Sprinter-Forum</a>.
+                    ,{' '}
+                    <a
+                      href="https://www.sprinter-forum.de/viewtopic.php?t=23955"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Sprinter-Forum
+                    </a>
+                    .
                   </p>
                 </div>
               </article>
@@ -703,11 +767,19 @@ export function LadeboosterVergleich() {
                     Gesamtleistung bleibt bei 50 A. Ein Nutzer im DIY-Solarforum beschreibt genau das: Bei
                     Solarertrag kommen aus der Lichtmaschine keine vollen 50 A. Wer beides gleichzeitig
                     braucht, muss die Aufteilung verstehen, bevor er kauft.{' '}
-                    <a href="https://de.renogy.com/cdn/shop/files/RBC30D1S-G3_G4_RBC50D1S-G6_DC-DC_with_MPPT_EN__UM_B4.pdf">
+                    <a
+                      href="https://de.renogy.com/cdn/shop/files/RBC30D1S-G3_G4_RBC50D1S-G6_DC-DC_with_MPPT_EN__UM_B4.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Handbuch
                     </a>
                     ,{' '}
-                    <a href="https://diysolarforum.com/threads/renogy-50a-dc-dc-mppt-charging-profile-w-engine-on.65496/">
+                    <a
+                      href="https://diysolarforum.com/threads/renogy-50a-dc-dc-mppt-charging-profile-w-engine-on.65496/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Thread
                     </a>
                     .
@@ -723,8 +795,22 @@ export function LadeboosterVergleich() {
                     ich fand, betrifft aber den 1212-70 an einer 180-A-Lima und 260 Ah LiFeYPO4: zwei Jahre,
                     71 A, 35 mm². Zum 90er gibt es Kurzberichte und viele Fragen, aber keine unabhängige
                     Messreihe. Das ist kein Warnsignal — nur eine ehrliche Datenlage.{' '}
-                    <a href="https://www.sprinter-forum.de/viewtopic.php?t=23955">Langzeitbericht 70 A</a>,{' '}
-                    <a href="https://www.wohnmobilforum.de/w-t126938.html">Kurzbericht 90 A</a>.
+                    <a
+                      href="https://www.sprinter-forum.de/viewtopic.php?t=23955"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Langzeitbericht 70 A
+                    </a>
+                    ,{' '}
+                    <a
+                      href="https://www.wohnmobilforum.de/w-t126938.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Kurzbericht 90 A
+                    </a>
+                    .
                   </p>
                 </div>
               </article>
@@ -737,11 +823,19 @@ export function LadeboosterVergleich() {
                     Praxis ist beides viel Leistung, für den Vergleich ist die Abweichung relevant. In
                     Deutschland kostet das Gerät rund 711–747 €. Einen deutschen BB12120-Einbaubericht habe
                     ich nicht gefunden — die Erfahrungsdecke ist dünn.{' '}
-                    <a href="https://sterling-power.com/products/bb12120-reverse-charging-jump-start-assistance">
+                    <a
+                      href="https://sterling-power.com/products/bb12120-reverse-charging-jump-start-assistance"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Herstellerseite
                     </a>
                     ,{' '}
-                    <a href="https://www.yachtbatterie.de/de/sterling-power-batterie-batterie-lader-bidirektional.html">
+                    <a
+                      href="https://www.yachtbatterie.de/de/sterling-power-batterie-batterie-lader-bidirektional.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Preis
                     </a>
                     .
@@ -1198,52 +1292,92 @@ export function LadeboosterVergleich() {
               <h4>Hersteller</h4>
               <ol>
                 <li>
-                  <a href="https://www.victronenergy.de/upload/documents/Datasheet-Orion-Tr-Smart-DC-DC-chargers-non-isolated-360-400W-DE.pdf">
+                  <a
+                    href="https://www.victronenergy.de/upload/documents/Datasheet-Orion-Tr-Smart-DC-DC-chargers-non-isolated-360-400W-DE.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Victron Orion-Tr Smart, Datenblatt
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.offgridtec.com/media/product_attachements/Votronic_VCC_3326-3328-3329_Bedienungsanleitung.pdf">
+                  <a
+                    href="https://www.offgridtec.com/media/product_attachements/Votronic_VCC_3326-3328-3329_Bedienungsanleitung.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Votronic VCC 1212-50/70/90, Montageanleitung
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ective.de/mediafiles/Datenblatt/ective/ladebooster/ECTIVE-BB%2BSBB-Bedienungsanleitung-DE-2026-02-27.pdf">
+                  <a
+                    href="https://www.ective.de/mediafiles/Datenblatt/ective/ladebooster/ECTIVE-BB%2BSBB-Bedienungsanleitung-DE-2026-02-27.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     ECTIVE BB/SBB, Bedienungsanleitung
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ivt-hirschau.de/media/products/920000_Bedienungsanleitung_Ladebooster-SCHAUDT-WA121545.pdf">
+                  <a
+                    href="https://www.ivt-hirschau.de/media/products/920000_Bedienungsanleitung_Ladebooster-SCHAUDT-WA121545.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Schaudt WA 121545, Bedienungsanleitung
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121525::1216.html">
+                  <a
+                    href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121525::1216.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Schaudt WA 121525, Produktseite
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.buettner-elektronik.de/produkte/lade-booster/produkt/show/mt-bcb-30-40-60.html">
+                  <a
+                    href="https://www.buettner-elektronik.de/produkte/lade-booster/produkt/show/mt-bcb-30-40-60.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Büttner MT BCB 30/40/60, Produktseite
                   </a>
                 </li>
                 <li>
-                  <a href="https://de.renogy.com/cdn/shop/files/RBC30D1S-G3_G4_RBC50D1S-G6_DC-DC_with_MPPT_EN__UM_B4.pdf">
+                  <a
+                    href="https://de.renogy.com/cdn/shop/files/RBC30D1S-G3_G4_RBC50D1S-G6_DC-DC_with_MPPT_EN__UM_B4.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Renogy RBC30/50, Handbuch
                   </a>
                 </li>
                 <li>
-                  <a href="https://sterling-power.com/products/bb12120-reverse-charging-jump-start-assistance">
+                  <a
+                    href="https://sterling-power.com/products/bb12120-reverse-charging-jump-start-assistance"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Sterling BB12120, Produktseite
                   </a>
                 </li>
                 <li>
-                  <a href="https://cdn.shopify.com/s/files/1/0658/7343/files/Collated_manual_6fe055ef-bac9-46fd-bb51-662f1bfe0d15.pdf">
+                  <a
+                    href="https://cdn.shopify.com/s/files/1/0658/7343/files/Collated_manual_6fe055ef-bac9-46fd-bb51-662f1bfe0d15.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Sterling Saturn, Handbuch
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.victronenergy.com/dc-dc-converters/buck-boost-dc-dc-converter-25a-50a">
+                  <a
+                    href="https://www.victronenergy.com/dc-dc-converters/buck-boost-dc-dc-converter-25a-50a"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Victron Buck-Boost 25/50/100 A, Produktseite
                   </a>
                 </li>
@@ -1253,57 +1387,101 @@ export function LadeboosterVergleich() {
               <h4>Foren &amp; Praxis</h4>
               <ol start={11}>
                 <li>
-                  <a href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html">
+                  <a
+                    href="https://communityarchive.victronenergy.com/questions/78315/warum-arbeitet-nur-eins-der-beiden-parallel-gescha.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Victron Community: zwei Orion parallel
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.wohnmobilforum.de/w-t157920.html">
+                  <a
+                    href="https://www.wohnmobilforum.de/w-t157920.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Wohnmobilforum: zwei Orion einbauen
                   </a>
                 </li>
                 <li>
-                  <a href="https://diysolarforum.com/threads/victron-orion-tr-smart-12-12-30-chargers-hooked-in-parallel.36336/">
+                  <a
+                    href="https://diysolarforum.com/threads/victron-orion-tr-smart-12-12-30-chargers-hooked-in-parallel.36336/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     DIY Solar: Orion parallel, keine 60 A
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.vanovizen.de/ladebooster-bei-euro-6-ducato-baujahr-2022-mit-intelligenter-lichtmaschine/">
+                  <a
+                    href="https://www.vanovizen.de/ladebooster-bei-euro-6-ducato-baujahr-2022-mit-intelligenter-lichtmaschine/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Vanovizen: Euro-6-Ducato und D+
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.sprinter-forum.de/viewtopic.php?t=27536&amp;start=30">
+                  <a
+                    href="https://www.sprinter-forum.de/viewtopic.php?t=27536&amp;start=30"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Sprinter-Forum: D+ abgreifen
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.wohnmobilforum.de/w-t141571.html">
+                  <a
+                    href="https://www.wohnmobilforum.de/w-t141571.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Wohnmobilforum: Schaudt WA 121525 und LiFePO4
                   </a>
                 </li>
                 <li>
-                  <a href="https://diysolarforum.com/threads/renogy-50a-dc-dc-mppt-charging-profile-w-engine-on.65496/">
+                  <a
+                    href="https://diysolarforum.com/threads/renogy-50a-dc-dc-mppt-charging-profile-w-engine-on.65496/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     DIY Solar: Renogy 50 A geteilt
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.segeln-forum.de/thread/83239-votronic-ladebooster-vcc-1212-70-an-115a-lichtmaschine-z-b-vp-d1-20-oder-d1-30/">
+                  <a
+                    href="https://www.segeln-forum.de/thread/83239-votronic-ladebooster-vcc-1212-70-an-115a-lichtmaschine-z-b-vp-d1-20-oder-d1-30/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Segeln-Forum: Votronic 90 an 90-A-Lima
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.sprinter-forum.de/viewtopic.php?t=23955">
+                  <a
+                    href="https://www.sprinter-forum.de/viewtopic.php?t=23955"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Sprinter-Forum: Votronic 70, zwei Jahre
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.wohnmobilforum.de/w-t126938.html">
+                  <a
+                    href="https://www.wohnmobilforum.de/w-t126938.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Wohnmobilforum: Votronic 90 im Ducato
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.digicamper.com/forum/index.php?thread/42674-ladebooster-sterling-power-bbw12120/">
+                  <a
+                    href="https://www.digicamper.com/forum/index.php?thread/42674-ladebooster-sterling-power-bbw12120/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Digicamper: Sterling BB12120 ohne Antwort
                   </a>
                 </li>
@@ -1313,67 +1491,119 @@ export function LadeboosterVergleich() {
               <h4>Preise</h4>
               <ol start={22}>
                 <li>
-                  <a href="https://www.camping-factory.com/votronic-ladewandler-vcc-1212-90">
+                  <a
+                    href="https://www.camping-factory.com/votronic-ladewandler-vcc-1212-90"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Camping-Factory: Votronic 90, 500,59 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://voltimax.de/en/Votronic-3329-VCC-1212-90-12V-to-12V-90A-charging-booster-charging-converter/V3363">
+                  <a
+                    href="https://voltimax.de/en/Votronic-3329-VCC-1212-90-12V-to-12V-90A-charging-booster-charging-converter/V3363"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     VoltiMax: Votronic 90, 555,50 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121545-inkl-Anschluss-und-Temperaturfuehler-Set::1217.html">
+                  <a
+                    href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121545-inkl-Anschluss-und-Temperaturfuehler-Set::1217.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     IVT: Schaudt 121545, 575 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121525::1216.html">
+                  <a
+                    href="https://www.ivt-hirschau.de/de/Ladebooster-SCHAUDT-WA-121525::1216.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     IVT: Schaudt 121525, 232,35 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.ective.de/ladetechnik/ladebooster/bb-60-12v-auf-12v-ladebooster-60a">
+                  <a
+                    href="https://www.ective.de/ladetechnik/ladebooster/bb-60-12v-auf-12v-ladebooster-60a"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     ECTIVE: BB 60, 292 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.idealo.de/preisvergleich/OffersOfProduct/201945849_-bb-60-tn4545-ective-batteries.html">
+                  <a
+                    href="https://www.idealo.de/preisvergleich/OffersOfProduct/201945849_-bb-60-tn4545-ective-batteries.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     idealo: ECTIVE BB 60 ab 260,30 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.campingwagner.de/de/p/buettner-elektronik-bcb-iuou-lader-booster-kombination-batterie-control-booster_m7469">
+                  <a
+                    href="https://www.campingwagner.de/de/p/buettner-elektronik-bcb-iuou-lader-booster-kombination-batterie-control-booster_m7469"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     CampingWagner: Büttner 25/20, 702 € (nicht die MT-BCB-Baureihe 30/30/20–60/40/40)
                   </a>
                 </li>
                 <li>
-                  <a href="https://de.renogy.com/products/dc-zu-dc-laderegler-mppt-12v-50a-fur-batterie">
+                  <a
+                    href="https://de.renogy.com/products/dc-zu-dc-laderegler-mppt-12v-50a-fur-batterie"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Renogy: 50 A, 209,99 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.yachtbatterie.de/de/sterling-power-batterie-batterie-lader-bidirektional.html">
+                  <a
+                    href="https://www.yachtbatterie.de/de/sterling-power-batterie-batterie-lader-bidirektional.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Yachtbatterie: Sterling BB12120, 710,91 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://lepper-marine.de/Sterling-Hochleistungs-B2B-Ladegeraet-Typ-BB12120-Batterie-zu-Batterie/7170-9">
+                  <a
+                    href="https://lepper-marine.de/Sterling-Hochleistungs-B2B-Ladegeraet-Typ-BB12120-Batterie-zu-Batterie/7170-9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Lepper Marine: Sterling BB12120, 746,90 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://shop4akku.de/hersteller/victron-energy/dc-dc-wandler/">
+                  <a
+                    href="https://shop4akku.de/hersteller/victron-energy/dc-dc-wandler/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     shop4akku: Victron Buck-Boost 100 A, 794,99 €
                   </a>
                 </li>
                 <li>
-                  <a href="https://geizhals.de/victron-energy-orion-tr-smart-dc-dc-ladebooster-isoliert-12-12-30-ori121236120-a2523163.html">
+                  <a
+                    href="https://geizhals.de/victron-energy-orion-tr-smart-dc-dc-ladebooster-isoliert-12-12-30-ori121236120-a2523163.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Geizhals: Orion 30 A isoliert
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.idealo.at/preisvergleich/OffersOfProduct/202088593_-orion-tr-smart-12-12-30a-360-w-victron.html">
+                  <a
+                    href="https://www.idealo.at/preisvergleich/OffersOfProduct/202088593_-orion-tr-smart-12-12-30a-360-w-victron.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     idealo.at: Orion 30 A nicht isoliert
                   </a>
                 </li>
