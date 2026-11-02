@@ -11,17 +11,17 @@ import { SITE_NAME, siteUrl } from '@/lib/site';
  * Anweisung an Suchmaschinen. Sieben handgeschriebene Objekte wären sieben
  * Gelegenheiten, eines davon zu vergessen; hier gibt es einen Aufruf.
  *
- * Der Titel wird ohne Zusatz übergeben: der Wurzel-Layout hängt `| Elektroplaner` an
+ * Der Titel wird ohne Zusatz übergeben: der Wurzel-Layout hängt `| 12V-Planer` an
  * (Vorlage). Seiten, deren Titel bereits vollständig ist, setzen
  * `absoluteTitle` — dann bleibt der Titel unverändert.
  */
 
 /** Vorschaubild, das gilt, wenn eine Seite kein eigenes mitbringt. */
 export const DEFAULT_PREVIEW_IMAGE = {
-  path: '/og/elektroplaner.png',
+  path: '/og/12v-planer.png',
   width: 1200,
   height: 630,
-  alt: 'Elektroplaner — Werkzeuge für den Camper-Ausbau: Elektrik, Dach und Heizlast',
+  alt: '12V-Planer — Werkzeuge für den Camper-Ausbau: Elektrik, Dach und Heizlast',
 } as const;
 
 /**

@@ -160,7 +160,7 @@ export default function Home() {
       <PageStructuredData path="/" />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 md:gap-14">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
-          <span className="panel-title border border-rule px-2 py-1">ELEKTROPLANER // WERKSTATT</span>
+          <span className="panel-title border border-rule px-2 py-1">12V-PLANER // WERKSTATT</span>
           <span className="panel-title">ELEKTRIK · DACH · HEIZUNG</span>
         </header>
 

@@ -6,7 +6,7 @@
  * inklusive des Winterfalls, der in Prospekten gern fehlt.
  *
  * Information Gain: Eigene Sommer-/Winter-Vergleichsrechnung aus dem
- * 12V-Elektroplaner, Praxis-Entscheidung zur Solarmontage, Normverweise.
+ * 12V-Planer, Praxis-Entscheidung zur Solarmontage, Normverweise.
  */
 
 import { sizeSolarArray } from '@/lib/solarSizing';
@@ -170,7 +170,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
       id: 'naechster-schritt',
       heading: 'Vom Watt-Wert in den Plan',
       body: [
-        'Mit der ermittelten Modulleistung als Eingabe rechnet der Elektroplaner die Kabelquerschnitte und Sicherungen für die Solarleitungen. Die Panels werden im Dach-Planer auf der verfügbaren Fläche platziert.',
+        'Mit der ermittelten Modulleistung als Eingabe rechnet der 12V-Planer die Kabelquerschnitte und Sicherungen für die Solarleitungen. Die Panels werden im Dach-Planer auf der verfügbaren Fläche platziert.',
       ],
       callout: {
         tone: 'info',
@@ -189,7 +189,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
         },
         {
           href: '/planer/',
-          label: 'Camper-Elektroplaner öffnen',
+          label: '12V-Planer öffnen',
           description: 'Die Solaranlage als Plan zeichnen und Querschnitt sowie Sicherung ableiten.',
         },
       ],
@@ -218,7 +218,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/rechner/solaranlage/', label: 'Solaranlage berechnen' },
     { href: '/tools/dach/', label: 'Dach-Planer: Panels auf der Fläche platzieren' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

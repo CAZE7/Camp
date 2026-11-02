@@ -162,7 +162,7 @@ export const LADEN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/ladebooster/', label: 'Ladebooster: Größe, Anschluss, Absicherung' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage und Landstrom' },
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

@@ -62,9 +62,7 @@ export default function PlanerError({ reset }: { error: Error & { digest?: strin
         className="flex min-h-[320px] w-full flex-1 flex-col items-center justify-center gap-4 bg-background p-6 text-center"
       >
         <p className="panel-title">Fehlerschutz</p>
-        <p className="text-base font-semibold text-foreground">
-          Der Elektroplaner konnte nicht geladen werden.
-        </p>
+        <p className="text-base font-semibold text-foreground">Der 12V-Planer konnte nicht geladen werden.</p>
         <p className="max-w-lg text-xs leading-relaxed text-muted-foreground">
           Ein ungültiger Planwert (z. B. aus einem defekten Teilen-Link oder alten Browserdaten) hat die
           Berechnung unterbrochen.

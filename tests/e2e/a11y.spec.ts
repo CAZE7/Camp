@@ -22,7 +22,7 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/', name: 'Startseite' },
   { path: '/tools/dach/', name: 'Dachplaner' },
   { path: '/tools/heizung/', name: 'Heizlast-Rechner' },
-  { path: '/planer/', name: 'Elektroplaner (Anwendung)' },
+  { path: '/planer/', name: '12V-Planer (Anwendung)' },
   { path: '/elektrik-planung/', name: 'Elektrik-Wissensseite' },
   // Die inhaltsgetriebenen Seiten teilen sich ein Gerüst (`components/seo/`).
   // Sie stehen hier stellvertretend für die drei Seitentypen — Pillar,
@@ -32,7 +32,7 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/camper-elektrik/kabelquerschnitt/', name: 'Kabelquerschnitt' },
   { path: '/camper-elektrik/ladebooster/', name: 'Ladebooster-Vergleich' },
   { path: '/rechner/spannungsabfall-12v/', name: 'Spannungsabfall-Rechner' },
-  { path: '/ueber-elektroplaner/', name: 'Über Elektroplaner' },
+  { path: '/ueber-12v-planer/', name: 'Über 12V-Planer' },
 ];
 
 for (const { path, name } of PAGES) {

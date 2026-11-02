@@ -402,7 +402,7 @@ export default function ElektrikPlanung() {
             Browser, du kannst ihn also unterbrechen und später weiterführen.
           </p>
           <div className="node-card mt-5 max-w-3xl p-5 md:p-6">
-            <p className="panel-title">Camper-Elektroplaner</p>
+            <p className="panel-title">12V-Planer</p>
             <p className="mt-2 text-md text-ink-soft">
               Die Zeichenfläche öffnet als eigene Seite im ganzen Browserfenster: Bauteilkatalog links,
               Schaltplan in der Mitte, Eigenschaften rechts — ohne Textspalte drumherum.

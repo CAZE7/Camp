@@ -209,7 +209,7 @@ export const ELEKTRIK_FEHLER_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
     { href: '/camper-elektrik/lifepo4/', label: 'LiFePO4 im Camper' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

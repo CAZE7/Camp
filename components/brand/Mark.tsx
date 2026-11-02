@@ -9,9 +9,9 @@ export function Mark({ className, inverted = false }: { className?: string; inve
         'inline-flex min-h-11 items-center px-1 no-underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
         className
       )}
-      aria-label="Elektroplaner Startseite"
+      aria-label="12V-Planer Startseite"
     >
-      <span className={cn('wordmark', inverted ? 'text-paper' : 'text-ink')}>Elektroplaner</span>
+      <span className={cn('wordmark', inverted ? 'text-paper' : 'text-ink')}>12V-Planer</span>
     </Link>
   );
 }

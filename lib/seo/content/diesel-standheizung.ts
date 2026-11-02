@@ -94,7 +94,7 @@ export const DIESEL_STANDHEIZUNG_CONTENT: SeoPageContent = {
         },
         {
           href: '/planer/',
-          label: 'Camper-Elektroplaner öffnen',
+          label: '12V-Planer öffnen',
           description: 'Heizung als Verbraucher setzen und die Leitung gleich mitrechnen.',
         },
       ],
@@ -182,11 +182,11 @@ export const DIESEL_STANDHEIZUNG_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/stromverbrauch/', label: 'Stromverbrauch typischer Verbraucher' },
     { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
     { href: '/wohnmobilzulassung/', label: 'Wohnmobilzulassung: Unterlagen und Ablauf' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {
-      label: 'Modellwerte des 12V-Elektroplaners',
+      label: 'Modellwerte des 12V-Planers',
       detail:
         'Gebläse 2,9 A über 8 h (≈ 35 W, 280 Wh) als Beispielwert aus dem Planer; Betriebsspanne 2 kW 10–29 W / 4 kW 10–57 W; Unterspannungsabschaltung typischerweise 10,5 V (Datenblatt). Keine Messwerte an einem konkreten Gerät.',
     },

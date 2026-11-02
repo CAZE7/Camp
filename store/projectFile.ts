@@ -170,9 +170,7 @@ export function parsePlannerProject(text: string): ProjectParseResult {
   if (document.format !== PROJECT_FILE_FORMAT) {
     return {
       ok: false,
-      errors: [
-        'Die Datei ist keine Projektdatei des Camp-Elektroplaners (Feld „format“ fehlt oder ist falsch).',
-      ],
+      errors: ['Die Datei ist keine Projektdatei des 12V-Planers (Feld „format“ fehlt oder ist falsch).'],
     };
   }
 

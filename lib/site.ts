@@ -27,7 +27,7 @@ export const SITE_ORIGIN = `https://${SITE_HOST}`;
 /**
  * Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD, Titelvorlage).
  *
- * „Elektroplaner" ist der Produktname, unter dem die Seite beworben wird und
+ * „12V-Planer" ist der Produktname, unter dem die Seite beworben wird und
  * nach dem gesucht wird. Der frühere Name „Werft" tritt nur noch dort auf, wo
  * er zur Sache gehört: in der Umleitung der alten Vertrauensadresse, in den
  * Schlüsseln übernommener Browser-Stände und in datierten Berichten. In
@@ -35,7 +35,7 @@ export const SITE_ORIGIN = `https://${SITE_HOST}`;
  * NICHT mehr stehen, weil er in Ergebnislisten als Marke neben den
  * Wettbewerbern gelesen wird.
  */
-export const SITE_NAME = 'Elektroplaner';
+export const SITE_NAME = '12V-Planer';
 
 /** Basis-Pfad des Exports, z. B. `/Camp`; leer bei Auslieferung unter `/`. */
 export const SITE_BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');

@@ -317,8 +317,8 @@ export function PlannerMenubar({
             (`/planer/`) trägt bewusst keine Kopfleiste der Website, weil sie
             der Zeichenfläche Fensterhöhe kosten würde. Der Ausgang liegt dafür
             dort, wo ihn jede Anwendung hat — auf der Marke in der Titelleiste. */}
-          <Link href="/" className="cad-menubar__home" title="Elektroplaner — zur Startseite">
-            Elektroplaner
+          <Link href="/" className="cad-menubar__home" title="12V-Planer — zur Startseite">
+            12V-Planer
           </Link>
           <span className="cad-menubar__project-name" title="Automatisch lokal gespeicherter Plan">
             {projectName}

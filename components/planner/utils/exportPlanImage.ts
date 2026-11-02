@@ -164,7 +164,7 @@ async function renderAndDownload(
       removeWatermark();
     }
     const link = document.createElement('a');
-    link.download = 'elektroplaner-camper-schaltplan.png';
+    link.download = '12v-planer-schaltplan.png';
     link.href = dataUrl;
     link.click();
     return {

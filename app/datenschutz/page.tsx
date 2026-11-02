@@ -62,7 +62,7 @@ export default function DatenschutzPage() {
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Lokale Speicherung im Browser</h2>
           <p>
-            Der Elektroplaner speichert Konfigurationen wie Schaltplan, Dachlayout oder Ausbau-Status im
+            Der 12V-Planer speichert Konfigurationen wie Schaltplan, Dachlayout oder Ausbau-Status im
             localStorage deines Browsers. Diese Daten bleiben auf deinem Gerät und werden nicht an einen
             Server übertragen. Die Speicherung ist für die Funktion des Planers erforderlich (§ 25 Abs. 2
             TDDDG). Du kannst sie jederzeit über die Einstellungen deines Browsers löschen; damit werden auch

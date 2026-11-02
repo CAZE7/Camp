@@ -419,7 +419,7 @@ export default function CamperAusbauguide() {
                   </li>
                   <li>
                     <Link href="/planer/" className="underline underline-offset-2 hover:text-ink">
-                      Anlage im Camper-Elektroplaner zeichnen
+                      Anlage im 12V-Planer zeichnen
                     </Link>
                     <span className="text-ink-soft"> — jede Leitung geprüft, Stückliste inklusive.</span>
                   </li>
@@ -482,8 +482,8 @@ export default function CamperAusbauguide() {
                   Weiter zum Ausbau-Fahrplan
                 </h3>
                 <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-paper/80 md:text-lg">
-                  Der Fahrplan ordnet die Gewerke; der Elektroplaner rechnet die Elektrik. Beide Seiten bauen
-                  auf denselben Annahmen auf.
+                  Der Fahrplan ordnet die Gewerke; der 12V-Planer rechnet die Elektrik. Beide Seiten bauen auf
+                  denselben Annahmen auf.
                 </p>
                 <Link
                   href="/guides/ausbau-fahrplan"

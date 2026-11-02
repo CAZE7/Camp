@@ -35,6 +35,7 @@ test.describe('Dark Engineering Pixel', () => {
         // Theme via class — layout.tsx setzt .dark via SystemThemeSync
         await page.emulateMedia({ colorScheme: theme === 'dark' ? 'dark' : 'light' });
         await page.goto('/design-system');
+        await expect(page).toHaveURL(/^http:\/\/127\.0\.0\.1:\d+\//);
         await page.waitForSelector('text=DARK ENGINEERING DESIGN SYSTEM');
         // Ohne wartende Schrift wäre das eingefrorene Bild eine Momentaufnahme
         // mitten im Webfont-Swap.
@@ -50,6 +51,7 @@ test.describe('Dark Engineering Pixel', () => {
 
   test(`node-card states — 9-State Matrix ${PIXEL_MARKER}`, async ({ page }) => {
     await page.goto('/design-system');
+    await expect(page).toHaveURL(/^http:\/\/127\.0\.0\.1:\d+\//);
     await page.waitForSelector('.de-node-card');
     await page.evaluate(() => document.fonts.ready);
 
