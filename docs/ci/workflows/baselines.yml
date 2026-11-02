@@ -82,6 +82,11 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:4173
         run: npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts --update-snapshots
 
+      - name: Baseline-Hash protokollieren
+        run: |
+          ls -l tests/e2e/visual.spec.ts-snapshots/route-start-light-desktop-1440-linux.png
+          sha256sum tests/e2e/visual.spec.ts-snapshots/route-start-light-desktop-1440-linux.png
+
       - name: Baselines hochladen
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
