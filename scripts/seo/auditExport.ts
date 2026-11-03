@@ -21,14 +21,23 @@ import { join, relative, sep } from 'node:path';
 
 import { DEFAULT_PREVIEW_IMAGE } from '../../app/siteMetadata';
 import { SITE_ORIGIN, SITE_BASE_PATH, SITE_NAME, siteUrl } from '../../lib/site';
-import { indexablePages, nonIndexablePages, pageByPath, TECHNICAL_PAGES } from '../../lib/seo/inventory';
+import {
+  indexablePages,
+  nonIndexablePages,
+  pageByPath,
+  PAGES,
+  TECHNICAL_PAGES,
+} from '../../lib/seo/inventory';
 import { THIN_CONTENT_KINDS } from '../../lib/seo/types';
 import {
   type Finding,
   type HeavyLibrary,
   checkCalculatorBundles,
+  checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
+  checkInternalMarkers,
+  checkLlmsTxt,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -87,8 +96,6 @@ const INITIAL_SCRIPT_BUDGETS: Record<string, number> = {
    */
   '/tools/heizung/': 900 * 1024,
   '/tools/dach/': 1100 * 1024,
-  // Auch ohne Indexstatus soll die Chat-Ansicht das AI-SDK erst nach Klick laden.
-  '/ki-assistent/': 700 * 1024,
 };
 
 /** Wortzahl, unter der eine Inhaltsseite als dünn gilt (Hinweis, kein Fehler). */
@@ -202,6 +209,17 @@ function main(): void {
         expectedSocialSiteName: SITE_NAME,
         expectedH1: entry?.h1,
       })
+    );
+    // Bearbeitungsvermerke („[PRÜFEN]") gehören nicht in die Auslieferung.
+    findings.push(...checkInternalMarkers(page, html));
+    // Schriften: React hoistet `<link rel="preload">` und gibt es zusätzlich an
+    // seiner Stelle im Baum aus — vier Schriften standen so achtmal im Kopf.
+    // Die Prüfung zählt und prüft die Existenz der Dateien; sie fällt nur auf,
+    // wenn jemand zählt, und genau das soll sie übernehmen.
+    findings.push(
+      ...checkFontPreloads(page, html, (href) =>
+        exportFileCandidates(href).some((candidate) => existsSync(join(OUT, candidate)))
+      )
     );
     findings.push(
       ...checkStructuredData(page, html, {
@@ -381,6 +399,34 @@ function main(): void {
     } catch {
       // checkPage meldet bereits ungültige oder nicht absolute Open-Graph-Bilder.
     }
+  }
+
+  // llms.txt: Kurzübersicht für Sprachmodell-Agenten, erzeugt aus dem Inventar.
+  // Geprüft wird der gebaute Text, nicht die Route — nur was im Export liegt,
+  // kann ein Agent abrufen.
+  const llmsPfad = join(OUT, 'llms.txt');
+  if (!existsSync(llmsPfad)) {
+    findings.push({
+      severity: 'fehler',
+      file: OUT,
+      rule: 'llms',
+      message: 'llms.txt fehlt.',
+    });
+  } else {
+    findings.push(
+      ...checkLlmsTxt('out/llms.txt', readFileSync(llmsPfad, 'utf8'), {
+        // llms.txt nennt absolute Adressen; `exportFileCandidates` erwartet
+        // Pfade im Export. Herkunft und Basis-Pfad werden deshalb abgeschnitten.
+        exists: (href) => {
+          const ohneHerkunft = href.startsWith(SITE_ORIGIN) ? href.slice(SITE_ORIGIN.length) : href;
+          const ohneBasis = SITE_BASE_PATH ? ohneHerkunft.replace(SITE_BASE_PATH, '') : ohneHerkunft;
+          return exportFileCandidates(ohneBasis || '/').some((c) => existsSync(join(OUT, c)));
+        },
+        requiredUrls: PAGES.filter((page) => page.indexability === 'index' && page.priority === 'P0').map(
+          (page) => siteUrl(page.path)
+        ),
+      })
+    );
   }
 
   if (!existsSync(join(OUT, 'robots.txt'))) {

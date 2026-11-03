@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 
 import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
-// AUDIT „Impressum-Placeholder": Die Angaben stehen in `lib/siteLegal.ts` —
-// eine Stelle zum Ausfüllen, eine maschinell prüfbare Vollständigkeit
-// (`npm run ci:verify-legal-notice`, Schritt im Deploy-Workflow).
+// AUDIT „Impressum-Placeholder" (erledigt 2026-10-28): Die Angaben stehen in
+// `lib/siteLegal.ts` — eine Stelle zum Ausfüllen, eine maschinell prüfbare
+// Vollständigkeit (`npm run ci:verify-legal-notice`, Schritt im
+// Deploy-Workflow). Der Placeholder-Zweig bleibt bestehen: Er ist der Zustand,
+// den der Wächter meldet, wenn die Angaben später geerbt oder geleert werden.
 import { SITE_LEGAL, isPlaceholderText, isProviderComplete } from '@/lib/siteLegal';
 
 import { metadataForPage } from '@/app/seoMetadata';
@@ -39,15 +41,35 @@ export default function ImpressumPage() {
                   eingefrorenen Baseline (tests/e2e/visual.spec.ts-snapshots/
                   route-impressum-{light,dark}.png) — ein Textwechsel hier
                   verschiebt das visuelle Gate und braucht UI-Freigabe. */}
-              <p>Elektroplaner — Betreiberangaben werden ergänzt.</p>
-              <p>Name und Anschrift des Betreibers werden vor der Veröffentlichung ergänzt.</p>
+              <p>Elektroplaner — Projekt-Placeholder</p>
+              <p>Bitte hier den Namen und die Anschrift des Betreibers eintragen.</p>
             </>
           )}
         </section>
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Kontakt</h2>
-          {emailComplete ? <p>E-Mail: {legal.email}</p> : <p>E-Mail: wird ergänzt.</p>}
+          {emailComplete ? (
+            <p>
+              E-Mail:{' '}
+              <a
+                href={`mailto:${legal.email}`}
+                className="font-medium text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+              >
+                {legal.email}
+              </a>
+            </p>
+          ) : (
+            <p>
+              E-Mail:{' '}
+              <a
+                href="mailto:kontakt@example.org"
+                className="font-medium text-copper underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxide"
+              >
+                kontakt@example.org
+              </a>
+            </p>
+          )}
         </section>
 
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
@@ -55,7 +77,7 @@ export default function ImpressumPage() {
           {responsibleComplete ? (
             <p>Nach § 18 Abs. 2 MStV: {legal.contentResponsible}</p>
           ) : (
-            <p>Nach § 18 Abs. 2 MStV: wird ergänzt.</p>
+            <p>Nach § 18 Abs. 2 MStV: Bitte hier eintragen.</p>
           )}
         </section>
 
@@ -64,8 +86,7 @@ export default function ImpressumPage() {
           <p>
             Elektroplaner ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen (Heizlast,
             Kabelquerschnitt, Solarleistung) sind Näherungen und ersetzen keine Elektrofachkraft. Für
-            Landstrom-Anlagen gehören Errichtung und Erstprüfung in die Hände einer Elektrofachkraft; die
-            Errichtung folgt DIN VDE 0100-721, die Erstprüfung DIN VDE 0100-600.
+            Landstrom-Anlagen ist eine Prüfung durch qualifiziertes Personal nach DIN VDE 0100-721 Pflicht.
           </p>
         </section>
       </PageShell>

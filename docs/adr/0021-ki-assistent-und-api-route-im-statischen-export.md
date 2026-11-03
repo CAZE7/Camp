@@ -1,7 +1,19 @@
 # ADR 0021 — KI-Assistent und `/api/chat` im statischen Export
 
-**Status:** teilweise umgesetzt (Punkt 2 umgesetzt, Punkt 1 offen) · **Datum:** 2026-09-09 ·
-**Nachtrag:** 2026-09-28 · **Bezug:** ADR 0001, ARCH-001 (KNOWN-PROBLEMS)
+**Status:** umgesetzt · **Datum:** 2026-09-09 · **Nachtrag:** 2026-09-28 ·
+**Entschieden:** 2026-10-28 (Punkt 1: entfernt) · **Bezug:** ADR 0001, ARCH-001 (KNOWN-PROBLEMS)
+
+> **Entscheidung 2026-10-28 — der Assistent entfällt.** Der statische Export bringt
+> keinen Server mit, `out/api` existiert nicht, und die Ansicht `/ki-assistent/` war
+> im Produkt eine Seite, die dem Besucher erklärte, dass es sie nicht gibt
+> („Kein Assistent konfiguriert"). Sie hatte zusätzlich **null eingehende Verweise**
+> (`scripts/seo/measureExport.ts`: ein/aus = 0/17) und stand auf `noindex`.
+> Entfernt wurden deshalb genau die in „Offene Punkte" genannten Stellen:
+> `app/ki-assistent/`, `app/api/chat/`, `components/Chat.tsx`, `components/chat/`,
+> `lib/db.ts`, `scripts/seed.ts` und die zugehörigen Tests; die nur dafür
+> eingetragenen Abhängigkeiten (`ai`, `@ai-sdk/openai`, `@ai-sdk/react`, `pg`,
+> `@types/pg`, `dotenv`) sind aus `package.json` und dem Lockfile entfernt.
+> ADR 0001 („kein Backend") gilt damit auch im Baum, nicht nur im Artefakt.
 
 > **Umsetzungsstand 2026-09-28:** Punkt 2 ist umgesetzt — `components/Chat.tsx` zeigt ohne
 > gesetzten Endpunkt einen Hinweis statt eines Eingabefelds (`resolveChatEndpoint`, Tests in
@@ -83,9 +95,11 @@ Punkt 3 ist Dokumentation und wird mit diesem ADR mitgeliefert.
   dem Zweck (Modellaufruf) und würde Nutzern eine Antwortkompetenz vortäuschen,
   die das Werkzeug nicht hat.
 
-## Offene Punkte (Entscheidung durch den Nutzer)
+## Offene Punkte — entschieden am 2026-10-28
 
-- [ ] Soll der KI-Assistent Produktbestandteil bleiben? Wenn ja: externer Endpunkt
-      benennen und `NEXT_PUBLIC_CHAT_API_URL` setzen.
-- [ ] Wenn nein: `app/ki-assistent/`, `components/Chat.tsx`, `app/api/chat/`,
-      `lib/db.ts` und die zugehörigen Tests entfernen (eigener PR).
+- [x] Soll der KI-Assistent Produktbestandteil bleiben? **Nein** — kein externer
+      Endpunkt genannt, kein Betrieb zugesagt.
+- [x] Wenn nein: `app/ki-assistent/`, `components/Chat.tsx`, `app/api/chat/`,
+      `lib/db.ts` und die zugehörigen Tests entfernen. **Erledigt.**
+      `NEXT_PUBLIC_CHAT_API_URL` ist damit gegenstandslos und aus `.env.example`
+      entfernt; die Auslieferung braucht keine Umgebungsvariablen.

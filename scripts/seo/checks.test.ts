@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   calculatorBundlesLoaded,
   checkCalculatorBundles,
+  checkFontPreloads,
   checkHeavyLibraries,
   checkInitialScriptBudget,
+  checkInternalMarkers,
+  checkLlmsTxt,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -260,6 +263,70 @@ describe('checkStructuredData', () => {
   });
 });
 
+describe('Autorenangabe in der strukturierten Beschreibung', () => {
+  const graph = (knoten: unknown[]) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': knoten,
+    })}</script>`;
+
+  const SEITE_MIT_AUTOR = graph([
+    {
+      '@type': 'WebPage',
+      '@id': `${ORIGIN}${BASE}/seite/#webpage`,
+      url: `${ORIGIN}${BASE}/seite/`,
+      author: { '@id': `${ORIGIN}/#author` },
+    },
+    { '@type': 'Person', '@id': `${ORIGIN}/#author`, name: 'Jonas Rieckhoff' },
+  ]);
+
+  it('lässt den seitenweiten Person-Knoten ohne Inventar-Eintrag zu', () => {
+    // Person steht im Wurzel-Layout wie WebSite und Organization: Sie zeichnet
+    // die Seite nicht aus, sie gilt für alle. Angekündigt wird nur, was eine
+    // Seite besonders macht.
+    const findings = checkStructuredData('out/seite/index.html', SEITE_MIT_AUTOR, {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage'],
+    });
+    expect(findings.filter((finding) => finding.rule === 'json-ld-inventar')).toEqual([]);
+    expect(findings.filter((finding) => finding.rule === 'json-ld-autor')).toEqual([]);
+  });
+
+  it('meldet einen Autorenverweis auf eine Person, die im Dokument fehlt', () => {
+    const kaputt = graph([
+      {
+        '@type': 'WebPage',
+        '@id': `${ORIGIN}${BASE}/seite/#webpage`,
+        author: { '@id': `${ORIGIN}/#niemand` },
+      },
+    ]);
+    const findings = checkStructuredData('out/seite/index.html', kaputt, {
+      origin: ORIGIN,
+      basePath: BASE,
+    });
+    const autor = findings.filter((finding) => finding.rule === 'json-ld-autor');
+    expect(autor).toHaveLength(1);
+    expect(autor[0]?.severity).toBe('fehler');
+    expect(autor[0]?.message).toContain('#niemand');
+  });
+
+  it('verlangt für andere Typen weiterhin einen Inventar-Eintrag', () => {
+    // Gegenprobe: Die Ausnahme gilt nur für Person — Product ohne Ankündigung
+    // bleibt ein Fehler.
+    const fremd = graph([
+      { '@type': 'WebPage', '@id': `${ORIGIN}${BASE}/seite/#webpage` },
+      { '@type': 'Product', name: 'Etwas' },
+    ]);
+    const findings = checkStructuredData('out/seite/index.html', fremd, {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage'],
+    });
+    expect(findings.some((finding) => finding.rule === 'json-ld-inventar')).toBe(true);
+  });
+});
+
 describe('checkSitemap', () => {
   const sitemap = (locs: string[]) =>
     `<urlset>${locs.map((loc) => `<url><loc>${loc}</loc></url>`).join('')}</urlset>`;
@@ -313,6 +380,154 @@ describe('checkSitemap', () => {
   it('lässt eine vollständige Sitemap durch', () => {
     const locs = ['/', '/a/', '/b/'].map((path) => `${ORIGIN}${BASE}${path}`);
     expect(checkSitemap('f', sitemap(locs), options)).toEqual([]);
+  });
+});
+
+describe('checkLlmsTxt', () => {
+  const SAUBER = `# Beispiel
+
+> Eine Seite über Prüfungen.
+
+## Wissen
+
+- [Kabelquerschnitt](https://example.test/a/): Querschnitt berechnen.
+- [Sicherungen](https://example.test/b/): Sicherungen auslegen.
+`;
+
+  const optionen = {
+    exists: () => true,
+    requiredUrls: ['https://example.test/a/'],
+  };
+
+  it('nimmt eine saubere Datei hin', () => {
+    expect(checkLlmsTxt('out/llms.txt', SAUBER, optionen)).toEqual([]);
+  });
+
+  it('verlangt eine H1 am Anfang', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER.replace('# Beispiel', 'Beispiel'), optionen);
+    expect(findings.some((f) => f.rule === 'LLMS-TITEL')).toBe(true);
+  });
+
+  it('meldet eine fehlende Pflichtseite', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER, {
+      exists: () => true,
+      requiredUrls: ['https://example.test/fehlt/'],
+    });
+    expect(findings.some((f) => f.rule === 'LLMS-SEITE-FEHLT' && f.severity === 'fehler')).toBe(true);
+  });
+
+  it('meldet einen toten Verweis — der eigentliche Grund für die Prüfung', () => {
+    const findings = checkLlmsTxt('out/llms.txt', SAUBER, {
+      exists: (href) => href.includes('/a/'),
+      requiredUrls: ['https://example.test/a/'],
+    });
+    const tot = findings.filter((f) => f.rule === 'LLMS-LINK-TOT');
+    expect(tot).toHaveLength(1);
+    expect(tot[0]?.message).toContain('/b/');
+  });
+
+  it('meldet relative Verweise', () => {
+    const findings = checkLlmsTxt(
+      'out/llms.txt',
+      SAUBER.replace('(https://example.test/b/)', '(/b/)'),
+      optionen
+    );
+    expect(findings.some((f) => f.rule === 'LLMS-LINK-RELATIV')).toBe(true);
+  });
+
+  it('meldet Platzhalter', () => {
+    const findings = checkLlmsTxt(
+      'out/llms.txt',
+      `${SAUBER}\n- [X](https://example.test/c/): TODO\n`,
+      optionen
+    );
+    expect(findings.some((f) => f.rule === 'LLMS-PLATZHALTER')).toBe(true);
+  });
+});
+
+describe('checkInternalMarkers', () => {
+  it('nimmt einen Text ohne Vermerke hin', () => {
+    expect(
+      checkInternalMarkers('out/seite/index.html', '<p>Der Anlaufstrom steht im Datenblatt.</p>')
+    ).toEqual([]);
+  });
+
+  it('meldet einen Bearbeitungsvermerk im sichtbaren Text', () => {
+    // Genau der Zustand vor 2026-10-28 auf /camper-elektrik/stromverbrauch/.
+    const findings = checkInternalMarkers(
+      'out/seite/index.html',
+      '<p>Ohne belegtem Wert — [PRÜFEN: Anlaufstrom nachsehen].</p>'
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.rule).toBe('interner-vermerk');
+    expect(findings[0]?.severity).toBe('fehler');
+  });
+
+  it('ignoriert Vermerke in Skripten und Kommentaren', () => {
+    // Ein Kommentar ist für Autoren gedacht, nicht für Leser.
+    const html = '<!-- [TODO] später prüfen --><script>const x = "[FIXME]"</script><p>Text.</p>';
+    expect(checkInternalMarkers('out/seite/index.html', html)).toEqual([]);
+  });
+
+  it('erkennt auch den Platzhalter des Impressums', () => {
+    const findings = checkInternalMarkers('out/impressum/index.html', '<p>BITTE EINTRAGEN</p>');
+    expect(findings.some((finding) => finding.message.includes('BITTE EINTRAGEN'))).toBe(true);
+  });
+});
+
+describe('checkFontPreloads', () => {
+  const link = (href: string, extra = 'type="font/woff2" crossorigin=""') =>
+    `<link rel="preload" href="${href}" as="font" ${extra}/>`;
+
+  const VIER = `
+    ${link('/_next/static/media/ibm-plex-mono-latin-400-normal.aaa.woff2')}
+    ${link('/_next/static/media/ibm-plex-mono-latin-500-normal.bbb.woff2')}
+    ${link('/_next/static/media/inter-latin-wght-normal.ccc.woff2')}
+    ${link('/_next/static/media/outfit-latin-wght-normal.ddd.woff2')}`;
+
+  const vorhanden = () => true;
+
+  it('nimmt vier verschiedene Schriften im Kopf hin', () => {
+    expect(checkFontPreloads('out/index.html', VIER, vorhanden)).toEqual([]);
+  });
+
+  it('meldet dieselbe Schrift doppelt — der React-Hoist-Fehler', () => {
+    // Genau der Zustand vor ADR 0039: `<link rel="preload">` stand als Kind im
+    // Baum und wurde von React zusätzlich in den Kopf gehoben.
+    const findings = checkFontPreloads('out/index.html', VIER + VIER, vorhanden);
+    const doppelt = findings.filter((finding) => finding.rule === 'FONT-PRELOAD-DOPPELT');
+    expect(doppelt).toHaveLength(4);
+    expect(doppelt[0]?.severity).toBe('fehler');
+    expect(doppelt[0]?.message).toContain('react-dom');
+  });
+
+  it('meldet eine vorgeladene Datei, die im Export fehlt', () => {
+    const findings = checkFontPreloads('out/index.html', VIER, (href) => !href.includes('inter'));
+    expect(findings.some((finding) => finding.rule === 'FONT-PRELOAD-FEHLT')).toBe(true);
+  });
+
+  it('meldet eine falsche Anzahl', () => {
+    const findings = checkFontPreloads(
+      'out/index.html',
+      link('/_next/static/media/inter-latin-wght-normal.ccc.woff2'),
+      vorhanden
+    );
+    expect(findings.some((finding) => finding.rule === 'FONT-PRELOAD-ANZAHL')).toBe(true);
+  });
+
+  it('weist auf ein fehlendes crossorigin hin, ohne den Lauf zu kippen', () => {
+    const ohneCors = VIER.replaceAll('crossorigin=""', '');
+    const findings = checkFontPreloads('out/index.html', ohneCors, vorhanden).filter(
+      (finding) => finding.rule === 'FONT-PRELOAD-CORS'
+    );
+    expect(findings).toHaveLength(4);
+    expect(findings[0]?.severity).toBe('hinweis');
+  });
+
+  it('verlangt type="font/woff2"', () => {
+    const ohneTyp = VIER.replaceAll('type="font/woff2"', '');
+    const findings = checkFontPreloads('out/index.html', ohneTyp, vorhanden);
+    expect(findings.filter((finding) => finding.rule === 'FONT-PRELOAD-TYP')).toHaveLength(4);
   });
 });
 

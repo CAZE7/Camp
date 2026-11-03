@@ -15,6 +15,8 @@ Object.defineProperty(window, 'matchMedia', {
   value: vi.fn(createMatchMediaStub),
 });
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import RootLayout, { metadata } from './layout';
 
@@ -59,6 +61,66 @@ describe('RootLayout', () => {
     );
     expect(childElement).toBeDefined();
     expect(childElement?.props.children).toBe('Test Child');
+  });
+
+  it('lädt Inter und Outfit vor, damit der Text nicht nachträglich umbricht (M11-6)', () => {
+    // Gemessen wird am Quelltext, weil `preload()` seine Wirkung erst beim
+    // Rendern auf dem Server entfaltet (<link rel="preload"> im Kopf). Dass im
+    // Export genau vier Preloads stehen und keine doppelt, prüft
+    // `scripts/seo/auditExport.ts` (FONT-PRELOAD-*); hier wird geprüft, dass
+    // die vier Schnitte überhaupt angefordert werden — und zwar mit `preload()`
+    // und nicht als <link>-Kind im Baum: React 19 hoistet `<link
+    // rel="preload">` zusätzlich und verdoppelt es damit (ADR 0039).
+    const quelle = readFileSync(join(process.cwd(), 'app/layout.tsx'), 'utf8');
+    expect(quelle).toContain("import { preload } from 'react-dom'");
+
+    for (const datei of [
+      'ibm-plex-mono-latin-400-normal.woff2',
+      'ibm-plex-mono-latin-500-normal.woff2',
+      'inter-latin-wght-normal.woff2',
+      'outfit-latin-wght-normal.woff2',
+    ]) {
+      expect(quelle).toContain(datei);
+    }
+
+    const aufrufe = quelle.match(/preload\((?:mono|inter|outfit)[A-Za-z0-9]*LatinUrl,/g) ?? [];
+    expect(aufrufe).toHaveLength(4);
+    // Kein <link rel="preload"> im Baum — der wäre die Doppelung.
+    expect(quelle).not.toContain('rel="preload" as="font"');
+    // Fonts werden immer im CORS-Modus geholt; ohne crossOrigin läuft der
+    // Preload ins Leere (Chrome: „preload … was not used").
+    expect(quelle.match(/crossOrigin: 'anonymous'/g) ?? []).toHaveLength(4);
+  });
+
+  it('definiert die Autorenangabe einmal für die ganze Auslieferung', () => {
+    const element = RootLayout({ children: <div /> }) as React.ReactElement<{
+      children?: React.ReactNode;
+    }>;
+    const head = React.Children.toArray(element.props.children).find(
+      (child): child is React.ReactElement<{ children: React.ReactNode }> =>
+        React.isValidElement(child) && child.type === 'head'
+    );
+    const scripts = React.Children.toArray(head!.props.children).filter(
+      (child): child is React.ReactElement<{ type?: string; dangerouslySetInnerHTML?: { __html: string } }> =>
+        React.isValidElement(child) && (child.props as { type?: string }).type === 'application/ld+json'
+    );
+    const siteGraph = scripts
+      .map((script) => script.props.dangerouslySetInnerHTML?.__html ?? '')
+      .map((html) => {
+        try {
+          return JSON.parse(html) as { '@graph'?: Array<Record<string, unknown>> };
+        } catch {
+          return {};
+        }
+      })
+      .find((graph) => graph['@graph']?.some((node) => node['@type'] === 'WebSite'));
+
+    const person = siteGraph?.['@graph']?.find((node) => node['@type'] === 'Person');
+    expect(person).toBeDefined();
+    expect(person?.['@id']).toBe('https://elektroplaner-camper.de/#author');
+    expect(person?.['name']).toBe('Jonas Rieckhoff');
+    // Die Organisation steht im selben Graphen und wird nur verwiesen.
+    expect(person?.['worksFor']).toEqual({ '@id': 'https://elektroplaner-camper.de/#organization' });
   });
 
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {

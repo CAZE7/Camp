@@ -36,7 +36,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     label: 'Startseite',
     kind: 'start',
     indexability: 'index',
-    h1: 'Camper planen — erst der Plan, dann das Blech.',
+    h1: 'Camper-Ausbau planen: erst der Plan, dann das Blech.',
     title: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast',
     absoluteTitle: true,
     description:
@@ -44,8 +44,16 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Überblick: welche Werkzeuge und Wissensseiten es für den Camper-Ausbau gibt.',
     topicId: 'start',
     priority: 'P0',
-    structuredData: ['WebPage'],
+    // H1 trägt den Hauptsuchbegriff („Camper-Ausbau planen“) — der Anspruch
+    // („erst der Plan, dann das Blech“) bleibt, die Einordnung kommt dazu.
+    // FAQPage: Die fünf Fragen stehen sichtbar auf der Startseite
+    // (`HOME_FAQ` in `app/page.tsx`) und werden aus derselben Quelle
+    // ausgezeichnet; `checkStructuredData` vergleicht Frage und Antwort
+    // Zeichen für Zeichen mit dem sichtbaren Akkordeon.
+    structuredData: ['WebPage', 'FAQPage'],
     sitemap: { changeFrequency: 'monthly', priority: 1 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den sichtbaren Text der Startseite ersetzt (Einordnung, FAQ).
+    lastReviewed: '2026-10-28',
     source: 'app/page.tsx',
   },
   {
@@ -135,7 +143,10 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'Solarpanels und Dachluken auf der Dachfläche platzieren und die Gesamtleistung ablesen.',
     topicId: 'dachplanung',
     priority: 'P1',
-    structuredData: ['WebPage', 'WebApplication'],
+    // FAQPage: Die vier Fragen stehen sichtbar unter der Werkfläche
+    // (`app/tools/dach/explainerContent.ts`) — dieselbe Quelle für Anzeige
+    // und Auszeichnung.
+    structuredData: ['WebPage', 'WebApplication', 'FAQPage'],
     ogImage: {
       path: '/og/dach.png',
       width: 1200,
@@ -143,6 +154,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Solarpanels auf dem Dach eines Campers',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den Erklärblock ergänzt (243 → 752 Wörter).
+    lastReviewed: '2026-10-28',
     source: 'app/tools/dach/layout.tsx',
   },
   {
@@ -157,7 +170,9 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     searchIntent: 'die nötige Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur bestimmen.',
     topicId: 'heizlast',
     priority: 'P1',
-    structuredData: ['WebPage', 'WebApplication'],
+    // FAQPage: Die vier Fragen stehen sichtbar unter dem Rechner
+    // (`app/tools/heizung/explainerContent.ts`).
+    structuredData: ['WebPage', 'WebApplication', 'FAQPage'],
     ogImage: {
       path: '/og/heizung.png',
       width: 1200,
@@ -165,6 +180,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       alt: 'Heizlast-Rechner für Wohnmobil und Camper',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
+    // Belegte Inhaltsänderung: Commit 0b794ab (2026-10-28T09:33:28Z) hat den Erklärblock ergänzt (472 → 1 024 Wörter).
+    lastReviewed: '2026-10-28',
     source: 'app/tools/heizung/layout.tsx',
   },
   {
@@ -262,6 +279,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P3',
     structuredData: ['WebPage'],
     sitemap: { changeFrequency: 'yearly', priority: 0.3 },
+    // Belegte Inhaltsänderung: Commit a3e885e (2026-10-28T09:33:33Z) hat die Anbieterkennzeichnung gefüllt.
+    lastReviewed: '2026-10-28',
     source: 'app/impressum/page.tsx',
   },
   {
@@ -278,6 +297,8 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     priority: 'P3',
     structuredData: ['WebPage'],
     sitemap: { changeFrequency: 'yearly', priority: 0.3 },
+    // Belegte Inhaltsänderung: Diese Fassung ersetzt die Kurzfassung mit 134 Wörtern (Art. 13 DSGVO).
+    lastReviewed: '2026-10-28',
     source: 'app/datenschutz/page.tsx',
   },
   {
@@ -320,21 +341,6 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     structuredData: [],
     source: 'app/ueber-werft/page.tsx',
   },
-  {
-    path: '/ki-assistent/',
-    label: 'Camper-Assistent',
-    kind: 'ansicht',
-    indexability: 'noindex',
-    h1: 'Camper-Assistent',
-    title: 'Camper-Assistent',
-    description:
-      'Fragen zum Camper-Ausbau im Dialog — als Ergänzung zu Schaltplan, Dach-Planer und Heizlast-Rechner.',
-    searchIntent: 'Fragen im Dialog stellen — ergänzende Ansicht ohne eigenen Inhalt für Ergebnislisten.',
-    topicId: 'start',
-    priority: 'P3',
-    structuredData: [],
-    source: 'app/ki-assistent/page.tsx',
-  },
 ];
 
 /** Technische Seiten: dreimal dieselbe Fehlerseite, nicht beworben, noindex. */
@@ -372,6 +378,7 @@ function entryOfContent(page: (typeof CONTENT_PAGES)[number]): PageEntry {
     ...(page.absoluteTitle ? { absoluteTitle: true } : {}),
     ...(page.ogImage ? { ogImage: page.ogImage } : {}),
     ...(hasCalculator ? { calculators } : {}),
+    ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
   };
 }
 
@@ -410,4 +417,5 @@ export const SITEMAP_ROUTES = indexablePages()
     path: page.path,
     changeFrequency: page.sitemap.changeFrequency,
     priority: page.sitemap.priority,
+    ...(page.lastReviewed ? { lastReviewed: page.lastReviewed } : {}),
   }));

@@ -157,6 +157,16 @@ export type SeoPageContent = {
   limits?: readonly RichText[];
   /** Stand der fachlichen Durchsicht als ISO-Monat (`2026-10`). */
   contentRevision: string;
+  /**
+   * Tag der letzten inhaltlichen Änderung (ISO, `YYYY-MM-DD`) — nur setzen,
+   * wenn der Tag belegt ist (Redaktionsdatum, nicht Build-Zeit).
+   *
+   * Warum optional und nicht abgeleitet: Ein aus dem Build erzeugtes Datum
+   * behauptet bei jedem Bau eine Änderung, die niemand geprüft hat. Dieser
+   * Wert steht deshalb nur dort, wo ein Mensch ihn einträgt; er wandert dann
+   * in `dateModified` (JSON-LD) und `lastModified` (Sitemap).
+   */
+  lastReviewed?: string;
   /** Änderungsfrequenz für die Sitemap (nur indexierbare Seiten). */
   changeFrequency: 'monthly' | 'yearly';
   /** Relative Priorität innerhalb der Auslieferung (0…1). */
@@ -201,4 +211,16 @@ export type PageEntry = {
   ogImage?: { path: string; width: number; height: number; alt: string };
   /** Eingebaute interaktive Rechner, die die Seite tatsächlich rendert. */
   calculators?: readonly CalculatorId[];
+  /**
+   * Tag der letzten belegten Inhaltsänderung (`YYYY-MM-DD`) — wandert in
+   * `lastModified` der Sitemap und `dateModified` der strukturierten Daten.
+   *
+   * Warum hier und nicht berechnet: Ein aus Build-Zeit oder Git-Commit
+   * abgeleitetes Datum behauptet bei jedem Bau bzw. bei jedem Refactoring eine
+   * inhaltliche Änderung, die niemand vorgenommen hat. Gesetzt wird der Wert
+   * deshalb nur, wenn ein Commit die Änderung am sichtbaren Text belegt — die
+   * Begründung steht jeweils am Eintrag. Seiten ohne belegtes Datum tragen
+   * keinen Zeitstempel; das ist ehrlicher als ein geratener.
+   */
+  lastReviewed?: string;
 };

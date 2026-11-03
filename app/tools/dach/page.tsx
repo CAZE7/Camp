@@ -17,6 +17,8 @@ import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { PageShell } from '@/components/brand/PageShell';
+import { ToolExplainer } from '@/components/seo/ToolExplainer';
+import { DACH_EXPLAINER_BLOCKS, DACH_FAQ } from './explainerContent';
 import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
@@ -27,6 +29,9 @@ const nodeTypes = {
   roofSolar: RoofSolarNode,
   roofWindow: RoofWindowNode,
 };
+
+/** Meterangabe mit deutschem Dezimalkomma, z. B. 5,41. */
+const formatMeters = (meters: number) => meters.toFixed(2).replace('.', ',');
 
 /** Berechnet einen laienverständlichen Text, wenn ein Node außerhalb der Safe
  *  Zone liegt. Rein anzeigend – die Regel-Logik in validation.ts bleibt
@@ -268,7 +273,7 @@ function DachPlanerInner() {
               <SelectContent className="border-rule">
                 {vehicleTemplates.map((vehicle) => (
                   <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} {vehicle.version}
+                    {vehicle.model} {vehicle.version}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -277,6 +282,13 @@ function DachPlanerInner() {
               Nutzbare Dachfläche:{' '}
               <strong className="text-ink">
                 {roofWidthCm} × {roofHeightCm} cm
+              </strong>
+            </p>
+            <p className="caption-xs text-ink-soft">
+              Fahrzeug außen:{' '}
+              <strong className="text-ink">
+                {formatMeters(selectedVehicle.exteriorLength)} × {formatMeters(selectedVehicle.exteriorWidth)}{' '}
+                × {formatMeters(selectedVehicle.exteriorHeight)} m
               </strong>
             </p>
           </div>
@@ -418,6 +430,20 @@ function DachPlanerInner() {
           </ReactFlow>
         </div>
       </div>
+
+      {/* Erklärender Teil unter dem Werkzeug. Bis 2026-10-27 war diese Seite
+          die dünnste der Auslieferung (243 Wörter, 0 × h2) — der Text stand
+          nirgends, weil das Werkzeug den Bildschirm füllt. Er steht unter der
+          Werkfläche, nicht davor: Wer planen will, plant; wer verstehen will,
+          scrollt. Inhalt und Begründung: `./explainerContent.ts`. */}
+      <ToolExplainer
+        kicker="HINTERGRUND // DACH-PLANUNG"
+        title="Wie die Dachbelegung gerechnet wird"
+        intro="Der Planer prüft jede Platzierung gegen einen sicheren Bereich und addiert die Nennleistung der Module. Was die Zahlen bedeuten — und welche Frage er bewusst offen lässt."
+        blocks={DACH_EXPLAINER_BLOCKS}
+        faqTitle="Häufige Fragen zur Dachbelegung"
+        faq={DACH_FAQ}
+      />
     </PageShell>
   );
 }

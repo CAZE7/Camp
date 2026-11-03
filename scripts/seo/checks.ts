@@ -90,6 +90,165 @@ export function linkHrefs(html: string, rel: string): string[] {
     .map(unescapeHtml);
 }
 
+/**
+ * `/llms.txt` — Kurzübersicht für Sprachmodell-Agenten.
+ *
+ * Die Datei entsteht aus dem Seiteninventar, kann also nur veralten, wenn das
+ * Inventar selbst nicht gepflegt wird. Geprüft wird das, was ein Agent
+ * tatsächlich benutzt: dass eine Überschrift und eine Zusammenfassung da sind,
+ * dass jede P0-Seite vorkommt und dass kein Verweis ins Leere zeigt. Ein toter
+ * Link in dieser Datei ist schlimmer als keine Datei: Der Agent bekommt eine
+ * Adresse, die nicht existiert, und verwirft die Quelle.
+ */
+export function checkLlmsTxt(
+  file: string,
+  text: string,
+  options: { exists: (href: string) => boolean; requiredUrls: readonly string[] }
+): Finding[] {
+  const findings: Finding[] = [];
+  const add = (severity: Severity, rule: string, message: string) =>
+    findings.push({ severity, file, rule, message });
+
+  if (!text.startsWith('# ')) {
+    add('fehler', 'LLMS-TITEL', 'Die Datei beginnt nicht mit einer H1 (`# Name`).');
+  }
+  if (!/^> .+/m.test(text)) {
+    add(
+      'hinweis',
+      'LLMS-ZUSAMMENFASSUNG',
+      'Keine Zusammenfassung als Zitatblock (`> …`) — Agenten lesen sie zuerst.'
+    );
+  }
+  for (const url of options.requiredUrls) {
+    if (!text.includes(url)) {
+      add('fehler', 'LLMS-SEITE-FEHLT', `Pflichtseite ${url} fehlt in llms.txt.`);
+    }
+  }
+
+  const links = [...text.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)]
+    .map((match) => match[1])
+    .filter((link): link is string => typeof link === 'string' && link.length > 0);
+  for (const link of links) {
+    if (!link.startsWith('https://')) {
+      add(
+        'fehler',
+        'LLMS-LINK-RELATIV',
+        `Verweis ${link} ist nicht absolut — Agenten kennen den Basis-Pfad nicht.`
+      );
+      continue;
+    }
+    if (!options.exists(link)) {
+      add('fehler', 'LLMS-LINK-TOT', `Verweis ${link} zeigt auf keine Datei im Export.`);
+    }
+  }
+  if (links.length === 0) {
+    add('fehler', 'LLMS-OHNE-VERWEISE', 'Die Datei enthält keinen einzigen Seitenverweis.');
+  }
+  if (/TODO|Platzhalter|undefined/i.test(text)) {
+    add('fehler', 'LLMS-PLATZHALTER', 'Die Datei enthält einen Platzhalter oder `undefined`.');
+  }
+
+  return findings;
+}
+
+/**
+ * Interne Bearbeitungsvermerke im ausgelieferten Text.
+ *
+ * Anlass: Auf `/camper-elektrik/stromverbrauch/` stand mitten im Fließtext
+ * „[PRÜFEN: Anlaufstrom im Datenblatt des konkreten Geräts nachsehen]" — eine
+ * Notiz an den Autor, öffentlich lesbar. Solche Marker sind für die Arbeit
+ * richtig und für die Auslieferung falsch; sie fallen beim Lesen der Seite
+ * nicht zwingend auf, weil sie wie ein Hinweis aussehen.
+ *
+ * Geprüft wird der sichtbare Text, nicht das HTML: Ein Marker in einem
+ * Kommentar oder einem Skript ist kein Fehler.
+ */
+export const INTERNAL_MARKERS: readonly string[] = ['[PRÜFEN', '[TODO', '[FIXME', '[XXX', 'BITTE EINTRAGEN'];
+
+export function checkInternalMarkers(file: string, html: string): Finding[] {
+  const findings: Finding[] = [];
+  const body = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
+  const text = unescapeHtml(body.replace(/<[^>]+>/g, ' '));
+
+  for (const marker of INTERNAL_MARKERS) {
+    if (text.toUpperCase().includes(marker)) {
+      findings.push({
+        severity: 'fehler',
+        file,
+        rule: 'interner-vermerk',
+        message: `Bearbeitungsvermerk "${marker}" steht im sichtbaren Text — das ist eine Notiz an den Autor, keine Aussage für den Leser.`,
+      });
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Font-Preloads im Dokumentkopf.
+ *
+ * Warum das eine Prüfung braucht: React 19 behandelt `<link rel="preload">` als
+ * Ressourcen-Hinweis und gibt es ZUSÄTZLICH zu der Stelle aus, an der es im
+ * Baum steht. Im Export standen die vier vorgeladenen Schriften deshalb
+ * achtmal im Kopf — dieselbe Datei zweimal anzukündigen kostet Bytes und
+ * erzeugt in Chrome die Warnung „preload … was not used". Der Doppel-Eintrag
+ * fällt niemandem auf, der die Seite ansieht; er fällt nur beim Zählen auf.
+ *
+ * Geprüft wird deshalb: jede Schrift genau einmal, jede Datei existiert im
+ * Export, und es sind genau die vier Schnitte, die über der Falz stehen. Die
+ * Dateinamen tragen Build-Hashes und werden darum nicht verglichen — gezählt
+ * und geprüft wird die Form, nicht der Hash.
+ */
+export const FONT_PRELOADS_EXPECTED = 4;
+
+export function checkFontPreloads(file: string, html: string, exists: (href: string) => boolean): Finding[] {
+  const findings: Finding[] = [];
+  const add = (severity: Severity, rule: string, message: string) =>
+    findings.push({ severity, file, rule, message });
+
+  const hrefs = linkHrefs(html, 'preload').filter((href) => /\.woff2?$/i.test(href));
+  const seen = new Set<string>();
+
+  for (const href of hrefs) {
+    if (seen.has(href)) {
+      add(
+        'fehler',
+        'FONT-PRELOAD-DOPPELT',
+        `Schrift ${href} wird mehrfach vorgeladen — React hoistet <link rel="preload"> zusätzlich zum Ort im Baum; nutze preload() aus react-dom.`
+      );
+    }
+    seen.add(href);
+    if (!exists(href)) {
+      add('fehler', 'FONT-PRELOAD-FEHLT', `${href} wird vorgeladen, liegt aber nicht im Export.`);
+    }
+  }
+
+  if (hrefs.length !== FONT_PRELOADS_EXPECTED) {
+    add(
+      'fehler',
+      'FONT-PRELOAD-ANZAHL',
+      `${hrefs.length} Font-Preloads statt ${FONT_PRELOADS_EXPECTED} (Inter, Outfit und zwei Schnitte IBM Plex Mono).`
+    );
+  }
+
+  // `as` und `type` entscheiden, ob der Browser die Datei als Schrift erkennt;
+  // ohne `crossorigin` lädt er Fonts im CORS-Modus und verwirft den Preload.
+  for (const tag of [...html.matchAll(/<link\b[^>]*\bas="font"[^>]*>/gi)].map((match) => match[0])) {
+    if ((tagAttribute(tag, 'type') ?? '') !== 'font/woff2') {
+      add('fehler', 'FONT-PRELOAD-TYP', `Font-Preload ohne type="font/woff2": ${tag}`);
+    }
+    if (tagAttribute(tag, 'crossorigin') === null) {
+      add(
+        'hinweis',
+        'FONT-PRELOAD-CORS',
+        `Font-Preload ohne crossorigin — der Browser fordert Fonts im CORS-Modus an und der Preload verpufft: ${tag}`
+      );
+    }
+  }
+
+  return findings;
+}
+
 /** Textinhalt ausgewählter Elemente, normalisiert für Inventar-Abgleiche. */
 export function selectedText(html: string, selector: string): string[] {
   const dom = new JSDOM(html);
@@ -563,7 +722,11 @@ export function checkStructuredData(
     const value = node['@type'];
     return Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];
   });
-  const sharedSiteTypes = new Set(['WebSite', 'Organization']);
+  // Seitenweite Knoten: Sie stehen im Wurzel-Layout und gelten für jede Seite.
+  // Deshalb müssen sie nicht im Seiteninventar angekündigt werden — angekündigt
+  // wird, was eine Seite AUSZEICHNET (WebPage, FAQPage, WebApplication …).
+  // Person ist am 2026-10-28 dazugekommen: die Autorenangabe.
+  const sharedSiteTypes = new Set(['WebSite', 'Organization', 'Person']);
   const actualPageTypes = new Set(nodeTypes.flat().filter((type) => !sharedSiteTypes.has(type)));
   for (const [index, types] of nodeTypes.entries()) {
     if (types.length === 0) add('fehler', 'json-ld', `Knoten ${index + 1} ohne @type.`);
@@ -584,6 +747,27 @@ export function checkStructuredData(
         }
       };
       visit(value);
+    }
+  }
+
+  // Verweise auf seitenweite Knoten müssen im selben Dokument aufgelöst
+  // werden: Ein `author: { '@id': … }` ohne passende Person ist für eine
+  // Suchmaschine ein Verweis ins Nichts — und niemand sieht es, weil der
+  // sichtbare Name ja dasteht.
+  const definierteIds = new Set(
+    nodes.map((node) => node['@id']).filter((id): id is string => typeof id === 'string' && id.length > 0)
+  );
+  for (const [index, node] of nodes.entries()) {
+    const author = node['author'];
+    if (author && typeof author === 'object' && !Array.isArray(author)) {
+      const id = (author as Record<string, unknown>)['@id'];
+      if (typeof id !== 'string' || !definierteIds.has(id)) {
+        add(
+          'fehler',
+          'json-ld-autor',
+          `Knoten ${index + 1}: author verweist auf ${String(id)}, im Dokument ist kein Knoten mit dieser @id definiert.`
+        );
+      }
     }
   }
 

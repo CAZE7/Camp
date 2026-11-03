@@ -194,8 +194,8 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       heading: 'Redaktionell',
       body: [
         'Autor: Jonas Rieckhoff, Selbstausbauer und Betreiber von elektroplaner-camper.de.',
-        'Redaktionell überarbeitet: 2026-10.',
-        'Jede Zahl in diesem Artikel hat eine Herkunft: eigener 12V-Elektroplaner, Herstellerdatenblatt oder gültige Norm. Nicht belegbare Zahlen sind mit [PRÜFEN] gekennzeichnet.',
+        'Inhaltlich geprüft: 2026-10.',
+        'Jede Zahl in diesem Artikel hat eine Herkunft: eigener 12V-Elektroplaner, Herstellerdatenblatt oder gültige Norm. Wo eine Zahl nicht belegbar ist, steht das als Annahme daneben — nicht als Zahl.',
         'Die Dokumentation beschreibt den Einbau im eigenen Fahrzeug; Fotos sind nicht Teil dieser Seite.',
       ],
     },
