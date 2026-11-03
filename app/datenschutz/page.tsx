@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { metadataForPage } from '@/app/seoMetadata';
+import { SITE_HOST } from '@/lib/site';
 
 import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
@@ -15,7 +16,7 @@ export default function DatenschutzPage() {
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
         <p className="caption-sm mt-2 text-ink-soft">
-          Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von 12v-planer.de.
+          {`Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von ${SITE_HOST}.`}
         </p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
@@ -25,7 +26,7 @@ export default function DatenschutzPage() {
             <Link href="/impressum/" className="underline underline-offset-2 hover:text-ink">
               Impressum
             </Link>{' '}
-            genannte Betreiber. Dort stehen auch Anschrift und Kontaktweg.
+            {`genannte Betreiber von ${SITE_HOST}. Dort stehen auch Anschrift und Kontaktweg.`}
           </p>
         </section>
 
@@ -61,7 +62,7 @@ export default function DatenschutzPage() {
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Lokale Speicherung im Browser</h2>
           <p>
-            Der Elektroplaner speichert Konfigurationen wie Schaltplan, Dachlayout oder Ausbau-Status im
+            Der 12V-Planer speichert Konfigurationen wie Schaltplan, Dachlayout oder Ausbau-Status im
             localStorage deines Browsers. Diese Daten bleiben auf deinem Gerät und werden nicht an einen
             Server übertragen. Die Speicherung ist für die Funktion des Planers erforderlich (§ 25 Abs. 2
             TDDDG). Du kannst sie jederzeit über die Einstellungen deines Browsers löschen; damit werden auch

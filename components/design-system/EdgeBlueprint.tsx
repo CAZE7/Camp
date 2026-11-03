@@ -192,7 +192,11 @@ export function EdgeBlueprint() {
     <div className="flex flex-col gap-8 rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-0)] p-6">
       <h3 className="de-label-eyebrow">Trassen-Hierarchie — Dark Engineering</h3>
 
-      <div className="grid grid-cols-2 gap-6">
+      {/* Unter 640 px einkolonnig: in den 327 px Content-Breite (375 px minus
+          2 × 24 px Innenabstand) passen zwei 200 px breite Trassen-Beispiele
+          plus Stab nicht. Gemessen bei 375 px: scrollWidth 400 — 25 px Überlauf
+          gegenüber dem Viewport (02.11.2026). */}
+      <div className="grid gap-6 sm:grid-cols-2">
         <div className="flex flex-col gap-4">
           {specs.map((s, i) => (
             <EdgeLegend key={i} spec={s} />

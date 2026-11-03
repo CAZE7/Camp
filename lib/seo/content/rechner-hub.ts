@@ -19,7 +19,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
   description:
     'Alle Rechner für den Camper-Ausbau an einer Stelle: Kabelquerschnitt, Spannungsabfall, Batterie, Ladestrom, Solar, Heizlast und Dach.',
   h1: 'Rechner für den Camper-Ausbau',
-  lead: 'Sieben Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom Kabelquerschnitt bis zur Heizlast. Jeder Rechner nennt seine Formel, seine Annahmen und die Grenzen seines Modells; die Zahlen sind dieselben, die der Elektroplaner verwendet.',
+  lead: 'Sieben Rechenwerkzeuge für die häufigsten Fragen beim Ausbau — vom Kabelquerschnitt bis zur Heizlast. Jeder Rechner nennt seine Formel, seine Annahmen und die Grenzen seines Modells; die Zahlen sind dieselben, die der 12V-Planer verwendet.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.9,
@@ -91,7 +91,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
       id: 'planer',
       heading: 'Der Planer rechnet das ganze System',
       body: [
-        'Einzelrechner beantworten Einzelfragen. Der Camper-Elektroplaner verbindet sie: Bauteile setzen, verdrahten lassen — Querschnitt, Sicherung, Spannungsfall und Energiebilanz werden je Leitung geprüft, die Stückliste entsteht aus dem Plan.',
+        'Einzelrechner beantworten Einzelfragen. Der 12V-Planer verbindet sie: Bauteile setzen, verdrahten lassen — Querschnitt, Sicherung, Spannungsfall und Energiebilanz werden je Leitung geprüft, die Stückliste entsteht aus dem Plan.',
       ],
       links: [
         { href: '/planer/', label: 'Kostenlosen Camper-Schaltplan erstellen' },
@@ -109,7 +109,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
         'Die Rechner und der Planer benutzen dasselbe Modell: Kupfer-Leitfähigkeit κ = 58 m/(Ω·mm²) bei 20 °C, Strombelastbarkeiten nach DIN VDE 0298-4 (Verlegeart B2) mit Derating 0,7 als Modellannahme, Entladetiefen und Peukert-Exponenten je Chemie sowie die Solar- und Wechselrichter-Kennwerte der Auslieferung. Wo eine Größe eine Annahme ist, steht sie als Annahme in der Rechnung und als Eingabe im Rechner — nicht im Kleingedruckten.',
       ],
       links: [
-        { href: '/ueber-elektroplaner/', label: 'Über Elektroplaner: Methodik, Quellen und Grenzen' },
+        { href: '/ueber-12v-planer/', label: 'Über 12V-Planer: Methodik, Quellen und Grenzen' },
         { href: '/camper-elektrik/', label: 'Camper-Elektrik planen: der Weg durch das Thema' },
       ],
     },

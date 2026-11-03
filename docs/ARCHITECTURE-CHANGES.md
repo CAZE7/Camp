@@ -1,5 +1,144 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-02 (8) — Miniaturübersicht: Rahmen als Leselinie
+
+**Anlass:** Nutzeraudit. Die Übersicht unten links zeigte den
+Hauptstromkreis-Rahmen als schwarzen Block — `nodeMinimapColorFrom` fällt auf
+`palette.ink` zurück, wenn ein Knoten keine Domäne hat, und ein
+Darstellungs-Knoten hat keine. Der Block legte die halbe Miniatur zu und die
+Bauteile darin waren nicht zu erkennen.
+
+**Verhalten:** Der Rahmen bekommt Panel-Füllung und 1 px Umriss
+(`nodeColor` / `nodeStrokeColor` / `nodeStrokeWidth`), Bauteilblöcke
+`nodeBorderRadius={2}`, das Feld 6 px Innenabstand und eine Kante in
+`--rule-strong`. Nicht aus der Miniatur entfernt: die Grenzen rechnet React
+Flow aus allen Knoten, ein Ausblenden hätte ein leeres graues Band hinterlassen.
+Die Farbe muss über die Props kommen — React Flow schreibt `fill` als
+Inline-Style, eine CSS-Klasse verliert dagegen.
+
+**Tests:** `components/planner/` 511 Tests grün; Screenshots hell und dunkel
+(`prefers-color-scheme: dark`), weil beide Werte Tokens sind.
+
+## LEDGER 2026-11-02 (7) — Nachlese des mobilen Audits
+
+Vier Befunde aus demselben Audit, jeder an der betroffenen Stelle behoben.
+Alle Größen sind bei 375 × 667 px im Browser gemessen, nicht aus Klassen abgeleitet.
+
+- **Vorlagen-Links unter 44 px** (`components/planner/PlanerSeoContent.tsx`):
+  „Wochenend-Camper im Planer öffnen" und die beiden anderen waren
+  `inline-block`-Text und 235, 247 und 237 px breit bei **20 px** hoch. Jetzt
+  `inline-flex min-h-11` — gemessen 44 px.
+- **Assistent verdeckt die Navigation** (`app/globals.css`, `.chat-window`):
+  Das Fenster begann bei `top: 16 px`, die sticky Kopfzeile misst 49 px
+  (48 px + 1 px Rand). Logo und „Menü öffnen" lagen unter dem Panel und waren
+  nicht antippbar. Das Fenster startet jetzt unter der Kopfzeile.
+- **Überlauf im Design-System** (`components/design-system/EdgeBlueprint.tsx`):
+  `grid-cols-2` mit zwei 200 px breiten Trassen-Beispielen braucht mehr als die
+  327 px Content-Breite; gemessen `scrollWidth` 400 gegen `clientWidth` 375,
+  also 25 px Überlauf. Unter 640 px einkolonnig, gemessen wieder 375 = 375.
+- **Vorlagen-Knöpfe ohne kurzen Namen**
+  (`components/planner/OnboardingWizard.tsx`): Der Name der Schaltfläche war
+  Label, Abzeichen und Ganztext in einem Ansage-Satz. Jetzt `aria-label` mit
+  dem Vorlagennamen, die Beschreibung separat über `aria-describedby`.
+  Regressionstest schlägt ohne die Änderung fehl.
+
+## LEDGER 2026-11-02 (6) — Externe Belege im neuen Tab
+
+**Anlass:** Die Belegliste im Ladebooster-Vergleich verlinkt auf Hersteller- und
+Normseiten. Jeder Link öffnete im selben Tab — wer nach einem Beleg
+zurückkehren wollte, stand vor einer anderen Seite.
+
+**Verhalten:** Alle 54 externen Anker von
+`components/seo/LadeboosterVergleich.tsx` tragen `target="_blank"` und
+`rel="noopener noreferrer"`. Interne Links bleiben unverändert.
+
+**Tests:** `LadeboosterVergleich.test.tsx` zählt die gerenderten externen Anker
+und prüft Ziel und `rel` an jedem einzelnen.
+
+## LEDGER 2026-11-02 (5) — Rückfrage vor dem Ersetzen in der App
+
+**Anlass:** „Vorlage laden" und der geteilte Plan fragten mit
+`window.confirm` — Systemdialog, ohne Titel, ohne Bezug zum Plan, auf dem
+Handy nicht bedienbar und im Browser-Verlauf nicht als Aktion der Seite sichtbar.
+
+**Verhalten:** Beide Pfade rufen `requestConfirm` aus
+`components/ui/ConfirmDialog` auf. `loadTemplate` ist deshalb jetzt
+asynchron: nach der Antwort wird der Store **neu gelesen**, denn während die
+Rückfrage offen ist, kann der Plan weiterbearbeitet worden sein. Der
+`=> void`-Wrapper hält die Aufrufstellen unverändert.
+
+**Tests:** `usePlannerActions.test.ts` und `usePlannerEntryPlan.test.tsx` —
+bei Absage bleibt der Plan erhalten, bei Zusage lädt die Vorlage, und der
+Bearbeitungsstand nach der Rückfrage entscheidet.
+
+## LEDGER 2026-11-02 (4) — Rechner: Grenzen durchsetzen und deutsch formatieren
+
+**Anlass:** Nutzeraudit. Die Rechner nahmen 840 Autarkietage und 30 000 Wp an:
+`DecimalInput` erzwingt `type="text"` (Komma-Eingabe), damit läuft das
+HTML-`max` ins Leere, und die alten Wächter prüften nur „größer null". Das
+Ergebnis war eine Zahl ohne Hinweis, dass die Eingabe Unsinn ist.
+
+**Verhalten:** `components/rechner/inputBounds.ts` ist die einzige Quelle für
+Unter- und Obergrenze beider Rechner; jedes Feld prüft dagegen und nennt die
+Spannweite im Text. Ausgabe und Eingabe nutzen dieselbe Zahl.
+Zahlenformatierung über `toLocaleString('de-DE')` statt `toFixed` mit
+Handanstrich — Tausendertrenner inklusive. „1 Panel à 100 Wp" statt
+„1 Panels à 100 Wp".
+
+**Tests:** `components/rechner/rechnerAudit.test.tsx` (12 Fälle: Ausreißer je
+Feld, gültiger Fall rechnet weiter, `min`/`max` an der Eingabe spiegeln die
+Tabelle, Gruppenpunkt, Einzahl).
+
+## LEDGER 2026-11-02 (3) — Eigene Größe für den noch nicht gemessenen Einfüge-Kandidaten
+
+**Anlass:** Nutzeraudit auf 12v-planer.de (02.11.2026). Batterie einfügen, dann
+Wechselrichter einfügen: die beiden Karten überlappen sich um 74 Plan-Pixel
+(nachgemessen: 148 Bildschirm-Pixel bei Zoom 2). Die Platzierungssuche bekam den
+Kandidaten als `{ id: 'new-component', type, data: {}, position }` — ohne Messung,
+ohne gesetzte Größe. `getNodeLayoutSize` fiel deshalb auf 120 px zurück, während
+die Wechselrichterkarte 202 px misst, und erklärte eine Fläche frei, die die
+146 px hohe Batterie längst belegt.
+
+**Verhalten:** `NODE_SIZE_BY_TYPE` ist die einzige Quelle für die Größe
+noch nicht gemessener Knoten und deckt jetzt jedes einfügbare Bauteil der Sidebar
+ab — Elektrik und Wasser, an den gerenderten Karten gemessen. Der Zusatzpfad in
+`FlowCanvas.placeAtCanvasCenter` zentriert und prüft die Sichtbarkeit mit
+derselben Box; das pauschale `NODE_FOOTPRINT` (192 × 120) ist weg. Alttypen ohne
+Kachel (`charger`) und Dach-Elemente bleiben beim Pauschalwert.
+
+**Tests:** `collision.test.ts` reproduziert den Überlappungsfall (schlägt ohne
+Tabelleneintrag fehl), `layout.test.ts` pinnt die gemessenen Werte und verlangt
+einen Eintrag für jedes einfügbare Bauteil. Kein Eingriff in Messwerte als
+Planinhalt (Rule R), keine Änderung an elektrischer Semantik (Rule C/D).
+
+## LEDGER 2026-11-02 (2) — Markenwechsel auf 12V-Planer
+
+**Anlass:** Aufbauend auf dem Domainumzug (#592) wird die sichtbare Marke von
+„Elektroplaner“ auf „12V-Planer“ umgestellt. Die Domain bleibt 12v-planer.de.
+
+**Verhalten:** `SITE_NAME` ist „12V-Planer“; Titel, Wortmarke, Footer,
+Impressum, Datenschutz, SEO-Inhalte, Wasserzeichen und Download-Dateiname
+folgen. Die Vertrauensseite liegt unter `/ueber-12v-planer/`; die früheren
+Pfade `/ueber-elektroplaner/` und `/ueber-werft/` bleiben als noindex-
+Weiterleitungen. OG-Karten, Logo, Favicon und Apple-Icon sind neu. Technische
+IDs (localStorage, Projektformat) bleiben kompatibel.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
+## LEDGER 2026-11-02 — Auslieferung unter 12v-planer.de
+
+**Anlass:** Domainumzug. GitHub Pages trägt nur eine Custom Domain; die
+Auslieferung wechselt von elektroplaner-camper.de auf 12v-planer.de.
+
+**Verhalten:** `SITE_ORIGIN` in `lib/site.ts` ist `https://12v-planer.de`.
+Darüber hängen Canonical, Open Graph, strukturierte Daten, Sitemap und die
+Sitemap-Zeile in `robots.txt`. `public/CNAME` und der Deploy-Kommentar nennen
+dieselbe Domain. Das Plan-Wasserzeichen lautet „Erstellt mit 12v-planer.de“.
+Datenschutz und Über-Seite nennen den Betreiber von 12v-planer.de. Der
+sichtbare Markenname „Elektroplaner“ bleibt.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-10-26 (2) — Ein Prüf-Einstieg statt zweier Zahl-Plaketten
 
 **Anlass:** Fortsetzung der Nutzer-Rückmeldung zur Werkzeugleiste. Nach dem

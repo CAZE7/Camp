@@ -160,6 +160,32 @@ Playwright ist gesperrt (§6 in `docs/E2E-TESTS.md`). Der meldende Job `visual`
 blockierende Lauf ist nicht betroffen — die funktionalen Szenarien folgen
 `PLANNER_URL` in `tests/e2e/helpers.ts`.
 
+**Durchgeführter Refresh (2026-11-02, nach PR #595)** — aufgenommen mit `baselines.yml`
+(Lauf 41474593898, `workflow_dispatch` auf `af7f646`, Ubuntu-Runner, Artefakt
+`pixel-baselines`). Das Gate auf `af7f646` meldete **9 fehlgeschlagene Tests**
+(67 bestanden). Alle 88 Bilder sind einzeln gegen den Stand von `HEAD` vermessen:
+65 unverändert, 23 verändert, davon **14 übernommen** — jedes einer zugeordneten
+Änderung. Die 9 Tests decken genau 12 Bilder ab; die übrigen 2 Bilder waren kein
+Gate-Fehler:
+
+| Gruppe                                                  | Bilder | Diff pro Bild | Befund                                                                                                                                                                                                                                    |
+| ------------------------------------------------------- | ------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `de-design-system-{light,dark}-mobile-375-*`            | 8      | 30,15–30,52 % | Die fullPage-Aufnahme war **400 px** breit (im Pixel-5-Projekt 401 px) — genau der Überlauf, den `EdgeBlueprint` bei 375 px hatte (`50da85b`). Jetzt 375 × 5536 px statt 400 × 5609 px. 8 Tests = die 8 Projekte/Themes dieser Gruppe.    |
+| `de-node-{default,focus,hover,selected}-touch-pixel5-*` | 4      | 29,00–41,52 % | Ein Test, vier Aufnahmen. Der Rahmen begann bei Zeile 29 und endete mitten in der Karte: `ΔU` nur angeschnitten, der untere Kartenabschluss fehlte. Jetzt sitzt der Rahmen bei 0 und 147/148 — dieselben Textzeilen, 29 px höher erfasst. |
+| `route-planung-{light,dark}-desktop-1440-*`             | 2      | 1,18–1,19 %   | Umbau der Miniaturübersicht (`8a09104`): Diff-BBox liegt im Feld unten links. Unter der 2-%-Schwelle, also kein Gate-Fehler — übernommen, weil die Änderung gewollt ist.                                                                  |
+
+An den Node-Karten selbst hat PR #595 nichts geändert (kein Node-CSS in der
+Diff-Liste); betroffen ist nur das 393-px-Projekt, auf `desktop-1440` und
+`tablet-768` bleiben die Bilder bei 27 px.
+
+**Nicht übernommen:** 9 Bilder mit 10–1150 abweichenden Pixeln (0,00–0,15 %), alle unter
+der Schwelle und keiner Änderung zugeordnet — `route-planung-*-tablet-768` (vereinzelte
+Pixel in der Zeichenfläche, BBox x 394–675 / y 45–617, nicht im Feld der
+Miniaturübersicht), `route-planung-light-touch-pixel5` (5 × 5 px) und
+`de-node-{focus,hover,selected}` auf `desktop-1440`/`tablet-768` (je 27 px in den Zeilen
+39–109). Die bestehenden PNGs bleiben dort die Review-Referenz. Vorher/Nachher-Bilder
+stehen im PR-Kommentar.
+
 ## 5. Lokale Nicht-Pixel-Gates
 
 Auch ohne Playwright-Browser schützen diese schnellen Checks die Baseline:

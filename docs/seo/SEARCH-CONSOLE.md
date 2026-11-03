@@ -14,35 +14,39 @@ Diese Datei beschreibt, wie aus `annahme` belastbare Daten werden.
 
 ## Nach dem Domainwechsel (einmalig, vor der ersten Auswertung)
 
-Seit dem 2026-10-31 ist `https://12v-planer.de` die einzige öffentliche Adresse
-(`SITE_ORIGIN` in `lib/site.ts`, Auslieferung an der Wurzel ohne Basis-Pfad,
-`public/CNAME`). Vorgänger ist `elektroplaner-camper.de`; davor zeigte der
-Canonical auf `caze7.github.io` — Google wertete die eigene Domain dadurch als
-Kopie und indexierte `site:elektroplaner-camper.de` mit 0 Seiten. Ein
-Domainumzug ist ein zweiter solcher Bruch: ohne Redirect und Umzugsmeldung
-verliert die neue Adresse die Signale der alten. Deshalb einmalig, in dieser
-Reihenfolge:
+Seit dem Wechsel (PR #592 und #594, 2026-11-02) ist `https://12v-planer.de` die
+einzige öffentliche Adresse (`SITE_HOST`/`SITE_ORIGIN` in `lib/site.ts`,
+Auslieferung an der Wurzel ohne Basis-Pfad, `public/CNAME`); die Marke heißt seit
+demselben Stand „12V-Planer". Die frühere Domain `elektroplaner-camper.de` muss
+per 301 auf die neue Adresse zeigen — GitHub Pages bedient nur eine Custom
+Domain. Ohne diesen 301 verliert die Seite ihre bisherige Indexhistorie.
 
-1. **Redirect vor Umschaltung.** Die alte Domain muss Pfad für Pfad per 301 auf
-   die neue zeigen. GitHub Pages bedient mit `public/CNAME` nur EINE Domain;
-   der Redirect gehört deshalb an die DNS-/CDN-Stelle der alten Domain (etwa
-   eine Weiterleitungsregel beim DNS-Anbieter) oder auf eine zweite, nur
-   weiterleitende Quelle. Solange das nicht steht, ist der Umzug ein
-   Sichtbarkeitsrisiko und nicht bloß ein Namenswechsel.
-2. **Search-Console-Property für `12v-planer.de` anlegen und verifizieren.**
-   Datei oder Token liefert die Search Console; die Datei wird unter `public/`
-   abgelegt. Kein erfundenes Token: `googleba63db11bb2b8da4.html` gehört zur
-   alten Property und verifiziert die neue nicht.
-3. **Umzug melden.** In der Search Console die Funktion „Adresse ändern" von
-   der alten auf die neue Property nutzen, sobald beide verifiziert sind und
-   der Redirect steht.
-4. `https://12v-planer.de/sitemap.xml` in der neuen Property einreichen.
+Gemessen am 2026-11-03: `12v-planer.de` löst auf GitHub Pages auf
+(185.199.108.153) und liefert 200. `elektroplaner-camper.de` liefert **ebenfalls
+200, nicht 301** — die alte Domain bedient weiter dasselbe, solange ihre
+DNS-Records dorthin zeigen. Der Canonical auf jeder Seite verhindert
+Duplicate-Content, ersetzt aber keine Umleitung: ohne 301 bleiben Links und
+Signale auf der alten Adresse hängen. Deshalb einmalig:
+
+1. **301 für die alte Domain einrichten**, Pfad für Pfad — an der DNS-/CDN-Stelle
+   von `elektroplaner-camper.de` oder über eine zweite, nur weiterleitende
+   Quelle. Diese Liste beginnt jetzt mit diesem Schritt, weil er der einzige
+   ist, der Signale mitnimmt.
+2. Search-Console-Property für `12v-planer.de` anlegen und verifizieren. Datei
+   oder Token liefert die Search Console — nichts erfinden: die vorhandene
+   `googleba63db11bb2b8da4.html` gehört zur alten Property und verifiziert die
+   neue nicht.
+3. **Umzug melden:** die Funktion „Adresse ändern" von der alten auf die neue
+   Property, sobald beide verifiziert sind und der 301 steht.
+4. `https://12v-planer.de/sitemap.xml` einreichen.
 5. Für `/`, `/planer/` und `/elektrik-planung/` „Indexierung beantragen“.
 6. Im Quelltext einer ausgelieferten Seite kontrollieren, dass Canonical,
    `og:url`, Sitemap und `robots.txt` auf `12v-planer.de` zeigen; die
    strukturierte Beschreibung prüft `npm run seo:audit` mit.
-7. **Erst danach** alte Verifizierungsdateien entfernen. Die alte Property
-   bleibt für Umzugsbericht und Historie bestehen.
+7. Die alte Property `elektroplaner-camper.de` (und die frühere
+   `caze7.github.io`-Property) nicht löschen: Sie zeigen, ob der 301 greift
+   und ob noch Verweise auf alte Adressen existieren. Alte Verifizierungsdateien
+   erst nach erfolgreichem Umzug entfernen.
 
 Die Arbeitsliste für die Nutzergewinnung bis zum Wirken der Indexierung
 steht in `docs/marketing/erste-500-nutzer.md`.

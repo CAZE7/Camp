@@ -8,15 +8,49 @@ import { compareIds } from '../../../lib/sortOrder';
 export const DEFAULT_NODE_WIDTH = 192;
 export const DEFAULT_NODE_HEIGHT = 120;
 
+/**
+ * Kartenmaße für Knoten, die React Flow noch nicht gemessen hat.
+ *
+ * Die Höhen sind an den gerenderten Karten gemessen (Plan-Pixel, auf Zoom 1
+ * zurückgerechnet), jeweils die größte im Katalog beobachtete Karte des Typs —
+ * die Karten wachsen mit ihrem Text. Die Zahlen entscheiden mit, wo ein neu
+ * eingefügtes Bauteil landen darf: `utils/collision.ts` bewertet den noch nicht
+ * gemessenen Kandidaten mit genau dieser Box. Ein einheitlicher Rückfall wäre
+ * zu klein — einen 202 px hohen Wechselrichter für 120 px zu halten setzte ihn
+ * auf eine bereits belegte Fläche.
+ *
+ * Guard: `layout.test.ts` verlangt einen Eintrag für jedes einfügbare Bauteil
+ * der Sidebar. Neue Bauteile fallen damit nicht still auf 120 px zurück.
+ */
+export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = {
+  battery: { width: 192, height: 146 },
+  shunt: { width: 192, height: 126 },
+  busbar: { width: 192, height: 126 },
+  fuse: { width: 192, height: 126 },
+  mpptController: { width: 192, height: 146 },
+  dcdcCharger: { width: 192, height: 146 },
+  acBatteryCharger: { width: 192, height: 146 },
+  solar: { width: 192, height: 166 },
+  inverter: { width: 192, height: 202 },
+  shorePower: { width: 192, height: 146 },
+  consumer: { width: 192, height: 166 },
+  consumer230v: { width: 192, height: 146 },
+  ground: { width: 192, height: 134 },
+  conduit: { width: 256, height: 247 },
+
+  freshWaterTank: { width: 192, height: 54 },
+  grayWaterTank: { width: 192, height: 54 },
+  pump: { width: 192, height: 54 },
+  accumulator: { width: 192, height: 54 },
+  preFilter: { width: 192, height: 54 },
+  sink: { width: 192, height: 54 },
+  shower: { width: 192, height: 54 },
+};
+
 /** Mission 3 spacing: three functional columns, with clear card-to-card gaps. */
 export const LAYOUT_NODESEP = 120;
 export const LAYOUT_RANKSEP = 180;
 export const LAYOUT_MARGIN = 48;
-
-export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = {
-  ground: { width: 128, height: 88 },
-  conduit: { width: 256, height: 148 },
-};
 
 /**
  * 5-stage E-CAD industry pipeline classification (EPLAN / DIN EN 61082 standard):

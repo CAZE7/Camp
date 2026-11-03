@@ -25,10 +25,10 @@ import {
 const REPO_ROOT = process.cwd();
 
 const filled: SiteLegal = {
-  providerName: 'Elektroplaner Ausbau GmbH',
+  providerName: '12V-Planer Ausbau GmbH',
   street: 'Hafenstraße 12',
   postalCodeAndCity: '28217 Bremen',
-  email: 'kontakt@elektroplaner.example',
+  email: 'kontakt@12v-planer.example',
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 

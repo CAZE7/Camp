@@ -50,7 +50,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
   },
   {
     path: '/elektrik-planung/',
-    label: 'Camper-Elektroplaner',
+    label: '12V-Planer',
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Camper-Elektrik berechnen',
@@ -67,7 +67,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       path: '/og/elektrik-planung.png',
       width: 1200,
       height: 630,
-      alt: 'Elektroplaner — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
+      alt: '12V-Planer — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.9 },
     source: 'app/elektrik-planung/page.tsx',
@@ -99,7 +99,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
      * Snippet dasselbe Versprechen geben.
      */
     path: '/planer/',
-    label: 'Elektroplaner (Vollbild)',
+    label: '12V-Planer (Vollbild)',
     kind: 'werkzeug',
     indexability: 'index',
     h1: 'Camper-Schaltplan kostenlos erstellen',
@@ -118,7 +118,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       path: '/og/elektrik-planung.png',
       width: 1200,
       height: 630,
-      alt: 'Camper-Elektroplaner — Schaltplan im Vollbild mit Bauteilkatalog und Zeichenfläche',
+      alt: '12V-Planer — Schaltplan im Vollbild mit Bauteilkatalog und Zeichenfläche',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.9 },
     source: 'app/planer/page.tsx',
@@ -296,10 +296,10 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
   },
   {
     /**
-     * Alte Adresse der Vertrauensseite (`/ueber-werft/`).
+     * Älteste Adresse der Vertrauensseite (`/ueber-werft/`).
      *
      * Der Pfad trug den früheren Produktnamen; die Seite liegt jetzt unter
-     * `/ueber-elektroplaner/`. Diese Route antwortet weiter mit einer
+     * `/ueber-12v-planer/`. Diese Route antwortet weiter mit einer
      * Weiterleitung (meta refresh auf 0 Sekunden), damit bestehende Verweise
      * nicht ins Leere laufen — sie gehört aber nicht in den Index: Zwei
      * Adressen mit demselben Inhalt sind für Suchmaschinen Dubletten, und die
@@ -307,18 +307,43 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
      * Deshalb `noindex` und kein Sitemap-Eintrag.
      */
     path: '/ueber-werft/',
-    label: 'Weiterleitung: Über Elektroplaner',
+    label: 'Weiterleitung: Über 12V-Planer',
     kind: 'ansicht',
     indexability: 'noindex',
-    h1: 'Weiterleitung: Über Elektroplaner',
-    title: 'Über Elektroplaner',
+    h1: 'Weiterleitung: Über 12V-Planer',
+    title: 'Über 12V-Planer — Weiterleitung',
     absoluteTitle: true,
-    description: 'Diese Adresse ist umgezogen: Die Vertrauensseite liegt jetzt unter /ueber-elektroplaner/.',
-    searchIntent: 'alte Adresse der Vertrauensseite — führt weiter, kein Inhalt für Ergebnislisten.',
+    description:
+      'Die Adresse /ueber-werft/ ist umgezogen: Die Vertrauensseite liegt jetzt unter /ueber-12v-planer/.',
+    searchIntent: 'älteste Adresse der Vertrauensseite — führt weiter, kein Inhalt für Ergebnislisten.',
     topicId: 'vertrauen',
     priority: 'P3',
     structuredData: [],
     source: 'app/ueber-werft/page.tsx',
+  },
+  {
+    /**
+     * Frühere Adresse der Vertrauensseite (`/ueber-elektroplaner/`).
+     *
+     * Die Seite liegt jetzt unter `/ueber-12v-planer/`. Diese Route antwortet
+     * mit einer Weiterleitung (meta refresh auf 0 Sekunden) und bleibt aus dem
+     * Index, damit nicht zwei Adressen dieselbe Aussage tragen. Deshalb
+     * `noindex` und kein Sitemap-Eintrag.
+     */
+    path: '/ueber-elektroplaner/',
+    label: 'Weiterleitung: Über 12V-Planer',
+    kind: 'ansicht',
+    indexability: 'noindex',
+    h1: 'Weiterleitung: Über 12V-Planer',
+    title: 'Über 12V-Planer — frühere Adresse',
+    absoluteTitle: true,
+    description:
+      'Die Adresse /ueber-elektroplaner/ ist umgezogen: Die Vertrauensseite liegt jetzt unter /ueber-12v-planer/.',
+    searchIntent: 'frühere Adresse der Vertrauensseite — führt weiter, kein Inhalt für Ergebnislisten.',
+    topicId: 'vertrauen',
+    priority: 'P3',
+    structuredData: [],
+    source: 'app/ueber-elektroplaner/page.tsx',
   },
   {
     path: '/ki-assistent/',

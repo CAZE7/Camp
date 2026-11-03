@@ -143,7 +143,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
       id: 'naechster-schritt',
       heading: 'Nächster Schritt',
       body: [
-        'Wer den Querschnitt kennt, wählt die Sicherung nach der Leitung — nicht nach dem Verbraucher. Der Camper-Elektroplaner rechnet dieselbe Bewertung für alle Leitungen einer Anlage und prüft dabei auch, ob Betriebsstrom, Nennstrom und Belastbarkeit zusammenpassen.',
+        'Wer den Querschnitt kennt, wählt die Sicherung nach der Leitung — nicht nach dem Verbraucher. Der 12V-Planer rechnet dieselbe Bewertung für alle Leitungen einer Anlage und prüft dabei auch, ob Betriebsstrom, Nennstrom und Belastbarkeit zusammenpassen.',
       ],
       links: [
         {
@@ -152,7 +152,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
         },
         { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
         { href: '/camper-elektrik/sicherungen/', label: 'Sicherung passend zur Leitung wählen' },
-        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: '12V-Planer öffnen' },
       ],
     },
   ],
@@ -180,7 +180,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen dimensionieren' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: '12V-Planer öffnen' },
   ],
   sources: [
     {

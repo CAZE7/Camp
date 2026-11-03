@@ -4,7 +4,7 @@
  *
  * Warum es diese Texte gibt: Die Zeichenanwendung lädt erst im Browser.
  * Ohne statischen Text sähe ein Crawler auf `/planer/` nur den Ladezustand
- * („Der Elektroplaner lädt …“) — 27 Wörter, kein Hinweis darauf, welche
+ * („Der 12V-Planer lädt …“) — 27 Wörter, kein Hinweis darauf, welche
  * Bauteile, Berechnungen und Funktionen im Planer stecken („Thin Content“).
  * Diese Abschnitte stehen deshalb als fertiges HTML unter der Anwendung:
  * Der Planer bleibt beim Öffnen sofort sichtbar, wer nach unten scrollt —
@@ -64,7 +64,7 @@ export const PLANER_FAQ: readonly FaqEntry[] = [
   {
     question: 'Gibt es ein kostenloses Programm für den Camper-Schaltplan?',
     answer:
-      'Ja — dieser Elektroplaner läuft direkt im Browser, kostet nichts und braucht kein Konto. Bauteile wie LiFePO4-Batterie, Ladebooster, MPPT-Regler und Sicherungskasten auf die Zeichenfläche ziehen, verbinden: Kabelquerschnitte, Sicherungen und Spannungsabfall werden automatisch berechnet, die Stückliste entsteht aus dem Plan. Der Unterschied zu einem Zeichenprogramm ist, dass der Planer elektrisch mitrechnet statt nur zu malen.',
+      'Ja — dieser 12V-Planer läuft direkt im Browser, kostet nichts und braucht kein Konto. Bauteile wie LiFePO4-Batterie, Ladebooster, MPPT-Regler und Sicherungskasten auf die Zeichenfläche ziehen, verbinden: Kabelquerschnitte, Sicherungen und Spannungsabfall werden automatisch berechnet, die Stückliste entsteht aus dem Plan. Der Unterschied zu einem Zeichenprogramm ist, dass der Planer elektrisch mitrechnet statt nur zu malen.',
   },
   {
     question: 'Muss ich das Programm installieren oder herunterladen?',

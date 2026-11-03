@@ -39,8 +39,8 @@ describe('Alte Vertrauensadresse /ueber-werft/', () => {
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent(INVENTAR!.h1);
 
-    const link = screen.getByRole('link', { name: /Über Elektroplaner/ });
-    expect(link).toHaveAttribute('href', '/ueber-elektroplaner/');
+    const link = screen.getByRole('link', { name: /Über 12V-Planer/ });
+    expect(link).toHaveAttribute('href', '/ueber-12v-planer/');
   });
 
   it('trägt die Weiterleitung als meta refresh mit dem Ziel der neuen Adresse', () => {
@@ -48,7 +48,7 @@ describe('Alte Vertrauensadresse /ueber-werft/', () => {
 
     const refresh = document.head.querySelector('meta[http-equiv="refresh"]');
     expect(refresh, 'meta refresh fehlt im Dokumentkopf').not.toBeNull();
-    expect(refresh!.getAttribute('content')).toMatch(/^0; url=.*\/ueber-elektroplaner\/$/);
+    expect(refresh!.getAttribute('content')).toMatch(/^0; url=.*\/ueber-12v-planer\/$/);
   });
 
   it('bleibt auf noindex — die neue Adresse ist die einzige im Index', () => {

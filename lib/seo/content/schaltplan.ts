@@ -63,7 +63,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
       id: 'pruefung',
       heading: 'Was der Planer automatisch prüft',
       body: [
-        'Der Camper-Elektroplaner setzt den Plan nicht nur zusammen, er prüft ihn auch. Die Prüfungen sind rechnerisch nachvollziehbar und werden im Plan sichtbar gemeldet:',
+        'Der 12V-Planer setzt den Plan nicht nur zusammen, er prüft ihn auch. Die Prüfungen sind rechnerisch nachvollziehbar und werden im Plan sichtbar gemeldet:',
       ],
       list: {
         items: [
@@ -125,7 +125,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     {
       question: 'Kann ich den Schaltplan im Browser erstellen?',
       answer:
-        'Ja — der Camper-Elektroplaner läuft im Browser ohne Anmeldung. Bauteile lassen sich setzen und automatisch verdrahten; Querschnitt, Sicherung und Spannungsfall werden mitgerechnet. Der Plan bleibt lokal im Browser gespeichert und überlebt einen Neustart.',
+        'Ja — der 12V-Planer läuft im Browser ohne Anmeldung. Bauteile lassen sich setzen und automatisch verdrahten; Querschnitt, Sicherung und Spannungsfall werden mitgerechnet. Der Plan bleibt lokal im Browser gespeichert und überlebt einen Neustart.',
     },
     {
       question: 'Wie lang dürfen Kabel im Camper sein?',

@@ -1,9 +1,8 @@
 # Die ersten 500 aktiven Nutzer — bevor SEO greift
 
-Stand: nach dem Canonical-Fix auf `https://elektroplaner-camper.de`, seit dem
-2026-10-31 umgezogen auf `https://12v-planer.de` (Umzugs-Checkliste:
-`docs/seo/SEARCH-CONSOLE.md`). Bis Google
-die Seiten nach der Korrektur hochrankt, vergehen Wochen. Die ersten echten
+Stand: vor dem Domainwechsel auf `https://12v-planer.de`; die frühere Domain
+`elektroplaner-camper.de` muss per 301 auf die neue Adresse zeigen. Bis Google
+die Seiten nach dem Wechsel hochrankt, vergehen Wochen. Die ersten echten
 Nutzer kommen dorther, wo täglich nach genau dieser Lösung gefragt wird:
 Foren, Facebook-Gruppen, Reddit. Dieses Dokument ist die Arbeitsliste dafür —
 kein Werbeplan, sondern Hilfe an konkreten Beiträgen, die das Werkzeug trägt
@@ -15,20 +14,23 @@ Plan-Link ohne Konto).
 1. Prüfen, dass die Auslieferung unter `https://12v-planer.de/`
    antwortet und `public/CNAME` im Export liegt (`out/CNAME`). GitHub:
    Repo → Settings → Pages → Custom domain = `12v-planer.de`,
-   „Enforce HTTPS“ aktivieren. DNS beim Registrar: A-Records auf die
-   GitHub-Pages-IPs bzw. CNAME für `www` auf `caze7.github.io` — danach muss
-   `https://12v-planer.de/planer/` den Planer zeigen, nicht
-   `…/Camp/planer/`.
+   „Enforce HTTPS“ aktivieren. DNS beim Registrar: am Apex alle vier
+   GitHub-Pages-A-Records (`185.199.108.153`, `185.199.109.153`,
+   `185.199.110.153`, `185.199.111.153`) und `www` als CNAME auf
+   `caze7.github.io` — danach muss `https://12v-planer.de/planer/` den Planer
+   zeigen, nicht `…/Camp/planer/`. Beim Registrar/Cloudflare zusätzlich eine
+   pfaderhaltende 301-Weiterleitung von `elektroplaner-camper.de` auf
+   `12v-planer.de` einrichten.
 2. Google Search Console: Property `12v-planer.de` anlegen (falls
    noch nicht geschehen), Sitemap `https://12v-planer.de/sitemap.xml`
    einreichen.
 3. Für `/`, `/planer/` und `/elektrik-planung/` manuell „Indexierung
-   beantragen“. Alte Property (`caze7.github.io`, nach dem Umzug auch
-   `elektroplaner-camper.de`) nicht löschen — sie zeigt,
-   ob noch irgendwo auf die alte Adresse verlinkt wird.
+   beantragen“. Alte Properties (`caze7.github.io` und
+   `elektroplaner-camper.de`) nicht löschen — sie zeigen, ob noch irgendwo auf
+   alte Adressen verlinkt wird und ob der 301 greift.
 4. Kontrollblick: Quelltext von `/planer/` muss als Canonical
    `https://12v-planer.de/planer/` zeigen (nicht github.io).
-   Genau dieser falsche Verweis hat die Domain aus dem Index geworfen.
+   Ein falscher Canonical würde die neue Domain aus dem Index werfen.
 
 ## Der „Draw.io-Ersatz“ in Gruppen und Foren (laufend)
 
@@ -45,7 +47,7 @@ Taktik je Beitrag (ca. 5 Minuten):
    das Bild mit Wasserzeichen erzeugen.
 3. Als Antwort posten — Hilfe zuerst, Link als Arbeitsmittel:
 
-> Hab dir dein Setup mal kurz im Elektroplaner nachgebaut, damit man die
+> Hab dir dein Setup mal kurz im 12V-Planer nachgebaut, damit man die
 > Querschnitte und Sicherungen direkt sauber sieht:
 > [Bild]
 > Hier kannst du es ohne Anmeldung direkt anpassen: [Link]

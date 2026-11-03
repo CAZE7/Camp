@@ -23,7 +23,7 @@ import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
   title: {
-    default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Elektroplaner',
+    default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | 12V-Planer',
     template: `%s | ${SITE_NAME}`,
   },
   applicationName: SITE_NAME,
@@ -67,7 +67,7 @@ function siteDescriptionJsonLd() {
         inLanguage: 'de-DE',
         logo: {
           '@type': 'ImageObject',
-          url: siteUrl('/og/elektroplaner-mark.png'),
+          url: siteUrl('/og/12v-planer-mark.png'),
           width: 512,
           height: 512,
         },

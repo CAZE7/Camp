@@ -208,9 +208,9 @@ export function SeoPage({
             Im Planer weiterrechnen
           </h2>
           <p className="mt-2 max-w-3xl text-md text-ink-soft">
-            Der Camper-Elektroplaner prüft dieselben Zusammenhänge für die ganze Anlage: Querschnitt,
-            Spannungsfall, Sicherung und Energiebilanz je Leitung — und erzeugt daraus die Stückliste. Läuft
-            im Browser, ohne Anmeldung.
+            Der 12V-Planer prüft dieselben Zusammenhänge für die ganze Anlage: Querschnitt, Spannungsfall,
+            Sicherung und Energiebilanz je Leitung — und erzeugt daraus die Stückliste. Läuft im Browser, ohne
+            Anmeldung.
           </p>
           {/*
               Drei Ziele, in dieser Reihenfolge: die Zeichenanwendung (eigene
@@ -219,7 +219,7 @@ export function SeoPage({
               Rechner-Überblick. Der mittlere Verweis ist nicht Zierde: Die
               Linkgraph-Prüfung `rechner-ohne-planner-link` verlangt von jeder
               Seite mit eingebettetem Rechner einen kontextuellen Verweis auf
-              die Elektroplaner-Wissensseite (PLANNER_PATH in
+              die 12V-Planer-Wissensseite (PLANNER_PATH in
               `scripts/seo/linkGraph.ts`).
             */}
           <div className="mt-4 flex flex-wrap gap-3">
@@ -227,7 +227,7 @@ export function SeoPage({
               href="/planer/"
               className="inline-flex min-h-11 items-center bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
             >
-              Camper-Elektroplaner öffnen
+              12V-Planer öffnen
             </Link>
             <Link
               href="/elektrik-planung/"
@@ -463,7 +463,7 @@ function TrustBlock({ page }: { page: SeoPageContent }) {
       </div>
       <p className="caption-xs mt-4 text-ink-soft">
         Inhaltlicher Stand: {page.contentRevision}. Keine fachliche Prüfung durch Dritte — Rechenwege, Quellen
-        und Grenzen stehen offen, siehe <Link href="/ueber-elektroplaner/">Über Elektroplaner</Link>.
+        und Grenzen stehen offen, siehe <Link href="/ueber-12v-planer/">Über 12V-Planer</Link>.
       </p>
     </section>
   );

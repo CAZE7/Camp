@@ -113,7 +113,7 @@ export function BOMModal() {
       summary: snapshot.summary,
       assessment,
       generatedAt: formatReportTimestamp(new Date()),
-      projectName: 'Camper-Elektroplaner',
+      projectName: '12V-Planer',
     });
     if (!openPrintReport(html)) {
       setCopyError(

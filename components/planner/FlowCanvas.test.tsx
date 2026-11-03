@@ -390,7 +390,8 @@ describe('FlowCanvas', () => {
     });
 
     expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
-    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+    // Zentriert mit der halben gemessenen Batteriehöhe (146 / 2 = 73), dann aufs 16-px-Raster.
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 208 }, 120);
   });
 
   it('does not render domain filter chips in water mode', () => {
@@ -917,7 +918,8 @@ describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
     flush(3);
 
     expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
-    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+    // Zentriert mit der halben gemessenen Batteriehöhe (146 / 2 = 73), dann aufs 16-px-Raster.
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 208 }, 120);
   });
 
   it('platziert neue Bauteile unter der Einstiegsmeldung statt ihre Anschlüsse zu verdecken', () => {
@@ -936,7 +938,7 @@ describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
     flush(3);
 
     expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 294 });
-    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 240 }, 120);
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
 
     view.unmount();
     entryNotice.remove();

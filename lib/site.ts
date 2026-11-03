@@ -3,10 +3,7 @@
  *
  * Die Anwendung wird als statischer Export über GitHub Pages ausgeliefert,
  * öffentlich aber unter der eigenen Domain `12v-planer.de` an der
- * Wurzel (`public/CNAME`, Deploy baut ohne Basis-Pfad). Der Vorgänger
- * `elektroplaner-camper.de` muss per 301 hierher zeigen
- * (`docs/seo/SEARCH-CONSOLE.md`); stiller Parallelbetrieb wäre ein
- * Duplicate-Content-Befund. Die frühere Herkunft
+ * Wurzel (`public/CNAME`, Deploy baut ohne Basis-Pfad). Die frühere Herkunft
  * `caze7.github.io` darf hier NICHT wieder auftauchen: Als Canonical hätte sie
  * Google ausdrücklich gesagt, die eigene Domain sei nur die Kopie — genau
  * dadurch fiel die Domain aus dem Index. Absolute Adressen entstehen an
@@ -21,13 +18,16 @@
  * (Entwicklung, Prüfbau und die Auslieferung unter der eigenen Domain).
  */
 
+/** Öffentlicher Hostname der Auslieferung, ohne Schema und ohne Pfad. */
+export const SITE_HOST = '12v-planer.de';
+
 /** Öffentliche Herkunft der Auslieferung, ohne abschließenden Schrägstrich. */
-export const SITE_ORIGIN = 'https://12v-planer.de';
+export const SITE_ORIGIN = `https://${SITE_HOST}`;
 
 /**
  * Anzeigename der Seite (Open Graph, Sitemap-Kontext, JSON-LD, Titelvorlage).
  *
- * „Elektroplaner" ist der Produktname, unter dem die Seite beworben wird und
+ * „12V-Planer" ist der Produktname, unter dem die Seite beworben wird und
  * nach dem gesucht wird. Der frühere Name „Werft" tritt nur noch dort auf, wo
  * er zur Sache gehört: in der Umleitung der alten Vertrauensadresse, in den
  * Schlüsseln übernommener Browser-Stände und in datierten Berichten. In
@@ -35,7 +35,7 @@ export const SITE_ORIGIN = 'https://12v-planer.de';
  * NICHT mehr stehen, weil er in Ergebnislisten als Marke neben den
  * Wettbewerbern gelesen wird.
  */
-export const SITE_NAME = 'Elektroplaner';
+export const SITE_NAME = '12V-Planer';
 
 /** Basis-Pfad des Exports, z. B. `/Camp`; leer bei Auslieferung unter `/`. */
 export const SITE_BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');

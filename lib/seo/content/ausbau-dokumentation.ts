@@ -40,7 +40,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       id: 'inhaltlich-geprueft',
       heading: 'Inhaltlich geprüft',
       body: [
-        'Alle in dieser Dokumentation genannten Kabelquerschnitte, Sicherungsgrößen und Spannungswerte sind gegen den eigenen 12V-Elektroplaner validiert.',
+        'Alle in dieser Dokumentation genannten Kabelquerschnitte, Sicherungsgrößen und Spannungswerte sind gegen den eigenen 12V-Planer validiert.',
         'Die Normenverweise: DIN VDE 0100-721 für die 230-V-Anlage, DIN EN 1648-1/-2 für die 12-V-Anlage. Die 200-mm-Regel stammt aus dem Small-Craft-Bereich (ISO 13297:2020 § 8.1) und ist für Caravans eine Praxisempfehlung.',
       ],
     },
@@ -141,7 +141,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       body: [
         'Diese Dokumentation gilt für den eigenen Fahrzeugtyp (Kastenwagen, Ducato-Basis). Andere Fahrzeuge können andere Einbauräume und Leitungswege haben.',
         'Sie ersetzt keine Prüfung durch eine Elektrofachkraft, insbesondere nicht bei der 230-V-Anlage.',
-        'Alle Angaben basieren auf eigenen Messungen und dem eigenen 12V-Elektroplaner; keine Garantie auf Übertragbarkeit.',
+        'Alle Angaben basieren auf eigenen Messungen und dem eigenen 12V-Planer; keine Garantie auf Übertragbarkeit.',
       ],
     },
     {
@@ -183,7 +183,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
           description: 'Was beim Einbau schiefgehen kann.',
         },
         {
-          href: '/ueber-elektroplaner/',
+          href: '/ueber-12v-planer/',
           label: 'Über 12v-planer.de',
           description: 'Autor Jonas Rieckhoff und die Philosophie hinter den Inhalten.',
         },
@@ -195,7 +195,7 @@ export const AUSAUS_DOKUMENTATION_CONTENT: SeoPageContent = {
       body: [
         'Autor: Jonas Rieckhoff, Selbstausbauer und Betreiber von 12v-planer.de.',
         'Redaktionell überarbeitet: 2026-10.',
-        'Jede Zahl in diesem Artikel hat eine Herkunft: eigener 12V-Elektroplaner, Herstellerdatenblatt oder gültige Norm. Nicht belegbare Zahlen sind mit [PRÜFEN] gekennzeichnet.',
+        'Jede Zahl in diesem Artikel hat eine Herkunft: eigener 12V-Planer, Herstellerdatenblatt oder gültige Norm. Nicht belegbare Zahlen sind mit [PRÜFEN] gekennzeichnet.',
         'Die Dokumentation beschreibt den Einbau im eigenen Fahrzeug; Fotos sind nicht Teil dieser Seite.',
       ],
     },
