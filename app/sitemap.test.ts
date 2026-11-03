@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Produktionsbild } from '@/lib/seo/bildSitemap';
 import { indexablePages, nonIndexablePages, SITEMAP_ROUTES } from '@/lib/seo/inventory';
 import { siteUrl } from '@/lib/site';
 
-import sitemap from './sitemap';
+import sitemap, { sitemapEintraege } from './sitemap';
 
 const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'];
 
@@ -64,5 +65,43 @@ describe('sitemap', () => {
       expect(ERLAUBTE_FREQUENZEN).toContain(route.changeFrequency);
       expect(route.priority).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * P3/P4: Bild-Sitemap. Dieselbe Liste wie das WebPage-Schema; ohne eigene,
+ * rechtegeklärte Aufnahmen wird KEIN Bild in die Sitemap geschrieben.
+ */
+describe('sitemap — Bilder', () => {
+  const gueltig: Produktionsbild = {
+    pfad: '/bilder/a-01-kabelverlegung-1200.avif',
+    seite: '/camper-elektrik/',
+    alt: 'Hände verlegen 12-V-Leitungen entlang einer Holzleiste.',
+    bildunterschrift: 'Der Kabelweg folgt der Holzleiste.',
+    breite: 1200,
+    hoehe: 805,
+    rechteGeklaert: true,
+  };
+
+  it('behauptet keine Bilder, solange die Produktionsliste leer ist', () => {
+    for (const entry of sitemapEintraege([])) {
+      expect(entry).not.toHaveProperty('images');
+    }
+  });
+
+  it('ordnet ein freigegebenes Bild genau seiner Zielseite zu', () => {
+    const eintraege = sitemapEintraege([gueltig]);
+    const ziel = eintraege.find((entry) => entry.url === siteUrl('/camper-elektrik/'));
+    expect(ziel?.images).toEqual([siteUrl(gueltig.pfad)]);
+    expect(eintraege.filter((entry) => entry.images).length).toBe(1);
+  });
+
+  it('ignoriert Bilder ohne Rechte, mit Platzhalternamen und unbekannter Seite', () => {
+    const liste = [
+      { ...gueltig, rechteGeklaert: false },
+      { ...gueltig, pfad: '/bilder/01-elektrik-einbau-1200.avif' },
+      { ...gueltig, seite: '/gibt-es-nicht/' },
+    ];
+    expect(sitemapEintraege(liste).some((entry) => entry.images)).toBe(false);
   });
 });

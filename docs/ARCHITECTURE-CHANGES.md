@@ -1,5 +1,40 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-03 (14) — P4: Gates, Baselines, Bild-Sitemap
+
+**Visuelle Baselines bewusst erneuert.** Die 22 auf `main` (`e0c2cfc`) bereits
+freigegebenen Pixel-Baselines wurden übernommen, nicht mit dem in der Sandbox
+verfügbaren Lambda-Chromium neu erzeugt. `visual.spec.ts` und
+`visual-de-pixel.spec.ts` sind damit **76/76 grün**; die 17 zuvor roten
+Screenshot-Vergleiche sind erledigt.
+
+**Lighthouse-Budget M11-5.** Neu `scripts/ci/lighthouseGate.ts`: prüft den
+gebauten Export über einen gzip-Server (wie GitHub Pages) gegen `BUDGETS` für
+Performance, A11y, Best Practices, SEO, LCP und CLS. `pruefeBudgets()` ist rein
+und ohne Browser in `scripts/ci/lighthouseGate.test.ts` getestet; ein fehlendes
+Audit gilt als Verstoß, nicht als Bestehen. `npm run perf:lighthouse` ist lokal
+ein hartes Gate und hier grün (Vergleich 99/100/100/100, LCP 1,5 s, CLS 0).
+In `quality.yml` läuft der Schritt als Berichtsgate im nicht-blockierenden
+Visual-Job; `docs/ci/workflows/quality.yml` bleibt 1:1 synchron. Das höhere
+CLS-Limit für die Startseite (0,25) steht ausdrücklich im Budget und
+beschönigt den vorbestehenden Font-Swap nicht.
+
+**Bild-Sitemap und ImageObject.** Neu `lib/seo/bildSitemap.ts`: die EINE Liste
+auslieferbarer Bilder, leer bis eigene Fotos mit geklärten Rechten vorliegen.
+`app/sitemap.ts` schreibt `images`, `webPageNode()` verschachtelte
+`ImageObject`-Knoten aus derselben Liste. Verschachtelt statt als Top-Level-
+Knoten, weil `json-ld-inventar` je Typ genau einen Knoten erwartet und eine
+Seite mehrere Bilder haben kann. `og:image:alt`/`twitter:image:alt` waren
+bereits Teil der Exportprüfung. 19 neue Tests sichern die Regeln; ohne
+freigegebene Bilder bleibt die Sitemap bitidentisch zum vorherigen Stand.
+
+**Invarianten:** Keine KI-Platzhalter in der Auslieferung, keine erfundenen
+Bild-Adressen, keine Änderung an Routing, Electrical oder Rechner-Formel.
+`npm run check`, `npm run build`, `npm run seo:audit` und die visuellen Specs
+grün. Offen bleiben die eigenen Fotos (P2), Ads-/Search-Console-Setup, die
+vorbestehende CLS der Startseite und global ungenutztes CSS/JS. Kein
+Ranking-/CPA-Versprechen.
+
 ## LEDGER 2026-11-03 — Impressum mit Betreiberangaben
 
 **Anlass:** § 5 DDG. Die Seite zeigte Aufforderungstexte statt der Anschrift.

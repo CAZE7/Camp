@@ -58,6 +58,14 @@ export function webPageNode(input: {
   mainEntityId?: string;
   hasPartIds?: readonly string[];
   breadcrumbId?: string;
+  /**
+   * Verschachtelte `ImageObject`-Knoten aus `lib/seo/bildSitemap.ts`. Bewusst
+   * KEINE eigenen Top-Level-Knoten: Das Gate `json-ld-inventar` erwartet je
+   * angekündigtem Typ genau einen Knoten, und eine Seite kann mehrere Bilder
+   * haben. Die verschachtelte Form kann außerdem nicht etwas behaupten, das
+   * die sichtbare Seite nicht zeigt.
+   */
+  images?: readonly JsonLdNode[];
   /** `CollectionPage` für Übersichten, sonst `WebPage`. */
   type?: Extract<StructuredDataType, 'WebPage' | 'CollectionPage'>;
 }): JsonLdNode {
@@ -77,6 +85,7 @@ export function webPageNode(input: {
     node['hasPart'] = input.hasPartIds.map((id) => ({ '@id': id }));
   }
   if (input.breadcrumbId) node['breadcrumb'] = { '@id': input.breadcrumbId };
+  if (input.images && input.images.length > 0) node['image'] = [...input.images];
   return node;
 }
 

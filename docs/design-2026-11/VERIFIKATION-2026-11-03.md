@@ -100,6 +100,19 @@ Press-Feedback. Eine eigene, Reduced-Motion-geschützte Regel in
 `:active`, ohne die Farb-Transition zu überschreiben. Danach neu gebaut und im
 Browser nachgemessen (`no-preference` → 0,96 / `reduce` → `none`).
 
+## 5. P4-Nachtrag (gleicher Tag)
+
+| Prüfung                                                                          | Ergebnis                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Visuelle Baselines                                                               | Die 22 auf `main` freigegebenen Baselines übernommen (bewusst **nicht** mit dem Lambda-Chromium neu erzeugt)                                                                                   |
+| `npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts` | **76 bestanden, 0 fehlgeschlagen** über alle vier Projekte (vorher 17 rot)                                                                                                                     |
+| `npm run perf:lighthouse` (M11-5)                                                | **exit 0** – Vergleich 99/100/100/100 · LCP 1511 ms · CLS 0; Start 91/100/100 · LCP 1212 ms · CLS 0,194 (innerhalb des dokumentierten Limits); Impressum 99/100/100 · LCP 1059 ms · CLS 0,0005 |
+| Bild-Sitemap / `ImageObject`                                                     | `lib/seo/bildSitemap.ts` als eine Liste; `app/sitemap.ts` und `jsonLdFor()` lesen sie. Leer, solange keine eigenen Fotos mit Rechten vorliegen — keine erfundenen Bild-Adressen                |
+| CI-Anbindung                                                                     | `npm run perf:lighthouse` läuft im nicht-blockierenden Visual-Job von `quality.yml`; 1:1-Spiegel in `docs/ci/workflows/` synchron, `workflows.test.ts` grün                                    |
+
+Die Budgetlogik ist ohne Browser unit-getestet (`scripts/ci/lighthouseGate.test.ts`),
+die Bildregeln in `lib/seo/bildSitemap.test.ts` und `app/sitemap.test.ts`.
+
 ## 5. Belege im Ordner
 
 | Datei                                 | Inhalt                                                                                      |

@@ -255,7 +255,7 @@ empfehlenswert; dieser Text ist keine Rechtsberatung.
 | P1    | Tokens, `ContentImage`, Bildvertrag                                    | **umgesetzt**, `npm run check` + `npm run build` grün    |
 | P2    | Hero-Foto + 28 bedingte Zusatzmotive; Vergleichsseite **fertig** (§10) | Bilder **offen**, Rest umgesetzt                         |
 | P3    | Content-Cluster Wasser/Gas/Dach/Zulassung, `ItemList`/`Product`-Schema | Kandidat, **nicht freigegeben**                          |
-| P4    | Gates, Bild-Sitemap, E2E 375/768/1440, Lighthouse                      | offen                                                    |
+| P4    | Gates, Bild-Sitemap, E2E 375/768/1440, Lighthouse                      | **umgesetzt** (Konzept §9, Stand P4)                     |
 
 ## 9. In diesem Repo umgesetzt (2026-11-03)
 
@@ -276,12 +276,9 @@ in **diesem** Checkout angewandt — neu gebaut, nicht kopiert:
 wiederverwendbares Vergleichs-Template für weitere Artikel — beides eigene
 Features mit eigener Freigabe. Die eine Vergleichsseite ist dagegen fertig (§10).
 
-**Bekannte Folge, ehrlich benannt:** Die eingefrorenen Pixel-Baselines für
-`/impressum/` (`tests/e2e/visual.spec.ts-snapshots/route-impressum-*.png`)
-zeigen noch die Aufforderungstexte. Weil das Impressum jetzt echte Angaben
-rendert, sind diese acht Baselines veraltet und müssen in CI auf Linux neu
-gezogen und freigegeben werden. Hier sind keine Browser-Binaries installiert;
-dieses visuelle Gate ist **nicht** geprüft.
+**Baselines inzwischen erneuert (P4):** Die 22 auf `main` freigegebenen
+Pixel-Baselines wurden übernommen; die visuellen Specs sind damit
+**76/76 grün**. Sie wurden bewusst nicht mit dem Lambda-Chromium neu erzeugt.
 
 ## 10. Die fertige Vergleichsseite (2026-11-03)
 

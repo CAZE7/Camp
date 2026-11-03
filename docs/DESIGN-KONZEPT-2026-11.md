@@ -379,15 +379,15 @@ Ansichten ohne Inhalt · Verzeichnisform der Adressen (`trailingSlash: true`).
 7. **Keine Ranking-Aussage.** Messbar sind technische Zusagen, nicht
    Positionen; `docs/seo/SEARCH-CONSOLE.md` bleibt die Quelle für echte Daten.
 
-| Messgröße              | Ziel                  | Wie gemessen                                         |
-| ---------------------- | --------------------- | ---------------------------------------------------- |
-| LCP (mobil, 4G)        | ≤ 2,5 s, Ziel ≤ 1,8 s | Lighthouse CI (M11-5), CrUX/Search Console           |
-| CLS                    | 0                     | Playwright `visual-de`, `layout-shift`               |
-| INP                    | ≤ 200 ms              | Field-Daten / Web-Vitals                             |
-| Lighthouse Performance | ≥ 90                  | CI-Gate M11-5 (offen)                                |
-| Bilder je Seite        | ≤ 250 KB AVIF         | `du` über `public/bilder/`, Build-Skript             |
-| Indexierbare Seiten    | ≥ 28, keine Waisen    | `npm run seo:audit`, `npx tsx scripts/seo/report.ts` |
-| Wörter ohne JavaScript | Cluster ≥ 700         | `scripts/seo/measureExport.ts`                       |
+| Messgröße              | Ziel                  | Wie gemessen                                           |
+| ---------------------- | --------------------- | ------------------------------------------------------ |
+| LCP (mobil, 4G)        | ≤ 2,5 s, Ziel ≤ 1,8 s | `npm run perf:lighthouse` (M11-5), CrUX/Search Console |
+| CLS                    | 0                     | Playwright `visual-de`, `layout-shift`                 |
+| INP                    | ≤ 200 ms              | Field-Daten / Web-Vitals                               |
+| Lighthouse Performance | ≥ 90                  | `npm run perf:lighthouse` (M11-5), lokal grün          |
+| Bilder je Seite        | ≤ 250 KB AVIF         | `du` über `public/bilder/`, Build-Skript               |
+| Indexierbare Seiten    | ≥ 28, keine Waisen    | `npm run seo:audit`, `npx tsx scripts/seo/report.ts`   |
+| Wörter ohne JavaScript | Cluster ≥ 700         | `scripts/seo/measureExport.ts`                         |
 
 ---
 
@@ -474,13 +474,43 @@ festlegen, nicht im Konzept erfinden.
 
 ## 9. Umsetzung in Phasen
 
-| Phase | Inhalt                                                                                             | Dateien / Gates                                                                                                                              |
-| ----- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0    | Freigabe, Fototermin, Bildrechte, Ads-Konto — **Impressum und Datenschutz erledigt**               | `lib/siteLegal.ts` (befüllt), `app/datenschutz/page.tsx`, `design-2026-11/BILDRECHTE.md`                                                     |
-| P1    | Tokens, Bildkomponente, Tests umstellen — **umgesetzt**                                            | `app/globals.css`, `lib/designTokens.test.ts`, `app/page.test.tsx` (Bildverbot → Bildvertrag), `components/brand/ContentImage.tsx` + Test    |
-| P2    | Seiten: Hero mit **eigener Fotografie**, Beweisstrecke, Plan ↔ Foto, Bildunterschriften, OG-Karten | `app/page.tsx`, `components/seo/SeoPage.tsx`, `components/seo/PageStructuredData.tsx`, `app/siteMetadata.ts`, `app/sitemap.ts`               |
-| P3    | CSP, Tags, Events, Bild-Sitemap                                                                    | `app/layout.tsx`, `public/_headers`, `app/robots.ts` (unverändert)                                                                           |
-| P4    | Gates und Vermessung                                                                               | `npm run check`, `npm run build` (`seo:audit`), Lighthouse CI (M11-5), Playwright axe + `reducedMotion`, visuelle Baselines bewusst erneuern |
+| Phase | Inhalt                                                                                             | Dateien / Gates                                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| P0    | Freigabe, Fototermin, Bildrechte, Ads-Konto — **Impressum und Datenschutz erledigt**               | `lib/siteLegal.ts` (befüllt), `app/datenschutz/page.tsx`, `design-2026-11/BILDRECHTE.md`                                                  |
+| P1    | Tokens, Bildkomponente, Tests umstellen — **umgesetzt**                                            | `app/globals.css`, `lib/designTokens.test.ts`, `app/page.test.tsx` (Bildverbot → Bildvertrag), `components/brand/ContentImage.tsx` + Test |
+| P2    | Seiten: Hero mit **eigener Fotografie**, Beweisstrecke, Plan ↔ Foto, Bildunterschriften, OG-Karten | `app/page.tsx`, `components/seo/SeoPage.tsx`, `components/seo/PageStructuredData.tsx`, `app/siteMetadata.ts`, `app/sitemap.ts`            |
+| P3    | CSP, Tags, Events, Bild-Sitemap                                                                    | `app/layout.tsx`, `public/_headers`, `app/robots.ts` (unverändert)                                                                        |
+| P4    | Gates und Vermessung — **umgesetzt** (Stand P4)                                                    | `npm run check`, `npm run build` (`seo:audit`), `npm run perf:lighthouse`, Playwright axe + `reducedMotion`, 22 Baselines erneuert        |
+
+### Stand P4 (2026-11-03)
+
+P4 war „Gates und Vermessung". Umgesetzt und nachgemessen:
+
+- **Visuelle Baselines bewusst erneuert.** Die 22 auf `main` freigegebenen
+  Baselines wurden übernommen, nicht mit dem in der Sandbox verfügbaren
+  Lambda-Chromium neu erzeugt. Ergebnis: `npx playwright test
+tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts` →
+  **76 bestanden, 0 fehlgeschlagen** (vorher 17 rot).
+- **Lighthouse-Budget M11-5.** `scripts/ci/lighthouseGate.ts` vermisst den
+  gebauten Export über einen gzip-Server (wie GitHub Pages), prüft Performance,
+  A11y, Best Practices, SEO, LCP und CLS gegen `BUDGETS` und ist ohne Browser
+  unit-getestet. `npm run perf:lighthouse` ist lokal ein hartes Gate; in
+  `quality.yml` läuft es als Berichtsgate im nicht-blockierenden Visual-Job.
+  Lokal grün: Vergleichsseite 99/100/100/100, LCP 1,5 s, CLS 0.
+- **Bild-Sitemap und `ImageObject`.** `lib/seo/bildSitemap.ts` ist die eine
+  Liste der auslieferbaren Bilder. `app/sitemap.ts` schreibt `images`,
+  `jsonLdFor()` verschachtelte `ImageObject`-Knoten — beides **nur für
+  rechtegeklärte eigene Aufnahmen**. Die Liste ist leer, solange P2 keine Fotos
+  geliefert hat; es werden keine Bild-Adressen erfunden. `og:image:alt` und
+  `twitter:image:alt` sind bereits Teil der Exportprüfung.
+- **Bereits grün:** `npm run check`, `npm run build`, `npm run seo:audit`,
+  Playwright axe, `prefers-reduced-motion`, No-JS, 375/768/1440 hell/dunkel
+  (siehe `design-2026-11/VERIFIKATION-2026-11-03.md`).
+
+**Bleibt offen** (keine P4-Aufgabe mehr): die eigenen Fotos für P2,
+Ads-Konto/Search Console/Conversion-Events als Setup, die vorbestehende
+simulierte CLS 0,194 auf der Startseite durch den Font-Swap, sowie global
+ungenutztes CSS/JS. Kein Ranking- und kein CPA-Versprechen.
 
 ### Stand P1 (2026-11-02)
 
@@ -520,9 +550,9 @@ bleibt die Startseite in P1 unverändert rendertreu — die optischen Gates
 - [ ] Keine Bewegung ohne `prefers-reduced-motion`-Ersatz; kein `transition: all`; kein Bounce; kein GSAP auf Inhaltsseiten.
 - [ ] Jeder Zustand hat einen statischen Anker; Fokus überall sichtbar.
 - [x] `npm run check`, `npm run build`, `npm run seo:audit` grün; Lighthouse ≥ 90 (Vergleichsseite 99 mit gzip, siehe `design-2026-11/VERIFIKATION-2026-11-03.md`).
-- [ ] Acht Impressum-Pixel-Baselines in Linux-CI neu ziehen und optisch freigeben.
-- [ ] `ImageObject`, `og:image:alt`, Bild-Sitemap, Canonical, Robots geprüft.
-- [x] Impressum eingetragen und `LEGAL_NOTICE_GATE` auf `block` (2026-11-03). **Acht:** Die acht eingefrorenen Pixel-Baselines für `/impressum/` zeigen noch die Platzhalter-Texte und müssen in CI neu gezogen werden.
+- [x] 22 Pixel-Baselines bewusst erneuert (vom Betreiber auf `main` freigegebener Stand), 76 visuelle Tests grün.
+- [x] `ImageObject`, `og:image:alt`, Bild-Sitemap, Canonical, Robots geprüft — Bild-Sitemap/`ImageObject` aktivieren sich automatisch mit den eigenen Fotos (`lib/seo/bildSitemap.ts`).
+- [x] Impressum eingetragen und `LEGAL_NOTICE_GATE` auf `block` (2026-11-03); Baselines dazu erneuert.
 - [x] Datenschutzerklärung vollständig, keine Cookies/Analyse → kein CMP nötig; Consent Mode v2 erst mit Ads-Tag (`app/datenschutz/page.tsx`, Stand 2026-10).
 - [ ] Keyword → Anzeige → H1 → Bildunterschrift → Event je Anzeigengruppe dokumentiert.
 - [ ] Prototyp-Platzhalter durch eigene Fotografie ersetzt; `BILDRECHTE.md` vollständig.

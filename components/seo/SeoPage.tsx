@@ -14,6 +14,8 @@ import {
   webPageNode,
   type JsonLdNode,
 } from '@/lib/seo/jsonLd';
+import { siteUrl } from '@/lib/site';
+import { freigegebeneBilder, bildZuSchemaKnoten } from '@/lib/seo/bildSitemap';
 import { topicOf } from '@/lib/seo/topics';
 import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
@@ -40,6 +42,10 @@ export function jsonLdFor(page: SeoPageContent, extraNodes: readonly JsonLdNode[
   const calculatorId = page.sections.find((section) => section.calculator)?.calculator;
 
   const faqEntries = page.faq ?? [];
+  // Dieselbe Liste wie die Bild-Sitemap. Mit leerer Liste bleibt der Graph
+  // bitidentisch zum vorherigen Stand — kein Bild wird erfunden.
+  const bilder = freigegebeneBilder().filter((bild) => bild.seite === page.path);
+  const bildKnoten = bilder.map((bild) => bildZuSchemaKnoten(bild, siteUrl(bild.pfad)));
 
   return jsonLdGraph([
     webPageNode({
@@ -48,6 +54,7 @@ export function jsonLdFor(page: SeoPageContent, extraNodes: readonly JsonLdNode[
       description: page.description,
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
+      ...(bildKnoten.length > 0 ? { images: bildKnoten } : {}),
       hasPartIds: [
         ...(faqEntries.length > 0 ? [pageNodeId(page.path, 'faq')] : []),
         pageNodeId(page.path, 'breadcrumb'),
