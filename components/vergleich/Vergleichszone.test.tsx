@@ -150,3 +150,27 @@ describe('Sortierung', () => {
     expect(zeilen[0]?.getAttribute('data-vergleich-produkt')).toBe('orion-tr-smart-12-12-30');
   });
 });
+
+describe('Externe Belege', () => {
+  /**
+   * Gewandert aus `components/seo/LadeboosterVergleich.test.tsx` (Audit
+   * 2026-11-02): alle 54 externen Links der alten Komponente öffneten im
+   * selben Tab — wer mitten im Vergleich einen Beleg anklickte, verließ die
+   * Seite und stand danach vor einem leeren Browserverlauf. Die Vergleichszone
+   * trägt dieselben Belege, also gilt dort dieselbe Zusage.
+   */
+  it('öffnet jeden externen Beleg in einem neuen Tab und verschluckt die Seite nicht', () => {
+    render(<Vergleichszone spec={LADEBOOSTER_VERGLEICH} />);
+
+    const extern = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('a[href^="http"], a[href^="https"]')
+    ).filter((anker) => !anker.href.startsWith(window.location.origin));
+
+    expect(extern.length).toBeGreaterThan(0);
+    for (const anker of extern) {
+      expect(anker.target).toBe('_blank');
+      expect(anker.rel).toContain('noopener');
+      expect(anker.rel).toContain('noreferrer');
+    }
+  });
+});
