@@ -124,7 +124,7 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
       list: {
         items: [
           'Ein Laderegler oder Ladegerät mit Blei-Kennlinie lädt Lithium nicht zuverlässig voll und kann bei dauerhafter Erhaltungsladung schaden — das Ladegerät muss zur Chemie passen.',
-          'Die Lichtmaschine ist keine geregelte Ladequelle für Lithium: Ohne Booster (DC-DC-Ladegerät) begrenzt nur ihr eigener Widerstand den Strom, und die Lima kann überhitzen.',
+          'Die Lichtmaschine ist keine geregelte Ladequelle für Lithium: Ohne Booster (DC-DC-Ladegerät) begrenzt nur ihr eigener Widerstand den Strom, und die Lima kann überhitzen — welche Geräte dazu passen, steht im [Ladebooster-Vergleich](/camper-elektrik/ladebooster/).',
           'Unter 0 °C darf eine LiFePO4-Zelle nicht geladen werden; ein BMS muss den Ladestrom sperren. Victron nennt +5 °C als untere Ladegrenze; das Datenblatt der konkreten Batterie gilt. Wer im Winter lädt, braucht eine beheizte Batterie oder ein BMS mit Temperaturschutz.',
         ],
       },

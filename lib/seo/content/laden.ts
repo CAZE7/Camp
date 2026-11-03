@@ -168,7 +168,7 @@ export const LADEN_CONTENT: SeoPageContent = {
     {
       label: 'Modellwerte für Laden',
       detail:
-        'Ladestrom als Faustregel 10 % der Nennkapazität · LiFePO4 mit 90 % Entladetiefe · Ladezeit-Aufschlag 1,15 im elektroplaner-camper.de-Modell.',
+        'Ladestrom als Faustregel 10 % der Nennkapazität · LiFePO4 mit 90 % Entladetiefe · Ladezeit-Aufschlag 1,15 im 12v-planer.de-Modell.',
     },
   ],
   assumptions: [

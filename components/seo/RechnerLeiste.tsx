@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * components/seo/RechnerLeiste.tsx — die Schnellzugriffsleiste auf die
- * Einzelrechner (Batterie, Solar, Spannungsfall, Heizlast, Dach).
+ * Einzelrechner (Batterie, Ladestrom, Solar, Spannungsfall, Heizlast, Dach).
  *
  * Warum als eigene Komponente: Dieselbe Leiste steht an mehreren Einstiegen
  * (Startseite, Themen-Hub `/camper-elektrik/`, Rechner-Übersicht `/rechner/`
@@ -34,12 +34,17 @@ export type RechnerEintrag = {
   detail: string;
 };
 
-/** Die fünf Rechner, die den Weg von der Frage zur Zahl abkürzen. */
+/** Die sechs Rechner, die den Weg von der Frage zur Zahl abkürzen. */
 export const RECHNER_LEISTE: readonly RechnerEintrag[] = [
   {
     href: '/rechner/batteriekapazitaet/',
     label: 'Batteriekapazität',
     detail: 'Tagesbedarf, Autarkietage und Entladetiefe in Ah umrechnen.',
+  },
+  {
+    href: '/rechner/ladestrom/',
+    label: 'Ladestrom',
+    detail: 'Booster-Strom aus Batteriekapazität, Fahrzeit und Lichtmaschine.',
   },
   {
     href: '/rechner/solaranlage/',
@@ -98,7 +103,9 @@ export function RechnerLeiste({
             Direkt rechnen
           </h2>
           <p className="caption-xs mt-1 text-ink-soft">
-            Fünf Rechner für die Fragen vor dem Plan — kostenlos, ohne Anmeldung.
+            {/* Die Zahl kommt aus der Liste selbst — ein ausgeschriebenes „Fünf"
+                wäre bei jedem neuen Rechner eine stille Falschaussage. */}
+            {RECHNER_LEISTE.length} Rechner für die Fragen vor dem Plan — kostenlos, ohne Anmeldung.
           </p>
         </div>
         <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">

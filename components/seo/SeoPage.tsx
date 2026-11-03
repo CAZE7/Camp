@@ -4,9 +4,12 @@ import { ArrowRight } from 'lucide-react';
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
 import { PageShell } from '@/components/brand/PageShell';
+import { Vergleichszone } from '@/components/vergleich/Vergleichszone';
+import { vergleichsProdukte } from '@/lib/seo/comparisons/schema';
 import {
   breadcrumbNode,
   faqNode,
+  itemListNode,
   jsonLdGraph,
   pageNodeId,
   serializeJsonLd,
@@ -15,7 +18,7 @@ import {
 } from '@/lib/seo/jsonLd';
 import { authorNodeId } from '@/lib/author';
 import { topicOf } from '@/lib/seo/topics';
-import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
+import type { CalculatorId, ContentSection, SeoPageContent } from '@/lib/seo/types';
 
 import { AuthorNote } from './AuthorNote';
 import { breadcrumbsFor } from './Breadcrumbs';
@@ -33,6 +36,19 @@ import { RichText } from './RichText';
  * Der Inhalt kommt aus `lib/seo/content/` — hier steht nur, WIE er erscheint.
  */
 
+/**
+ * Fachgebiet des Rechners für `applicationSubCategory`. Als erschöpfendes
+ * `Record` statt einer Verzweigung: Ein neuer Rechner ohne Eintrag fällt dann
+ * im Typecheck auf, statt stillschweigend ein falsches Gebiet zu erben.
+ */
+const CALCULATOR_SUBCATEGORY: Record<CalculatorId, string> = {
+  kabelquerschnitt: 'Leitungsbemessung',
+  spannungsabfall: 'Spannungsfall',
+  batteriekapazitaet: 'Batterieauslegung',
+  solaranlage: 'Solarauslegung',
+  ladestrom: 'Ladeauslegung',
+};
+
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
 export function jsonLdFor(page: SeoPageContent) {
   const breadcrumb = breadcrumbsFor(page);
@@ -41,6 +57,7 @@ export function jsonLdFor(page: SeoPageContent) {
   const calculatorId = page.sections.find((section) => section.calculator)?.calculator;
 
   const faqEntries = page.faq ?? [];
+  const vergleich = page.comparison;
 
   return jsonLdGraph([
     webPageNode({
@@ -53,25 +70,29 @@ export function jsonLdFor(page: SeoPageContent) {
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
       hasPartIds: [
+        ...(vergleich ? [pageNodeId(page.path, 'geraeteliste')] : []),
         ...(faqEntries.length > 0 ? [pageNodeId(page.path, 'faq')] : []),
         pageNodeId(page.path, 'breadcrumb'),
       ],
     }),
     breadcrumbNode({ path: page.path, items: breadcrumb }),
+    ...(vergleich
+      ? [
+          itemListNode({
+            path: page.path,
+            name: vergleich.heading,
+            description: vergleich.tableCaption,
+            products: vergleichsProdukte(vergleich),
+          }),
+        ]
+      : []),
     ...(hasCalculator && calculatorId
       ? [
           webApplicationNode({
             path: page.path,
             name: page.h1,
             description: page.description,
-            subCategory:
-              calculatorId === 'batteriekapazitaet'
-                ? 'Batterieauslegung'
-                : calculatorId === 'solaranlage'
-                  ? 'Solarauslegung'
-                  : calculatorId === 'spannungsabfall'
-                    ? 'Spannungsfall'
-                    : 'Leitungsbemessung',
+            subCategory: CALCULATOR_SUBCATEGORY[calculatorId],
           }),
         ]
       : []),
@@ -119,6 +140,15 @@ export function SeoPage({
             <RichText text={page.lead} />
           </p>
         </header>
+
+        {/*
+          Der Vergleich steht VOR den Abschnitten, und das ist eine Inhalts-
+          entscheidung, keine Geschmacksfrage: Wer „X Vergleich" sucht, will die
+          Geräte sehen und nicht erst 3.000 Wörter Auslegung lesen. Gate G4
+          (`components/vergleich/Vergleichszone.test.tsx`) prüft die Reihenfolge,
+          damit sie nicht bei der nächsten Umstellung versehentlich kippt.
+        */}
+        {page.comparison ? <Vergleichszone spec={page.comparison} /> : null}
 
         {afterHeader}
 

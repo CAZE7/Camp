@@ -264,9 +264,7 @@ describe('GitHub-Actions-Workflows', () => {
     expect(staticBuild?.env).toEqual({
       NEXT_PUBLIC_BASE_PATH: '',
     });
-    expect(readFileSync(join(process.cwd(), 'public', 'CNAME'), 'utf8').trim()).toBe(
-      'elektroplaner-camper.de'
-    );
+    expect(readFileSync(join(process.cwd(), 'public', 'CNAME'), 'utf8').trim()).toBe('12v-planer.de');
   });
 
   it('basePath steht in Paarform — configure-pages ersetzt sonst den Schlüssel', () => {

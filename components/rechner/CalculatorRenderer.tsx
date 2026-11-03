@@ -26,6 +26,11 @@ const CALCULATORS: Record<CalculatorId, LazyExoticComponent<ComponentType>> = {
       default: module.SolaranlageRechner,
     }))
   ),
+  ladestrom: lazy(() =>
+    import('@/components/rechner/LadestromRechner').then((module) => ({
+      default: module.LadestromRechner,
+    }))
+  ),
 };
 
 /** Lädt genau den Rechner, den der Abschnitt tatsächlich rendert. */

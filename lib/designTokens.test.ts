@@ -650,3 +650,44 @@ describe('AUDIT A1/A2 — Tastaturfokus im Canvas ist sichtbar (WCAG 2.4.7)', ()
     expect(before).toMatch(/Bedienmodell|Ausnahme|Ausschluss/i);
   });
 });
+
+/**
+ * G8 der Vergleichs-Spec (`docs/superpowers/specs/2026-10-26-…-design.md`).
+ *
+ * Designkonzept §2: „Mono nur für Tastenkürzel und die CSV-Vorschau. Zahlen
+ * stehen in Inter mit `font-variant-numeric: tabular-nums`." Die Vergleichszone
+ * ist der erste Baustein, der das durchhält — die vier älteren Rechner setzen
+ * ihre Zahlen noch in Mono. Diese Regel gilt deshalb ausdrücklich nur für
+ * `components/vergleich/`: sie als Repo-Regel zu schreiben, wäre eine Ausnahme-
+ * liste für den Altbestand, also dieselbe Schwächung wie bei den Farbtokens.
+ */
+describe('G8 — Vergleichszone: Zahlen in Inter, nicht in Mono', () => {
+  const VERZEICHNIS = resolve(process.cwd(), 'components/vergleich');
+  const QUELLEN = readdirSync(VERZEICHNIS)
+    .filter((name) => /\.(ts|tsx)$/.test(name) && !/\.(test|spec)\.[jt]sx?$/.test(name))
+    .sort();
+
+  it('liest mindestens eine Quelldatei der Vergleichszone', () => {
+    // Ohne diesen Schritt wäre ein leerer Ordner ein grünes Gate.
+    expect(QUELLEN.length).toBeGreaterThan(0);
+  });
+
+  it('nennt keine Mono-Schrift und setzt keine fontFamily', () => {
+    const treffer: string[] = [];
+    for (const name of QUELLEN) {
+      const quelle = readFileSync(join(VERZEICHNIS, name), 'utf8');
+      for (const muster of [/font-mono/, /--font-mono/, /IBM Plex Mono/i, /fontFamily/]) {
+        const fund = muster.exec(quelle)?.[0];
+        if (fund) treffer.push(`${name}: ${fund}`);
+      }
+    }
+    expect(treffer, treffer.join('\n')).toEqual([]);
+  });
+
+  it('richtet die Zahlenkolonnen mit tabular-nums aus', () => {
+    for (const name of ['Rangliste.tsx', 'Produktkarte.tsx']) {
+      const quelle = readFileSync(join(VERZEICHNIS, name), 'utf8');
+      expect(quelle, `${name} ohne tabular-nums`).toContain('tabular-nums');
+    }
+  });
+});

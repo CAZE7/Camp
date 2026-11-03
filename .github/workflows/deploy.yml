@@ -118,7 +118,7 @@ jobs:
         # läuft unter der eigenen Domain an der Wurzel (public/CNAME), nicht
         # mehr unter caze7.github.io/Camp — ein Basis-Pfad `/Camp` würde
         # Canonical, Sitemap und Assets auf Adressen zeigen lassen, die es
-        # unter elektroplaner-camper.de nicht gibt.
+        # unter 12v-planer.de nicht gibt.
 
       - name: Build (Static Export)
         env:

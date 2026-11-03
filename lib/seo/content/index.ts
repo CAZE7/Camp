@@ -17,6 +17,7 @@ import { HEIZUNG_CONTENT } from './heizung';
 import { KABELQUERSCHNITT_CONTENT } from './kabelquerschnitt';
 import { LADEN_CONTENT } from './laden';
 import { LADEBOOSTER_CONTENT } from './ladebooster';
+import { LADESTROM_CONTENT } from './ladestrom';
 import { LIFEPO4_CONTENT } from './lifepo4';
 import { MPPT_CONTENT } from './mppt';
 import { CAMPER_ELEKTRIK_PILLAR } from './pillar';
@@ -50,6 +51,7 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   RECHNER_HUB_CONTENT,
   SPANNUNGSABFALL_12V_CONTENT,
   BATTERIEKAPAZITAET_CONTENT,
+  LADESTROM_CONTENT,
   SOLARANLAGE_CONTENT,
   STROMVERBRAUCH_CONTENT,
   ELEKTRIK_FEHLER_CONTENT,
