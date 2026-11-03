@@ -66,11 +66,12 @@ describe('checkLegalNotice', () => {
   });
 
   it('prüft den echten Stand im Baum (Default-Argument)', () => {
-    // Solange niemand SITE_LEGAL ausfüllt, ist das Impressum unvollständig —
-    // genau der Befund des Audits. Nach dem Ausfüllen wird dieser Test grün.
+    // Fortschreibung (2026-11-03): Alle fünf Angaben sind eingetragen und
+    // freigegeben. Der Wächter muss den echten Baum als vollständig melden.
     const result = checkLegalNotice();
-    expect(result.missing.length).toBeGreaterThan(0);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.missing).toEqual([]);
+    expect(result.message).toMatch(/vollständig/);
   });
 });
 

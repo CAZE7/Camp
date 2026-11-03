@@ -650,3 +650,65 @@ describe('AUDIT A1/A2 — Tastaturfokus im Canvas ist sichtbar (WCAG 2.4.7)', ()
     expect(before).toMatch(/Bedienmodell|Ausnahme|Ausschluss/i);
   });
 });
+
+/**
+ * Designkonzept 2026-11 (P1): Die neuen Bild- und Bewegungswerte sind Tokens
+ * und werden deshalb wie alle anderen Tokens bewacht — in hell UND dunkel.
+ * Die exakten Zahlen kommen aus .agents/skills/better-ui/ und stehen im
+ * Konzept §6; eine Änderung gehört ins Konzept und in diesen Test.
+ */
+describe('Designkonzept 2026-11 — Bild- und Bewegungs-Tokens (P1)', () => {
+  const NEUE_TOKENS = [
+    'image-outline',
+    'motion-press',
+    'motion-swap',
+    'motion-stagger',
+    'press-scale',
+    'ease-out',
+    'ease-swap',
+  ] as const;
+
+  /** Whitespace normalisieren: Prettier darf CSS-Werte umbrechen. */
+  const kompakt = (wert: string | undefined): string => (wert ?? '').replace(/\s+/g, '');
+
+  it.each(NEUE_TOKENS)('--%s ist in hell und dunkel definiert', (name) => {
+    expect(rootTokens.has(name)).toBe(true);
+    expect(darkTokens.has(name)).toBe(true);
+  });
+
+  it('zeichnet die Bildkante in reinem Schwarz bzw. Weiß', () => {
+    expect(kompakt(rootTokens.get('image-outline'))).toBe('oklch(000/0.1)');
+    expect(kompakt(darkTokens.get('image-outline'))).toBe('oklch(100/0.1)');
+  });
+
+  it('hält die exakten Werte der better-ui-Skill', () => {
+    expect(rootTokens.get('press-scale')).toBe('0.96');
+    expect(rootTokens.get('motion-press')).toBe('150ms');
+    expect(rootTokens.get('motion-swap')).toBe('300ms');
+    expect(rootTokens.get('motion-stagger')).toBe('100ms');
+    expect(rootTokens.get('ease-out')).toBe('ease-out');
+    expect(kompakt(rootTokens.get('ease-swap'))).toBe('cubic-bezier(0.2,0,0,1)');
+  });
+
+  it('nennt beim Press-Zustand die animierte Eigenschaft explizit (kein all)', () => {
+    let benannt = false;
+    ast.walkRules((rule) => {
+      if (rule.selector !== '.press-scale') return;
+      rule.walkDecls('transition-property', (decl) => {
+        if (decl.value.trim() === 'scale') benannt = true;
+      });
+    });
+    expect(benannt).toBe(true);
+  });
+
+  it('setzt Hover-Flächen nur hinter die Abfrage hover-fähiger Zeiger', () => {
+    let hinterQuery = false;
+    ast.walkAtRules('media', (atRule) => {
+      if (!atRule.params.includes('hover: hover')) return;
+      atRule.walkRules('.hover-row:hover', () => {
+        hinterQuery = true;
+      });
+    });
+    expect(hinterQuery).toBe(true);
+  });
+});

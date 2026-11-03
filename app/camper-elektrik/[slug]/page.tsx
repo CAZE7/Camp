@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation';
 import { metadataFor } from '@/app/seoMetadata';
 import { LadeboosterVergleich } from '@/components/seo/LadeboosterVergleich';
 import { SeoPage } from '@/components/seo/SeoPage';
+import { itemListNode } from '@/lib/seo/jsonLd';
 import { CONTENT_PAGES } from '@/lib/seo/content';
+import { ATTRIBUTE, GERAETE } from '@/lib/seo/ladeboosterGeraete';
 import type { SeoPageContent } from '@/lib/seo/types';
 
 /**
@@ -47,5 +49,44 @@ export default async function Themenseite({ params }: { params: Promise<{ slug: 
   const page = THEMEN.find((entry) => entry.slug === slug);
   if (!page) notFound();
 
-  return <SeoPage page={page}>{slug === 'ladebooster' ? <LadeboosterVergleich /> : null}</SeoPage>;
+  // Der Vergleich ist die Scan-Schicht der Seite und gehört deshalb unter die
+  // H1, nicht hinter sämtliche Ratgeber-Abschnitte. Gemessener Befund aus der
+  // Agenten-Sitzung „Ladebooster Vergleichsplan" (6.152 Wörter, nur 1 von 8
+  // H3 war überhaupt ein Gerätevergleich, Vergleich stand ganz unten):
+  // docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md §3.
+  // `afterHeader` ist genau der Slot für Inhalt VOR den Abschnitten; er wird
+  // nicht mehr als `children` (nach den Abschnitten) übergeben.
+  /**
+   * Die Rangliste ist nicht nur sichtbares HTML, sondern ein ItemList-Knoten
+   * aus derselben Datenquelle. Preise bleiben außen vor: Eine beobachtete
+   * Momentaufnahme darf nicht als maschinelle Zusage veralten. `null`-Werte
+   * („nicht belegt") werden gar nicht erst in `additionalProperty` geschrieben.
+   */
+  const ranglisteKnoten =
+    slug === 'ladebooster'
+      ? [
+          itemListNode({
+            path: page.path,
+            name: 'Ladebooster im Vergleich: 30, 60 oder 90 A?',
+            items: GERAETE.map((g) => ({
+              id: g.id,
+              name: `${g.brand} ${g.name}`,
+              brand: g.brand,
+              klasse: g.stromLabel,
+              attribute: ATTRIBUTE.flatMap((a) => {
+                const wert = g.specs[a.id];
+                return wert === null ? [] : [{ label: a.label, wert }];
+              }),
+            })),
+          }),
+        ]
+      : [];
+
+  return (
+    <SeoPage
+      page={page}
+      afterHeader={slug === 'ladebooster' ? <LadeboosterVergleich /> : null}
+      extraJsonLdNodes={ranglisteKnoten}
+    />
+  );
 }

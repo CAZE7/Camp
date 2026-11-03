@@ -10,14 +10,18 @@
  * „sind sie vollständig?". Beides liegt hier; die Prüfung hängt als Schritt im
  * Deploy-Workflow (`scripts/ci/verifyLegalNotice.ts`).
  *
- * Auszufüllen vom Betreiber. Bewusst NICHT automatisiert befüllbar: erfundene
- * Namen und Anschriften wären schlimmer als ein Platzhalter, weil sie die Seite
- * gleichzeitig rechtswidrig und plausibel machen.
+ * Ausgefüllt vom Betreiber am 2026-11-03. Die Angaben stammen aus den beiden
+ * exportierten Agenten-Sitzungen (siehe `docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md`
+ * §6) und wurden in dieser Sitzung ausdrücklich freigegeben. Bewusst NICHT
+ * automatisiert befüllbar: erfundene Namen und Anschriften wären schlimmer als
+ * ein Platzhalter, weil sie die Seite gleichzeitig rechtswidrig und plausibel
+ * machen. Die Testdaten in `app/impressum/page.test.tsx` sind Fixtures und
+ * keine echten Angaben.
  *
  * Normstand (2026): § 5 DDG (Anbieterkennzeichnung, seit 05/2024 Nachfolger von
  * § 5 TMG) und § 18 Abs. 2 MStV (Inhaltsverantwortung, Nachfolger von § 55
- * Abs. 2 RStV). Die sichtbaren Zitate auf der Seite nennen inzwischen DDG und
- * MStV; offen sind nur noch die fünf Betreiberangaben.
+ * Abs. 2 RStV). Die sichtbaren Zitate auf der Seite nennen DDG und MStV; die
+ * fünf Betreiberangaben sind seit 2026-11-03 eingetragen.
  */
 
 /**
@@ -28,7 +32,11 @@
 export const LEGAL_PLACEHOLDER = 'BITTE-EINTRAGEN';
 
 export type SiteLegal = {
-  /** Anbietername inkl. Rechtsformzusatz (§ 5 DDG Nr. 1), z. B. „12V-Planer GmbH". */
+  /**
+   * Name des Anbieters (§ 5 DDG Nr. 1). Bei juristischen Personen zusätzlich
+   * die Rechtsform, z. B. „12V-Planer GmbH"; bei einer natürlichen Person
+   * genügt der Name — hier ist der Betreiber eine natürliche Person.
+   */
   providerName: string;
   /** Straße und Hausnummer der ladungsfähigen Anschrift (§ 5 DDG Nr. 1). */
   street: string;
@@ -42,7 +50,7 @@ export type SiteLegal = {
 
 /** Menschliche Bezeichner — für die Fehlermeldung des Deploy-Wächters. */
 export const LEGAL_FIELD_LABELS: Readonly<Record<keyof SiteLegal, string>> = {
-  providerName: 'Anbietername (inkl. Rechtsformzusatz)',
+  providerName: 'Anbietername (bei juristischen Personen inkl. Rechtsform)',
   street: 'Straße und Hausnummer (ladungsfähige Anschrift)',
   postalCodeAndCity: 'PLZ und Ort (ladungsfähige Anschrift)',
   email: 'E-Mail-Adresse für die schnelle Kontaktaufnahme',
@@ -50,16 +58,17 @@ export const LEGAL_FIELD_LABELS: Readonly<Record<keyof SiteLegal, string>> = {
 };
 
 /**
- * Die Angaben, wie sie im Baum stehen. Solange hier Platzhalter stehen, ist
- * das Impressum unvollständig — die Seite zeigt ihre Aufforderungstexte, und
- * `npm run ci:verify-legal-notice` scheitert im Deploy.
+ * Die Angaben, wie sie im Baum stehen. Alle fünf Felder sind eingetragen;
+ * `missingLegalFields()` muss deshalb leer sein und der Deploy-Wächter darf
+ * auf `block` stehen. Ein Rückfall auf die Platzhalter-Marke wird von
+ * `lib/siteLegal.test.ts` und `scripts/ci/verifyLegalNotice.test.ts` gemeldet.
  */
 export const SITE_LEGAL: SiteLegal = {
-  providerName: LEGAL_PLACEHOLDER,
-  street: LEGAL_PLACEHOLDER,
-  postalCodeAndCity: LEGAL_PLACEHOLDER,
-  email: LEGAL_PLACEHOLDER,
-  contentResponsible: LEGAL_PLACEHOLDER,
+  providerName: 'Jonas Rieckhoff',
+  street: 'Franzosenkoppel 46',
+  postalCodeAndCity: '22547 Hamburg',
+  email: 'kontakt@elektroplaner-camper.de',
+  contentResponsible: 'Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg',
 };
 
 /** Ist in diesem Wert noch die Platzhalter-Marke? */

@@ -242,6 +242,18 @@
     --chart-3-rgb: var(--warn-rgb);
     --chart-4-rgb: var(--wire-ac-rgb);
     --chart-5-rgb: var(--text-low-rgb);
+
+    /* Designkonzept 2026-11 (P1) — Bildkante und Bewegung.
+       Die Bildkante ist reines Schwarz mit 10 % Deckkraft: ein getöntes
+       Paletten-Schwarz stünde an Fotokanten als Farbsaum. Die Bewegungswerte
+       stehen hier und nicht in Komponenten; Wächter: lib/designTokens.test.ts. */
+    --image-outline: oklch(0 0 0 / 0.1);
+    --motion-press: 150ms;
+    --motion-swap: 300ms;
+    --motion-stagger: 100ms;
+    --press-scale: 0.96;
+    --ease-out: ease-out;
+    --ease-swap: cubic-bezier(0.2, 0, 0, 1);
   }
 
   /* --- Dark Theme (dunkle Markenpalette) --------------------------------------
@@ -274,6 +286,17 @@
     --ok: #6fcf97;
     --warn: #e5b45b;
     --error: #f26b60;
+
+    /* Designkonzept 2026-11 (P1): in dunkel ist die Bildkante weiß.
+       Bewegung ist themenunabhängig, wird aber gespiegelt, damit der
+       Token-Guard beide Blöcke prüfen kann. */
+    --image-outline: oklch(1 0 0 / 0.1);
+    --motion-press: 150ms;
+    --motion-swap: 300ms;
+    --motion-stagger: 100ms;
+    --press-scale: 0.96;
+    --ease-out: ease-out;
+    --ease-swap: cubic-bezier(0.2, 0, 0, 1);
 
     /* M7-Planer-Ebene: explizite Spiegel (namensgleicher Guard in
        lib/designTokens.test.ts verlangt beide Blöcke) */
@@ -5165,5 +5188,54 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 @media (orientation: landscape) and (max-height: 480px) and (min-height: 360px) {
   .cad-toolbar__group:has(> [data-testid='toolbar-undo']) {
     display: none !important;
+  }
+}
+
+/* Designkonzept 2026-11 (P1) — Bild- und Bewegungs-Primitives.
+   Eine Quelle für Inhaltsbilder ist `components/brand/ContentImage.tsx`;
+   diese Klassen sind die einzigen Stellen, an denen die neuen Tokens
+   angewendet werden. Bewegung läuft nur unter `no-preference`: Bei
+   reduzierter Bewegung bleibt der statische Anker (Farbe, Icon, Label)
+   allein sichtbar, statt eine Bewegung zu verkürzen. */
+.content-figure {
+  margin: 0;
+}
+
+.content-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  outline: 1px solid var(--image-outline);
+  outline-offset: -1px;
+}
+
+.content-figure figcaption {
+  margin-top: 0.625rem;
+  color: var(--text-med);
+  font-size: 0.8125rem; /* 13 px — über der 12-px-Untergrenze */
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .press-scale {
+    transition-property: scale;
+    transition-duration: var(--motion-press);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .press-scale:not(:disabled):active {
+    scale: var(--press-scale);
+  }
+}
+
+@media (hover: hover) {
+  .hover-row {
+    transition-property: background-color;
+    transition-duration: var(--motion-press);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .hover-row:hover {
+    background-color: var(--surface-hover);
   }
 }

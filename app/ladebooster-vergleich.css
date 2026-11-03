@@ -251,7 +251,7 @@
   border-color: var(--lb-rule-strong);
 }
 
-.lb-device.is-hidden {
+[data-lb-class].is-hidden {
   display: none;
 }
 
@@ -791,61 +791,6 @@
   line-height: 1.5;
 }
 
-.lb-photo-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.lb-photo-slot {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  aspect-ratio: 3 / 2;
-  padding: 0.8rem;
-  overflow: hidden;
-  border: 1px dashed var(--lb-rule-strong);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--lb-rule) 28%, transparent) 25%, transparent 25%) 0 0 /
-      18px 18px,
-    var(--lb-paper);
-}
-
-.lb-photo-slot__tag {
-  position: absolute;
-  top: 0.7rem;
-  left: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--lb-rule);
-  background: var(--lb-paper);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.56rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--lb-muted);
-}
-
-.lb-photo-slot strong {
-  position: relative;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--lb-ink);
-}
-
-.lb-photo-slot span {
-  position: relative;
-  font-size: 0.66rem;
-  line-height: 1.4;
-  color: var(--lb-muted);
-}
-
 .lb-sources {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1032,5 +977,240 @@
 @media (prefers-reduced-motion: reduce) {
   .lb-device {
     transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Fertige Vergleichsseite (2026-11-03). Alle Farben kommen aus den Tokens in
+   app/globals.css; Bewegung nur über die globale .press-scale-Regel, die
+   selbst hinter prefers-reduced-motion: no-preference steht.
+   --------------------------------------------------------------------------- */
+
+/* Rangliste: Zeilenkopf ist jetzt th[scope="row"] — bewusst NICHT wie der
+   Spaltenkopf gesetzt, sonst würde der Gerätename zum Mono-Label schrumpfen. */
+.lb-table-wrap tbody th[scope='row'] {
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: 600;
+  white-space: normal;
+  color: var(--lb-ink);
+}
+
+.lb-table-wrap tbody th[scope='row'] a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--lb-rule-strong);
+  text-underline-offset: 0.18em;
+}
+
+.lb-table-wrap tbody tr.is-hidden {
+  display: none;
+}
+
+.lb-table-wrap tbody tr:last-child th,
+.lb-table-wrap tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Werkzeugleiste: bewusst NICHT sticky. Die Seitenkopfzeile ist bereits
+   sticky; eine zweite klebende Ebene bräuchte deren exakte Höhe als Versatz
+   und bricht bei jeder Kopfänderung. */
+.lb-device-tools {
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--lb-rule);
+  background: var(--lb-paper);
+}
+
+.lb-sort {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.lb-sort button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--lb-rule);
+  background: transparent;
+  color: var(--lb-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.lb-sort button[aria-pressed='true'] {
+  border-color: var(--lb-accent);
+  color: var(--lb-ink);
+  background: var(--lb-paper);
+}
+
+[data-lb-count] {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.lb-legend__dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.3rem;
+  border-radius: 2px;
+  border: 1px solid var(--lb-accent);
+  background: var(--lb-accent);
+  vertical-align: baseline;
+}
+
+.lb-attribut-legende {
+  margin-top: 0.5rem;
+  border-bottom: 1px solid var(--lb-rule);
+}
+
+.lb-attribut-legende > summary {
+  padding: 0.45rem 0;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--lb-muted);
+}
+
+.lb-attribut-legende__liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.5rem 1.25rem;
+  padding: 0.5rem 0 0.9rem;
+}
+
+.lb-attribut-legende__liste dt {
+  font-weight: 600;
+  font-size: 0.76rem;
+  color: var(--lb-ink);
+}
+
+.lb-attribut-legende__liste dd {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.lb-device__fit {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--lb-muted);
+}
+
+.lb-unbekannt {
+  color: var(--lb-muted);
+  font-style: italic;
+}
+
+.lb-verdict__link {
+  display: inline-block;
+  margin-top: auto;
+  font-size: 0.74rem;
+  color: var(--lb-accent);
+  text-underline-offset: 0.18em;
+}
+
+.lb-anchor-nav a[aria-current='true'] {
+  color: var(--lb-accent);
+  border-bottom-color: var(--lb-accent);
+}
+
+/* Vertiefung: natives <details>, ohne JavaScript bedienbar. */
+.lb-vertiefung {
+  border-top: 1px solid var(--lb-rule);
+  border-bottom: 1px solid var(--lb-rule);
+}
+
+.lb-vertiefung > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 1rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lb-vertiefung > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lb-vertiefung > summary > span:first-child {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--lb-ink);
+}
+
+.lb-vertiefung > summary::after {
+  content: '+';
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 1rem;
+  color: var(--lb-accent);
+}
+
+.lb-vertiefung[open] > summary::after {
+  content: '\2212';
+}
+
+.lb-vertiefung > section {
+  padding-bottom: 1.5rem;
+}
+
+@media (hover: hover) {
+  .lb-table-wrap tbody tr {
+    transition-property: background-color;
+    transition-duration: var(--motion-press);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .lb-table-wrap tbody tr:hover {
+    background-color: var(--surface-hover);
+  }
+}
+
+/* Interne Verweise direkt an der Rangliste: vorher hatte die Vergleichszone
+   null interne Links, nur 50+ externe Belege. */
+.lb-weiter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--lb-rule);
+  background: var(--lb-paper);
+  font-size: 0.78rem;
+}
+
+.lb-weiter a {
+  color: var(--lb-accent);
+  text-underline-offset: 0.18em;
+}
+
+/* Press-Feedback auch auf den Werkzeugknöpfen. Bewusst eine eigene Regel statt
+   der globalen .press-scale-Klasse: Die Knöpfe behalten ihre
+   Farb-Transition, sonst würde `transition-property: scale` sie überschreiben. */
+@media (prefers-reduced-motion: no-preference) {
+  .lb-filter button,
+  .lb-sort button {
+    transition-property: color, background-color, border-color, scale;
+    transition-duration: var(--motion-press);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .lb-filter button:not(:disabled):active,
+  .lb-sort button:not(:disabled):active {
+    scale: var(--press-scale);
   }
 }
