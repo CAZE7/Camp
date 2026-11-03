@@ -3,9 +3,13 @@ import { cn } from '@/lib/utils';
 /**
  * components/brand/PlanPreview.tsx — was der Planer ausgibt, als Gerüst.
  *
- * Bewusst KEIN Bild: Die Startseite steht bildfrei im Testvertrag
- * (`app/page.test.tsx` erwartet `document.querySelector('img') === null`),
- * und ein Screenshot des Planers wäre nach der nächsten Layout-Runde veraltet.
+ * Bewusst KEIN Rasterbild: Ein Screenshot des Planers wäre nach der nächsten
+ * Layout-Runde veraltet, und die KI-Platzhalter aus dem Konzept-Prototyp
+ * werden laut BILDRECHTE.md nicht ausgeliefert. Seit P1
+ * (Designkonzept 2026-11) gilt statt des alten Bildverbots ein Bildvertrag:
+ * Inhaltsbilder entstehen ausschließlich über ContentImage mit AVIF, festen
+ * Maßen, Alt-Text und Bildunterschrift. Das Hero-Foto folgt in P2 mit
+ * eigener Fotografie.
  * Die Vorschau besteht deshalb aus dem, was der Planer wirklich zeichnet:
  * Bauteile, eine Trasse und die Beschriftung daran.
  *

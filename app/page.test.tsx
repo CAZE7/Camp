@@ -17,10 +17,21 @@ describe('Home Page', () => {
     expect(screen.getByText(/Dach, Elektrik, Heizung und Sicherheit an einem Ort\./)).toBeInTheDocument();
   });
 
-  it('uses a text-led, image-free hero with page index and mobile quick navigation', () => {
+  it('keeps one H1, enforces the image contract, and shows page index and quick navigation', () => {
     render(<Home />);
 
-    expect(document.querySelector('img')).not.toBeInTheDocument();
+    // Designkonzept 2026-11, P1: Das alte Bildverbot ist durch einen
+    // Bildvertrag ersetzt. Die Startseite bleibt bis P2 absichtlich ohne
+    // Foto — die Motive sind eigene Aufnahmen, KI-Platzhalter werden nicht
+    // ausgeliefert (BILDRECHTE.md). Sobald P2 das Hero-Foto setzt, greift
+    // dieser Guard: Alt-Text, feste Maße und Bildunterschrift sind Pflicht.
+    expect(document.querySelectorAll('h1')).toHaveLength(1);
+    for (const img of document.querySelectorAll('img')) {
+      expect(img).toHaveAttribute('alt');
+      expect(img).toHaveAttribute('width');
+      expect(img).toHaveAttribute('height');
+      expect(img.closest('figure')?.querySelector('figcaption') ?? null).not.toBeNull();
+    }
     const index = screen.getByRole('navigation', { name: /Inhaltsverzeichnis der Startseite/i });
     expect(within(index).getByRole('link', { name: /Werkzeuge/ })).toHaveAttribute(
       'href',

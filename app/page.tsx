@@ -13,16 +13,20 @@ import { buttonVariants } from '@/components/ui/button';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 
 /**
- * D-7 Startseite: bildfreier, typografischer Einstieg mit direkt erreichbaren
+ * D-7 Startseite: typografischer Einstieg mit direkt erreichbaren
  * Werkzeugen, Rechnern und Leitfäden. Ein H1, klare technische Einordnung.
+ * Das Hero-Foto aus dem Designkonzept 2026-11 folgt in P2 mit eigener
+ * Fotografie; bis dahin bleibt die Seite bewusst ohne Platzhalterbild.
  *
  * Aufbau (eine Kante, ein Rhythmus):
  *   1. Kopfzeile mit Einordnung — wo bin ich.
  *   2. Hero: Anspruch links, Inhaltsverzeichnis und Plan-Vorschau rechts.
- *      Rechts steht bewusst kein Bild: Die Seite bleibt bildfrei
- *      (`app/page.test.tsx`), und die Vorschau zeigt als Gerüst, was der
- *      Planer ausgibt — statt eines Screenshots, der nach der nächsten
- *      Layout-Runde veraltet ist.
+ *      Rechts steht vorläufig kein Foto: Seit P1 gilt statt des alten
+ *      Bildverbots ein Bildvertrag (`ContentImage.test.tsx`). Die Motive sind
+ *      eigene Aufnahmen (FOTOMOTIV-KATALOG.pdf); KI-Platzhalter aus dem
+ *      Konzept-Prototyp werden laut BILDRECHTE.md nicht ausgeliefert. Die
+ *      Vorschau zeigt als Gerüst, was der Planer ausgibt — statt eines
+ *      Screenshots, der nach der nächsten Layout-Runde veraltet ist.
  *   3. Die Abschnitte tragen ihre Überschrift über `SiteSection`: eine H2
  *      je Abschnitt, Anker auf die Überschrift, damit die Sprungziele des
  *      Inhaltsverzeichnisses und der Schnellnavigation zusammenpassen.

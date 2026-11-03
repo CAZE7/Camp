@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 
+import { freigegebeneBilder, bildIstFreigegeben, type Produktionsbild } from '@/lib/seo/bildSitemap';
 import { SITEMAP_ROUTES } from '@/lib/seo/inventory';
 import { siteUrl } from '@/lib/site';
 
@@ -18,13 +19,38 @@ import { siteUrl } from '@/lib/site';
  *
  * `priority` ist eine relative Angabe innerhalb dieser Auslieferung, kein
  * Versprechen an Suchmaschinen.
+ *
+ * Bilder (P3/P4): `images` kommt aus `lib/seo/bildSitemap.ts`, derselben
+ * Liste wie das WebPage-Schema. Solange keine eigene Aufnahme mit geklärten
+ * Rechten eingetragen ist, wird KEIN Bild behauptet — die Sitemap bleibt dann
+ * exakt wie vorher. P2 liefert die Fotos, nicht dieses Modul.
  */
 export const dynamic = 'force-static';
 
+export function sitemapEintraege(
+  bilder: readonly Produktionsbild[] = freigegebeneBilder()
+): MetadataRoute.Sitemap {
+  const gueltigeSeiten = new Set(SITEMAP_ROUTES.map((route) => route.path));
+  const bilderNachSeite = new Map<string, string[]>();
+
+  for (const bild of bilder) {
+    if (!bildIstFreigegeben(bild) || !gueltigeSeiten.has(bild.seite)) continue;
+    const vorhanden = bilderNachSeite.get(bild.seite) ?? [];
+    vorhanden.push(siteUrl(bild.pfad));
+    bilderNachSeite.set(bild.seite, vorhanden);
+  }
+
+  return SITEMAP_ROUTES.map((route) => {
+    const images = bilderNachSeite.get(route.path);
+    return {
+      url: siteUrl(route.path),
+      changeFrequency: route.changeFrequency,
+      priority: route.priority,
+      ...(images && images.length > 0 ? { images } : {}),
+    };
+  });
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  return SITEMAP_ROUTES.map((route) => ({
-    url: siteUrl(route.path),
-    changeFrequency: route.changeFrequency,
-    priority: route.priority,
-  }));
+  return sitemapEintraege();
 }

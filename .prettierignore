@@ -20,6 +20,11 @@ docs/ci/workflows
 # Von Next.js automatisch generiert
 next-env.d.ts
 
+# Von der skills-CLI installierte, fremde Skill-Dateien: nicht umformatieren.
+# Der Inhalt kommt aus einem externen Repository, und skills-lock.json
+# bezieht sich auf die Originaldateien.
+.agents/
+
 # Git config
 .gitattributes
 
