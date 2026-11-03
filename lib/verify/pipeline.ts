@@ -25,6 +25,7 @@
  *      hat.
  */
 
+import { keepClientLogicSentinel } from '../clientLogicSentinel';
 import type { Node } from '../domain/graph';
 
 import {
@@ -192,6 +193,7 @@ function coverageOf(checks: readonly CheckResult[], rulesApplied: number, rulesS
  *   nicht mit Werten, die sie nicht verantworten kann.
  */
 export function verifyPlan(input: VerificationInput): VerificationReport {
+  keepClientLogicSentinel('camp-logic-sentinel:verify');
   const options = verificationOptions(input.options ?? {});
   const graph = buildConductionGraph(input.nodes, input.edges, { context: options.context });
   const context: PassContext = { nodes: input.nodes, edges: input.edges, graph, options };

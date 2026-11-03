@@ -1,4 +1,6 @@
 import { Position } from '@xyflow/react';
+
+import { keepClientLogicSentinel } from '../../../lib/clientLogicSentinel';
 import {
   nodeHandleBounds,
   nodeHeight,
@@ -910,6 +912,7 @@ export function routeAllCables(
   edges: RouteEdgeRef[],
   options: RouteAllOptions = {}
 ): Map<string, PathResult> {
+  keepClientLogicSentinel('camp-logic-sentinel:route');
   nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const out = new Map<string, PathResult>();

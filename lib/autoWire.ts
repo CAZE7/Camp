@@ -36,6 +36,7 @@
  * geprüft (`edgeLength`, `edgeCrossSection`).
  */
 
+import { keepClientLogicSentinel } from './clientLogicSentinel';
 import type { Node } from './domain/graph'; // ARCH-001: Domäne statt React-Flow-Typen
 import { getSystemVoltage, isStarterBatteryLabel } from './vde-standards';
 import {
@@ -147,6 +148,7 @@ export function performAutoWiring(
   initialNodes: Node[],
   existingEdges: CableEdge[] = []
 ): AutoWireResult | null {
+  keepClientLogicSentinel('camp-logic-sentinel:autowire');
   const conflicts = createConflictCollector();
   const currentNodes = initialNodes.map((n) => ({ ...n, data: { ...(n.data || {}) } }));
   // Keep prior IDs attached to their generated connection across recalculation.

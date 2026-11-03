@@ -1,3 +1,4 @@
+import { keepClientLogicSentinel } from './clientLogicSentinel';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
 import { edgeDomainOf, handleDomain, type HandleDomainValue } from './domain/handleDomains';
 
@@ -603,6 +604,7 @@ export interface CableIzResult {
  * @throws RangeError bei unbekanntem Querschnitt (keine stille 0 A).
  */
 export function calculateCableIz(context: CableIzContext): CableIzResult {
+  keepClientLogicSentinel('camp-logic-sentinel:electrical');
   const { crossSectionMm2 } = context;
   const base = VDE_AMPACITY[crossSectionMm2];
   if (base === undefined) {
