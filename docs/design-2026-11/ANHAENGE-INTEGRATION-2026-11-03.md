@@ -172,12 +172,13 @@ Content-Cluster aus Anhang A existieren hier **nicht**.
    **Annahmen**; die Search Console ist nicht angebunden. Es gibt weiterhin
    kein Ranking- und kein CPA-Versprechen. Keyword → Anzeige → H1 →
    Bildunterschrift → CTA bleibt die Message-Match-Kette aus §7.
-5. **Rechtslage: Impressum erledigt, P0 bleibt teilweise offen.** Beide Anhänge
-   bestätigen unabhängig die fünf offenen Impressumsfelder und die
-   unvollständige Datenschutzerklärung. Die in Anhang A und B genannten
-   Betreiberangaben sind in §6 dieses Dokuments dokumentiert und nach Freigabe
-   des Betreibers in `lib/siteLegal.ts` eingetragen (§9). Die
-   Datenschutzerklärung, CMP und Consent Mode v2 bleiben offen.
+5. **Rechtslage: in diesem Baum vollständig.** Die in Anhang A und B genannten
+   Betreiberangaben sind in §6 dokumentiert und nach Freigabe eingetragen;
+   `main` hat dieselben Angaben mit PR #597 übernommen. Die Warnung aus den
+   Anhängen („Datenschutz nur Kurzfassung") betraf einen anderen Repo-Stand:
+   `app/datenschutz/page.tsx` ist hier vollständig, und ohne Cookies/Tracking
+   ist kein CMP nötig. Offen sind Ads-Konto, Search Console und
+   Conversion-Events als Setup/Messung, keine Rechtstexte.
 
 ## 6. Rechtliche Angaben aus den Anhängen — eingetragen (2026-11-03)
 
@@ -248,13 +249,13 @@ empfehlenswert; dieser Text ist keine Rechtsberatung.
 
 ## 8. Konsequenz für die Phasen (§9 des Konzepts)
 
-| Phase | Ergänzung aus den Anhängen                                             | Status                                                 |
-| ----- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
-| P0    | Betreiberangaben bestätigen, Datenschutz/CMP klären                    | Impressum **erledigt** (§6); Datenschutz/CMP **offen** |
-| P1    | Tokens, `ContentImage`, Bildvertrag                                    | **umgesetzt**, `npm run check` + `npm run build` grün  |
-| P2    | Hero-Foto + 28 bedingte Zusatzmotive; Vergleichsseite **fertig** (§10) | Bilder **offen**, Rest umgesetzt                       |
-| P3    | Content-Cluster Wasser/Gas/Dach/Zulassung, `ItemList`/`Product`-Schema | Kandidat, **nicht freigegeben**                        |
-| P4    | Gates, Bild-Sitemap, E2E 375/768/1440, Lighthouse                      | offen                                                  |
+| Phase | Ergänzung aus den Anhängen                                             | Status                                                   |
+| ----- | ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| P0    | Betreiberangaben, Datenschutz, Fotorechte, Ads-Konto                   | **Rechtstexte erledigt** (§6); Fotos und Ads-Setup offen |
+| P1    | Tokens, `ContentImage`, Bildvertrag                                    | **umgesetzt**, `npm run check` + `npm run build` grün    |
+| P2    | Hero-Foto + 28 bedingte Zusatzmotive; Vergleichsseite **fertig** (§10) | Bilder **offen**, Rest umgesetzt                         |
+| P3    | Content-Cluster Wasser/Gas/Dach/Zulassung, `ItemList`/`Product`-Schema | Kandidat, **nicht freigegeben**                          |
+| P4    | Gates, Bild-Sitemap, E2E 375/768/1440, Lighthouse                      | offen                                                    |
 
 ## 9. In diesem Repo umgesetzt (2026-11-03)
 
@@ -342,10 +343,12 @@ keine Anker ohne Ziel, keine `aria-labelledby` ohne Ziel, genau eine H1, kein
 selbst installiert; damit liefen die komplette E2E-Suite, axe, Lighthouse und
 eine eigene Browser-Messreihe über 375/768/1440 in hell und dunkel. Alle
 Ergebnisse, die zwei offenen Baseline-Gruppen und die Grenzen stehen in
-[`VERIFIKATION-2026-11-03.md`](VERIFIKATION-2026-11-03.md). Das visuelle Gate
-bleibt offen: Die acht Impressum-Baselines sind veraltet und müssen in Linux-CI
-mit dem offiziellen Playwright-Chromium neu gezogen werden. Datenschutz, CMP und
-Consent Mode v2 bleiben P0-Baustelle. Kein Ranking- und kein CPA-Versprechen.
+[`VERIFIKATION-2026-11-03.md`](VERIFIKATION-2026-11-03.md). `main` hat mit PR
+#597 bereits aktualisierte Baselines; dieser PR übernimmt sie beim Merge. Mit
+dem hier verwendeten Lambda-Chromium wurden keine Baselines überschrieben.
+Rechtstexte sind vollständig; offen bleiben Ads-Konto, Search Console und
+Conversion-Events sowie die eigenen Fotos für P2. Kein Ranking- und kein
+CPA-Versprechen.
 
 ---
 

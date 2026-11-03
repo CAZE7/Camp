@@ -20,14 +20,14 @@ JavaScript im HTML.
 
 ## 1. Auftrag und Diagnose
 
-| Wunsch                                     | Wird im Konzept zu                                                                                                           |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| „besser passender“, nicht verspielt        | Dokumentarische Werkstatt-Sprache statt Software-Dashboard; Rhythmus aus Typografie und Bildausschnitt, nicht aus Dekoration |
-| „nicht so mega KI“                         | Harte Anti-Referenzliste (§3), echte Fotografie statt generierter Motive, keine `//`-Kicker, keine Icon-Kachelwüste          |
-| „mehr Bilder“                              | §4: drei Bildklassen, Motivplan, ~40 Bildmotive, Auslieferung in AVIF, Bildrechte, Alt-Texte, Bild-Sitemap                   |
-| „Micro-Interactions, vielleicht Animation“ | §6: zwölf exakt bezifferte Interaktionen, genau ein gestaffelter Auftritt pro Sitzung, ansonsten ≤ 150 ms                    |
-| „nicht wie von einem 15-Jährigen“          | Erwachsene Zurückhaltung: ein Akzent, 4 px Radius, keine Bounces, keine Verläufe, keine erfundenen Siegel                    |
-| „absolut SEO und SEA optimiert“            | §7 und §8: messbare Budgets, konkrete Dateipfade, P0-Blocker für bezahlten Traffic                                           |
+| Wunsch                                     | Wird im Konzept zu                                                                                                            |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| „besser passender“, nicht verspielt        | Dokumentarische Werkstatt-Sprache statt Software-Dashboard; Rhythmus aus Typografie und Bildausschnitt, nicht aus Dekoration  |
+| „nicht so mega KI“                         | Harte Anti-Referenzliste (§3), echte Fotografie statt generierter Motive, keine `//`-Kicker, keine Icon-Kachelwüste           |
+| „mehr Bilder“                              | §4: drei Bildklassen, Motivplan, ~40 Bildmotive, Auslieferung in AVIF, Bildrechte, Alt-Texte, Bild-Sitemap                    |
+| „Micro-Interactions, vielleicht Animation“ | §6: zwölf exakt bezifferte Interaktionen, genau ein gestaffelter Auftritt pro Sitzung, ansonsten ≤ 150 ms                     |
+| „nicht wie von einem 15-Jährigen“          | Erwachsene Zurückhaltung: ein Akzent, 4 px Radius, keine Bounces, keine Verläufe, keine erfundenen Siegel                     |
+| „absolut SEO und SEA optimiert“            | §7 und §8: messbare Budgets, konkrete Dateipfade, Rechtsvoraussetzungen und verbleibende Setup-Schritte für bezahlten Traffic |
 
 ### Befunde am Ist-Zustand (belegt)
 
@@ -393,15 +393,21 @@ Ansichten ohne Inhalt · Verzeichnisform der Adressen (`trailingSlash: true`).
 
 ## 8. SEA — die bezahlte Landestrecke
 
-### P0-Blocker vor dem ersten Euro
+### Rechtliche Voraussetzungen — erledigt
 
-`lib/siteLegal.ts` enthält fünf `BITTE-EINTRAGEN`-Platzhalter; die
-Datenschutzerklärung nennt bislang nur `localStorage` (siehe
-`docs/impressum-datenschutz-befund.md`). Für Google Ads braucht die Zielseite
-eine erreichbare Anbieterkennzeichnung, eine vollständige Datenschutzerklärung
-(verantwortliche Stelle, Hosting durch GitHub Pages, Betroffenenrechte) und eine
-rechtskonforme Einwilligung. **Ohne diese drei Punkte keine Kampagne** — das
-Risiko ist Anzeigenablehnung oder Kontosperre, kein Designproblem.
+`lib/siteLegal.ts` ist vollständig befüllt, der Deploy-Wächter steht auf
+`LEGAL_NOTICE_GATE: block`, und `app/datenschutz/page.tsx` beschreibt Hosting
+und Server-Logs, lokale Speicherung, Kontaktwege und Betroffenenrechte ohne
+Platzhalter. Die Seite setzt **keine Cookies und kein Tracking** — deshalb ist
+im aktuellen Zustand kein CMP nötig, und Consent Mode v2 wird erst mit einem
+Ads-/Analytics-Tag relevant. Sobald GA4 oder Google Ads hinzukommen, sind
+Einwilligung (CMP + Consent Mode v2) und die CSP-Änderung an **beiden** Stellen
+Pflicht (siehe unten). **Ohne Einwilligung keine Kampagne** — das Risiko bleibt
+Anzeigenablehnung oder Kontosperre, kein Designproblem.
+
+Vor dem ersten Euro fehlen damit nur noch Setup und Messung: Ads-Konto,
+Search Console und die definierten Conversion-Events. Das sind keine
+Rechtsblocker.
 
 ### Grundsatz: kein bezahlter Klick auf die Startseite
 
@@ -470,7 +476,7 @@ festlegen, nicht im Konzept erfinden.
 
 | Phase | Inhalt                                                                                             | Dateien / Gates                                                                                                                              |
 | ----- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0    | Freigabe, Fototermin, Bildrechte, Impressum, CMP, Ads-Konto                                        | `lib/siteLegal.ts`, `design-2026-11/BILDRECHTE.md`, `docs/impressum-datenschutz-befund.md`                                                   |
+| P0    | Freigabe, Fototermin, Bildrechte, Ads-Konto — **Impressum und Datenschutz erledigt**               | `lib/siteLegal.ts` (befüllt), `app/datenschutz/page.tsx`, `design-2026-11/BILDRECHTE.md`                                                     |
 | P1    | Tokens, Bildkomponente, Tests umstellen — **umgesetzt**                                            | `app/globals.css`, `lib/designTokens.test.ts`, `app/page.test.tsx` (Bildverbot → Bildvertrag), `components/brand/ContentImage.tsx` + Test    |
 | P2    | Seiten: Hero mit **eigener Fotografie**, Beweisstrecke, Plan ↔ Foto, Bildunterschriften, OG-Karten | `app/page.tsx`, `components/seo/SeoPage.tsx`, `components/seo/PageStructuredData.tsx`, `app/siteMetadata.ts`, `app/sitemap.ts`               |
 | P3    | CSP, Tags, Events, Bild-Sitemap                                                                    | `app/layout.tsx`, `public/_headers`, `app/robots.ts` (unverändert)                                                                           |
@@ -536,7 +542,8 @@ bleibt die Startseite in P1 unverändert rendertreu — die optischen Gates
   für die Auslieferung gedacht — gerade weil die Vorgabe „nicht so mega KI“
   echte Fotografie verlangt.
 - Zu entscheiden: wer fotografiert, welche Lizenz/Modellfreigabe gilt, welches
-  CMP, welches Ads-Konto, ob ein englischer Zweig kommt.
+  Ads-Konto, ob ein englischer Zweig kommt. Ein CMP wird erst nötig, wenn
+  tatsächlich Tracking-Tags gesetzt werden.
 
 **Kein Ranking- und kein CPA-Versprechen.** Dieses Dokument beschreibt
 technische und gestalterische Zusagen; Positionen und Kosten entscheidet die
