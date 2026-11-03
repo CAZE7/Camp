@@ -80,8 +80,10 @@ Eine `ComparisonSpec` kann mit wenigen oder keinen `sections` die Hauptlast eine
 Seite tragen. Es wird dafür **keine** zweite Route, kein Flag und keine
 Kompatibilitätsschicht gebaut — es ist eine Eigenschaft des Datenmodells.
 
-Als Architektur-Entscheidung während der Umsetzung zu dokumentieren: **ADR 0039**
-(nächste freie Nummer, vgl. AGENTS.md §12; ADR 0026 ist bewusst ungenutzt).
+Als Architektur-Entscheidung während der Umsetzung zu dokumentieren: **ADR 0040**
+(nächste freie Nummer zum Zeitpunkt des Merges; 0039 war zwischenzeitlich von
+`#580` für Datenschutz und belegte Änderungsdaten vergeben worden — zwei ADRs mit
+derselben Nummer meldet kein Merge, deshalb hier die höhere).
 
 ## 4. Datenmodell
 
@@ -414,7 +416,7 @@ Datei, in der der heutige Rechner steht (§12).
    (schreibt `docs/seo/AUDIT.md`, `ANALYSE-UND-VISION.md` und
    `CAMP-SEO-GROWTH-REPORT.md` samt PDFs neu); Vorher/Nachher-Screenshots in
    375/768/1440 px, hell und dunkel (AGENTS.md M11-1 verlangt optische Freigabe);
-   ADR 0039.
+   ADR 0040.
 
 **Messbare Abnahmekriterien** — Bezug ist die am 2026-10-26 gemessene Baseline (Paket 0).
 
@@ -493,7 +495,7 @@ gegen `ef7a679` präsentiert war. Zwei Auflagen bleiben bis zum Merge: neue
 Pixel-Baselines für `start` aus `baselines.yml` (Linux, Artefakt, optische Prüfung)
 und DNS der neuen Domain auf GitHub Pages, bevor der Deploy läuft.
 
-Weiter in Paket 5: ADR 0039 (`docs/adr/0039-vergleich-im-content-modell.md`) mit
+Weiter in Paket 5: ADR 0040 (`docs/adr/0040-vergleich-im-content-modell.md`) mit
 Eintrag in der README-Tabelle; die falsche Behauptung in `scripts/seo/report.ts`
 („Diese Zahlen entstehen bei jedem Bau neu") korrigiert — der Bau prüft die Zahlen
 (`auditExport`), schreibt sie aber nicht nach `docs/seo/AUDIT.md`, das tut nur ein

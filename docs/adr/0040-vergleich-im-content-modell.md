@@ -1,4 +1,4 @@
-# ADR 0039: Vergleich im Content-Modell, Gates statt Redaktionsdisziplin
+# ADR 0040: Vergleich im Content-Modell, Gates statt Redaktionsdisziplin
 
 - **Status:** Angenommen
 - **Datum:** 2026-10-31

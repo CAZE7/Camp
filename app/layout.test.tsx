@@ -117,10 +117,10 @@ describe('RootLayout', () => {
 
     const person = siteGraph?.['@graph']?.find((node) => node['@type'] === 'Person');
     expect(person).toBeDefined();
-    expect(person?.['@id']).toBe('https://elektroplaner-camper.de/#author');
+    expect(person?.['@id']).toBe('https://12v-planer.de/#author');
     expect(person?.['name']).toBe('Jonas Rieckhoff');
     // Die Organisation steht im selben Graphen und wird nur verwiesen.
-    expect(person?.['worksFor']).toEqual({ '@id': 'https://elektroplaner-camper.de/#organization' });
+    expect(person?.['worksFor']).toEqual({ '@id': 'https://12v-planer.de/#organization' });
   });
 
   it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {

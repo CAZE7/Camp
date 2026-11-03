@@ -301,6 +301,7 @@ Branch Protection: `docs/CI.md`.
 | [0037](docs/adr/0037-eine-akzeptanzregel-fuer-die-nachbearbeitung.md)       | Akzeptanzregel Nachbearbeitung | Ein Vertrag für den C→D-Block: keine neue harte Verletzung, Freigabe nicht schlechter, wertgleich ΔLänge ≤ 0,5 %; Schritt-Gatter je Schritt gemessen verworfen (Versatz-Gate 2/49 auf 33 × I3), Verdrahtung als Kettenregel                  |
 | [0038](docs/adr/0038-static-hosting-security-headers-csp.md)                | Security-Headers Static Export | Zweischichtige Absicherung: Dokument-CSP + Referrer-Meta in `app/layout.tsx` (wirksam auf GitHub Pages) plus `public/_headers` (`nosniff`, `DENY`, `frame-ancestors 'none'`) für Header-fähige Static-CDNs                                   |
 | [0039](docs/adr/0039-datenschutz-art-13-und-belegte-aenderungsdaten.md)     | Datenschutz + Änderungsdaten   | Erklärung nach Art. 13 aus dem Code (Anbieter aus `SITE_LEGAL`, Speicher aus `storageKeys`, Test verbietet Analyse-Clients); `lastModified`/`dateModified` nur mit belegtem Tag (`lastReviewed`, 5 Seiten), kein Build- oder Git-Datum       |
+| [0040](docs/adr/0040-vergleich-im-content-modell.md)                        | Vergleich im Content-Modell    | `comparison?: ComparisonSpec` statt Slug-Sonderweg und eigenem Stylesheet; Rangliste vor dem Ratgebertext, ein Filter für Tabelle und Karten, `ItemList` mit inline-Produkten ohne Preise — Zusagen als Gates G1–G12 (Ladebooster: 5.964 → 3.408 Wörter) |
 
 ## Weitere Nachweise
 

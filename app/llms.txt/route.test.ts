@@ -44,7 +44,7 @@ describe('llms.txt', () => {
     const ziele = [...inhalt.matchAll(/\]\(([^)\s]+)\)/g)].map((match) => match[1]);
     expect(ziele.length).toBeGreaterThan(20);
     for (const ziel of ziele) {
-      expect(ziel).toMatch(/^https:\/\/elektroplaner-camper\.de\//);
+      expect(ziel).toMatch(/^https:\/\/12v-planer\.de\//);
       expect(ziel).not.toContain('caze7.github.io');
     }
   });

@@ -66,17 +66,17 @@ describe('authorPersonNode', () => {
     const node = authorPersonNode();
     expect(node['@type']).toBe('Person');
     expect(node['@id']).toBe(authorNodeId());
-    expect(node['@id']).toBe('https://elektroplaner-camper.de/#author');
+    expect(node['@id']).toBe('https://12v-planer.de/#author');
     expect(node.name).toBe(SITE_LEGAL.providerName);
     expect(node.url).toBe(authorProfileUrl());
-    expect(node.url).toBe(`https://elektroplaner-camper.de${AUTHOR_PROFILE_PATH}`);
+    expect(node.url).toBe(`https://12v-planer.de${AUTHOR_PROFILE_PATH}`);
   });
 
   it('verweist auf die Organisation statt sie neu zu beschreiben', () => {
     const node = authorPersonNode();
     // Ein zweiter Organization-Datensatz neben dem im Layout wäre eine zweite
     // Wahrheit über denselben Gegenstand.
-    expect(node.worksFor).toEqual({ '@id': 'https://elektroplaner-camper.de/#organization' });
+    expect(node.worksFor).toEqual({ '@id': 'https://12v-planer.de/#organization' });
     expect(node).not.toHaveProperty('alumniOf');
     expect(node).not.toHaveProperty('knowsAbout');
   });

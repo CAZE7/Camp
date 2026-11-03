@@ -87,7 +87,7 @@ describe('SeoPage', () => {
       '@graph': Array<Record<string, unknown>>;
     };
     const webPage = graph['@graph'].find((node) => node['@type'] === 'WebPage');
-    expect(webPage?.['author']).toEqual({ '@id': 'https://elektroplaner-camper.de/#author' });
+    expect(webPage?.['author']).toEqual({ '@id': 'https://12v-planer.de/#author' });
     // Die Person selbst steht im Wurzel-Layout, nicht auf jeder Seite — der
     // Verweis muss aber auf einen Knoten zeigen, der im Dokument existiert
     // (geprüft im Export-Audit: json-ld-autor).
