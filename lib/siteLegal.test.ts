@@ -44,12 +44,16 @@ describe('missingLegalFields', () => {
     expect(missingLegalFields(filled)).toEqual([]);
   });
 
-  it('der Stand im Baum ist unvollständig — alle fünf Felder offen', () => {
-    // Das ist die Aussage des Audits: Die Angaben fehlen, und zwar vollständig.
-    // Erfüllt jemand sie, wird dieser Test rot und muss MIT dem Eintrag
-    // aktualisiert werden (er dokumentiert dann den erledigten Mangel).
-    expect(missingLegalFields(SITE_LEGAL)).toEqual(Object.keys(LEGAL_FIELD_LABELS));
-    expect(isProviderComplete(SITE_LEGAL)).toBe(false);
+  it('der Stand im Baum ist vollständig — Name, Anschrift, E-Mail, Verantwortung', () => {
+    expect(missingLegalFields(SITE_LEGAL)).toEqual([]);
+    expect(isProviderComplete(SITE_LEGAL)).toBe(true);
+    expect(SITE_LEGAL).toEqual({
+      providerName: 'Jonas Rieckhoff',
+      street: 'Franzosenkoppel 46',
+      postalCodeAndCity: '22547 Hamburg',
+      email: 'kontakt@12v-planer.de',
+      contentResponsible: 'Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg',
+    });
   });
 
   it('ein halb ausgefülltes Impressum zählt als unvollständig', () => {

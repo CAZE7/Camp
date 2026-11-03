@@ -50,16 +50,15 @@ export const LEGAL_FIELD_LABELS: Readonly<Record<keyof SiteLegal, string>> = {
 };
 
 /**
- * Die Angaben, wie sie im Baum stehen. Solange hier Platzhalter stehen, ist
- * das Impressum unvollständig — die Seite zeigt ihre Aufforderungstexte, und
- * `npm run ci:verify-legal-notice` scheitert im Deploy.
+ * Die Angaben, wie sie im Baum stehen. Vom Betreiber eingetragen (2026-11-03).
+ * Keine Telefonnummer und keine USt-Id: die wurden nicht mitgegeben.
  */
 export const SITE_LEGAL: SiteLegal = {
-  providerName: LEGAL_PLACEHOLDER,
-  street: LEGAL_PLACEHOLDER,
-  postalCodeAndCity: LEGAL_PLACEHOLDER,
-  email: LEGAL_PLACEHOLDER,
-  contentResponsible: LEGAL_PLACEHOLDER,
+  providerName: 'Jonas Rieckhoff',
+  street: 'Franzosenkoppel 46',
+  postalCodeAndCity: '22547 Hamburg',
+  email: 'kontakt@12v-planer.de',
+  contentResponsible: 'Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg',
 };
 
 /** Ist in diesem Wert noch die Platzhalter-Marke? */

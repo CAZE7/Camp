@@ -13,6 +13,17 @@ Referenzplan (36 Knoten, 134 Kanten): `routeAllCables` 59,3 → 68,6 ms
 
 Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
 
+## LEDGER 2026-11-03 — Impressum mit Betreiberangaben
+
+**Anlass:** § 5 DDG. Die Seite zeigte Aufforderungstexte statt der Anschrift.
+
+**Verhalten:** `SITE_LEGAL` nennt Jonas Rieckhoff, Franzosenkoppel 46, 22547
+Hamburg und kontakt@12v-planer.de. Dieselbe Person ist inhaltlich verantwortlich.
+Keine Telefonnummer, keine USt-Id. Markenname auf der Seite bleibt 12V-Planer.
+Impressum bleibt indexiert und im Footer verlinkt.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-11-02 (8) — Miniaturübersicht: Rahmen als Leselinie
 
 **Anlass:** Nutzeraudit. Die Übersicht unten links zeigte den
