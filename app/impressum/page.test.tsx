@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { SITE_LEGAL, type SiteLegal } from '@/lib/siteLegal';
+import { LEGAL_PLACEHOLDER, SITE_LEGAL, type SiteLegal } from '@/lib/siteLegal';
 import ImpressumPage from './page';
 
 /**
@@ -27,6 +27,14 @@ const filled: SiteLegal = {
   contentResponsible: 'Mareike Jensen, Hafenstraße 12, 28217 Bremen',
 };
 
+const empty: SiteLegal = {
+  providerName: LEGAL_PLACEHOLDER,
+  street: LEGAL_PLACEHOLDER,
+  postalCodeAndCity: LEGAL_PLACEHOLDER,
+  email: LEGAL_PLACEHOLDER,
+  contentResponsible: LEGAL_PLACEHOLDER,
+};
+
 const original: SiteLegal = { ...SITE_LEGAL };
 
 afterEach(() => {
@@ -35,6 +43,7 @@ afterEach(() => {
 
 describe('Impressum — solange die Angaben fehlen', () => {
   it('zeigt die offenen Betreiberangaben', () => {
+    Object.assign(SITE_LEGAL, empty);
     render(<ImpressumPage />);
     expect(screen.getByText('12V-Planer — Betreiberangaben werden ergänzt.')).toBeTruthy();
     expect(
@@ -47,12 +56,30 @@ describe('Impressum — solange die Angaben fehlen', () => {
   it('zeigt keine Platzhalter-Marke und keine halbe Anschrift', () => {
     // Nur die E-Mail eingetragen: Der Anbieterblock bleibt beim
     // Aufforderungstext, statt „12V-Planer Ausbau GmbH" ohne Anschrift zu zeigen.
-    Object.assign(SITE_LEGAL, original, { email: filled.email });
+    Object.assign(SITE_LEGAL, empty, { email: filled.email });
     render(<ImpressumPage />);
     expect(screen.getByText('E-Mail: kontakt@12v-planer.example')).toBeTruthy();
     expect(screen.queryByText('12V-Planer — Betreiberangaben werden ergänzt.')).toBeTruthy();
     expect(screen.queryByText(filled.street)).toBeNull();
     expect(document.body.textContent).not.toContain('BITTE-EINTRAGEN');
+  });
+});
+
+describe('Impressum — Angaben im Baum', () => {
+  it('zeigt Name, Anschrift und kontakt@12v-planer.de, ohne Telefon und USt-Id', () => {
+    render(<ImpressumPage />);
+    expect(screen.getByText('Jonas Rieckhoff')).toBeTruthy();
+    expect(screen.getByText('Franzosenkoppel 46')).toBeTruthy();
+    expect(screen.getByText('22547 Hamburg')).toBeTruthy();
+    expect(screen.getByText('E-Mail: kontakt@12v-planer.de')).toBeTruthy();
+    expect(
+      screen.getByText('Nach § 18 Abs. 2 MStV: Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg')
+    ).toBeTruthy();
+    expect(screen.getByText(/12V-Planer ist ein Planungswerkzeug/)).toBeTruthy();
+    expect(screen.queryByText(/Telefon/)).toBeNull();
+    expect(document.body.textContent).not.toMatch(/USt-Id|Umsatzsteuer/);
+    expect(document.body.textContent).not.toContain('BITTE-EINTRAGEN');
+    expect(document.body.textContent).not.toContain('elektroplaner-camper.de');
   });
 });
 

@@ -66,11 +66,9 @@ describe('checkLegalNotice', () => {
   });
 
   it('prüft den echten Stand im Baum (Default-Argument)', () => {
-    // Solange niemand SITE_LEGAL ausfüllt, ist das Impressum unvollständig —
-    // genau der Befund des Audits. Nach dem Ausfüllen wird dieser Test grün.
     const result = checkLegalNotice();
-    expect(result.missing.length).toBeGreaterThan(0);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.missing).toEqual([]);
   });
 });
 
