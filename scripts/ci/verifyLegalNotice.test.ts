@@ -66,12 +66,9 @@ describe('checkLegalNotice', () => {
   });
 
   it('prüft den echten Stand im Baum (Default-Argument)', () => {
-    // Fortschreibung (2026-11-03): Alle fünf Angaben sind eingetragen und
-    // freigegeben. Der Wächter muss den echten Baum als vollständig melden.
     const result = checkLegalNotice();
     expect(result.ok).toBe(true);
     expect(result.missing).toEqual([]);
-    expect(result.message).toMatch(/vollständig/);
   });
 });
 

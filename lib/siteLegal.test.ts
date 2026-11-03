@@ -44,23 +44,14 @@ describe('missingLegalFields', () => {
     expect(missingLegalFields(filled)).toEqual([]);
   });
 
-  it('der Stand im Baum ist vollständig — kein Feld mehr offen', () => {
-    // Fortschreibung des Audits (2026-11-03): Der Betreiber hat alle fünf
-    // Angaben geliefert und freigegeben. Der Test hält jetzt den erledigten
-    // Zustand fest; ein Rückfall auf die Platzhalter-Marke macht ihn rot.
+  it('der Stand im Baum ist vollständig — Name, Anschrift, E-Mail, Verantwortung', () => {
     expect(missingLegalFields(SITE_LEGAL)).toEqual([]);
     expect(isProviderComplete(SITE_LEGAL)).toBe(true);
-    expect(Object.values(SITE_LEGAL).some(isPlaceholderText)).toBe(false);
-  });
-
-  it('die eingetragenen Angaben sind genau die freigegebenen', () => {
-    // Keine Fixture, keine erfundene Anschrift: Herkunft und Freigabe stehen
-    // in docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md §6.
     expect(SITE_LEGAL).toEqual({
       providerName: 'Jonas Rieckhoff',
       street: 'Franzosenkoppel 46',
       postalCodeAndCity: '22547 Hamburg',
-      email: 'kontakt@elektroplaner-camper.de',
+      email: 'kontakt@12v-planer.de',
       contentResponsible: 'Jonas Rieckhoff, Franzosenkoppel 46, 22547 Hamburg',
     });
   });

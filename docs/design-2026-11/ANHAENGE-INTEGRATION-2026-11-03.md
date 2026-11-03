@@ -192,8 +192,14 @@ Content-Cluster aus Anhang A existieren hier **nicht**.
 **Freigabe:** Der Betreiber hat am 2026-11-03 in dieser Sitzung ausdrücklich
 bestätigt: „Ja das Impressum kannst du so übernehmen". Damit stehen alle fünf
 Felder in `lib/siteLegal.ts`; `missingLegalFields()` ist leer, der Deploy-Wächter
-läuft auf `LEGAL_NOTICE_GATE: block`, und `lib/siteLegal.test.ts` pinnt die
-freigegebenen Werte gegen einen Rückfall. Der Anbieter ist eine **natürliche
+läuft auf `LEGAL_NOTICE_GATE: block`, und die Tests pinnen den vollständigen
+Zustand gegen einen Rückfall.
+
+**Abgleich mit `main` (PR #597):** `main` hat dieselben Angaben inzwischen
+ebenfalls eingetragen, mit `kontakt@12v-planer.de` als Kontaktadresse. Dieser
+Branch übernimmt nach dem Abgleich genau den `main`-Stand der Rechtsdateien;
+die E-Mail unten in der Tabelle ist die historische Angabe aus Anhang B, nicht
+die ausgelieferte Adresse. Der Anbieter ist eine **natürliche
 Person** — ein Rechtsformzusatz ist dafür nicht nötig; die Feldbezeichnung und
 der Modulkommentar sagen das jetzt ausdrücklich. Für
 `contentResponsible` (§ 18 Abs. 2 MStV) wurden Name und ladungsfähige Anschrift
