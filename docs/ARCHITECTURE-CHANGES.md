@@ -1,5 +1,18 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-03 (2) — Client-Logik im Export verschleiert
+
+**Anlass:** Die eigene Planungslogik lag im Static Export als lesbares
+JavaScript.
+
+**Verhalten:** Nach `next build` verschleiert `javascript-obfuscator` nur
+Chunks mit `camp-logic-sentinel`. React, Next, ELK und dagre bleiben.
+Kein Control-Flow-Flattening. Source-Maps bleiben aus. Gemessen am
+Referenzplan (36 Knoten, 134 Kanten): `routeAllCables` 59,3 → 68,6 ms
+(+16 %). JS gesamt +13 %.
+
+Keine Änderung an Querschnitt, Sicherung, Strom oder Normgrenzen.
+
 ## LEDGER 2026-11-03 — Impressum mit Betreiberangaben
 
 **Anlass:** § 5 DDG. Die Seite zeigte Aufforderungstexte statt der Anschrift.
