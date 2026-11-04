@@ -453,13 +453,126 @@ describe('CableEdge', () => {
       />
     );
     const baseEdge = getByTestId('base-edge');
-    // EIN Pfad mit Fehlerfarbe, Dash und Laufanimation — kein Doppel-Pfad mehr.
-    expect(baseEdge.style.stroke).toBe('var(--wire-error)');
+    // EIN Pfad mit Dash und Laufanimation — kein Doppel-Pfad mehr. Die Farbe
+    // bleibt die Domänenfarbe (§3.4): gestricheltes Rot war eine Fehlerleitung
+    // im Warmwasserrohr-Kleid (`--error` == `--de-pipe-hot`, hell #b3261e).
+    expect(baseEdge.style.stroke).toBe('var(--de-wire-dc-12v-plus)');
     expect(baseEdge.style.strokeDasharray).toBe('8 6');
     expect(baseEdge.style.animation).toBe('wire-error-dash 1s linear infinite');
     expect(container.querySelectorAll('.planner-edge-error-dash')).toHaveLength(0);
     expect(getByText(/Gesamt-Drop/)).toBeInTheDocument();
     warnSpy.mockRestore();
+  });
+
+  /**
+   * §3.4 (Freigabe 2026-11-04): Ein verletzter Spannungsfall darf die
+   * Domänenfarbe nicht ersetzen. Geprüft werden genau die vier Domänen, die
+   * das Produkt ausliefert (AP-3, gemessen über alle Vorlagen und knownPlans:
+   * DC Plus 35, DC Minus 8, AC L 5, Solar 3 Kanten) — jeweils im fehlerhaften
+   * Zustand, also dünner Querschnitt auf langer Strecke.
+   *
+   * Die Themenabhängigkeit sitzt in den CSS-Variablen, nicht im Token-Namen:
+   * `canvasColourGuard.test.ts` löst dieselben vier Tokens in `:root` UND
+   * `.dark` auf und vergleicht sie gegen jede Status- und Halo-Farbe.
+   */
+  describe.each([
+    {
+      name: 'DC Plus',
+      erwartet: 'var(--de-wire-dc-12v-plus)',
+      knoten: [
+        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
+      ] as Node[],
+      kante: { source: '1', target: '2', sourceHandle: 'plus' },
+      daten: { length: 20, crossSection: 1.5, edgeDomain: 'DC_12V' as const },
+    },
+    {
+      name: 'DC Minus',
+      erwartet: 'var(--de-wire-dc-12v-minus)',
+      knoten: [
+        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
+      ] as Node[],
+      kante: { source: '1', target: '2', sourceHandle: 'minus' },
+      daten: { length: 20, crossSection: 1.5, edgeDomain: 'DC_12V' as const },
+    },
+    {
+      name: 'AC L',
+      erwartet: 'var(--de-wire-ac-l)',
+      knoten: [
+        { id: '1', type: 'shorePower', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'consumer230v', position: { x: 300, y: 0 }, data: { watts: 2300 } },
+      ] as Node[],
+      kante: { source: '1', target: '2', sourceHandle: 'plus' },
+      daten: { length: 50, crossSection: 1.5, edgeDomain: 'AC_230V' as const },
+    },
+    {
+      name: 'Solar',
+      erwartet: 'var(--de-wire-solar)',
+      knoten: [
+        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'mpptController', position: { x: 150, y: 0 }, data: { amps: 30 } },
+        { id: '3', type: 'solar', position: { x: 300, y: 0 }, data: { watts: 540 } },
+      ] as Node[],
+      // Die Panel-Zuleitung 3→2 trägt den vollen Ladestrom; ihr Spannungsfall
+      // wird an der MPP-Spannung bemessen, nicht an 12,8 V (ELE-007).
+      kante: { source: '3', target: '2', sourceHandle: 'plus' },
+      daten: { length: 50, crossSection: 1.5, edgeDomain: 'Solar' as const },
+    },
+  ])('$name im Spannungsfall', ({ erwartet, knoten, kante, daten }) => {
+    it('streicht das Fehler-Muster, ohne die Domänenfarbe zu übermalen', () => {
+      const edge: Edge<CableEdgeData> = {
+        id: 'e1-2',
+        source: kante.source,
+        target: kante.target,
+        sourceHandle: kante.sourceHandle,
+        targetHandle: kante.sourceHandle,
+        type: 'cableEdge',
+        data: daten,
+      };
+      act(() => {
+        usePlannerStore.setState({ nodes: knoten, edges: [edge] });
+      });
+      mockReactFlow({
+        getNode: vi.fn((id: string) => knoten.find((n) => n.id === id) ?? null),
+        getNodes: vi.fn().mockReturnValue(knoten),
+      });
+
+      const { getByTestId } = renderEdge(
+        <CableEdge
+          {...defaultProps}
+          id={edge.id}
+          source={edge.source}
+          target={edge.target}
+          sourceHandle={kante.sourceHandle}
+          data={daten}
+        />
+      );
+
+      const baseEdge = getByTestId('base-edge');
+      expect(baseEdge.style.stroke).toBe(erwartet);
+      expect(baseEdge.style.stroke).not.toMatch(/error/);
+      expect(baseEdge.style.strokeDasharray).toBe('8 6');
+      expect(baseEdge.style.animation).toBe('wire-error-dash 1s linear infinite');
+    });
+  });
+
+  it('unterscheidet Fehler, AC und Solar über das Strichmuster', () => {
+    // Seit §3.4 trägt jede Leitung ihre Domänenfarbe — die Zustände bleiben
+    // nur durch das Muster unterscheidbar. Ohne Strom kein Spannungsfall,
+    // daher hier das jeweilige Domänenmuster.
+    mockReactFlow({ getNode: vi.fn(), getNodes: vi.fn().mockReturnValue([]) });
+
+    const muster = (daten: CableEdgeData) => {
+      const { container } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" data={daten} />);
+      return container.querySelector('[data-testid="base-edge"]')?.getAttribute('style') ?? '';
+    };
+
+    expect(muster({ length: 5, crossSection: 2.5, edgeDomain: 'AC_230V' })).toContain(
+      'stroke-dasharray: 10 6'
+    );
+    expect(muster({ length: 5, crossSection: 2.5, edgeDomain: 'Solar' })).toContain('stroke-dasharray: 3 5');
+    expect(muster({ length: 5, crossSection: 2.5, edgeDomain: 'DC_12V' })).not.toContain('stroke-dasharray');
   });
 
   it('rendert keinen Strom-Partikel auf stromlosen Leitungen (I = 0, Bug 14)', () => {

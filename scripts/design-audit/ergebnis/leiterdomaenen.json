@@ -1,5 +1,5 @@
 {
- "erfasst": "2026-11-04T08:20:24.703Z",
+ "erfasst": "2026-11-04T09:12:32.890Z",
  "plaene": [
   {
    "name": "vorlage minimalist",
@@ -105,13 +105,9 @@
  "statusAufZeichenflaeche": [
   {
    "datei": "components/edges/CableEdge.tsx",
-   "zeile": 764,
-   "text": "const stroke = hasDropError ? WIRE_COLORS.error : getWireColor({ edgeDomain, isPlus });"
-  },
-  {
-   "datei": "components/edges/CableEdge.tsx",
-   "zeile": 832,
-   "text": "stroke={routeInvalid ? 'var(--error)' : 'var(--oxide)'}"
+   "zeile": 838,
+   "text": "stroke={routeInvalid ? 'var(--error)' : 'var(--text-high)'}",
+   "typ": "Overlay"
   }
  ]
 }

@@ -122,10 +122,6 @@ for (const [planName, plan] of PLAENE) {
     eintrag.kanten += 1;
     eintrag.plaene.add(planName);
     gezeichnet.set(schluessel, eintrag);
-    // CableEdge.tsx:764 — bei Spannungsfall-Verletzung malt die Kante in
-    // WIRE_COLORS.error, also in einer Statusrolle. Das ist Daten-independent
-    // und zählt hier als Befund, nicht als gezeichnete Domäne.
-    if (name === 'wire-error') fehlerFarbKanten += 0;
   }
 }
 
@@ -158,8 +154,11 @@ for (const [domäne, info] of gezeichnet) {
 }
 
 // Quelle der Zeichenfläche: Status-Token, die in Edge- oder Node-Quellen als
-// Gemälde auftauchen (code-basiert, nicht daten-basiert).
-const quellbefund: Array<{ datei: string; zeile: number; text: string }> = [];
+// Gemälde auftauchen (code-basiert, nicht daten-basiert). Seit §3.4 (Freigabe
+// 2026-11-04) ist nicht jede Statusfarbe ein Verstoß, sondern nur die, die eine
+// Leitung umfärbt — Halos UNTER der Leitung sind erlaubt. Beides wird getrennt
+// gemeldet, sonst liest sich die Ausgabe als offener Befund, der keiner ist.
+const quellbefund: Array<{ datei: string; zeile: number; text: string; typ: 'Overlay' | 'Leiterebene' }> = [];
 for (const datei of [
   'components/edges/CableEdge.tsx',
   'components/edges/WaterPipeEdge.tsx',
@@ -170,7 +169,15 @@ for (const datei of [
     if (
       /stroke[^;\n]*(var\(--(error|ok|warn|oxide|wire-error|destructive)\)|WIRE_COLORS\.error)/.test(zeile)
     ) {
-      quellbefund.push({ datei, zeile: i + 1, text: zeile.trim().slice(0, 110) });
+      const malt = zeile.trim();
+      quellbefund.push({
+        datei,
+        zeile: i + 1,
+        text: malt.slice(0, 110),
+        // Der Halo sitzt in einem eigenen `<path>` mit `aria-hidden`,
+        // `pointerEvents: none` und breiterem Strich unter der Leitung.
+        typ: /stroke=\{routeInvalid/.test(malt) ? 'Overlay' : 'Leiterebene',
+      });
     }
   });
 }
@@ -208,5 +215,6 @@ for (const k of ergebnis.kollisionen) {
   );
 }
 console.log('\nStatus-Token, die in Leitungsquellen als Gemälde stehen:');
-for (const q of ergebnis.statusAufZeichenflaeche) console.log(`  ${q.datei}:${q.zeile}  ${q.text}`);
+for (const q of ergebnis.statusAufZeichenflaeche)
+  console.log(`  ${q.typ.padEnd(11)} ${q.datei}:${q.zeile}  ${q.text}`);
 console.log(`\ngeschrieben: ${path.relative(process.cwd(), path.join(OUT_DIR, 'leiterdomaenen.json'))}`);

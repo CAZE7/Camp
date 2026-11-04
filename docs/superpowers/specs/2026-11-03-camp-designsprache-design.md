@@ -180,6 +180,136 @@ die Vorlage zur ausdrücklichen Freigabe. Bis dahin gilt: **Statusfarben werden
 nie auf der Zeichenfläche verwendet und Leiterfarben nie in der Oberfläche** —
 als Regel jetzt, als Test in AP-3, als Trennung der Token-Namensräume in AP-2.
 
+## 3.4 Präzisierung der Farbregel — Freigabe 2026-11-04
+
+Die Vermessung in AP-3 (`scripts/design-audit/vermessung-leiterdomaenen.ts`,
+Ausgabe `ergebnis/leiterdomaenen.json`) hat §3.3 in einem Punkt widerlegt und
+in einem Punkt verschärft. Beides ist gemessen, nicht gelesen.
+
+**§3.3 ist latent, nicht aktuell.** Gezeichnet werden in ausgelieferten Plänen
+nur vier Domänen: DC_12V Plus (35 Kanten), DC_12V Minus (8), AC_230V L (5),
+Solar (3). Die vier kollidierenden Werte gehören zu DC_24V, DC_48V, AC_PE und
+PIPE_HOT — Domänen, die weder Quelltext noch eine Vorlage je setzt. Der
+Kollisionstest meldet für die tatsächlich gezeichneten Domänen null
+Zusammenstöße.
+
+**Real sind zwei andere Verstöße**, in jedem Plan: `CableEdge.tsx:764` ersetzt
+bei Spannungsfall-Verletzung die Domänenfarbe durch `--error` (hell `#b3261e`,
+zugleich `de-pipe-hot`), und `CableEdge.tsx:832` malt den Engstellen-Halo in
+`--oxide` `#a34a24` — nach dem eigenen Kommentar in `globals.css:810` bei
+1,08:1 zur Plus-Leitung, der häufigsten Domäne.
+
+**Die Regel lautet deshalb präzisiert:**
+
+> Statusfarben dürfen als eindeutige lokale Statusmarker oder Overlays
+> erscheinen, aber niemals die funktionale Domänenfarbe einer Leitung ersetzen.
+
+Damit ist die Trennung nicht „keine Statusfarbe im Canvas", sondern „keine
+Statusfarbe **anstelle** einer Domänenfarbe". Das erhält die Fehler- und
+Engstellen-Markierung, ohne die Domänenlesbarkeit zu zerstören.
+
+**Entschieden für AP-3:**
+
+1. **Spannungsfall-Leitung.** Die Domänenfarbe bleibt. Das vorhandene
+   Fehler-Strichmuster `8 6` (`cableStyle.ts:75`, `CableEdge.tsx:856-857`)
+   bleibt. Fehlerkennzeichnung am Pfad und WarningCenter-Information bleiben.
+   Die Tests müssen DC Plus, DC Minus, AC und Solar jeweils im fehlerhaften
+   Zustand und in beiden Themen abdecken, und die Muster müssen von den
+   normalen AC- (`10 6`) und Solar-Mustern (`3 5`) unterscheidbar bleiben.
+2. **Engstelle.** `routeTight` bekommt einen neutralen Halo. `--wire-selected`
+   ist dafür **verboten**, weil der Token im Hellmodus auf `--oxide` zeigt
+   (`globals.css:235`) — dieselbe Verwechslung, nur einen Token weiter
+   aufgehängt. Erlaubt ist `--text-high` direkt oder ein neu definiertes, in
+   beiden Themen neutrales Token. `routeInvalid` muss weiterhin eindeutig als
+   tatsächliche Routing-Verletzung erkennbar bleiben.
+3. **Backbone-Gruppen.** Deren Umrandung in Oxid ist bei jedem visuellen
+   Vergleich mitzubetrachten — sie ist dieselbe Farbe wie der heutige
+   Engstellen-Halo.
+
+## 3.5 B26 — das visuelle Gate sieht die Zeichenfläche nicht
+
+Der Baseline-Lauf vergleicht den **Erstbesuch**. `visual.spec.ts:69-71`
+klickt das Onboarding bewusst nicht weg, und `planner-dialog-backdrop`
+(fixed inset-0, Deckkraft 0,65 dunkel / 0,6 hell) liegt über der gesamten
+Fläche. Die Zeichenflächenänderung aus AP-2 schrumpft dadurch auf
+ΔR 1,75 / ΔG 1,4 / ΔB 1,4 im nahe-schwarzen Bereich — unter der
+pixelmatch-Schwelle. Die Alarmfarbe ist auf keiner der sechs erfassten Routen
+vorhanden (0 Elemente mit `destructive`/`critical`).
+
+**Verbindlich für AP-6, praktisch schon für AP-3 nötig:**
+
+1. Ein zweiter Baselinesatz im **tatsächlich bedienten Zustand** — Onboarding
+   abgeschlossen, Plan geladen, Dialog zu.
+2. Ein reproduzierbarer Testzustand mit **tatsächlich gerendertem kritischen
+   Warnzustand**, damit die geänderten Alarmfarben überprüfbar werden.
+3. Beide Sätze in **beiden Themen**.
+
+Bis dahin ist keine Aussage über die Zeichenfläche oder die Alarmfarben durch
+Pixel-Baselines belegt — nur durch Computed-Styles-Messung.
+
+## 3.6 B22 — Semantik der Bauteile, entschieden 2026-11-04
+
+Der gemessene „Widerspruch" zur React-Flow-Standardrolle hat sich aufgelöst,
+und zwar anders als vermutet. In `@xyflow/react` 12.11.6 setzt die Bibliothek
+die Rolle selbst (`dist/esm/index.js:2366`):
+
+```
+role: node.ariaRole ?? (isFocusable ? 'group' : undefined),
+"aria-roledescription": "node",
+tabIndex: isFocusable ? 0 : undefined,
+```
+
+`isFocusable` ist `!!(node.focusable || (nodesFocusable && typeof node.focusable
+=== 'undefined'))` (`index.js:2247`). Der ausgemessene Knoten **ohne** Rolle ist
+der Backbone-Gruppenknoten, und `components/planner/utils/backboneGroup.ts:82`
+setzt `focusable: false` für ihn — die fehlende Rolle ist also eine bewusste
+Eigenschaft dieses Deko-Elements, kein Bibliotheksfehler. Echte Bauteile
+(`BatteryNode.tsx:15-21` und elf weitere) bekommen `role="group"` von der
+Bibliothek.
+
+**Daraus folgt ein echter Befund, den die Messung nicht gezeigt hatte:** die
+Komponenten setzen `role="group"` zusätzlich auf ihre **eigene** Karte. Damit
+verschachtelt das Produkt zwei Gruppen — `role="group"` im Wrapper und
+`role="group"` in der Karte. Das ist der zu behebelnde Zustand, nicht eine
+fehlende Rolle.
+
+**Entschieden:**
+
+1. **Kein `role="img"`** für interaktive Bauteile — sie sind Selektions- und
+   Zielobjekte, keine Grafik.
+2. **Keine künstliche Grid- oder Listen-Semantik** für eine frei
+   positionierbare Zeichenfläche; eine Raster- oder Listenrolle würde
+   Navigationsverhalten versprechen, das der Canvas nicht liefert.
+3. **Grundsätzlich `role="group"` für Bauteil-Nodes.** Die Bibliothek liefert
+   sie bereits, wenn der Knoten fokussierbar ist. Wo eine explizite Rolle
+   nötig ist, heißt das Property `ariaRole` am **Knotenobjekt**
+   (`types/nodes.d.ts:20`, Default `"group"`); `domAttributes` kann die Rolle
+   nicht setzen, sie ist dort ausdrücklich ausgeschlossen.
+4. **Doppelte Rollen auflösen.** Die Karte trägt die Rolle nicht mehr, wenn der
+   Wrapper sie schon hat; der Zustand bleibt an der Karte lesbar.
+5. **Aussagekräftige lokalisierte Accessible Names** und
+   `aria-roledescription="Bauteil"` statt des englischen Bibliotheks-Werts
+   `"node"`. Die Bibliothek erlaubt beides pro Knoten (`ariaLabel`,
+   `ariaRoleDescription`). Die deutschen Texte für die Beschreibung laufen
+   bereits über `FLOW_ARIA_LABEL_CONFIG` (`FlowCanvas.tsx:76-99`).
+6. **Auswahlzustand über eine zugängliche Statusmeldung**, nicht über
+   `aria-selected`: die Rolle `group` trägt dieses Attribut nicht, und in
+   `@xyflow/react`/`@xyflow/system` kommt `aria-selected` nirgends vor.
+   Genutzt wird die Region `aria-live`, die die Bibliothek für
+   Bewegungsmeldungen schon anlegt (`ariaLabelConfig`-Schlüssel
+   `node.a11yDescription.ariaLiveMessage`), mit eigenem deutschen Text.
+7. **Keyboard-Bedienung erhalten.** `nodesFocusable`/`edgesFocusable` stehen
+   auf `true` (`FlowCanvas.tsx:1084-1085`); der Wrapper erhält `tabIndex=0` und
+   die Pfeiltastensteuerung von der Bibliothek (`index.js:2296-2327`). Keine
+   Änderung darf Fokussierbarkeit entfernen — der existing Test
+   `planner-canvas-a11y.spec.ts:29-34` hängt an der deutschen
+   „Pfeiltasten"-Beschreibung.
+8. **Screenreader-Prüfung ist Teil der Abnahme**, nicht Annahme. Kein Test im
+   Repo prüft heute eine Knoten-Rolle; `planner-canvas-a11y.spec.ts:27,73`
+   prüfen Rollen nur an Handles.
+
+---
+
 ## 4. Zielarchitektur: eine Quelle der Wahrheit, drei Schichten
 
 ```
@@ -522,6 +652,21 @@ AP-2 vor AP-3 bis AP-5, damit danach nichts mehr doppelt gepflegt wird. Jedes
 Paket ist ein eigener PR mit grünem Gate (`AGENTS.md` §8).
 
 ## 14. Entscheidungen
+
+**Entschlossen in der Freigaberunde 2026-11-04:**
+
+1. **Kollisionslösung §3.3** — die Liste ist latent; entschieden wird die
+   präzisierte Regel in §3.4: Statusfarbe als Marker ja, als Ersatz für eine
+   Domänenfarbe nein. Engstellen-Halo neutral, aber nicht über
+   `--wire-selected`. §3.4.
+2. **B22 Semantik** — `role="group"` über die Bibliothek, kein `role="img"`,
+   keine Grid-/List-Semantik, Auswahl über `aria-live`, nicht
+   `aria-selected`. Der Befund ist die doppelte Gruppe, nicht eine fehlende
+   Rolle. §3.6.
+3. **B26 Pixel-Gate** — zweiter Baselinesatz im bedienten Zustand plus ein
+   Zustand mit gerendertem kritischen Warnfall, beide Themen. §3.5.
+4. **Pakettrennung** — AP-3 läuft auf eigenem Branch und eigenem PR; AP-2 wird
+   vorher abgeschlossen. `AGENTS.md` §8.
 
 **Entschlossen in der Freigaberunde 2026-11-03:**
 
