@@ -323,10 +323,26 @@ Beide sind Selbstkorrekturen am Werkzeug, keine Befunde am Produkt:
 
 ## 6. Gate
 
+### Lokal
+
 `npm run check` (lint → format:check → typecheck → typecheck:tests →
 test:coverage) ist grün, Exit-Code 0, **295 Testdateien bestanden**,
 Gesamtabdeckung 87,82 % Statements / 79,57 % Branches / 89,82 % Lines.
-Protokoll: `ap2/check3.log`.
+Protokoll: `ap2/check5.log`.
+
+### CI — PR #600, Run 581, Ubuntu
+
+Der Lauf enthält alle drei Commits (`ef15950`, `c60dec5`, `97d7900`).
+
+| Job                                          | Ergebnis                                     |
+| -------------------------------------------- | -------------------------------------------- |
+| Typecheck, Tests & Build                     | **success**                                  |
+| End-to-End (Playwright, vier Projects)       | **success**                                  |
+| Visuelles Gate · Schritt 7 Pixel-Baselines   | **success** (76 Vergleiche)                  |
+| Visuelles Gate · Schritt 8 Lighthouse-Budget | failure — seit PR #599 auf `main`, siehe 6.2 |
+
+Der erste Lauf (Run 580) wurde durch den zweiten ersetzt (`concurrency` auf
+`quality.yml`), deshalb ist dort der E2E-Job abgebrochen statt fehlgeschlagen.
 
 Die drei Domain-Gates sind lokal lauffähig und waren es auch vor diesem
 Abschnitt — die Annahme, der Golden Master brauche CI, hat sich nicht bestätigt:
@@ -427,3 +443,26 @@ Aus der Messung dieses Pakets, bisher undokumentiert:
 | B25 | `--de-*` dupliziert die Markenpalette als eigene Literale.                                                                               | §1.1, Inventar                                            | AP-6         |
 | B26 | Das visuelle Gate vergleicht den Erstbesuch: Zeichenfläche liegt unter einem Scrim, Alarmfarbe ist auf keiner erfassten Route vorhanden. | §6.1                                                      | AP-6         |
 | B27 | Lighthouse-Budget `/camper-elektrik/ladebooster/` Perf 76 — seit PR #599 auf `main`, unabhängig von AP-2.                                | §6.2, Runs 353/354/580                                    | nicht Design |
+
+## 8. Abschluss
+
+AP-2 ist damit in allen vier Teilen erledigt und belegt:
+
+1. **Baseline vorher** — Engine, Computed Styles, gemalte Elemente, Screenshots.
+   Alle vier Läufe sind mit demselben Werkzeug wiederholt worden, nachdem die
+   Werkzeuge im Repo lagen (Abschnitt 4).
+2. **Token-Inventar gedeutet** — die 13 „überschriebenen" Rollen waren keine
+   Layer-Konflikte, sondern eine zweite Quelle; die `.planner-shell`-Regel ist
+   eine dokumentierte Scope-Regel und bleibt bestehen.
+3. **Konsolidierung** — zwei Flächenrollen, ein Literal pro Rolle, Legende und
+   Leitung aus einer Quelle, Alarmrot auf den gemessenen Wert gezogen.
+4. **Produktkommunikation** — Katalog und angewandte Prüfungen getrennt, im
+   Siegel, im Bericht, in den Durchgängen und im Hero.
+
+Kein Punkt der zehn Freigabe-Entscheidungen ist offen geblieben; Entscheidung 5
+(„keine verwendeten Farben ohne dokumentierten Grund") ist in 2.4 mit Grund und
+Zahlen beantwortet, nicht umgangen.
+
+Die Befunde B22–B27 bleiben stehen und gehören in AP-3 (Auswahl und
+Bedienbarkeit), AP-4 (Planer-Chrome und Erreichbarkeit der Legende) und AP-6
+(Wächter, `de-*`-Auflösung, Lighthouse-Budget).
