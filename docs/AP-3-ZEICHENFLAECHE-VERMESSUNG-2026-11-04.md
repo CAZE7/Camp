@@ -134,9 +134,11 @@ Ein Test, der „der erste Knoten hat eine Karte“ annimmt, ist gegen diese
 Struktur blind — der Kontrastwächter aus AP-2 filtert deshalb bereits nach
 `has: .node-card`.
 
-**Status weg vom Knopf (§10)** und **Touch-/Fokus-Nachzug**: noch nicht
-vermessen, weil die Rollenfrage in B22 dieselben Elemente betrifft und eine
-gemeinsame Entscheidung billiger ist als zwei.
+**Status weg vom Knopf (§10):** in diesem Dokument nachgemessen und umgesetzt —
+siehe §10 unten (Commit `9534222`, Befund B6, Entscheidung „Umriss in
+Fehlerfarbe"). **Touch-/Fokus-Nachzug:** weiterhin nicht vermessen. Der
+Zusammenhang mit B22 ist erledigt und war die richtige Reihenfolge: zuerst die
+Rollenfrage (§3.6), weil beide dieselben Elemente betreffen.
 
 ## 7. Nicht AP-3, aber angrenzend aufgefallen
 
