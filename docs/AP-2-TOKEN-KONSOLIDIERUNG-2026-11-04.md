@@ -316,7 +316,7 @@ Beide sind Selbstkorrekturen am Werkzeug, keine Befunde am Produkt:
 | `--canvas-grid` dunkel heller machen                                                    | Das Raster ist funktional schwach (1,02:1), aber es ist Gestaltungsmittel, kein WCAG-Objekt. Wertänderung wäre eine Designentscheidung ohne freigegebenes Bild.                     |
 | `--wire-ac-rgb` (106 166 255) vs. AC-Leitung                                            | Nach 2.2 identisch — der Chart folgt jetzt demselben Blau wie die Leitung. Kein offener Punkt mehr.                                                                                 |
 | `aria-selected` am Knoten                                                               | AP-3 (Auswahl und Bedienung), nicht Token.                                                                                                                                          |
-| Status-Panel überdeckt Bauteilkarten bei 1440 px, »React Flow«-Attribution unten rechts | AP-4 (Planer-Chrome). Im Screenshot `ap2/canvas-vor-dark.png` belegt.                                                                                                               |
+| Status-Panel überdeckt Bauteilkarten bei 1440 px, »React Flow«-Attribution unten rechts | AP-4 (Planer-Chrome). Im Screenshot `scripts/design-audit/ergebnis/canvas-vor-dark.png` belegt.                                                                                     |
 | Pixel-Baselines                                                                         | Linux-only (`baselines.yml`, workflow_dispatch). Diese Änderung bewegt dunkle Alarm-Rots und die Zeichenfläche — der nächste Baseline-Lauf muss sie neu abnehmen.                   |
 
 ---
@@ -346,17 +346,84 @@ Windows-Lauf schreibt `*-win32.png`, die das Gate nie findet
 (`.github/workflows/baselines.yml`, Kopfkommentar). Es läuft im Job `visual`
 von `quality.yml` und ist nur über einen `pull_request` erreichbar.
 
+## 6.1 Pixel-Gate auf Linux — ausgeführt, und warum es kein Nachweis ist
+
+Ausgeführt für PR #600, Run 580, Ubuntu-Runner, gegen die eingecheckten
+`*-linux.png` (Stand 03.11.2026, 21:06).
+
+**Ergebnis: 76 Pixelvergleiche grün, null Abweichung.** Das ist trotzdem **kein
+Nachweis für AP-2**, und der Grund ist gemessen, nicht vermutet:
+
+1. **Die Zeichenfläche liegt unter einem Scrim.** `visual.spec.ts:69–71` sagt
+   ausdrücklich, dass Onboarding-Dialoge _nicht_ weggeklickt werden. Auf
+   `/planer/` ist der Dialog offen, und `planner-dialog-backdrop`
+   (`fixed inset-0`, Deckkraft 0,65 dunkel) legt sich über die ganze Fläche.
+   Die Änderung wird dadurch unsichtbar zusammengepresst:
+
+   | Zustand   | Fläche    | mit Scrim 0,65 über Schwarz | gemessen in der Baseline |
+   | --------- | --------- | --------------------------- | ------------------------ |
+   | vor AP-2  | `#131518` | `#07080a`                   | `#060708`, `#0a0a0b`     |
+   | nach AP-2 | `#0e1114` | `#050607`                   | —                        |
+
+   ΔR 1,75, ΔG 1,4, ΔB 1,4 — im Bereich nahe Schwarz liegt das weit unter der
+   pixelmatch-Schwelle. Die Baseline selbst ausgelesen (`sharp`, unteres
+   Drittel, 25–95 % Breite) bestätigt das Modell: die Region ist Domäne von
+   `#191c1f` und den Scrim-Schwarzen, nicht von der Zeichenfläche.
+
+2. **Die Alarmfarbe ist auf keiner erfassten Route vorhanden.** Gemessen mit
+   `[class*="destructive"],[class*="critical"]`: `/planer/` = 0 Elemente,
+   `/` = 0 Elemente, in beiden Themen. Die 22 Stellen aus 2.4 tauchen in einem
+   Zustand auf, den keine der sechs Routen im Baseline-Lauf einnimmt.
+
+**Bewertung:** Die Baselines werden **nicht** aktualisiert. Es gibt nichts
+freizugeben — sie passen — und ein `--update-snapshots`-Lauf würde die
+Blindheit des Gates zementieren statt sie zu beheben. `baselines.yml` ist
+bewusst nicht dispatcht.
+
+**B26 (neu, AP-6):** Das visuelle Gate kann die Zeichenfläche und die
+Alarmcodierung nicht prüfen, weil es den Erstbesuchszustand vergleicht. Nötig
+ist ein zweiter Baselinesatz im _bedienten_ Zustand (Dialog geschlossen, Plan
+geladen) oder ein Crop auf die Zeichenfläche. Bis dahin ist die Aussage
+„Zeichenfläche dunkler, Alarmrot vereinheitlicht" ausschließlich durch
+Computed-Styles-Messung und die lokalen Vorher/Nachher-Bilder belegt
+(`scripts/design-audit/ergebnis/gemalte-elemente-*.json`).
+
+### 6.2 Der Fehlschlag im Job `visual` gehört nicht zu AP-2
+
+Der Job meldet `failure`, aber Schritt 7 (Pixel) ist grün. Fehlstufe ist
+Schritt 8, `npm run perf:lighthouse`:
+
+```
+[lighthouse] /camper-elektrik/ladebooster/  Perf 76 · A11y 100 · SEO 100 · LCP 1513 ms · CLS 0
+[lighthouse] 1 Budgetverstoß/-verstöße.
+```
+
+Zugeordnet durch Vergleich mit `main`:
+
+| Run | Stand                 | Pixel   | Lighthouse  |
+| --- | --------------------- | ------- | ----------- |
+| 353 | `e0c2cfc` (14:22)     | success | success     |
+| 354 | Merge PR #599 (21:47) | success | **failure** |
+| 580 | PR #600, AP-2         | success | **failure** |
+
+Der Budgetverstoß ist seit PR #599 auf `main` und unverändert — AP-2 hat ihn
+weder verursacht noch behoben. Er ist ein eigener Befund (Performance, keine
+Designstufe) und wird hier nur dokumentiert, damit die Zuordnung nicht verloren
+geht.
+
 ## 7. Befunde für die folgenden Pakete
 
 Aus der Messung dieses Pakets, bisher undokumentiert:
 
-| ID  | Befund                                                                                                      | Beleg                           | Paket        |
-| --- | ----------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------ |
-| B18 | Elf Markenrollen hatten durch das Legacy Mapping zwei Werte; der Token-Guard prüfte den nie gemalten.       | §1.1                            | hier behoben |
-| B19 | Die Zeichenfläche malte die Seitenfarbe; das Raster war bei 1,02:1 unwirksam.                               | §1.2, `ap2/canvas-vor-dark.png` | hier behoben |
-| B20 | Legende und Leitungen bezogen verschiedene Token-Familien.                                                  | §1.3                            | hier behoben |
-| B21 | Ein Prüfdurchgang ohne Gegenstand wurde als »erfüllt« gezeigt — in sechs von neun Plänen.                   | §1.5                            | hier behoben |
-| B22 | `.react-flow__node` trägt kein `aria-selected`; die Auswahl ist assistierender Technik nicht benannt.       | §1.4                            | AP-3         |
-| B23 | Die Routing-Legende ist bei 768 px nicht erreichbar.                                                        | §3.2                            | AP-4         |
-| B24 | Das Status-Panel überdeckt bei 1440 px Bauteilkarten; die »React Flow«-Attribution ist im Produkt sichtbar. | `ap2/canvas-vor-dark.png`       | AP-4         |
-| B25 | `--de-*` dupliziert die Markenpalette als eigene Literale.                                                  | §1.1, Inventar                  | AP-6         |
+| ID  | Befund                                                                                                                                   | Beleg                                                     | Paket        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------ |
+| B18 | Elf Markenrollen hatten durch das Legacy Mapping zwei Werte; der Token-Guard prüfte den nie gemalten.                                    | §1.1                                                      | hier behoben |
+| B19 | Die Zeichenfläche malte die Seitenfarbe; das Raster war bei 1,02:1 unwirksam.                                                            | §1.2, `scripts/design-audit/ergebnis/canvas-vor-dark.png` | hier behoben |
+| B20 | Legende und Leitungen bezogen verschiedene Token-Familien.                                                                               | §1.3                                                      | hier behoben |
+| B21 | Ein Prüfdurchgang ohne Gegenstand wurde als »erfüllt« gezeigt — in sechs von neun Plänen.                                                | §1.5                                                      | hier behoben |
+| B22 | `.react-flow__node` trägt kein `aria-selected`; die Auswahl ist assistierender Technik nicht benannt.                                    | §1.4                                                      | AP-3         |
+| B23 | Die Routing-Legende ist bei 768 px nicht erreichbar.                                                                                     | §3.2                                                      | AP-4         |
+| B24 | Das Status-Panel überdeckt bei 1440 px Bauteilkarten; die »React Flow«-Attribution ist im Produkt sichtbar.                              | `scripts/design-audit/ergebnis/canvas-vor-dark.png`       | AP-4         |
+| B25 | `--de-*` dupliziert die Markenpalette als eigene Literale.                                                                               | §1.1, Inventar                                            | AP-6         |
+| B26 | Das visuelle Gate vergleicht den Erstbesuch: Zeichenfläche liegt unter einem Scrim, Alarmfarbe ist auf keiner erfassten Route vorhanden. | §6.1                                                      | AP-6         |
+| B27 | Lighthouse-Budget `/camper-elektrik/ladebooster/` Perf 76 — seit PR #599 auf `main`, unabhängig von AP-2.                                | §6.2, Runs 353/354/580                                    | nicht Design |
