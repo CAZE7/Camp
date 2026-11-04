@@ -1,0 +1,117 @@
+{
+ "erfasst": "2026-11-04T08:20:24.703Z",
+ "plaene": [
+  {
+   "name": "vorlage minimalist",
+   "knoten": 6,
+   "kanten": 5
+  },
+  {
+   "name": "vorlage kastenwagen",
+   "knoten": 13,
+   "kanten": 13
+  },
+  {
+   "name": "vorlage autark",
+   "knoten": 14,
+   "kanten": 14
+  },
+  {
+   "name": "knownPlans/acdc.json",
+   "knoten": 6,
+   "kanten": 0
+  },
+  {
+   "name": "knownPlans/camper.json",
+   "knoten": 6,
+   "kanten": 5
+  },
+  {
+   "name": "knownPlans/complex.json",
+   "knoten": 14,
+   "kanten": 14
+  },
+  {
+   "name": "knownPlans/inverter.json",
+   "knoten": 4,
+   "kanten": 0
+  },
+  {
+   "name": "knownPlans/simple.json",
+   "knoten": 4,
+   "kanten": 0
+  },
+  {
+   "name": "knownPlans/solar.json",
+   "knoten": 4,
+   "kanten": 0
+  }
+ ],
+ "gezeichnet": [
+  {
+   "domäne": "DC_12V/+",
+   "token": "--de-wire-dc-12v-plus",
+   "hell": "#c62f21",
+   "dunkel": "#ff6b6b",
+   "kanten": 35,
+   "plaene": [
+    "vorlage minimalist",
+    "vorlage kastenwagen",
+    "vorlage autark",
+    "knownPlans/camper.json",
+    "knownPlans/complex.json"
+   ]
+  },
+  {
+   "domäne": "DC_12V/−",
+   "token": "--de-wire-dc-12v-minus",
+   "hell": "#3f4750",
+   "dunkel": "#8e9aaf",
+   "kanten": 8,
+   "plaene": [
+    "vorlage minimalist",
+    "vorlage kastenwagen",
+    "vorlage autark",
+    "knownPlans/camper.json",
+    "knownPlans/complex.json"
+   ]
+  },
+  {
+   "domäne": "AC_230V/+",
+   "token": "--de-wire-ac-l",
+   "hell": "#2563eb",
+   "dunkel": "#6aa6ff",
+   "kanten": 5,
+   "plaene": [
+    "vorlage kastenwagen",
+    "vorlage autark",
+    "knownPlans/complex.json"
+   ]
+  },
+  {
+   "domäne": "Solar/+",
+   "token": "--de-wire-solar",
+   "hell": "#b45309",
+   "dunkel": "#ffc857",
+   "kanten": 3,
+   "plaene": [
+    "vorlage kastenwagen",
+    "vorlage autark",
+    "knownPlans/complex.json"
+   ]
+  }
+ ],
+ "kollisionen": [],
+ "statusAufZeichenflaeche": [
+  {
+   "datei": "components/edges/CableEdge.tsx",
+   "zeile": 764,
+   "text": "const stroke = hasDropError ? WIRE_COLORS.error : getWireColor({ edgeDomain, isPlus });"
+  },
+  {
+   "datei": "components/edges/CableEdge.tsx",
+   "zeile": 832,
+   "text": "stroke={routeInvalid ? 'var(--error)' : 'var(--oxide)'}"
+  }
+ ]
+}
