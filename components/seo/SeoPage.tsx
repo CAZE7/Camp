@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
 import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
 import { PageShell } from '@/components/brand/PageShell';
+import { buttonVariants } from '@/components/ui/button';
 import {
   breadcrumbNode,
   faqNode,
@@ -211,22 +212,13 @@ export function SeoPage({
               `scripts/seo/linkGraph.ts`).
             */}
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href="/planer/"
-              className="inline-flex min-h-11 items-center bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
-            >
+            <Link href="/planer/" className={buttonVariants({ variant: 'default' })}>
               12V-Planer öffnen
             </Link>
-            <Link
-              href="/elektrik-planung/"
-              className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-            >
+            <Link href="/elektrik-planung/" className={buttonVariants({ variant: 'outline' })}>
               Rechner und Normgrundlagen
             </Link>
-            <Link
-              href="/rechner/"
-              className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
-            >
+            <Link href="/rechner/" className={buttonVariants({ variant: 'outline' })}>
               Alle Rechner ansehen
             </Link>
           </div>

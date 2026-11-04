@@ -136,9 +136,10 @@ Struktur blind — der Kontrastwächter aus AP-2 filtert deshalb bereits nach
 
 **Status weg vom Knopf (§10):** in diesem Dokument nachgemessen und umgesetzt —
 siehe §10 unten (Commit `9534222`, Befund B6, Entscheidung „Umriss in
-Fehlerfarbe"). **Touch-/Fokus-Nachzug:** weiterhin nicht vermessen. Der
-Zusammenhang mit B22 ist erledigt und war die richtige Reihenfolge: zuerst die
-Rollenfrage (§3.6), weil beide dieselben Elemente betreffen.
+Fehlerfarbe"). **Touch-/Fokus-Nachzug:** inzwischen vermessen und umgesetzt,
+siehe §11 unten. Der Zusammenhang mit B22 ist erledigt und war die richtige
+Reihenfolge: zuerst die Rollenfrage (§3.6), weil beide dieselben Elemente
+betreffen.
 
 ## 7. Nicht AP-3, aber angrenzend aufgefallen
 
@@ -421,3 +422,211 @@ einzige Nachweis, dass nichts anderes mitgezogen wurde.
   `.planner-entry-notice` fehlt. Einzeln bzw. in kleinerer Auswahl laufen beide
   grün (1 bestanden; 6 bestanden). dasselbe Bild zeigte sich schon vor §10.
   Zu beheben ist der Test, nicht die Oberfläche — Befund für AP-6.
+
+## 11. Touch- und Fokus-Nachzug umgesetzt (Aufgabe #17, 2026-11-04)
+
+### Messaufbau
+
+Der neue Lauf `scripts/design-audit/vermessung-touch-fokus.mjs` prüft den
+**gebauten Static Export**, nicht CSS-Quelltext und nicht den Dev-Server. Er
+öffnet den Referenzplan `?template=kastenwagen` und stellt zusätzlich den echten
+Zustand „500 W Dachplaner-Daten vorhanden“ her, damit auch der sonst bedingte
+Schließknopf des Solarhinweises gemessen wird.
+
+Gemessen wurden die sechs freigegebenen Breiten in beiden Themen:
+
+|  Breite | Messhöhe | sichtbare normale Bediener |
+| ------: | -------: | -------------------------: |
+|  375 px |   812 px |                         36 |
+|  390 px |   844 px |                         40 |
+|  768 px |  1024 px |                         55 |
+| 1024 px |   768 px |                         55 |
+| 1440 px |   900 px |                         57 |
+| 1920 px |  1080 px |                         57 |
+
+Bei normalen Bedienern gilt die tatsächlich gemalte Box aus
+`getBoundingClientRect()`, nicht eine Klasse mit angeblicher Mindestgröße.
+Tastatur-Erreichbarkeit und sichtbarer Fokus sind getrennte Messungen:
+
+1. Der Browser durchläuft die echte Reihenfolge mit `Tab`; ein
+   `element.focus()` gilt ausdrücklich nicht als Nachweis der Erreichbarkeit.
+2. Für jeden erreichten Planer-Stopp werden `:focus-visible`, Umriss bzw.
+   Schatten und der Kontrast des Umrisses gegen die tatsächlich gestapelten
+   Rückenflächen erfasst. Die Untergrenze ist 3 : 1.
+3. Die beim Start sichtbaren Tabstopps werden mit den erreichten IDs
+   abgeglichen. Dass insgesamt mehr Stopps erreicht werden als anfangs sichtbar
+   sind, ist erwartbar: React Flow führt beim Durchtabben auch zu Bauteilen und
+   Leitungen außerhalb des anfänglichen Ausschnitts.
+
+Canvas-Anschlüsse sind wie in §11 der Spezifikation separat behandelt. Ihr
+12-px-Marker ist nicht das Touchziel: Die Pseudoelement-Trefferlage wird als
+`Breite × --planner-viewport-zoom` auf Bildschirm-Pixel zurückgerechnet.
+Dasselbe gilt für den unsichtbaren SVG-Interaktionsstroke der Leitungen. Damit
+prüft der Lauf den Zielbereich, ohne die kleine CAD-Markierung fälschlich zum
+Verstoß zu erklären.
+
+### Ausgangsmessung
+
+Rohdaten: `scripts/design-audit/ergebnis/touch-fokus-vor.json`.
+
+- **Ein Touch-Befund**, in acht der zwölf Fälle: Die sichtbare Wortmarke
+  „12V-Planer“ maß bei 768, 1024, 1440 und 1920 px in beiden Themen nur
+  **65,70 × 19,50 px**. Bei 375 und 390 px ist die Menüleiste bewusst durch den
+  44-px-Menüknopf ersetzt; dort war die Wortmarke nicht sichtbar und deshalb
+  kein Bediener.
+- **0 nicht erreichbare sichtbare Tabstopps.** Je nach Breite waren beim Start
+  97 bis 130 sichtbar; der vollständige Durchlauf erreichte 114 bis 131
+  Planer-Stopps einschließlich der anfangs außerhalb des Canvas-Ausschnitts
+  liegenden Elemente.
+- **0 Fokusbefunde.** Der kleinste gemessene Umrisskontrast war 5,07 : 1 hell
+  und 5,89 : 1 dunkel. Knoten, Kanten, Ports und Planer-Chrome trugen bei
+  Tastaturfokus einen wahrnehmbaren Zustand.
+- **0 Port- und Kantenverstöße.** Je nach Ausschnitt waren 37 bis 49 Ports und
+  zwölf Kanten sichtbar. Trotz Zoomstufen von 0,50 bis 0,95 ergaben ihre
+  Trefferlagen jeweils exakt **44 × 44 Bildschirm-Pixel** bzw. einen
+  **44-px-Interaktionsstroke**.
+
+### Umsetzung
+
+`.cad-menubar__home` füllt jetzt mit `display: inline-flex`, `min-height: 44px`
+und `align-items: center` die bereits vorher 44 px hohe Markenfläche aus. Der
+Text, seine Lage und die Höhe der Menüleiste ändern sich nicht; nur die vorher
+auf die Glyphen beschränkte Linkbox wird vollständig klickbar.
+
+Dauerhafte Wächter:
+
+- `lib/designTokens.test.ts` hält die drei Eigenschaften der Wortmarke fest.
+- `tests/e2e/planner-canvas-a11y.spec.ts` misst die gerenderte Linkbox in den
+  Projekten, in denen die Menüleiste sichtbar ist, und bestätigt auf dem
+  Telefon ihren vorgesehenen Ersatz durch die mobile Navigation.
+- `vermessung-touch-fokus.mjs` bleibt der vollständige 6 × 2-Nachweis und
+  schreibt reproduzierbare Rohdaten.
+
+### Nachmessung
+
+Rohdaten: `scripts/design-audit/ergebnis/touch-fokus-nach.json`.
+
+| Prüfung                                    | Ergebnis nach der Änderung |
+| ------------------------------------------ | -------------------------- |
+| normale sichtbare Bediener unter 44 × 44   | **0**                      |
+| sichtbare, nicht per Tab erreichbare Ziele | **0**                      |
+| fehlender/zu schwacher Fokuszustand        | **0**                      |
+| Canvas-Ports unter 44 × 44                 | **0**                      |
+| Kanten-Interaktionsstroke unter 44 px      | **0**                      |
+
+Gezielt ausgeführt: `lib/designTokens.test.ts` **242/242 grün**, Build inklusive
+Export-Audit grün und `planner-canvas-a11y.spec.ts` in allen vier
+Playwright-Projekten **24/24 grün**. Die vollständige Projektprüfung steht am
+Checkpoint nach den verbleibenden AP-3-Aufgaben #18 und #19 an.
+
+## 12. B5 umgesetzt: echte Auswahl im Bauteilkatalog (Aufgabe #18, 2026-11-04)
+
+### Rollenklärung vor der Attribut-Änderung
+
+Die vorhandene Semantik war bereits eindeutig und anders als beim Canvas-Knoten
+in §3.6:
+
+| Element         | Rolle     | Bedeutung von `aria-selected` |
+| --------------- | --------- | ----------------------------- |
+| Kategorieinhalt | `listbox` | Auswahlcontainer              |
+| Katalogzeile    | `option`  | gültiger Auswahlträger        |
+| Canvas-Knoten   | `group`   | Attribut weiterhin verboten   |
+
+`aria-selected` war an der Katalogzeile also nicht falsch platziert, sondern mit
+`false` hart stillgelegt. Die Lösung ändert **keine Rolle** und überträgt die
+Canvas-Regel ausdrücklich nicht auf den Katalog.
+
+### Gebaut
+
+`Sidebar` hält genau einen Schlüssel für die aktive Katalogoption über alle
+Kategorien. `CategorySection` trennt reguläre Bauteile und Geräte-Vorlagen im
+Schlüssel; das ist nötig, weil mehrere Vorlagen absichtlich denselben Bauteiltyp
+verwenden. `ComponentTile` setzt jetzt `aria-selected={selected}`.
+
+Die Auswahl folgt dem Fokus und wird zusätzlich am Pointer-Down sowie am Click
+gesetzt:
+
+- Tab und Pfeiltasten wählen die erreichte Option aus,
+- Klick und Touch wählen dieselbe Option,
+- ein Desktop-Drag wählt bereits am Druckpunkt aus, obwohl seine Drag-Logik den
+  nativen Fokus absichtlich verhindert,
+- assistierende Technik kann einen synthetischen Click ohne vorheriges
+  Pointer-Ereignis senden und erhält trotzdem denselben Zustand.
+
+Die Form-Regel aus §10 ist jetzt wirksam: 1-px-Kante in `--text-high`, eigener
+2-px-Umriss in `--accent-line` und ein 10-%-Tint. Gemessen am gebauten Export:
+`role="option"`, Elternrolle `listbox` und `aria-selected="true"`; die Kante
+malt hell `rgb(22, 24, 26)`, dunkel `rgb(232, 235, 238)`, der Umriss hell
+`rgb(163, 74, 36)` und dunkel `rgb(226, 136, 95)`.
+
+### Wächter
+
+- `Sidebar.test.tsx`: Auswahl folgt dem Fokus, wechselt über Kategorien und
+  genau eine Option ist `selected: true`.
+- `ComponentTile.test.tsx`: gültige Option-Rolle und gemeldeter Zustand.
+- `lib/designTokens.test.ts`: Rollenpaar, dynamisches Attribut und die
+  dreiteilige Form-Regel; der hart codierte Wert ist verboten.
+- `planner-keyboard.spec.ts`: der vollständige Tastatur-Mini-Plan bestätigt den
+  Zustand vor und nach dem Hinzufügen am echten DOM.
+
+Gezielt: drei Vitest-Dateien **253/253 grün**; der vollständige
+Tastatur-Mini-Plan **1/1 grün**.
+
+## 13. B11 umgesetzt: Zustands-Vollständigkeit (Aufgabe #19, 2026-11-04)
+
+`buttonVariants` trägt jetzt den gemeinsamen Vertrag statt drei weitere
+handgebaute CTA-Kopien zu erzeugen:
+
+| Zustand    | Umsetzung                                                                          |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Standard   | jeweilige `variant` (`default`, `outline` usw.)                                    |
+| Hover      | vorhandene `hover:`-Regel jeder Variante                                           |
+| Aktiv      | `motion-safe:active:scale-[var(--press-scale)]`                                    |
+| Fokus      | `focus-visible:ring-2` plus Ring-Offset                                            |
+| Gesperrt   | `disabled` und `aria-disabled`, jeweils ohne Pointer und mit reduzierter Deckkraft |
+| Ausgewählt | `aria-selected:ring-2` plus Ring-Offset                                            |
+
+Für den Aktivzustand wurden keine Zahlen erfunden: Skalierung, Dauer und Kurve
+kommen aus `--press-scale` (0,96), `--motion-press` (150 ms) und `--ease-out`.
+Die neu ergänzte tokenisierte Transition nennt ihre Eigenschaften explizit und
+liegt samt Skalierung unter `prefers-reduced-motion: no-preference`; bei
+reduzierter Bewegung entfällt damit insbesondere der neue Skalensprung. Die
+bereits zuvor vorhandene reine Farbübergangsregel bleibt davon unberührt.
+
+Die drei Links „12V-Planer öffnen“, „Rechner und Normgrundlagen“ und „Alle
+Rechner ansehen“ in `SeoPage.tsx` verwenden jetzt unmittelbar
+`buttonVariants({ variant: 'default' | 'outline' })`. Damit haben sie nicht nur
+einen nachgebauten Hover, sondern denselben Fokus-, Aktiv- und
+Auswahlzustandsvertrag wie die übrigen Buttons.
+
+Dauerhafte Wächter:
+
+- `button.test.tsx` verlangt Aktiv-, Fokus-, Sperr- und Auswahlklassen samt den
+  drei vorhandenen Motion-Tokens.
+- `SeoPage.test.tsx` vergleicht alle drei CTAs exakt mit der gemeinsamen
+  Variantenausgabe.
+- `lib/designTokens.test.ts` koppelt Token-Verwendung, Zustandsvertrag und die
+  Anzahl der drei CTA-Konsumenten; die alten handgebauten Klassen sind
+  verboten.
+
+Gezielt: drei Vitest-Dateien **267/267 grün**, beide Typechecks grün und Build
+inklusive Export-Audit grün.
+
+## 14. Abschluss-Checkpoint für #17–#19
+
+Der vollständige Checkpoint lief nach der Umsetzung und Dokumentation:
+
+- `npm run check`: Exit 0; ESLint, Prettier, Produktions- und Test-Typecheck
+  sowie die vollständige Coverage-Suite sind grün.
+- `npm run build`: 47 statische Seiten erzeugt; Export-Audit für 42
+  SEO-Inhaltsseiten grün. Dieser Build liegt dem E2E-Lauf zugrunde.
+- Gezielter Abschlusslauf der geänderten Unit-/Token-Verträge: 267/267 grün.
+- E2E-Gesamtlauf über 21 Specs und alle vier Projekte, ausgenommen die drei
+  lokalen Pixel-Baseline-Specs: 644 Tests, davon 390 grün, 254
+  projektabhängig übersprungen und 0 fehlgeschlagen (27,9 Minuten).
+- Die zuvor beobachteten Isolationsfehler in `ui-audit-overlaps.spec.ts:173`
+  und beim Frischstart in `mobile-geometry.spec.ts` traten im seriellen
+  Gesamtlauf nicht erneut auf. Sie sind damit kein verbleibender AP-3-Blocker.
+
+Die Messartefakte, Implementierung, Wächter und der vollständige Checkpoint
+stimmen überein: #17, #18 und #19 sind abgeschlossen.

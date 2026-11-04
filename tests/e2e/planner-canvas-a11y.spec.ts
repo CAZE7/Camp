@@ -131,6 +131,25 @@ test.describe('Planer-Canvas: Barrierefreiheit', () => {
       await expect(internalHandles.nth(index)).not.toHaveAttribute('role', 'button');
     }
   });
+
+  test('§11: die sichtbare Planer-Wortmarke hat eine 44-px-Trefferhöhe', async ({ page }) => {
+    await openExampleCanvas(page);
+    const home = page.locator('.cad-menubar__home');
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+
+    // Auf dem Telefon ersetzt der 44-px-Menüknopf die gesamte Menüleiste.
+    if (viewport!.width < 768) {
+      await expect(home).toBeHidden();
+      return;
+    }
+
+    await expect(home).toBeVisible();
+    const box = await home.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
 });
 
 test.describe('globale reduzierte Bewegung', () => {

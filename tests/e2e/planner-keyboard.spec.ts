@@ -56,9 +56,13 @@ async function addByKeyboard(page: Page, query: string, componentType: string): 
 
   const tile = page.locator(`[data-testid="sidebar-item"][data-component-type="${componentType}"]`).first();
   await expect(tile).toBeFocused();
+  // B5: listbox/option ist bereits die richtige Semantik; der Fokus muss den
+  // bislang hart falschen Auswahlzustand tatsächlich setzen.
+  await expect(tile).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.locator(NODE_SELECTOR).count()).toBe(before + 1);
   await expect(tile).toBeFocused();
+  await expect(tile).toHaveAttribute('aria-selected', 'true');
 }
 
 async function focusByTab(

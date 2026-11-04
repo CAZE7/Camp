@@ -90,13 +90,13 @@ Alle vier Leiterfarben erfüllen die 3:1-Regel in beiden Themes. Der Wächter M7
 damit real den Wert, der gemalt wird. **Ein Kontrast-Blinder Fleck existiert nicht**; die
 Befunde B3 und B17 sind reiner Pflege- und Doku-Risiken, keine sichtbaren Fehler.
 | B4 | Vier semantische Kollisionen: Akzent/Status = Leiterfarbe (Detail §3.3) | `dark-engineering.css:124-131` |
-| B5 | Auswahl im Katalog per CSS vorhanden, aber tot: `aria-selected` ist hart `false` | `globals.css:2295`; `sidebar/ComponentTile.tsx:49` |
+| B5 | Auswahl im Katalog war per CSS vorhanden, aber tot: `aria-selected` war hart `false` — umgesetzt und gemessen 2026-11-04, siehe `docs/AP-3-ZEICHENFLAECHE-VERMESSUNG-2026-11-04.md` §12 | `Sidebar.tsx`; `sidebar/CategorySection.tsx`; `sidebar/ComponentTile.tsx`; `globals.css` |
 | B6 | Statusfarbe auf Knöpfen gegen die Regel „Prüfstatus ist kein Primärknopf" — umgesetzt 2026-11-04, siehe §10 und `docs/AP-3-ZEICHENFLAECHE-VERMESSUNG-2026-11-04.md` §10 | `Inspector.tsx:293,378` (gefüllt, behoben); `PlannerDashboard.tsx:460` und `planner/ui/CanvasContextMenu.tsx:232` (bereits Umriss bzw. Text) |
 | B7 | Type-Decke 32 px, kein `clamp()` in der Papierwelt; `.h1` 26 px; sechs handgebaute Überschriften umgehen `SiteSection` | `globals.css:457-486`; `elektrik-planung/page.tsx:121,144,299,356,396,442` |
 | B8 | 12-px-Untergrenze im Planer gebrochen (`text-[10px]`, `text-[11px]`), Wächter prüft nur ≥ 11 px und läuft auf `/design-system` | `VerificationSeal.tsx:231,237`; `WarningCenter.tsx:805`; `tests/e2e/visual-de.spec.ts:107,114` |
 | B9 | 170 Halbschritt-Utilities (Stufe `.5`) gegen das eigene 4-px-Raster — Nachmessung, der Auditlauf meldete 44 | `ToolCard.tsx:64`; `PlanPreview.tsx:35`; `page.tsx:214` u. a. |
 | B10 | 11 ad-hoc Schattierungen (3 × `shadow-2xl`, 3 × `lg`, 2 × `xl`, 2 × `md`, 1 × `sm`) trotz Regel „1 px Linie statt Schatten"; zwei Radius-Ausreißer über 4 px; drei Seiten ohne Kopf/Fuß; tote Klassen (`--cad-palette-w`, `.cad-kv*`) | `design-system/page.tsx:187`; `card.tsx:80`; `RoadTripAnimation.tsx:210`; `ueber-werft/page.tsx:35`; `ueber-elektroplaner/page.tsx:35`; `globals.css:1572,2304` |
-| B11 | Interaktionslücken: `buttonVariants` ohne `active:`, drei handgebaute CTA-Links ohne `focus-visible`, Node-Karten ohne eigene Fokusregel, drei Ziele < 44 px | `ui/button.tsx:7-31`; `seo/SeoPage.tsx:198,204,210`; `FlowCanvas.tsx:1267`; `PlannerToolbar.tsx:249` |
+| B11 | Interaktionslücken: `buttonVariants` ohne Aktivzustand, drei handgebaute CTA-Links, ungemessene Touch-/Fokusziele — AP-3-Anteil umgesetzt und gemessen 2026-11-04, siehe Vermessung §11 und §13 | `ui/button.tsx`; `seo/SeoPage.tsx`; `vermessung-touch-fokus.mjs` |
 | B12 | `WarningCenter` öffnet `role="dialog"` ohne `aria-modal` und ohne Fokusfalle | `WarningCenter.tsx:727-729` gegen `AccessibleDialog.tsx:62-98` |
 | B13 | „Fünf Rechner" bei drei Rechnern plus zwei Werkzeugen; `/ki-assistent` von nirgendwo verlinkt | `RechnerLeiste.tsx:101`; `app/page.test.tsx:40` |
 | B14 | Vom Planer existiert genau ein Nicht-fullPage-Baselinebild pro Theme; Inspector, Warn-Center, Stückliste und Geführte Schiene sind pixelmäßig ungeschützt | `tests/e2e/visual.spec.ts:48-54` |
@@ -551,10 +551,13 @@ Alle Funktionen bleiben; nichts fällt einem optischen Wunsch.
 ## 10. Zustände und Interaktion
 
 - Jeder Bediener hat denselben Zustandsatz: Standard, Hover, Aktiv, Fokus,
-  Gesperrt, Ausgewählt. `buttonVariants` erhält `active:`; die drei handgebauten
-  CTA-Links werden auf `buttonVariants` umgestellt (B11).
+  Gesperrt, Ausgewählt. **Eingelöst 2026-11-04:** `buttonVariants` nutzt für den
+  Aktivzustand die bestehenden Press-/Motion-Tokens und die drei CTA-Links
+  verwenden `buttonVariants` (B11; Messdoku §13).
 - Auswahl: 1 px Rand in `text-high` plus 2 px Umriss plus Akzent-Tint — die
-  bestehende Form-Regel gilt auch für Katalogzeilen (B5).
+  bestehende Form-Regel gilt auch für Katalogzeilen. **Eingelöst 2026-11-04:**
+  `listbox`/`option` bleibt erhalten und `aria-selected` bildet eine echte
+  Einzelauswahl ab (B5; Messdoku §12).
 - Statusanzeigen sind nie gefüllte Knöpfe: `variant="destructive"` verschwindet
   aus Prüf-, Warn- und Kontextflächen; Zerstörungsaktionen behalten einen
   eindeutig benannten Weg (B6).
@@ -587,7 +590,9 @@ text-destructive`, Taston `hover:bg-destructive/10`), Wort + Symbol + Rückfrage
 - Dialoge: `WarningCenter` wird auf `AccessibleDialog` umgestellt — `aria-modal`
   und Fokusfalle inklusive (B12).
 - Touch: 44 × 44 px Mindestgröße, davon ausgenommen Zeichenflächen-Ports mit
-  eigener, gemessener Trefferzone.
+  eigener, gemessener Trefferzone. **Eingelöst 2026-11-04:** sechs Breiten ×
+  zwei Themen, normale Bediener sowie Ports/Kanten separat; Nachmessung ohne
+  Befund (`docs/AP-3-ZEICHENFLAECHE-VERMESSUNG-2026-11-04.md` §11).
 - Tastatur: Der gelieferte Stand (Katalog → Enter, Handle → Enter verbindet,
   Pfeile bewegen, `?`-Overlay, Delete mit Rückfrage) bleibt Beweismittel und
   wird ausgebaut, nicht neu erfunden.

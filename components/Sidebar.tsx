@@ -38,6 +38,10 @@ interface SidebarProps {
 export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
+  // Die Kategorien sind einzelne listbox-Gruppen, teilen sich aber genau eine
+  // aktive Katalogoption. So bleibt die zuletzt fokussierte/aktivierte Zeile
+  // auch nach dem Hinzufügen sichtbar ausgewählt.
+  const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const activeComponents = useComponentCatalog(mode);
   const isSearching = searchTerm.trim().length > 0;
@@ -130,6 +134,8 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
                 onToggle={() => toggleCat(category)}
                 onMobileAdd={onMobileAdd}
                 accent="default"
+                selectedKey={selectedComponent}
+                onSelect={setSelectedComponent}
                 onNavigate={navigateRows}
               />
             ))}
@@ -143,6 +149,8 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
                 }
                 onMobileAdd={onMobileAdd}
                 accent="device"
+                selectedKey={selectedComponent}
+                onSelect={setSelectedComponent}
                 onNavigate={navigateRows}
               />
             )}

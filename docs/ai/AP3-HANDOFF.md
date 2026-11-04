@@ -4,6 +4,13 @@ Stand: 2026-11-04. Dieses Dokument ist der Einstiegspunkt. Es ersetzt keine
 Messung: Jede Zahl hier ist gemessen und mit dem Befund verknüpft, der sie
 erzeugt hat.
 
+**Fortschreibung derselben Übergabe:** Der Stand aus `feat/ap3-canvas-state`
+wurde ohne Rebase in `arena/3936c48e-camp` übernommen und mit `main` vereinigt;
+der bekannte Konflikt in `lib/designTokens.test.ts` behält beide Describe-Blöcke.
+Die bisherigen offenen Aufgaben #17, #18 und #19 sind dort inzwischen umgesetzt
+und in `docs/AP-3-ZEICHENFLAECHE-VERMESSUNG-2026-11-04.md` §11–§13 vermessen.
+Maßgeblich für den neuen Stand sind die Nachträge in §7 und §9 dieser Übergabe.
+
 ## 1. Projektziel und aktueller Stand
 
 Ziel von AP-3 ist die **Zeichenfläche** des 12V-Planers nach der freigegebenen
@@ -13,17 +20,21 @@ Bauteil-Semantik für assistierende Technik (§3.6), Zustände und Interaktion
 (§10). Vorgänger AP-2 (Token-Konsolidierung, Flächenrollen, Prüfsiegel) liegt auf
 demselben Branch und ist in PR #600 zur Review.
 
-**Erledigt:** §3.3 Vermessung plus Wächter, §3.4, §3.6, §10/B6 — jeweils mit
-Wächter, Messprotokoll und Doku. **Offen:** Aufgaben #17 (Touch-/Fokus-Nachzug,
-noch unvermessen), #18 (B5 Katalog-Auswahl), #19 (B11 Zustands-Vollständigkeit).
+**Erledigt:** §3.3 Vermessung plus Wächter, §3.4, §3.6, §10/B6 sowie die
+fortgeschriebenen Aufgaben #17 (Touch/Fokus), #18 (B5 Katalog-Auswahl) und #19
+(B11 Zustands-Vollständigkeit) — jeweils mit Wächter, Messung und Doku.
+**Offen:** Commit/Push und Abnahme. Der vollständige Checkpoint einschließlich
+E2E-Gesamtlauf ist grün; Einzelheiten stehen in der Messdoku §14.
 
 ## 2. Branch, Commits, Verhältnis zu main
 
-- Branch: `feat/ap3-canvas-state`, Basis war der AP-2-Head (Auftrag des
-  Betreibers: „auf Basis des aktuellen AP-2-Heads").
-- Branch ist **gestapelt**: er enthält die vier AP-2-Commits von PR #600 plus die
-  sechs AP-3-Commits. Ein PR gegen `main` zeigt daher auch AP-2-Inhalt, solange
-  #600 nicht gemergt ist.
+- Ursprünglicher Übergabe-Branch: `feat/ap3-canvas-state`; Basis war der
+  AP-2-Head (Auftrag des Betreibers: „auf Basis des aktuellen AP-2-Heads").
+- Aktueller Arbeitsbranch: `arena/3936c48e-camp`. Er nahm den Übergabe-Branch
+  per Merge-Commit `317d07e` auf; `main` ist damit enthalten, ohne Rebase.
+- Der ursprüngliche Branch ist **gestapelt**: er enthält die vier AP-2-Commits
+  von PR #600 plus die AP-3-Commits. Die Arena-Fortschreibung enthält zusätzlich
+  #17–#19.
 
 Relevante Commits, ältester zuerst:
 
@@ -52,7 +63,9 @@ Ursache: beide Seiten haben am **Dateiende** angehängt. `main` fügte das
 Describe „Designkonzept 2026-11 — Bild- und Bewegungs-Tokens (P1)" hinzu
 (+62 Zeilen), dieser Branch das Describe „§10 B6" (+81 Zeilen). Auflösung nach
 der im Repo üblichen Regel: **beide Blöcke behalten**, keinen fallen lassen.
-Nicht rebasen, nicht amendieren, kein Force-Push — das ist Betreibervorgabe.
+Das ist in Merge-Commit `317d07e` geschehen; zusätzlich bleibt der AP-2-Wächter
+„jede Signalrolle hat genau ein Literal“ erhalten. Nicht rebasen, nicht
+amendieren, kein Force-Push — das ist Betreibervorgabe.
 
 ## 3. Erledigte Aufgaben und ihre Architektur-Entscheidungen
 
@@ -157,10 +170,13 @@ Die drei Pixel-Baseline-Specs (`visual.spec.ts`, `visual-de-pixel.spec.ts`,
 Baselines sind Linux-only (B26). Der Linux-Pixellauf ist der einzige Nachweis,
 dass keine unintended Änderung mitgezogen wurde, und er gehört zu AP-6.
 
-## 6. Bekannte Probleme
+## 6. Bekannte Probleme und aufgelöste Historie
 
-1. **Merge-Konflikt mit `main`** in `lib/designTokens.test.ts` (siehe §2).
-2. **Zwei E2E-Isolationsfehler** (siehe §5) — offen, Befund für AP-6.
+1. **Merge-Konflikt mit `main` — aufgelöst:** `lib/designTokens.test.ts` behält
+   beide Describe-Blöcke und den AP-2-Ein-Quellen-Wächter (siehe §2).
+2. **Zwei historische E2E-Isolationsfehler:** Im abschließenden seriellen
+   Gesamtlauf traten sie nicht erneut auf (390 grün, 254 übersprungen, 0 rot).
+   Testhärtung bleibt ein möglicher AP-6-Befund, aber kein AP-3-Blocker.
 3. **B28**: `components/nodes/InverterNode.tsx:72` malt `bg-destructive` gefüllt
    auf einer Karte der Zeichenfläche. Kein Knopf, von §10 wörtlich nicht
    erreicht. Registriert in `docs/AP-2-TOKEN-KONSOLIDIERUNG-2026-11-04.md` §7 als
@@ -176,36 +192,27 @@ dass keine unintended Änderung mitgezogen wurde, und er gehört zu AP-6.
 6. **PR #600** ist die Basis dieses Branches; solange #600 offen ist, enthält
    ein AP-3-PR gegen `main` auch AP-2-Inhalt.
 
-## 7. Offene Aufgaben
+## 7. Aufgaben #17–#19 — inzwischen erledigt
 
-- **#17 Touch- und Fokus-Nachzug** — die einzige AP-3-Position ohne
-  Ausgangsmessung. Auftrag: Prüfbreiten 375, 390, 768, 1024, 1440, 1920 px;
-  Touch-Ziele mindestens 44 × 44 px an der tatsächlich gemalten Box;
-  Tastaturfokus (erreichbar) und sichtbarer Fokuszustand (wahrnehmbar) getrennt
-  prüfen; die ausdrücklich ausgenommenen Canvas-Ports separat behandeln.
-  **Hinweis:** Ein Fokus-Wächter „AUDIT A1/A2 — Tastaturfokus im Canvas ist
-  sichtbar (WCAG 2.4.7)" existiert bereits in `lib/designTokens.test.ts:644` —
-  auf beiden Seiten, nicht neu von `main`. Nicht doppelt bauen, sondern daran
-  anknüpfen.
-- **#18 B5 Auswahl im Katalog** — `components/sidebar/ComponentTile.tsx:49` setzt
-  hart `aria-selected={false}`, die CSS-Auswahl existiert in
-  `app/globals.css:2295`. Zuerst die tatsächliche Rollen- und
-  Containersemantik klären: `aria-selected` ist nur dann korrekt, wenn die
-  verwendete Rolle das Attribut sinnvoll unterstützt. Nicht mit §3.6 vermischen —
-  dort ist `aria-selected` an `role="group"` bewusst verboten.
-- **#19 B11 Zustands-Vollständigkeit** — `grep -c "active:" components/ui/button.tsx`
-  = 0. §10 verlangt denselben Zustandsatz für jeden Bediener (Standard, Hover,
-  Aktiv, Fokus, Gesperrt, Ausgewählt) und die Umstellung der drei handgebauten
-  CTA-Links auf `buttonVariants`. Die Lösung muss die tatsächlich benötigten
-  Zustände abdecken, nicht pauschal jede Schaltfläche stylen. **Hinweis:** `main`
-  hat neue Tokens `press-scale` (0.96), `motion-press` (150ms), `motion-swap`,
-  `motion-stagger`, `ease-out`, `ease-swap`, `image-outline` in
-  `app/globals.css` plus einen Wächter darauf — diese Werte nutzen, keine neuen
-  erfinden.
+- **#17 Touch- und Fokus-Nachzug:** reproduzierbarer Messlauf über 375, 390,
+  768, 1024, 1440 und 1920 px in beiden Themen. Normale Bediener werden an der
+  gemalten Box geprüft, Tastatur-Erreichbarkeit und Fokuswahrnehmbarkeit
+  getrennt, Ports/Kanten zoomkorrigiert. Vorheriger Einzelbefund:
+  `.cad-menubar__home` 65,70 × 19,50 px; nachher alle Summen null. Rohdaten:
+  `scripts/design-audit/ergebnis/touch-fokus-{vor,nach}.json`, Doku §11.
+- **#18 B5 Auswahl im Katalog:** Rollen geklärt und beibehalten — Kategorie
+  `listbox`, Zeile `option`, also ist `aria-selected` hier gültig. Die Sidebar
+  hält eine echte Einzelauswahl über Fokus, Pointer, Touch und Drag-Anfang;
+  Canvas-`group` bleibt davon unberührt. Doku §12.
+- **#19 B11 Zustands-Vollständigkeit:** `buttonVariants` nutzt die vorhandenen
+  Tokens `press-scale`, `motion-press` und `ease-out` für einen Aktivzustand,
+  der reduzierte Bewegung respektiert, und trägt Fokus-, Sperr- und
+  Auswahlzustände. Die drei handgebauten `SeoPage`-CTAs verwenden jetzt die
+  gemeinsame Variante. Doku §13.
 
-Reihenfolge-Begründung bleibt: B22/Rollenfrage war vorgelagert und ist erledigt,
-damit dieselben Elemente nicht erst semantisch und danach noch einmal visuell
-umgebaut werden müssen.
+Reihenfolge-Begründung blieb erhalten: B22/Rollenfrage war vorgelagert, danach
+#17, anschließend die gültige Katalogsemantik und zuletzt der gemeinsame
+Zustandsvertrag.
 
 ## 8. Ausdrücklich nicht verändern
 
@@ -220,16 +227,15 @@ umgebaut werden müssen.
 
 ## 9. Nächste konkrete Schritte
 
-1. `main` in den Branch mergen (Merge-Commit, keine Rebase) und
-   `lib/designTokens.test.ts` auflösen: beide Describe-Blöcke behalten. Danach
-   `npm run check` und die E2E neu laufen lassen.
-2. **#17 zuerst messen**, nicht umsetzen: ein Messprotokoll über die sechs Breiten
-   und beide Themen schreiben, Befunde mit Datei und Zeile benennen. Erst danach
-   entscheiden, was überhaupt zu ändern ist.
-3. Dann #18 und #19, jeweils mit Rollenklärung vor der Attribut-Änderung.
-4. Push gebündelt am nächsten Checkpoint (Betreiberregel: kein eigenes
-   Sieben-Minuten-Gate nur für Doku). PR für den **gesamten** AP-3-Umfang, Merge
-   erst nach vollständiger Abnahme.
+1. Änderungen als normalen Commit auf `arena/3936c48e-camp` sichern und nur
+   diesen festen Arena-Branch pushen — kein Rebase, Amend oder Force-Push.
+2. PR für den **gesamten** AP-3-Umfang aktualisieren/eröffnen; Merge erst nach
+   vollständiger Abnahme. B28 und elektrische Logik bleiben weiter tabu.
+
+Abschlussstand vor dem Commit: `npm run check` grün; Production-Build mit 47
+Seiten und Audit über 42 SEO-Seiten grün; E2E-Gesamtlauf ohne die drei lokalen
+Pixel-Baselines über alle Projekte 390 grün, 254 übersprungen, 0 rot. Details:
+Messdoku §14.
 
 ## 10. Werkzeug-Notizen für die nächste KI
 

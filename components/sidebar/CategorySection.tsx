@@ -11,6 +11,8 @@ interface CategorySectionProps {
   onToggle: () => void;
   onMobileAdd?: () => void;
   accent: 'default' | 'device';
+  selectedKey?: string | null;
+  onSelect?: (key: string) => void;
   onNavigate?: (direction: 1 | -1) => void;
 }
 
@@ -19,6 +21,13 @@ interface CategorySectionProps {
  * darunter eine kompakte Zeilenliste. Keine Karten, keine Kacheln — die
  * Gruppierung ist Ordnung, nicht Dekoration.
  */
+function selectionKey(comp: Comp, accent: 'default' | 'device'): string {
+  // Geräte-Vorlagen teilen sich absichtlich Typen. Label und Wattwert gehören
+  // deshalb zur Identität der Katalogoption; der Präfix trennt sie zusätzlich
+  // vom regulären Bauteil desselben Typs.
+  return `${accent}:${comp.type}:${comp.label}:${comp.watts ?? ''}`;
+}
+
 export function CategorySection({
   title,
   items,
@@ -26,6 +35,8 @@ export function CategorySection({
   onToggle,
   onMobileAdd,
   accent,
+  selectedKey,
+  onSelect,
   onNavigate,
 }: CategorySectionProps) {
   if (items.length === 0) return null;
@@ -41,15 +52,20 @@ export function CategorySection({
       </button>
       {open && (
         <div role="listbox" aria-label={title} className="pb-1">
-          {items.map((comp) => (
-            <ComponentTile
-              key={`${comp.type}-${comp.label}`}
-              comp={comp}
-              onMobileAdd={onMobileAdd}
-              accent={accent}
-              onNavigate={onNavigate}
-            />
-          ))}
+          {items.map((comp) => {
+            const key = selectionKey(comp, accent);
+            return (
+              <ComponentTile
+                key={key}
+                comp={comp}
+                onMobileAdd={onMobileAdd}
+                accent={accent}
+                selected={selectedKey === key}
+                onSelect={() => onSelect?.(key)}
+                onNavigate={onNavigate}
+              />
+            );
+          })}
         </div>
       )}
     </section>

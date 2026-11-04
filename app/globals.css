@@ -1711,8 +1711,15 @@ body:has(.de-warning-center [role='dialog']) .planner-action-feedback {
 /* Die Wortmarke ist der Ausgang der Anwendung (Route `/planer/` ohne
    Website-Kopfleiste). Ruhend sieht sie aus wie zuvor — Farbe und Textstil
    erbt sie von `.cad-menubar__brand` (Tailwind-Preflight setzt `a` auf
-   `inherit`); die Unterstreichung kommt erst auf Zeiger und Fokus, damit der
-   Weg zurück auffindbar ist, ohne die Titelleiste lauter zu machen. */
+   `inherit`). Die 44-px-Trefferhöhe füllt nur die ohnehin 44 px hohe
+   Markenfläche aus; sie vergrößert weder Menüleiste noch Schrift. Die
+   Unterstreichung kommt erst auf Zeiger und Fokus, damit der Weg zurück
+   auffindbar ist, ohne die Titelleiste lauter zu machen. */
+.cad-menubar__home {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
 .cad-menubar__home:hover,
 .cad-menubar__home:focus-visible {
   text-decoration: underline;
@@ -2331,8 +2338,12 @@ summary:active {
   color: var(--text-low);
 }
 .cad-item[aria-selected='true'] {
-  border-color: var(--accent-line);
-  background: var(--surface-hover);
+  /* B5: Auswahl ist Form, nicht nur Farbe — dunkle 1-px-Kante plus eigener
+     2-px-Umriss. Der Akzent-Tint bleibt die leise dritte Rückmeldung. */
+  border-color: var(--text-high);
+  outline: 2px solid var(--accent-line);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--accent-line) 10%, transparent);
 }
 .cad-item--active {
   border-color: var(--accent-line);

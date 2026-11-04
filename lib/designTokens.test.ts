@@ -277,6 +277,27 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
     expect(sizes).toHaveLength(2);
     for (const size of sizes) expect(size).toBeGreaterThanOrEqual(44);
   });
+
+  it('gibt der sichtbaren Planer-Wortmarke eine 44-px-Trefferhöhe', () => {
+    const rule = css.match(/\.cad-menubar__home\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/display:\s*inline-flex/);
+    expect(rule).toMatch(/min-height:\s*44px/);
+    expect(rule).toMatch(/align-items:\s*center/);
+  });
+
+  it('zeigt die echte Katalogauswahl über Form und gültige Listbox-Semantik (B5)', () => {
+    const tile = read('components/sidebar/ComponentTile.tsx');
+    const section = read('components/sidebar/CategorySection.tsx');
+    expect(section).toContain('role="listbox"');
+    expect(tile).toContain('role="option"');
+    expect(tile).toContain('aria-selected={selected}');
+    expect(tile).not.toContain('aria-selected={false}');
+
+    const rule = css.match(/\.cad-item\[aria-selected='true'\]\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/border-color:\s*var\(--text-high\)/);
+    expect(rule).toMatch(/outline:\s*2px solid var\(--accent-line\)/);
+    expect(rule).toMatch(/background:\s*color-mix\(/);
+  });
 });
 
 describe('D-1 Marken-Token-Fundament — Kontraste WCAG AA', () => {
@@ -554,9 +575,37 @@ describe('DE — Dark Engineering Token-Vollständigkeit & Kontraste', () => {
     expect(deCss).toContain('repeating-linear-gradient');
   });
 
-  it('DE: Legacy Mapping wire-* -> de-* im .dark vorhanden', () => {
-    expect(deCss).toContain('--wire-dc: var(--de-wire-dc-12v-plus)');
-    expect(deCss).toContain('--wire-ac: var(--de-wire-ac-l)');
+  it('AP-2: jede Signalrolle hat genau ein Literal, und es steht in globals.css', () => {
+    // Vor der Konsolidierung deckte dark-engineering.css diese Rollen mit einer
+    // unlayered Mapping über die Literale in globals.css `@layer base` — zwei
+    // Werte pro Rolle, einer davon nie gerendert. Die de-* Palette bleibt die
+    // Quelle der Planer-Klassen; die Rollen selbst dürfen kein zweites Literal.
+    const rollen = [
+      'wire-dc',
+      'wire-dc-minus',
+      'wire-ac',
+      'wire-solar',
+      'pipe-fresh',
+      'pipe-gray',
+      'canvas-grid',
+      'edge-glow',
+      'ok',
+      'warn',
+      'error',
+    ];
+    const deklarationen = (quelle: string, rolle: string) => {
+      let anzahl = 0;
+      postcss.parse(quelle, { from: rolle }).walkRules((rule) => {
+        rule.walkDecls((decl) => {
+          if (decl.prop === `--${rolle}`) anzahl += 1;
+        });
+      });
+      return anzahl;
+    };
+    for (const rolle of rollen) {
+      expect(deklarationen(deCss, rolle), `--${rolle} in dark-engineering.css`).toBe(0);
+      expect(deklarationen(css, rolle), `--${rolle} in globals.css (hell + dunkel)`).toBe(2);
+    }
   });
 
   it('DE: non-scaling-stroke für Kanten (Modul 5)', () => {
@@ -699,6 +748,20 @@ describe('Designkonzept 2026-11 — Bild- und Bewegungs-Tokens (P1)', () => {
       });
     });
     expect(benannt).toBe(true);
+  });
+
+  it('vervollständigt buttonVariants und bindet alle drei SEO-CTAs daran (B11)', () => {
+    const button = readFileSync(resolve(process.cwd(), 'components/ui/button.tsx'), 'utf8');
+    expect(button).toContain('motion-safe:active:scale-[var(--press-scale)]');
+    expect(button).toContain('motion-safe:duration-[var(--motion-press)]');
+    expect(button).toContain('motion-safe:ease-[var(--ease-out)]');
+    expect(button).toContain('focus-visible:ring-2');
+    expect(button).toContain('disabled:opacity-50');
+    expect(button).toContain('aria-selected:ring-2');
+
+    const seo = readFileSync(resolve(process.cwd(), 'components/seo/SeoPage.tsx'), 'utf8');
+    expect(seo.match(/className=\{buttonVariants\(/g)).toHaveLength(3);
+    expect(seo).not.toMatch(/className="inline-flex min-h-11 items-center/);
   });
 
   it('setzt Hover-Flächen nur hinter die Abfrage hover-fähiger Zeiger', () => {
