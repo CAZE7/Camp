@@ -44,7 +44,7 @@ import {
   recommendConduitType,
 } from '../vde-standards';
 
-import { bundledCircuitsFor, type PassContext } from './context';
+import { bundledCircuitsFor, cableConditionsFor, type PassContext } from './context';
 import {
   breakingCapacityOf,
   conventionalOperatingCurrentI2,
@@ -54,7 +54,8 @@ import {
 } from './deviceClasses';
 import { auditEvent, checkOrNotApplicable } from './events';
 import { behaviorOf, labelOfNode } from './graph';
-import { calculateCorrectedIz, effectiveAmpacityA } from './physics';
+import { calculateCorrectedIz, effectiveAmpacityA, type AmpacityResult } from './physics';
+import { cableIzFor, type ResolvedCableConditions } from '../cableConditions';
 import type { AuditEventDetails } from './types';
 import {
   effectiveOvercurrentDevice,
@@ -354,7 +355,43 @@ function ampacityAt(
   }
 }
 
-function ampacityOf(context: PassContext, cable: CableModel): ReturnType<typeof effectiveAmpacityA> | null {
+/**
+ * P0-3: Eine Leitung mit eigenen Verlegebedingungen wird gegen IHRE I_z
+ * geprüft, nicht gegen die globale Laufannahme. Sonst dimensioniert AutoWire
+ * für 60 °C, während AMP-001 weiterhin mit 0,7 · Tabelle „grün" meldet.
+ */
+function ampacityFromConditions(
+  crossSectionMm2: number,
+  conditions: ResolvedCableConditions
+): AmpacityResult | null {
+  try {
+    const result = cableIzFor(crossSectionMm2, conditions);
+    return {
+      izA: result.correctedIz,
+      baseAmpacityA: result.baseIz,
+      ambientFactor: result.ambientFactor,
+      groupingFactor: result.groupingFactor,
+      combinedFactor: result.correctedIz / result.baseIz,
+      // Ein Datenblattwert ist KEINE „Physik-Korrektur" der B2-Tabelle:
+      // sonst stünde im Bericht eine Herstellerangabe als Rechenergebnis.
+      basis:
+        conditions.assessment === 'manufacturer-data'
+          ? 'manufacturer-data'
+          : conditions.assessment === 'reference-model'
+            ? 'plan-model-pauschale'
+            : 'plan-model-und-physik',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function ampacityOf(context: PassContext, cable: CableModel): AmpacityResult | null {
+  if (cable.crossSectionMm2 === null) return null;
+  const resolution = cableConditionsFor(context, cable.edgeId);
+  if (resolution.kind === 'resolved')
+    return ampacityFromConditions(cable.crossSectionMm2, resolution.conditions);
+  if (resolution.kind === 'invalid') return null;
   return ampacityAt(cable.crossSectionMm2, {
     ambientC: context.options.ampacity.ambientC,
     insulation: context.options.ampacity.insulation,
@@ -394,17 +431,22 @@ function ibInIzDetails(
   }
   if (ampacity && cable.crossSectionMm2 !== null) {
     try {
-      const breakdown = calculateCorrectedIz(cable.crossSectionMm2, {
-        ambientC: context.options.ampacity.ambientC,
-        insulation: context.options.ampacity.insulation,
-        bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
-      });
+      const own = cableConditionsFor(context, cable.edgeId);
+      const breakdown =
+        own.kind === 'resolved'
+          ? cableIzFor(cable.crossSectionMm2, own.conditions)
+          : calculateCorrectedIz(cable.crossSectionMm2, {
+              ambientC: context.options.ampacity.ambientC,
+              insulation: context.options.ampacity.insulation,
+              bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
+            });
       details.izBreakdown = {
         baseIz: breakdown.baseIz,
         ambientFactor: breakdown.ambientFactor,
         groupingFactor: breakdown.groupingFactor,
         installationFactor: breakdown.installationFactor,
-        plannerSafetyFactor: breakdown.plannerSafetyFactor,
+        plannerSafetyFactor:
+          'plannerFactor' in breakdown ? breakdown.plannerFactor : breakdown.plannerSafetyFactor,
         correctedIz: breakdown.correctedIz,
         explanation: breakdown.explanation,
       };
@@ -424,6 +466,10 @@ function ibInIzDetails(
  */
 function ampacityOfNextCrossSection(context: PassContext, cable: CableModel): number | null {
   const next = cable.crossSectionMm2 === null ? null : nextCrossSectionFor(cable.crossSectionMm2);
+  const own = cableConditionsFor(context, cable.edgeId);
+  if (own.kind === 'resolved' && next !== null) {
+    return ampacityFromConditions(next, own.conditions)?.izA ?? null;
+  }
   const result = ampacityAt(next, {
     ambientC: context.options.ampacity.ambientC,
     insulation: context.options.ampacity.insulation,
@@ -445,6 +491,23 @@ export function checkIbInIz(context: PassContext): CheckResult {
   for (const cable of sortedCables(context.graph)) {
     const entity = { kind: 'edge' as const, id: cable.edgeId };
     const label = cableLabel(context, cable);
+
+    // P0-3: ungültige Verlegebedingungen sind eine Datenlücke, kein stiller
+    // Rückfall auf 30 °C — sonst wäre die Prüfung „grün" mit falscher Basis.
+    const conditionResolution = cableConditionsFor(context, cable.edgeId);
+    if (conditionResolution.kind === 'invalid') {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity,
+          kind: 'UNVERIFIABLE',
+          message: `Kabel ${label}: Verlegebedingungen sind ungültig (${conditionResolution.message}) — I_z ist nicht bewertbar.`,
+          autoFixRemedy:
+            'Im Kabel-Inspektor Temperatur (unterhalb der Grenzleitertemperatur), Häufung (1…9) und Leitungstyp prüfen.',
+        })
+      );
+      continue;
+    }
 
     if (cable.crossSectionMm2 === null) {
       events.push(
@@ -618,6 +681,24 @@ export function checkI2VsIz(context: PassContext): CheckResult {
     if (!placement) continue;
     const entity = { kind: 'edge' as const, id: cable.edgeId };
     const label = cableLabel(context, cable);
+
+    // P0-3: dieselbe Datenlücke wie in AMP-001 — die Meldung darf nicht
+    // fälschlich „Querschnitt fehlt" behaupten, wenn die Verlegebedingung
+    // ungültig ist.
+    const conditionResolution = cableConditionsFor(context, cable.edgeId);
+    if (conditionResolution.kind === 'invalid') {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity,
+          kind: 'UNVERIFIABLE',
+          message: `Kabel ${label}: Verlegebedingungen sind ungültig (${conditionResolution.message}) — I_z ist nicht bewertbar.`,
+          autoFixRemedy:
+            'Im Kabel-Inspektor Temperatur (unterhalb der Grenzleitertemperatur), Häufung (1…9) und Leitungstyp prüfen.',
+        })
+      );
+      continue;
+    }
 
     {
       const device = placement.device;

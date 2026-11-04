@@ -9,6 +9,15 @@ import { FUSE_MAP } from '../../lib/electrical';
 import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
 import { edgeIntentOf } from '../../lib/electricalGraph/intent';
 import {
+  CABLE_INSULATION_LABELS,
+  CABLE_INSTALLATION_CONDITIONS,
+  cableIzFor,
+  maxFuseForConditions,
+  resolveCableConditions,
+  type CableConditionFields,
+  type CableConditionPatch,
+} from '../../lib/cableConditions';
+import {
   MCB_BREAKING_CAPACITY_KA_OPTIONS,
   UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
   acCableComposition,
@@ -30,6 +39,8 @@ export interface EdgeInspectorProps {
   onChangeAcProtection?: (id: string, acProtection: AcProtectionDescriptor | undefined) => void;
   /** V2-INTENT-002: Verbindlichkeit der Leitung gegenüber der Automatik. */
   onChangeIntent?: (id: string, intent: 'auto' | 'user' | 'locked') => void;
+  /** P0-3: auswählbare Verlegebedingungen (Temperatur, Bündelung, Leitungstyp). */
+  onChangeCableConditions?: (id: string, patch: CableConditionPatch) => void;
 }
 
 /**
@@ -66,6 +77,7 @@ export function EdgeInspector({
   onChangeFuseI2,
   onChangeAcProtection,
   onChangeIntent,
+  onChangeCableConditions,
 }: EdgeInspectorProps) {
   // Die angezeigte Stufe kommt aus DERSELBEN Ableitung, die AutoWire und
   // Routing lesen (`edgeIntentOf`) — nicht aus einem zweiten Feldvergleich im
@@ -77,6 +89,35 @@ export function EdgeInspector({
     intent === 'locked' ? 'locked' : intent === 'auto' || intent === 'suggested' ? 'auto' : 'user';
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
+  // P0-3: Verlegebedingungen dieser Leitung — EINE Ableitung für Anzeige,
+  // AutoWire-Sizing und Prüfbericht. Ein ungültiger Importwert wird als
+  // Fehler gezeigt, nicht still auf 30 °C zurückgesetzt.
+  const conditionFields: CableConditionFields = {
+    installationCondition: edge.data?.installationCondition,
+    ambientC: edge.data?.ambientC,
+    bundledCircuits: edge.data?.bundledCircuits,
+    cableInsulation: edge.data?.cableInsulation,
+    manufacturerIzA: edge.data?.manufacturerIzA,
+  };
+  let cableConditions: ReturnType<typeof resolveCableConditions> | null = null;
+  let conditionError = '';
+  try {
+    cableConditions = resolveCableConditions(conditionFields);
+  } catch (error) {
+    conditionError = error instanceof Error ? error.message : String(error);
+  }
+  const hasOwnConditions = cableConditions !== null && cableConditions.kind !== 'reference';
+  let conditionIz: number | null = null;
+  let conditionMaxFuse: number | null = null;
+  if (cableConditions && typeof storedCs === 'number' && storedCs > 0) {
+    try {
+      conditionIz = cableIzFor(storedCs, cableConditions).correctedIz;
+      conditionMaxFuse = maxFuseForConditions(storedCs, cableConditions);
+    } catch {
+      conditionIz = null;
+    }
+  }
+  const patchConditions = (patch: CableConditionPatch) => onChangeCableConditions?.(edge.id, patch);
   // R1: Ohne eingetragene Länge zeigt das Feld die geroutete Verlegelänge
   // (dieselbe Quelle wie das Kanten-Label) statt einer fiktiven Konstante.
   // Beim Drag des Plans ändert sich die Schätzung live (gedrosselt).
@@ -236,7 +277,8 @@ export function EdgeInspector({
               {maxFuse > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Max. {maxFuse} A nach implementierter Regel (abgeleitet aus der Strombelastbarkeit von{' '}
-                  {storedCs} mm² mit 0,7-Derating).
+                  {storedCs} mm² mit {hasOwnConditions ? 'den gewählten Verlegebedingungen' : '0,7-Derating'}
+                  ).
                 </p>
               )}
             </div>
@@ -533,6 +575,158 @@ export function EdgeInspector({
                 </div>
               )}
             </div>
+          )}
+        </div>
+      </InspectorSection>
+      {/* P0-3: auswählbare Verlegebedingungen. Kein neuer Pauschalfaktor:
+          Es werden nur die dokumentierten f₁/f₂ der einen I_z-Rechnung je
+          Leitung gesetzt. */}
+      <InspectorSection title="Verlegebedingungen">
+        <div className="flex flex-col gap-3">
+          {onChangeCableConditions ? (
+            <>
+              <div className="flex flex-col">
+                <label
+                  className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                  htmlFor="cable-condition-select"
+                >
+                  Einbausituation
+                </label>
+                <select
+                  id="cable-condition-select"
+                  value={conditionFields.installationCondition ?? 'reference'}
+                  onChange={(event) =>
+                    patchConditions(
+                      event.target.value === 'reference'
+                        ? { reset: true }
+                        : { installationCondition: event.target.value }
+                    )
+                  }
+                  className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+                >
+                  {Object.values(CABLE_INSTALLATION_CONDITIONS).map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                  <option value="custom">Eigene Werte (Temperatur / Bündelung / Leitungstyp)</option>
+                  <option value="datasheet">Herstellerangabe I_z aus Datenblatt</option>
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {cableConditions?.label ?? '—'} ·{' '}
+                  {cableConditions?.assessment === 'manufacturer-data'
+                    ? 'Herstellerangabe hinterlegt'
+                    : cableConditions?.assessment === 'assumption-based'
+                      ? 'mit Annahmen bewertet'
+                      : 'rechnerisch mit Referenzmodell bewertet'}
+                  . Datengrundlage: docs/KABEL-VERLEGEBEDINGUNGEN.md. Keine normgeprüfte Auslegung.
+                </p>
+              </div>
+
+              {(conditionFields.installationCondition === 'custom' ||
+                conditionFields.installationCondition === 'datasheet') && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col">
+                    <label className="mb-1 text-xs text-muted-foreground" htmlFor="cable-ambient-input">
+                      Umgebung (°C)
+                    </label>
+                    <ValidatingInput
+                      id="cable-ambient-input"
+                      isFloat
+                      step="1"
+                      value={conditionFields.ambientC ?? 30}
+                      rules={[
+                        { validate: (v) => v > -40 && v < 90, message: 'Temperatur zwischen −40 und 90 °C.' },
+                      ]}
+                      onValidChange={(val) => patchConditions({ ambientC: val })}
+                      className="rounded border border-border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1 text-xs text-muted-foreground" htmlFor="cable-bundle-input">
+                      Stromkreise im Bündel (1–9)
+                    </label>
+                    <ValidatingInput
+                      id="cable-bundle-input"
+                      step="1"
+                      value={conditionFields.bundledCircuits ?? 1}
+                      rules={[
+                        {
+                          validate: (v) => Number.isInteger(v) && v >= 1 && v <= 9,
+                          message: 'Ganze Zahl 1…9.',
+                        },
+                      ]}
+                      onValidChange={(val) => patchConditions({ bundledCircuits: val })}
+                      className="rounded border border-border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="col-span-2 flex flex-col">
+                    <label className="mb-1 text-xs text-muted-foreground" htmlFor="cable-insulation-select">
+                      Fahrzeugleitung
+                    </label>
+                    <select
+                      id="cable-insulation-select"
+                      value={conditionFields.cableInsulation ?? 'FLRY-B'}
+                      onChange={(event) => patchConditions({ cableInsulation: event.target.value })}
+                      className="rounded border border-border bg-background px-3 py-2 text-sm"
+                    >
+                      {Object.entries(CABLE_INSULATION_LABELS).map(([id, label]) => (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {conditionFields.installationCondition === 'datasheet' && (
+                    <div className="col-span-2 flex flex-col">
+                      <label className="mb-1 text-xs text-muted-foreground" htmlFor="cable-datasheet-iz">
+                        I_z laut Datenblatt (A)
+                      </label>
+                      <ValidatingInput
+                        id="cable-datasheet-iz"
+                        isFloat
+                        step="1"
+                        value={conditionFields.manufacturerIzA ?? 0}
+                        rules={[COMMON_RULES.strictlyPositive]}
+                        onValidChange={(val) => patchConditions({ manufacturerIzA: val })}
+                        className="rounded border border-border px-3 py-2 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {conditionError && (
+                <p className="text-xs text-destructive" role="alert">
+                  {conditionError}
+                </p>
+              )}
+              {!conditionError && conditionIz !== null && (
+                <p className="text-xs text-muted-foreground">
+                  I_z für {storedCs} mm²:{' '}
+                  <strong className="text-foreground">{conditionIz.toFixed(1).replace('.', ',')} A</strong>
+                  {conditionMaxFuse !== null && ` · größte zulässige Sicherung ${conditionMaxFuse} A`}.
+                </p>
+              )}
+              {!conditionError && (
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">Rechenweg und Datengrundlage</summary>
+                  <p className="mt-1">{cableConditions?.explanation}</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {cableConditions?.basis.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                    {cableConditions?.assumptions.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Verlegebedingungen sind in dieser Ansicht nicht editierbar.
+            </p>
           )}
         </div>
       </InspectorSection>

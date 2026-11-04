@@ -1,5 +1,106 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-03 (3) — P0: Fahrzeugspezifische Kabeldimensionierung
+
+**Anlass:** Review/ELE-001. Für ALLE Leitungen galt pauschal
+`VDE_AMPACITY(B2/30 °C) × 0,7`; Einbauort, Bündelung und Leitungstyp
+beeinflussten weder Querschnitt noch Sicherung noch Prüfbericht.
+
+**Verhalten:** Neues `lib/cableConditions.ts` mit auswählbaren
+Einbausituationen (Innenraum einzeln / Bündel / Hohlraum / Motorraum 60 °C /
+Dach unterm Modul / eigene Werte / Herstellerangabe). **Kein neuer
+Pauschalfaktor**: Die Presets setzen ausschließlich die bereits dokumentierten
+f₁ (IEC 60364-5-52 Wurzelformel) und f₂ (VDE_GROUP_FACTORS, Q1/Q2) der EINEN
+`calculateCableIz`. f₃ bleibt ausdrücklich 1,0, weil keine geprüfte
+Verlegeart-Tabelle vorliegt. `calculateCableIz` nimmt `installationFactor`
+als geprüften Parameter auf (Default 1,0). AutoWire (`sizeDcEdges`,
+`applyFuseSizes`, `markInfeasibleSizing`, AC-Pfad, Selektivität) und AMP-001
+lesen dieselbe Ableitung; Inspektor zeigt I_z, maximale Sicherung, Rechenweg
+und Bewertungsstufe. Persistenz über fünf neue `edge.data`-Felder mit
+Schema-Prüfung. Gespeicherte Pläne ohne Angabe bleiben byte-stabil — keine
+Golden-Master-Neuerfassung.
+
+**Bewusst NICHT Teil:** ISO-6722-Fahrzeug Ampazitätstabelle, echte f₃-Werte,
+normative Abnahme, 230-V-Prüfung (qualifiziertes Personal). Siehe
+`docs/KABEL-VERLEGEBEDINGUNGEN.md`; ELE-001 bleibt als Restbefund offen.
+
+**Review-Korrektur 2026-11-04:** Beim Selbst-Audit fiel auf, dass eigene Werte
+OHNE gewähltes Preset (`ambientC`, `bundledCircuits`, `manufacturerIzA`) still als
+Referenz galten, dass „Datenblatt" ohne I_z eine 30-°C-Annahme erzeugte, dass
+ungültige Plandaten den AutoWire-Lauf mit `RangeError` abbrechen konnten und dass
+der AC->70-mm²-Zweig weiter mit der Referenz-Sicherung rechnete. Alle vier
+Punkte sind behoben: solche Felder erzwingen `custom`, „Datenblatt" verlangt
+einen Wert, `cableSizingFor` meldet `valid: false` statt zu werfen (Aufrufer
+markieren „nicht ausführbar"; Prüfbericht UNVERIFIABLE), und der AC-Pfad nutzt
+dieselbe Ableitung. Außerdem werden Herstellerwerte im Bericht nicht mehr als
+`plan-model-und-physik` geführt und AMP-002 nennt den richtigen UNVERIFIABLE-Grund.
+Der AutoWire-Review nennt eigene Verlegebedingungen jetzt vor der Übernahme.
+
+**Tests:** `cableConditions.test.ts` (20), `cableConditionsIntegration.test.ts`
+(8), `lib/verify/cableConditions.test.ts` (7), `edgeSchema.test.ts` (9),
+`store/cableConditions.store.test.ts` (5), `EdgeInspector.test.tsx` (2 neue),
+`AutoWireReviewModal.test.tsx` (2 neue). Referenzpfad-Tests belegen
+byte-stabile Querschnitte/Sicherungen; Golden Master, Regression und Vollsuite grün.
+
+## LEDGER 2026-11-03 (2) — P0: BMS als echte Design-Constraint
+
+**Anlass:** Review-Beispiel 12,8 V · 50-A-BMS · 1500-W-Wechselrichter.
+`sizeDcEdges`/`applyFuseSizes` dimensionierten gegen den Laststrom
+(≈147 A im Strommodell), die BMS-Grenze war nur eine nachgelagerte
+Live-Warnung. Der Review-Dialog zeigte trotzdem einen „passenden" Vorschlag.
+
+**Verhalten:** Neues `lib/autoWire/designBudget.ts`. Nach der Sizing-Pipeline
+bewertet `addDesignBudgetConflicts()` den Entladestrom der Aufbaubank aus
+`getCableCurrents` gegen `computeCurrentBudget` (BMS · Bauteil · Sicherung ·
+Kabel · 70-mm²-Modellgrenze). `performAutoWiring` schreibt
+`AUTO-BMS-001` **kritisch** in den Report, mit getrennten Aussagen zu Kabel,
+Sicherung, Batterie und Gesamtsystem samt Lösungswegen (andere Batteriebank /
+kleinerer Wechselrichter / Last reduzieren / Datenblatt prüfen). Fehlende
+BMS-Angabe ⇒ `AUTO-BMS-000` plus offene Frage statt eines Ersatzwerts.
+Der Review-Dialog zeigt ein rotes „fachlich nicht geeignet"-Banner; die
+Live-Warnung trägt einen BMS-spezifischen Titel und bleibt freigabesperrend.
+
+**Bewusst NICHT geändert:** Kein Kappen des Laststroms auf das BMS-Budget.
+Kabel und Sicherung bleiben physikalisch für die tatsächliche Last
+dimensioniert — ein 50-A-Kabel bei 147 A wäre gefährlicher als die Warnung.
+Keine Golden-Master-Neuerfassung, keine Änderung an `sizing.ts`.
+
+**Tests:** `designBudget.test.ts` (11 Fälle inkl. Vier-Aussagen-Trennung,
+parallele Bank, fehlende Angabe, Reserve, Review-Beispiel, Determinismus),
+`useLiveValidation.test.ts` (kritische Warnung nach dem Anwenden),
+`AutoWireReviewModal.test.tsx` (Banner). `npm test` für die betroffenen
+Suiten, `npx vitest run lib/`, Golden/Regression unauffällig.
+
+## LEDGER 2026-11-03 (1) — P0: Ein strenger Routing-Validator im Produktivpfad
+
+**Anlass:** Review/Audit 2026-10-24 (B-01/B-02/B-03). `routeAllCables` routete
+Leitungen mit NUR EINEM fehlenden Endpunkt über `resolveHandlePoint → (0,0)`
+zum Plan-Ursprung; ein unbekannter benannter Anschluss fiel still auf den ersten
+gemessenen Handle zurück. Der normale Live-Lauf veröffentlichte zusätzlich eine
+schwächere Zweitimplementierung der Final-Validierung ohne Route-Vertrag.
+
+**Verhalten:** Neues Eingangstor `components/edges/utils/routeInput.ts`
+(`checkRoutingInputs`) für Router, Endpunkt-Auflösung, Renderer-Fallback und
+Report. Nicht routbare Kanten werden vor Port-Fan-Out und A* entfernt und
+erscheinen je als strukturierter, zuordenbarer kritischer Befund mit Remedy.
+`resolveHandlePoint` liefert `undefined` statt `(0,0)`; ein benannter,
+ungemessener Handle liefert ebenfalls `undefined` (kein `?? group?.[0]`).
+`cableRouteStore.ts` re-exportiert `routeValidation.ts`: EIN Validator für
+Live, Optimierung und CI. `ROUTE-OWN-NODE` erkennt den Wiedereintritt, erlaubt
+aber mehrsegmentige Port-Stubs bei gemessener Geometrie.
+
+**Bekannter Restbefund (P1):** Mit gemessener React-Flow-Geometrie fährt
+`e-batt-minus` im `complex`-Plan durch die Karte ihres eigenen Ziel-Bauteils,
+bevor sie in den Port einbiegt (`ROUTE-OWN-NODE`). Der Befund war vorher
+unsichtbar und ist jetzt im Test festgeschrieben; die Trassenführung selbst
+wurde in diesem Schnitt NICHT geändert.
+
+**Tests:** `routeInput.test.ts` (15 Fälle: Hängekante, positionsloser Knoten,
+unbekannter Handle, fehlende Route, Diagonalroute, Wiedereintritt, Port-Stub,
+Determinismus, Live-Report). `npm test` (Routing-Suite 1155 Tests),
+`npm run routing:audit` (I1–I7 = 0), `npm run test:regression` (68),
+`npm run test:goldenmaster` (13) grün; Golden-Fixtures unverändert.
+
 ## LEDGER 2026-11-03 — Impressum mit Betreiberangaben
 
 **Anlass:** § 5 DDG. Die Seite zeigte Aufforderungstexte statt der Anschrift.

@@ -175,6 +175,11 @@ export interface PlannerState {
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
   handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
+  /** P0-3: Verlegebedingungen einer Leitung setzen/zurücksetzen. */
+  handleChangeCableConditions: (
+    id: string,
+    patch: import('../../lib/cableConditions').CableConditionPatch
+  ) => void;
   /**
    * Konventioneller Auslösestrom I₂ (A) des konkreten Sicherungsprodukts.
    * 0/ungültig setzt den Wert zurück; dann gilt die Produktnorm der Bauform.

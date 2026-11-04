@@ -75,6 +75,7 @@ export type GraphSlice = Pick<
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
+  | 'handleChangeCableConditions'
   | 'handleChangeFuseI2'
   | 'setEdgeIntent'
   | 'captureLockedWaypoints'
@@ -657,6 +658,91 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
             : state.edges,
       })
     ),
+  // P0-3: Verlegebedingungen je Leitung. Unbekannte Presets und ungültige
+  // Zahlen werden NICHT gespeichert (Regel M: kein stiller Rückfall). Beim
+  // Wechsel auf ein Preset werden eigene Zusatzwerte entfernt, damit nicht
+  // ein alter 60-°C-Wert unsichtbar weiterwirkt.
+  handleChangeCableConditions: (id, patch) =>
+    set((state) => {
+      const validCondition =
+        patch.installationCondition === undefined ||
+        [
+          'reference',
+          'interior-single',
+          'interior-bundle',
+          'cavity',
+          'engine-bay',
+          'roof-solar',
+          'custom',
+          'datasheet',
+        ].includes(patch.installationCondition);
+      const validInsulation =
+        patch.cableInsulation === undefined ||
+        patch.cableInsulation === 'FLRY-B' ||
+        patch.cableInsulation === 'FLR2X-B';
+      const validNumbers = [patch.ambientC, patch.bundledCircuits, patch.manufacturerIzA].every(
+        (value) => value === undefined || (typeof value === 'number' && Number.isFinite(value))
+      );
+      // Dieselben Grenzen wie EDGE_DATA_SCHEMA: ein Wert, den der Import
+      // ohnehin verwerfen würde, darf erst gar nicht in den Plan geschrieben
+      // werden. Physisch unzulässige, aber schema-gültige Temperaturen
+      // (z. B. 95 °C bei PVC) bleiben absichtlich sichtbar: Inspector und
+      // Prüfbericht melden sie als Fehler/UNVERIFIABLE (Regel M).
+      const validAmbient = patch.ambientC === undefined || (patch.ambientC >= -40 && patch.ambientC <= 120);
+      const validBundling =
+        patch.bundledCircuits === undefined ||
+        (Number.isInteger(patch.bundledCircuits) && patch.bundledCircuits >= 1 && patch.bundledCircuits <= 9);
+      const validManufacturer =
+        patch.manufacturerIzA === undefined ||
+        (patch.manufacturerIzA > 0 && patch.manufacturerIzA <= 100_000);
+      if (
+        !validCondition ||
+        !validInsulation ||
+        !validNumbers ||
+        !validAmbient ||
+        !validBundling ||
+        !validManufacturer
+      )
+        return state;
+      const nextData = (data: Record<string, unknown>) => {
+        if (patch.reset) {
+          return {
+            ...data,
+            installationCondition: undefined,
+            ambientC: undefined,
+            bundledCircuits: undefined,
+            cableInsulation: undefined,
+            manufacturerIzA: undefined,
+          };
+        }
+        const switched = patch.installationCondition !== undefined;
+        return {
+          ...data,
+          ...(switched
+            ? {
+                installationCondition: patch.installationCondition,
+                ambientC: undefined,
+                bundledCircuits: undefined,
+                cableInsulation: undefined,
+                manufacturerIzA: undefined,
+              }
+            : {}),
+          ...(patch.ambientC !== undefined ? { ambientC: patch.ambientC } : {}),
+          ...(patch.bundledCircuits !== undefined ? { bundledCircuits: patch.bundledCircuits } : {}),
+          ...(patch.cableInsulation !== undefined ? { cableInsulation: patch.cableInsulation } : {}),
+          ...(patch.manufacturerIzA !== undefined ? { manufacturerIzA: patch.manufacturerIzA } : {}),
+        };
+      };
+      return withHistoryIfChanged(
+        state,
+        {
+          edges: state.edges.map((edge) =>
+            edge.id === id ? { ...edge, data: nextData(edge.data ?? {}) } : edge
+          ),
+        },
+        `edge-cable-conditions:${id}`
+      );
+    }),
   handleChangeFuseI2: (id, i2A) =>
     set((state) =>
       withHistoryIfChanged(

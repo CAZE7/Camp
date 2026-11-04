@@ -274,7 +274,10 @@ describe('lib/verify/pipeline — Laufannahmen (context.ts)', () => {
     const plain = assumptionStatements(verificationOptions());
     expect(plain.some((line) => line.includes('gleichartige'))).toBe(false);
     expect(plain.some((line) => line.includes('Wh'))).toBe(false);
-    expect(plain.length).toBe(2);
+    // P0-3: Der dritte, immer vorhandene Hinweis nennt die kantenspezifischen
+    // Verlegebedingungen und ihre Annahmen (kein stiller 30-°C-Default).
+    expect(plain.length).toBe(3);
+    expect(plain.some((line) => line.includes('Verlegebedingung'))).toBe(true);
   });
 
   it('rechnet einen Lauf mit geänderten Annahmen vollständig durch', () => {

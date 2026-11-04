@@ -16,6 +16,11 @@ import type { Node } from '../domain/graph';
 
 import type { PlanEdge } from './graph';
 import { MAX_CONDUCTOR_TEMPERATURE_C, REFERENCE_AMBIENT_C } from './physics';
+import {
+  resolveCableConditions,
+  type CableConditionFields,
+  type ResolvedCableConditions,
+} from '../cableConditions';
 import type { InsulationClass } from './physics';
 import { isVerificationProfile } from './rules';
 import {
@@ -154,6 +159,7 @@ export function assumptionStatements(options: VerificationOptions): string[] {
   const statements = [
     `Umgebungstemperatur ${options.ampacity.ambientC} °C, Isolierstoff ${options.ampacity.insulation}, Häufung ${options.ampacity.bundledCircuits} Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.`,
     `Spannungsfall mit Leiter-Betriebstemperatur ${options.voltageDropTemperatureC} °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).`,
+    'Leitungen mit eigener Verlegebedingung (Kabel-Inspektor) werden gegen ihre eigene I_z geprüft; Datenblatt-I_z übersteuert die Tabellenrechnung. Preset-Temperaturen und f₃ = 1,0 sind Annahmen, keine Messwerte oder Normzitate (docs/KABEL-VERLEGEBEDINGUNGEN.md).',
   ];
   if (options.ampacity.bundledCircuits > 1 || Object.keys(options.bundlingByEdge).length > 0) {
     statements.push(
@@ -166,4 +172,42 @@ export function assumptionStatements(options: VerificationOptions): string[] {
     );
   }
   return statements;
+}
+
+// ============================================================================
+// P0-3 — Verlegebedingungen je Leitung (statt nur globaler Laufannahmen)
+// ============================================================================
+
+export type CableConditionResolution =
+  | { kind: 'none' }
+  | { kind: 'resolved'; conditions: ResolvedCableConditions }
+  | { kind: 'invalid'; message: string };
+
+/**
+ * Liest die Verlegebedingungen EINER Kante. Ohne explizite Angabe gelten
+ * unverändert die Laufannahmen (`options.ampacity`) — gespeicherte Pläne
+ * behalten damit ihr bisheriges Prüfergebnis.
+ *
+ * Ungültige Nutzereingaben werden NICHT still übergangen: Der Aufrufer muss
+ * `kind === 'invalid'` als UNVERIFIABLE melden (Regel M).
+ */
+export function cableConditionsFor(context: PassContext, edgeId: string): CableConditionResolution {
+  const data = context.edges.find((edge) => edge.id === edgeId)?.data as CableConditionFields | undefined;
+  if (!data) return { kind: 'none' };
+  const explicit =
+    data.installationCondition !== undefined ||
+    data.ambientC !== undefined ||
+    data.bundledCircuits !== undefined ||
+    data.cableInsulation !== undefined ||
+    data.manufacturerIzA !== undefined;
+  if (!explicit) return { kind: 'none' };
+  try {
+    const conditions = resolveCableConditions(data);
+    // Auch eine AUSDRÜCKLICH gewählte „Referenz" ist eine eigene Bedingung:
+    // sie soll die Laufannahme überschreiben, nicht still wieder auf sie
+    // zurückfallen. Nur Kanten ohne jedes Feld nutzen `options.ampacity`.
+    return { kind: 'resolved', conditions };
+  } catch (error) {
+    return { kind: 'invalid', message: error instanceof Error ? error.message : String(error) };
+  }
 }

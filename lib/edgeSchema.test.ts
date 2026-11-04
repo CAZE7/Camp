@@ -114,4 +114,29 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
     });
     expect(bad.removedFields.sort()).toEqual(['crossSection', 'fuseOffset', 'fuseSize', 'length']);
   });
+
+  it('P0-3: gültige Verlegebedingungen bleiben erhalten, unbekannte Werte werden entfernt', () => {
+    const valid = sanitizeEdgeDataBySchema({
+      installationCondition: 'engine-bay',
+      ambientC: 60,
+      bundledCircuits: 3,
+      cableInsulation: 'FLR2X-B',
+      manufacturerIzA: 95,
+    });
+    expect(valid.removedFields).toEqual([]);
+    expect(valid.data.installationCondition).toBe('engine-bay');
+
+    const invalid = sanitizeEdgeDataBySchema({
+      installationCondition: 'zauberfaktor',
+      bundledCircuits: 12,
+      cableInsulation: 'Gummi',
+      ambientC: 500,
+    });
+    expect(invalid.removedFields.sort()).toEqual([
+      'ambientC',
+      'bundledCircuits',
+      'cableInsulation',
+      'installationCondition',
+    ]);
+  });
 });

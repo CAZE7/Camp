@@ -962,18 +962,28 @@ export function useLiveValidation(
         message: violation.detail,
       });
     }
+    // P0 / ROUTE-INPUT-001: Eingabefehler sind EIGENE Befunde mit Ort,
+    // Ursache und Korrekturvorschlag. Die `nodeId` gehört in die ID: Eine
+    // Leitung kann an Quelle UND Ziel denselben Fehler haben — zwei
+    // Warnungen mit identischer ID würden sich sonst gegenseitig verdecken.
+    const inputTitles: Record<string, string> = {
+      'ROUTE-MISSING-NODE': 'Leitung hat keinen gültigen Anschlusspunkt',
+      'ROUTE-UNKNOWN-HANDLE': 'Angeforderter Anschluss existiert nicht',
+    };
     for (const violation of routingReport?.contractViolations ?? []) {
       warnings.push({
-        id: `${violation.code}-${violation.edgeId}`,
+        id: `${violation.code}-${violation.edgeId}-${violation.nodeId ?? violation.handleId ?? 'plan'}`,
         category: 'routing',
         type: 'critical',
-        title: 'Leitungsroute nicht verifiziert',
-        focusId: violation.edgeId,
-        focusType: 'edge',
+        title: inputTitles[violation.code] ?? 'Leitungsroute nicht verifiziert',
+        focusId: violation.nodeId ?? violation.edgeId,
+        focusType: violation.nodeId ? 'node' : 'edge',
         ruleId: violation.code,
-        expectedValue: 'vollständige orthogonale Route zwischen den aktuellen Anschlüssen',
-        source: 'Globaler Routing-Pass: Ein-/Ausgabevertrag',
-        remedy: 'Anschlüsse und Bauteilpositionen prüfen; gegebenenfalls die fixierte Trasse entsperren.',
+        expectedValue: 'vorhandenes Bauteil, gemessener Anschluss und eine vollständige orthogonale Route',
+        source: 'Globaler Routing-Pass: Eingabe- und Ausgabevertrag',
+        remedy:
+          violation.remedy ??
+          'Anschlüsse und Bauteilpositionen prüfen; gegebenenfalls die fixierte Trasse entsperren.',
         message: violation.detail,
       });
     }
@@ -1036,7 +1046,7 @@ function autoWireWarnings(
       id: `autowire-${conflict.ruleId}-${focusEdge ?? focusNode ?? 'plan'}`,
       category: AUTO_WIRE_CATEGORY[conflict.kind],
       type: conflict.severity,
-      title: AUTO_WIRE_TITLE[conflict.kind],
+      title: AUTO_WIRE_RULE_TITLE[conflict.ruleId] ?? AUTO_WIRE_TITLE[conflict.kind],
       message: conflict.message,
       ruleId: conflict.ruleId,
       source: 'Auto-Verdrahtung',
@@ -1073,6 +1083,20 @@ const AUTO_WIRE_CATEGORY: Readonly<Record<AutoWireConflict['kind'], ValidationWa
   'ambiguous-ac-source': 'topology',
   'load-exceeds-limit': 'safety',
   'voltage-mismatch': 'safety',
+};
+
+/**
+ * P0 / V2-BMS-002: Der generische Titel „Last übersteigt die zulässige
+ * Belastbarkeit" lässt offen, WELCHE Grenze überschritten ist. Für das
+ * Design-Budget werden die vier Fälle namentlich benannt — sonst ist im
+ * Release-Gate nicht erkennbar, dass die Batterie (nicht das Kabel) die
+ * Ursache ist.
+ */
+const AUTO_WIRE_RULE_TITLE: Readonly<Record<string, string>> = {
+  'AUTO-BMS-001': 'BMS-Grenze überschritten: Batterie kann die Last nicht liefern',
+  'AUTO-BMS-000': 'BMS-Dauerentladestrom fehlt: Lieferfähigkeit nicht bewertbar',
+  'AUTO-BMS-002': 'BMS-Dauerentladung ohne Reserve',
+  'AUTO-BUDGET-001': 'Gesamtsystem für diese Last nicht geeignet',
 };
 
 const AUTO_WIRE_TITLE: Readonly<Record<AutoWireConflict['kind'], string>> = {

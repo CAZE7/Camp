@@ -16,19 +16,20 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 
 ## What is the public API?
 
-| Symbol                                                                              | Datei           | Zweck                                          |
-| ----------------------------------------------------------------------------------- | --------------- | ---------------------------------------------- |
-| `performAutoWiring(nodes, existingEdges?)`                                          | `autoWire.ts`   | **Einstieg.** `{nodes, edges, report} \| null` |
-| `AUTO_EDGE_PREFIX`                                                                  | `primitives.ts` | `'e-auto-'` — Kennzeichen aller Auto-Kanten    |
-| `sizeDcEdges`, `applyFuseSizes`, `applyFuseTypes`, `sizeAcEdges`                    | `sizing.ts`     | Sizing-Stufen                                  |
-| `cumulativeDropAt`, `relevantCumulativeDrop`                                        | `sizing.ts`     | Spannungsfall am Knoten                        |
-| `acCurrentA`                                                                        | `sizing.ts`     | AC-Strom einer Kante (Insel-BFS)               |
-| `resolveRails`, `healUserEdges`, `pickHouseBattery`                                 | `routing.ts`    | Topologie-Bausteine                            |
-| `applyFlowLayout`                                                                   | `placement.ts`  | Platzierung **nur** selbst erzeugter Knoten    |
-| `edgeLength`, `edgeCrossSection`, `crossSectionForDrop`, `nextStandardCrossSection` | `primitives.ts` | geprüftes Lesen / Normreihe                    |
-| `chemistriesParallelSafe`                                                           | `primitives.ts` | Parallelschaltbarkeit zweier Akkus             |
-| `createConflictCollector`, `hasCriticalConflict`, `EMPTY_AUTO_WIRE_REPORT`          | `conflicts.ts`  | Konfliktbericht eines Laufs (V2)               |
-| `isAcEdge`, `isSolarEdge`, `isStarterBattery`                                       | `validation.ts` | Klassifikation                                 |
+| Symbol                                                                              | Datei             | Zweck                                          |
+| ----------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------- |
+| `performAutoWiring(nodes, existingEdges?)`                                          | `autoWire.ts`     | **Einstieg.** `{nodes, edges, report} \| null` |
+| `AUTO_EDGE_PREFIX`                                                                  | `primitives.ts`   | `'e-auto-'` — Kennzeichen aller Auto-Kanten    |
+| `sizeDcEdges`, `applyFuseSizes`, `applyFuseTypes`, `sizeAcEdges`                    | `sizing.ts`       | Sizing-Stufen                                  |
+| `cumulativeDropAt`, `relevantCumulativeDrop`                                        | `sizing.ts`       | Spannungsfall am Knoten                        |
+| `acCurrentA`                                                                        | `sizing.ts`       | AC-Strom einer Kante (Insel-BFS)               |
+| `resolveRails`, `healUserEdges`, `pickHouseBattery`                                 | `routing.ts`      | Topologie-Bausteine                            |
+| `applyFlowLayout`                                                                   | `placement.ts`    | Platzierung **nur** selbst erzeugter Knoten    |
+| `edgeLength`, `edgeCrossSection`, `crossSectionForDrop`, `nextStandardCrossSection` | `primitives.ts`   | geprüftes Lesen / Normreihe                    |
+| `chemistriesParallelSafe`                                                           | `primitives.ts`   | Parallelschaltbarkeit zweier Akkus             |
+| `createConflictCollector`, `hasCriticalConflict`, `EMPTY_AUTO_WIRE_REPORT`          | `conflicts.ts`    | Konfliktbericht eines Laufs (V2)               |
+| `evaluateDesignBudget`, `addDesignBudgetConflicts`                                  | `designBudget.ts` | BMS als Design-Constraint im Review (P0)       |
+| `isAcEdge`, `isSolarEdge`, `isStarterBattery`                                       | `validation.ts`   | Klassifikation                                 |
 
 ## What does it own?
 

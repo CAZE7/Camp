@@ -865,3 +865,56 @@ describe('Autark-Vorlage — großer Standardplan', () => {
     expect(result.current[0]?.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
   });
 });
+
+/**
+ * P0 / V2-BMS-002: Ein kritischer BMS-Konflikt aus dem AutoWire-Report muss
+ * nach dem Anwenden AUCH im Live-Report als kritische Warnung erscheinen.
+ * Erst damit greift das Freigabe-Gate (guidedSteps/GuidedPlanRail) und der
+ * Plan kann nicht als „geeignet" freigegeben werden.
+ */
+describe('BMS-Designbudget im Live-Report (P0)', () => {
+  it('12,8 V · 50-A-BMS · 1500-W-Wechselrichter ⇒ kritische, klickbare Warnung', () => {
+    act(() => clearCableRoutes());
+    const source: Node[] = [
+      {
+        id: 'bat',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Aufbaubatterie',
+          capacity: 100,
+          chemistry: 'LiFePO4',
+          nominalVoltage: 12.8,
+          bmsContinuousDischarge: 50,
+          bmsContinuousCharge: 50,
+        },
+      },
+      {
+        id: 'inv',
+        type: 'inverter',
+        position: { x: 400, y: 0 },
+        data: { label: '1500-W-Wechselrichter', continuousPower: 1500, watts: 1500 },
+      },
+      {
+        id: 'ac',
+        type: 'consumer230v',
+        position: { x: 800, y: 0 },
+        data: { label: 'Kaffeemaschine', watts: 900 },
+      },
+    ];
+    const wired = performAutoWiring(source as never, []);
+    expect(wired).not.toBeNull();
+    const { result } = renderHook(() =>
+      useLiveValidation(
+        wired!.nodes as Node[],
+        wired!.edges as Edge<CableEdgeData>[],
+        undefined,
+        wired!.report
+      )
+    );
+    const warning = result.current.find((candidate) => candidate.ruleId === 'AUTO-BMS-001');
+    expect(warning).toEqual(expect.objectContaining({ type: 'critical', category: 'safety' }));
+    expect(warning?.title).toContain('BMS');
+    act(() => clearCableRoutes());
+  });
+});

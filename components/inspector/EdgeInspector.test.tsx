@@ -202,3 +202,37 @@ describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
     );
   });
 });
+
+/** P0-3: Verlegebedingungen sind im Inspektor auswählbar und erklärt. */
+describe('EdgeInspector — Verlegebedingungen (P0-3)', () => {
+  const edge: Edge<CableEdgeData> = {
+    id: 'edge-cond',
+    source: 'n1',
+    target: 'n2',
+    data: { crossSection: 10, edgeDomain: 'DC_12V' },
+  };
+
+  it('zeigt Referenzmodell, I_z und einen Wechsel auf Motorraum an', () => {
+    const onChange = vi.fn();
+    render(<EdgeInspector edge={edge} onChangeLength={vi.fn()} onChangeCableConditions={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+
+    expect(screen.getByText(/rechnerisch mit Referenzmodell bewertet/i)).toBeInTheDocument();
+    expect(screen.getByText(/36,4 A/)).toBeInTheDocument(); // 52 A × 0,7 für 10 mm²
+    const select = screen.getByLabelText(/Einbausituation/i);
+    fireEvent.change(select, { target: { value: 'engine-bay' } });
+    expect(onChange).toHaveBeenCalledWith('edge-cond', { installationCondition: 'engine-bay' });
+  });
+
+  it('nennt bei gewählter Bedingung die Annahmen und Datengrundlage', () => {
+    const withEngine: Edge<CableEdgeData> = {
+      ...edge,
+      data: { ...edge.data, installationCondition: 'engine-bay' },
+    };
+    render(<EdgeInspector edge={withEngine} onChangeLength={vi.fn()} onChangeCableConditions={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+    expect(screen.getByText(/mit Annahmen bewertet/i)).toBeInTheDocument();
+    expect(screen.getByText(/IEC 60364-5-52/)).toBeInTheDocument();
+    expect(screen.getByText(/26,0 A/)).toBeInTheDocument(); // 52 A × 0,5 bei 60 °C
+  });
+});

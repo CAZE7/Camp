@@ -41,6 +41,7 @@ import {
 } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
 import { routableNodes } from './routableNodes';
+import { checkRoutingInputs } from './routeInput';
 import {
   assignFanOut,
   portCross,
@@ -175,22 +176,36 @@ const validStoredLockedPath = (edge: RouteEdgeRef): Point[] | undefined => {
 const NODE_W = 192;
 const NODE_H = 120;
 
+/**
+ * P0 / ROUTE-INPUT-001: KEINE Ersatzkoordinaten mehr. Ein fehlendes Bauteil
+ * (oder eines ohne Canvas-Geometrie) liefert `undefined` — der Aufrufer muss
+ * die Leitung als nicht routbar behandeln. Der produktive Pass prüft vorher
+ * mit `checkRoutingInputs`, Diagnose-Skripte überspringen solche Kanten.
+ * Das frühere `{ x: 0, y: 0 }` erzeugte Phantom-Leitungen zum Plan-Ursprung.
+ */
 export function resolveHandlePoint(
   node: NodeWithHandles | undefined,
   handleId: string | null | undefined,
   kind: 'source' | 'target',
   /** R-7: Flussrichtung zum Gegenüber (Zentrum → Zentrum). Optional. */
   flow?: { x: number; y: number }
-): { x: number; y: number; position: Position } {
-  if (!node) {
-    return { x: 0, y: 0, position: kind === 'source' ? Position.Right : Position.Left };
-  }
+): { x: number; y: number; position: Position } | undefined {
+  if (!node || !nodePositionAvailable(node)) return undefined;
   const originX = nodeOriginX(node);
   const originY = nodeOriginY(node);
   const bounds = nodeHandleBounds(node);
   const group = bounds?.[kind] ?? bounds?.[kind === 'source' ? 'target' : 'source'];
   const wanted = handleId ?? null;
-  const hb = group?.find((h) => (h.id ?? null) === wanted) ?? group?.[0];
+  const exact = group?.find((h) => (h.id ?? null) === wanted);
+  // P0 / ROUTE-INPUT-001: Ein benannter, aber nicht gemessener Anschluss ist
+  // ein harter Eingabefehler. Früher sprang hier `?? group?.[0]` ein und
+  // landete still auf einem fremden Pol. `checkRoutingInputs` filtert solche
+  // Kanten vorab; diese Sperre verhindert den Rückfall auch bei direkten
+  // Aufrufen (Diagnose, Einzelfall-Renderer).
+  if (wanted !== null && group != null && !exact) return undefined;
+  // Ohne Handle-Angabe ist der erste gemessene Anschluss der Gruppe die
+  // dokumentierte Legacy-Auflösung; ohne Messung greift R-7 weiter unten.
+  const hb = exact ?? (wanted === null ? group?.[0] : undefined);
   if (hb) {
     return {
       x: originX + hb.x + hb.width / 2,
@@ -821,15 +836,23 @@ function makeHandleResolver(nodes: RoutableNode[]) {
       const srcNode = nodeById.get(edge.source);
       const tgtNode = nodeById.get(edge.target);
       const flow = centerDelta(srcNode, tgtNode);
-      resolved = {
-        source: resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow),
-        target: resolveHandlePoint(
-          tgtNode,
-          edge.targetHandle,
-          'target',
-          flow ? { x: -flow.x, y: -flow.y } : undefined
-        ),
-      };
+      const source = resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow);
+      const target = resolveHandlePoint(
+        tgtNode,
+        edge.targetHandle,
+        'target',
+        flow ? { x: -flow.x, y: -flow.y } : undefined
+      );
+      // `resolveHandle` wird nur für die von `checkRoutingInputs` freigegebenen
+      // Kanten aufgerufen. Ein `undefined` hier wäre ein Vertragsbruch im
+      // Router selbst — hart abbrechen statt eine Ersatzkoordinate zu
+      // erfinden (P0 / ROUTE-INPUT-001).
+      if (!source || !target) {
+        throw new Error(
+          `routeAllCables: Leitung ${edge.id} hat einen nicht auflösbaren Anschluss — checkRoutingInputs hätte sie ausschließen müssen.`
+        );
+      }
+      resolved = { source, target };
       resolvedByEdge.set(edge.id, resolved);
     }
     return resolved[kind];
@@ -842,9 +865,12 @@ export function resolveRoutingEndpoints(
   edges: readonly RouteEdgeRef[]
 ): Map<string, { source: Point; target: Point }> {
   const routable = routableNodes(nodes);
+  const { routableEdgeIds } = checkRoutingInputs(routable, edges);
   const resolveHandle = makeHandleResolver(routable);
   const endpoints = new Map<string, { source: Point; target: Point }>();
-  for (const edge of [...edges].sort((left, right) => compareIds(left.id, right.id))) {
+  for (const edge of [...edges]
+    .filter((candidate) => routableEdgeIds.has(candidate.id))
+    .sort((left, right) => compareIds(left.id, right.id))) {
     const source = resolveHandle(edge, 'source');
     const target = resolveHandle(edge, 'target');
     endpoints.set(edge.id, { source: { x: source.x, y: source.y }, target: { x: target.x, y: target.y } });
@@ -863,7 +889,13 @@ export function fanOutLanesForEdge(
   edges: RouteEdgeRef[],
   edgeId: string
 ): PortLanes | undefined {
-  return portFanOutLanes(edges, makeHandleResolver(nodes)).get(edgeId);
+  // Renderer-Fallback (R8): auch hier gelten dieselben Eingaberegeln. Kanten
+  // mit fehlendem Bauteil oder unbekanntem Anschluss dürfen das Bündelbild
+  // nicht mehr mit einem (0,0)-Punkt verfälschen.
+  const { routableEdgeIds } = checkRoutingInputs(nodes, edges);
+  const candidates = edges.filter((edge) => routableEdgeIds.has(edge.id));
+  if (!candidates.some((edge) => edge.id === edgeId)) return undefined;
+  return portFanOutLanes(candidates, makeHandleResolver(nodes)).get(edgeId);
 }
 
 /**
@@ -913,6 +945,15 @@ export function routeAllCables(
   nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const out = new Map<string, PathResult>();
+  if (edges.length === 0) return out;
+
+  // P0 / ROUTE-INPUT-001: EIN Eingangstor für alle Routing-Pfade. Leitungen
+  // mit fehlendem Endpunkt oder unbekanntem Anschluss werden HIER entfernt —
+  // bevor Port-Fan-Out, Bündelgrößen, Hindernisregionen und A*-Suche sie
+  // sehen. Der Live-Report meldet sie über dieselbe Prüfung (routeValidation).
+  // Kein (0,0)-Ersatzpunkt, kein stiller Wechsel auf einen fremden Pol.
+  const { routableEdgeIds } = checkRoutingInputs(nodes, edges);
+  edges = edges.filter((edge) => routableEdgeIds.has(edge.id));
   if (edges.length === 0) return out;
 
   const nodeById = new Map<string, RoutableNode>();
@@ -1089,13 +1130,13 @@ export function routeAllCables(
   for (let i = 0; i < routingOrder.length; i++) {
     const edge = routingOrder[i];
     if (!edge) continue;
-    // AUDIT ROUTE-017: Hängekanten — Quelle oder Ziel referenziert einen
-    // Node, der keine Geometrie hat (fehlend, ungemessen, gelöscht).
-    // resolveHandlePoint(undefined, …) liefert (0,0) und der Router
-    // produziert eine sinnlose Route zum Ursprung. Besser: überspringen.
+    // AUDIT ROUTE-017 / P0 ROUTE-INPUT-001: Hängekanten — Quelle ODER Ziel
+    // fehlt. `checkRoutingInputs` hat sie bereits ausgefiltert; diese Sperre
+    // bleibt als letzte Verteidigung, damit nie wieder EIN fehlender
+    // Endpunkt mit (0,0) weiterroutet.
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
-    if (!srcNode && !tgtNode) continue;
+    if (!srcNode || !tgtNode) continue;
     const src = resolveHandle(edge, 'source');
     const tgt = resolveHandle(edge, 'target');
     const sourcePortKey = portKeyOf({ x: src.x, y: src.y });

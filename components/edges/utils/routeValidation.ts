@@ -1,6 +1,7 @@
-import { nodeHandleBounds, type RoutableNode } from './nodeGeometry';
+import { type RoutableNode } from './nodeGeometry';
+import { checkRoutingInputs } from './routeInput';
 import { classifySegmentAgainstNode } from '../../../lib/routing/rules/collision';
-import { waypointsToSegments } from '../../../lib/routing/geometry';
+import { waypointsToSegments, containsPoint } from '../../../lib/routing/geometry';
 import { nodeObstacleMap, type PathResult } from './pathfinding';
 import { collectRoutableNodes } from './routableNodes';
 import { resolveRoutingEndpoints, type RouteEdgeRef } from './routeAll';
@@ -36,49 +37,73 @@ export function computeCableRouteFinalValidation(
     if (rect) rects.push({ id: node.id, ...rect });
   }
   const report = validateFinalRouting(routed, rects);
+  // P0 / ROUTE-INPUT-001: GENAU die Prüfung, die `routeAllCables` als
+  // Eingangstor benutzt. Nicht routbare Leitungen stehen nicht im Vertrag
+  // (sonst gäbe es zusätzlich ein `ROUTE-MISSING`), sondern erzeugen je einen
+  // eigenen, zuordenbaren Befund. Eine trotzdem veröffentlichte Route für
+  // solch eine Leitung meldet `validateRouteContract` als ROUTE-UNEXPECTED.
+  const inputCheck = checkRoutingInputs(nodes, edges);
   const endpoints = resolveRoutingEndpoints(nodes, edges);
-  const nodeIds = new Set(nodes.map((node) => node.id));
   const contractViolations = validateRouteContract(
-    edges.map((edge) => ({
-      id: edge.id,
-      source: nodeIds.has(edge.source) ? endpoints.get(edge.id)?.source : undefined,
-      target: nodeIds.has(edge.target) ? endpoints.get(edge.id)?.target : undefined,
-    })),
+    edges
+      .filter((edge) => inputCheck.routableEdgeIds.has(edge.id))
+      .map((edge) => ({
+        id: edge.id,
+        source: endpoints.get(edge.id)?.source,
+        target: endpoints.get(edge.id)?.target,
+      })),
     routes
   );
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  for (const violation of inputCheck.violations) {
+    contractViolations.push({
+      edgeId: violation.edgeId,
+      code: violation.code,
+      detail: violation.detail,
+      nodeId: violation.nodeId,
+      ...(violation.handleId !== undefined ? { handleId: violation.handleId } : {}),
+      remedy: violation.remedy,
+    });
+  }
   for (const edge of edges) {
-    // An explicitly named, measured handle may not silently resolve to the first handle.
-    for (const [nodeId, handleId, kind] of [
-      [edge.source, edge.sourceHandle, 'source'],
-      [edge.target, edge.targetHandle, 'target'],
-    ] as const) {
-      const node = nodeById.get(nodeId);
-      const bounds = node ? nodeHandleBounds(node) : undefined;
-      const group = bounds?.[kind] ?? bounds?.[kind === 'source' ? 'target' : 'source'];
-      if (handleId != null && group != null && !group.some((handle) => handle.id === handleId)) {
-        contractViolations.push({
-          edgeId: edge.id,
-          code: 'ROUTE-INPUT',
-          detail: `Der gemessene Anschluss ${nodeId}/${handleId} fehlt.`,
-        });
-      }
-    }
-    // I1 excludes endpoint devices; only their actual first/last port segments need that exemption.
+    // I1 excludes endpoint devices, weil deren PORT-STUB legitim in der
+    // eigenen Karte beginnt. Mit gemessener React-Flow-Geometrie kann dieser
+    // Stub aber MEHRERE Segmente umfassen (Port liegt z. B. 45 px innerhalb
+    // der Kartenkante): „erstes Segment ausnehmen“ erzeugte 9 Fehlmeldungen
+    // auf dem gemessenen Complex-Plan, obwohl die Trasse die Karte nur
+    // verlässt. Geprüft wird deshalb der WIEDEREINTRITT: Sobald die Route
+    // das eigene Gerät einmal verlassen hat, darf kein späteres Segment es
+    // erneut durchschneiden (AUDIT-ROUTING-2026-10-24, B-03-Fall).
     const segments = waypointsToSegments(routes.get(edge.id)?.waypoints ?? []);
-    for (const [index, segment] of segments.entries()) {
-      for (const [nodeId, exempt] of [
-        [edge.source, index === 0],
-        [edge.target, index === segments.length - 1],
-      ] as const) {
-        const obstacle = obstacleById.get(nodeId);
-        if (!exempt && obstacle && classifySegmentAgainstNode(segment, obstacle).class === 'hard') {
+    for (const [nodeId, side] of [
+      [edge.source, 'source'],
+      [edge.target, 'target'],
+    ] as const) {
+      const obstacle = obstacleById.get(nodeId);
+      if (!obstacle) continue;
+      const indices =
+        side === 'source'
+          ? segments.map((_, index) => index)
+          : segments.map((_, index) => segments.length - 1 - index);
+      let leftDevice = false;
+      for (const index of indices) {
+        const segment = segments[index];
+        if (!segment) continue;
+        // Scan richtet sich immer VOM PORT nach außen: bei `target` ist
+        // `segment[1]` der portnähere Punkt. Ein Segment, das den eigenen
+        // Knoten schneidet, ist nur dann ein Fehler, wenn die Trasse ihn
+        // vorher schon verlassen hatte — der eigentliche Port-Stub ist
+        // erlaubt, ein späterer Wiedereintritt nicht.
+        const far = side === 'source' ? segment[1] : segment[0];
+        const reentry = leftDevice && classifySegmentAgainstNode(segment, obstacle).class === 'hard';
+        if (reentry) {
           contractViolations.push({
             edgeId: edge.id,
             code: 'ROUTE-OWN-NODE',
-            detail: `Innensegment schneidet das Anschlussgerät ${nodeId}.`,
+            detail: `Innensegment schneidet das Anschlussgerät ${nodeId} nach Verlassen des Ports.`,
           });
+          break;
         }
+        if (!containsPoint(obstacle, far)) leftDevice = true;
       }
     }
   }

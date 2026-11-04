@@ -44,10 +44,11 @@ Topology (Knoten anlegen/heilen)
 Wiring Strategy
   ↓  Backbone, Verbraucher, Wechselrichter, Solar, Lader, Booster, Landstrom, Masse
 Sizing
-  ↓  sizeDcEdges()     Querschnitt (thermisch + Spannungsfall, iterativ)
+  ↓  sizeDcEdges()     Querschnitt (thermisch + Spannungsfall, iterativ) — thermisch je nach Verlegebedingung der Kante
   ↓  applyFuseSizes()  Sicherungsnennstrom je Plus-Kante
   ↓  applyFuseTypes()  Sicherungs-BAUFORM aus dem Kurzschlussstrom
   ↓  sizeAcEdges()     AC-Querschnitt + AC-Schutzorgan + AC-Sicherung
+  ↓  addDesignBudgetConflicts()  BMS ALS DESIGN-CONSTRAINT (`designBudget.ts`)
   ↓  Masse-Kanten auf ≥ 16 mm² · Sicherungskasten-Rating aus der Zuleitung
 Placement
   ↓  applyFlowLayout() — NUR selbst erzeugte Knoten (M11-2/R-8)
@@ -113,6 +114,45 @@ Tooltip und Stückliste wie eine Nutzereingabe (dreißigste Fassung,
 | Masseanbindung              | `performAutoWiring`                  | ≥ 16 mm² auf jeder direkten Minus-Schiene/Shunt ↔ Masse-Kante                                    |
 | Domänen-Stempel             | `performAutoWiring`                  | jede Nutzer-Kante erhält `edgeDomain`                                                            |
 | Platzierung                 | `applyFlowLayout`                    | nur **selbst erzeugte** Knoten, 16-px-Raster, überlappungsfrei                                   |
+| Design-Budget               | `evaluateDesignBudget`               | BMS · Bauteil · Sicherung · Kabel · 70-mm²-Modellgrenze ⇒ `computeCurrentBudget`                 |
+
+---
+
+## 7.4a BMS ist eine Design-Constraint (P0, 2026-11-03)
+
+Vorher: `sizeDcEdges` rechnete gegen den **Laststrom**; die BMS-Grenze war
+nur eine nachgelagerte Live-Warnung. Ein Plan mit 12,8 V, 50-A-BMS und
+1500-W-Wechselrichter bekam ein 70-mm²-Kabel und eine 100-A-Sicherung — und
+sah damit „passend dimensioniert" aus, obwohl die Batterie ≈147 A nicht
+liefern kann.
+
+Jetzt bewertet `lib/autoWire/designBudget.ts` **nach** der Dimensionierung den
+tatsächlichen Entladestrom der Aufbaubank aus demselben Strommodell
+(`getCableCurrents`, Beiträge mit `role: 'load'`) gegen das kleinste bekannte
+Budget. Vier Aussagen werden getrennt ausgewiesen und im kritischen Konflikt
+(`AUTO-BMS-001`) wörtlich genannt:
+
+```text
+Kabel kann die Last tragen?   I_b ≤ designAmpacity(Querschnitt)
+Sicherung ist passend?        I_b ≤ Sicherungsnennstrom
+Batterie kann liefern?        I_b ≤ BMS-Dauerentladestrom der Bank
+Gesamtsystem geeignet?        I_b ≤ min(aller bekannten Grenzen)
+```
+
+**Bewusst NICHT geändert:** Der Laststrom wird nicht auf das BMS-Budget
+gekappt. Ein Kabel für 50 A bei 147 A Last wäre gefährlicher als die alte
+Warnung. Die physikalische Dimensionierung bleibt beim Laststrom; das BMS
+sperrt die **Freigabe**, nicht die Kabelwahl.
+
+- Fehlender BMS-Wert ⇒ `AUTO-BMS-000` (Warnung) + offene Frage im Review,
+  `batteryCanSupply: undefined` — kein Ersatzwert, kein „geeignet".
+- Reservewarnung ab >90 % der BMS-Grenze ⇒ `AUTO-BMS-002`.
+- Andere kleinste Grenze (Kabel/Sicherung/Modellgrenze) ⇒ `AUTO-BUDGET-001`
+  als benannter Hinweis; diese Fälle sind über `fuseWarning` bereits kritisch
+  in der Live-Validierung verankert (kein zweiter Schweregrad).
+- Kritische Konflikte erscheinen als rotes Banner im `AutoWireReviewModal`
+  und nach dem Anwenden als kritische Warnung mit BMS-spezifischem Titel in
+  `useLiveValidation` ⇒ Freigabe-Gate bleibt wirksam.
 
 ---
 

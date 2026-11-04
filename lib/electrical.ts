@@ -561,6 +561,14 @@ export interface CableIzContext {
   insulation?: InsulationClass;
   /** Anzahl belasteter Stromkreise in derselben Trasse (1…9, s. `groupFactor`). */
   bundledCircuits?: number;
+  /**
+   * f₃ — Verlegeart-Korrektur (P0-3, `lib/cableConditions.ts`). Ohne Angabe
+   * 1,0: im Repo liegt KEINE geprüfte Verlegeart-Tabelle, also wird kein
+   * Faktor erfunden. Der Parameter erlaubt es, einen künftig belegten Wert
+   * an derselben einen I_z-Stelle einzusetzen statt eine zweite Rechnung
+   * zu bauen. Nur Werte in (0, 1] sind zulässig (nie kapazitätserhöhend).
+   */
+  installationFactor?: number;
 }
 
 /** Woher die angesetzte Korrektur stammt — Report- und UI-Pflicht. */
@@ -615,7 +623,12 @@ export function calculateCableIz(context: CableIzContext): CableIzResult {
   const hasAmbient = context.ambientC !== undefined;
   const ambientFactor = hasAmbient ? ambientTemperatureFactor(context.ambientC as number, insulation) : 1;
   const groupingFactor = context.bundledCircuits === undefined ? 1 : groupFactor(context.bundledCircuits);
-  const installationFactor = 1; // Verlegesart nicht modelliert — explizit 1,0.
+  const installationFactor = context.installationFactor ?? 1; // ohne geprüfte Tabelle: explizit 1,0
+  if (!Number.isFinite(installationFactor) || installationFactor <= 0 || installationFactor > 1) {
+    throw new RangeError(
+      `calculateCableIz: f₃ (Verlegeart) muss in (0, 1] liegen (erhielt ${installationFactor}) — keine kapazitätserhöhende Korrektur`
+    );
+  }
   const plannerFactor = DERATE_FACTOR;
 
   const physical = Math.min(1, ambientFactor * groupingFactor * installationFactor);

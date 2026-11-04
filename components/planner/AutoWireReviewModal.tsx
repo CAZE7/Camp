@@ -136,6 +136,18 @@ export function AutoWireReviewModal() {
     return summarizeReport(preview.report, preview.previousEdgeCount, preview.edges.length);
   }, [preview]);
 
+  // P0-3: Der Vorschlag muss vor der Übernahme erklären, WARUM Querschnitt
+  // und Sicherung von der 0,7-Pauschale abweichen — sonst wäre die
+  // Verlegebedingung eine unsichtbare Änderung am Plan.
+  const conditionedEdges = useMemo(
+    () =>
+      (preview?.edges ?? []).filter((edge) => {
+        const id = edge.data?.installationCondition;
+        return typeof id === 'string' && id !== 'reference';
+      }).length,
+    [preview]
+  );
+
   const handleApply = () => apply();
   const handleCancel = () => dismiss();
 
@@ -170,6 +182,15 @@ export function AutoWireReviewModal() {
           />
         </div>
 
+        {conditionedEdges > 0 && (
+          <p className="aw-section text-xs" data-testid="autowire-condition-note">
+            <strong>{conditionedEdges} Leitung(en) mit eigener Verlegebedingung:</strong> Querschnitt und
+            Sicherung wurden gegen die eigene I_z aus Temperatur, Bündelung oder Datenblatt dimensioniert,
+            nicht gegen die 0,7-Pauschale. Ungültige Angaben werden im Plan als „nicht ausführbar" markiert.
+            Datengrundlage: docs/KABEL-VERLEGEBEDINGUNGEN.md — keine normgeprüfte Auslegung.
+          </p>
+        )}
+
         {/* Fragen */}
         {preview.report.questions.length > 0 && (
           <section
@@ -197,6 +218,33 @@ export function AutoWireReviewModal() {
             <p className="mt-2 text-xs" style={{ opacity: 0.8 }}>
               Diese Entscheidungen kann die Automatik nicht ohne Deine Angabe treffen. Die Leitungen sind mit
               der sicheren Annahme verdrahtet; bitte im Inspektor die endgültige Verschaltung wählen.
+            </p>
+          </section>
+        )}
+
+        {/* P0 / V2-BMS-002: Ein kritischer Konflikt darf nicht zwischen
+            Zahlen und Hinweisen untergehen. Ohne diesen Satz wirkt ein
+            „passend dimensionierter" Vorschlag weiterhin geeignet, obwohl
+            z. B. das BMS die Last nicht liefern kann. */}
+        {hasCritical && (
+          <section
+            role="alert"
+            className="aw-section"
+            style={{
+              background: 'var(--warn-critical-bg)',
+              borderColor: 'var(--warn-critical-border)',
+              color: 'var(--warn-critical)',
+            }}
+          >
+            <h3 className="flex items-center gap-2 font-semibold">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              Vorschlag ist fachlich nicht geeignet
+            </h3>
+            <p className="mt-1">
+              Kabel und Sicherungen sind für den berechneten Laststrom dimensioniert, aber mindestens eine
+              Systemgrenze ist überschritten. Bitte die unten genannten kritischen Konflikte beheben (z. B.
+              BMS-Dauerentladestrom, Batteriebank oder Wechselrichterleistung), bevor der Plan freigegeben
+              wird.
             </p>
           </section>
         )}

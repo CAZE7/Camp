@@ -121,7 +121,19 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
     expect(report.counts.edgeNodeCollisions).toBe(0);
     expect(report.counts.edgeEdgeOverlaps).toBe(0);
     expect(report.counts.clearanceViolations).toBe(0);
-    expect(report.status).toBe('VALID');
+    // P0 / ROUTE-VALIDATION-001: Der Live-Report ist jetzt der STRENGE
+    // Validator. Er sieht zusätzlich zum I1/I2/I3-Gate den Ein-/Ausgabe-
+    // Vertrag — und damit einen echten, bisher unsichtbaren Befund: mit
+    // gemessener React-Flow-Geometrie fährt `e-batt-minus` durch die Karte
+    // ihres eigenen Ziel-Bauteils `busbar-minus`, bevor sie in den Port
+    // einbiegt. Der Port-Stub selbst ist erlaubt (siehe routeValidation.ts),
+    // der Wiedereintritt nicht. Früher stand hier `VALID`, weil der schwache
+    // Validator nur die I-Invarianten kannte. Der Befund bleibt sichtbar,
+    // bis die Trassenführung diesen Wiedereintritt vermeidet.
+    expect(report.status).toBe('INVALID');
+    expect(report.contractViolations).toEqual([
+      expect.objectContaining({ code: 'ROUTE-OWN-NODE', edgeId: 'e-batt-minus' }),
+    ]);
   });
 
   it('ist deterministisch: fixer Seed ⇒ identische Routen über zwei Läufe', () => {
@@ -365,22 +377,22 @@ describe('Handle-Seite nach Flussrichtung (R-7)', () => {
     // Quelle links vom Ziel → Austritt rechts; Ziel betreten von links.
     const src = resolveHandlePoint(source, null, 'source', { x: 600, y: 0 });
     const tgt = resolveHandlePoint(target, null, 'target', { x: -600, y: 0 });
-    expect(src.position).toBe(Position.Right);
-    expect(tgt.position).toBe(Position.Left);
+    expect(src!.position).toBe(Position.Right);
+    expect(tgt!.position).toBe(Position.Left);
 
     // Quelle ÜBER dem Ziel (vertikaler Fluss) → Austritt unten, Eintritt oben.
     const srcV = resolveHandlePoint(source, null, 'source', { x: 10, y: 400 });
     const tgtV = resolveHandlePoint(target, null, 'target', { x: -10, y: -400 });
-    expect(srcV.position).toBe(Position.Bottom);
-    expect(tgtV.position).toBe(Position.Top);
+    expect(srcV!.position).toBe(Position.Bottom);
+    expect(tgtV!.position).toBe(Position.Top);
 
     // Gegenfluss (Verbraucher → Verteilung links oberhalb): Eintritt unten.
     const back = resolveHandlePoint(target, null, 'target', { x: -5, y: 300 });
-    expect(back.position).toBe(Position.Bottom);
+    expect(back!.position).toBe(Position.Bottom);
 
     // Ohne Flussangabe: konventionelle Seiten (Quelle rechts, Ziel links).
-    expect(resolveHandlePoint(source, null, 'source').position).toBe(Position.Right);
-    expect(resolveHandlePoint(target, null, 'target').position).toBe(Position.Left);
+    expect(resolveHandlePoint(source, null, 'source')!.position).toBe(Position.Right);
+    expect(resolveHandlePoint(target, null, 'target')!.position).toBe(Position.Left);
   });
 
   it('routeAllCables: vertikaler Fluss erzeugt Top-/Bottom-Handles und stubtreue Routen', () => {
