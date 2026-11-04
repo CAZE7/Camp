@@ -1,0 +1,173 @@
+{
+ "erfasst": "2026-11-04T07:21:20.545Z",
+ "base": "http://127.0.0.1:3123",
+ "selbstdtest": 21,
+ "erg": {
+  "light": {
+   "leitungen": [
+    {
+     "farbe": "#c62f21",
+     "breite": "3px",
+     "strich": "none",
+     "anzahl": 2,
+     "kontrastZeichenflaeche": 4.71
+    },
+    {
+     "farbe": "#3f4750",
+     "breite": "3px",
+     "strich": "none",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 8.1
+    },
+    {
+     "farbe": "#b45309",
+     "breite": "2px",
+     "strich": "3px, 5px",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 4.32
+    },
+    {
+     "farbe": "#c62f21",
+     "breite": "2px",
+     "strich": "none",
+     "anzahl": 7,
+     "kontrastZeichenflaeche": 4.71
+    },
+    {
+     "farbe": "#3f4750",
+     "breite": "2px",
+     "strich": "none",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 8.1
+    },
+    {
+     "farbe": "#2563eb",
+     "breite": "2px",
+     "strich": "10px, 6px",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 4.44
+    }
+   ],
+   "legende": [
+    {
+     "label": "12 V DC · Plus",
+     "stroke": "#c62f21",
+     "rueckenseite": "#f9fafb",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "12 V DC · Minus",
+     "stroke": "#3f4750",
+     "rueckenseite": "#f9fafb",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "230 V AC",
+     "stroke": "#2563eb",
+     "rueckenseite": "#f9fafb",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "Solar",
+     "stroke": "#b45309",
+     "rueckenseite": "#f9fafb",
+     "stimmtMitKante": true
+    }
+   ],
+   "zeichenflaeche": "#eceef0",
+   "zeichenflaecheContainer": "#eceef0",
+   "seitenflaeche": "#eceef0",
+   "knotenText": [
+    {
+     "text": "Hauptstromkreis",
+     "farbe": "#a34a24",
+     "groesse": "12px",
+     "rueckenseite": "#f9fafb"
+    }
+   ]
+  },
+  "dark": {
+   "leitungen": [
+    {
+     "farbe": "#ff6b6b",
+     "breite": "3px",
+     "strich": "none",
+     "anzahl": 2,
+     "kontrastZeichenflaeche": 6.59
+    },
+    {
+     "farbe": "#8e9aaf",
+     "breite": "3px",
+     "strich": "none",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 6.44
+    },
+    {
+     "farbe": "#ffc857",
+     "breite": "2px",
+     "strich": "3px, 5px",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 11.89
+    },
+    {
+     "farbe": "#ff6b6b",
+     "breite": "2px",
+     "strich": "none",
+     "anzahl": 7,
+     "kontrastZeichenflaeche": 6.59
+    },
+    {
+     "farbe": "#8e9aaf",
+     "breite": "2px",
+     "strich": "none",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 6.44
+    },
+    {
+     "farbe": "#6aa6ff",
+     "breite": "2px",
+     "strich": "10px, 6px",
+     "anzahl": 1,
+     "kontrastZeichenflaeche": 7.41
+    }
+   ],
+   "legende": [
+    {
+     "label": "12 V DC · Plus",
+     "stroke": "#ff6b6b",
+     "rueckenseite": "#161a1f",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "12 V DC · Minus",
+     "stroke": "#8e9aaf",
+     "rueckenseite": "#161a1f",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "230 V AC",
+     "stroke": "#6aa6ff",
+     "rueckenseite": "#161a1f",
+     "stimmtMitKante": true
+    },
+    {
+     "label": "Solar",
+     "stroke": "#ffc857",
+     "rueckenseite": "#161a1f",
+     "stimmtMitKante": true
+    }
+   ],
+   "zeichenflaeche": "#131518",
+   "zeichenflaecheContainer": "#0e1114",
+   "seitenflaeche": "#131518",
+   "knotenText": [
+    {
+     "text": "Hauptstromkreis",
+     "farbe": "#e2885f",
+     "groesse": "12px",
+     "rueckenseite": "#191c1f"
+    }
+   ]
+  }
+ }
+}

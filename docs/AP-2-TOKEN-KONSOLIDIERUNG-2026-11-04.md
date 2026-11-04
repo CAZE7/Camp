@@ -254,22 +254,57 @@ Aussage, nicht die neue.
 
 ---
 
-## 4. Messwerte nach der Migration
+## 4. Messwerte vor und nach der Migration
 
-- **Engine**: `ap2/baseline-vor-migration.json` und
-  `ap2/baseline-nach-migration.json` sind nach Entfernen des Zeitstempels
-  **byte-identisch**; `certificateHash` des Beispielplans gleich. Entscheidung 4
-  ist damit erfüllt, nicht angenommen.
-- **Computed Styles am `html`-Element**: 104 verglichene Felder (26 Tokens ×
-  2 Themen × 2 Seiten), **104 unverändert**. Die Rollenwerte sind dieselben —
-  sie standen vorher nur an zwei Stellen.
-- **Gemalte Leitungen, Dark Mode, gegen die jetzt echte Zeichenfläche
-  `#0e1114`**: Plus 6,82:1, Minus 6,67:1, AC 7,68:1, Solar 12,31:1 (vorher
-  gegen `#131518`: 6,59 / 6,44 / 7,41 / 11,89). Alle besser, keiner unter 3.
-- **Knotentext auf der Fläche**: 7,14:1 dunkel (vorher 6,90), 5,07:1 hell
-  (unverändert), 12 px — die Untergrenze aus §5 der Spezifikation hält.
+Beide Läufe sind mit **demselben Werkzeug** auf demselben Stand gemessen. Für
+den Vorlauf wurden die acht Quelldateien auf `e0c2cfc` zurückgesetzt, neu
+gebaut und gemessen, danach zurück auf AP-2 und erneut gebaut. Skripte und
+Rohdaten liegen in [`scripts/design-audit/`](../scripts/design-audit/README.md)
+inklusive `vergleichen.js` — nicht außerhalb des Repos.
+
+```
+### ENGINE
+Verglichen: baseline-vor.json ↔ baseline-nach.json
+  identisch:  JA          (Werte anders: 0, Feld fehlt: 0)
+
+### GEMALTE ELEMENTE
+  Werte anders: 7
+    .erg.dark.zeichenflaeche: "#131518" → "#0e1114"
+    .erg.dark.leitungen[0..5].kontrastZeichenflaeche:
+      6,59 → 6,82 | 6,44 → 6,67 | 11,89 → 12,31
+      6,59 → 6,82 | 6,44 → 6,67 | 7,41 → 7,68
+```
+
+Entscheidung 4 ist damit gemessen, nicht behauptet: kein Engine-Ergebnis, kein
+Hash, keine Regelzahl hat sich bewegt. Alle sieben Unterschiede an gemalten
+Elementen haben dieselbe Ursache — die Zeichenfläche ist dunkler, dadurch
+steigen die Kontraste. Kein Leitungs-, Legenden- oder Textwert wurde geändert.
+
+Weitere Nachweise aus denselben Läufen:
+
+- **Computed Styles**: 14 Felder anders, davon 12 neue Rollen
+  (`--surface-page`, `--surface-drawing`) und `--canvas-bg` (`#131518` →
+  `#0e1114`, hell unverändert). Kein bestehender Tokenwert bewegt.
+- **Schrift über gerenderte Breite**, nicht über `fonts.check()`: Startseite
+  `h1` 32 px, gemalt 440,8 px — Outfit 440,8, Inter 481,64, system-ui 442,83.
+  Die System-Schrift liegt nur 2 px daneben; `check()` allein hätte das nicht
+  sicher unterschieden. Planer `h1`/`h2`/`body` gemalt = Inter
+  (Scope-Regel `.planner-shell`).
 - **Legende**: alle vier Proben stimmen in beiden Themen mit gemalten Kanten
-  überein (Mengenvergleich, kein Tokenvergleich).
+  überein — jetzt aus derselben Quelle, nicht aus zwei Familien.
+- **Knotentext**: 12 px, 6,45:1 dunkel, 5,07:1 hell; Untergrenze aus §5 hält.
+
+### 4.1 Zwei Werkzeugfehler, die der Messlauf selbst gefunden hat
+
+Beide sind Selbstkorrekturen am Werkzeug, keine Befunde am Produkt:
+
+1. `vergleichen.js` verglich Arrays über `x === y` und meldete danach jeden
+   Array-Inhalt als „anders“, ohne ihn zu vergleichen. Der erste Engine-Lauf
+   zeigte so 27 Unterschiede, wo 0 waren. Behoben (elementweiser Vergleich);
+   die Zahlen oben stammen erst aus dem Lauf danach.
+2. `baseline-verification.ts` las `report.planFingerprintHash` statt
+   `report.certificate.planFingerprintHash`. Gefunden hat das der Typecheck des
+   Builds, bevor ein Messwert dadurch falsch geworden wäre.
 
 ---
 
@@ -293,18 +328,23 @@ test:coverage) ist grün, Exit-Code 0, **295 Testdateien bestanden**,
 Gesamtabdeckung 87,82 % Statements / 79,57 % Branches / 89,82 % Lines.
 Protokoll: `ap2/check3.log`.
 
-Ein Lauf vorher fiel gegen `typecheck:tests` (striktere `tsconfig.tests.json`
-mit `noUncheckedIndexedAccess`): der neue E2E-Wächter indizierte Regex-Gruppen
-und Array-Slices ohne Guard. Korrigiert, nicht die Konfiguration gelockert.
+Die drei Domain-Gates sind lokal lauffähig und waren es auch vor diesem
+Abschnitt — die Annahme, der Golden Master brauche CI, hat sich nicht bestätigt:
 
-Der E2E-Wächter selbst: 40 Läufe grün über desktop-1440, tablet-768,
-mobile-375 und touch-pixel5.
+| Gate          | Befehl                      | Ergebnis                                                                                         |
+| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| Golden Master | `npm run test:goldenmaster` | 13 Tests grün, „Pipeline-Ergebnis ist identisch zur eingefrorenen Baseline“ über alle knownPlans |
+| Regression    | `npm run test:regression`   | 68 Tests grün                                                                                    |
+| Routing-Audit | `npm run routing:audit`     | 6 Pläne, I1–I7 überall 0, `determ=true`, keine harte Überdeckung                                 |
 
-Zwei weitere Gate-Stufen sind für diese Änderung relevant und **nicht** lokal
-laufbar: die Pixel-Baselines (`baselines.yml`, Linux, workflow_dispatch) und
-`npm run test:goldenmaster`. Ersteres muss den neuen dunklen Alarm- und
-Zeichenflächen-Werten abnehmen (siehe 2.4 und 5); die Engine-Ergebnisse sind
-durch den Baseline-Vergleich in Abschnitt 4 bereits belegt.
+Damit ist die Elektrik dreifach abgesichert: Golden Master gegen eingefrorene
+Snapshots, Regression gegen die eigene Baseline, und der unabhängige
+Engine-Vergleich in Abschnitt 4.
+
+Offen bleibt das **Pixel-Gate**, weil es Linux-Baselines braucht: ein
+Windows-Lauf schreibt `*-win32.png`, die das Gate nie findet
+(`.github/workflows/baselines.yml`, Kopfkommentar). Es läuft im Job `visual`
+von `quality.yml` und ist nur über einen `pull_request` erreichbar.
 
 ## 7. Befunde für die folgenden Pakete
 
