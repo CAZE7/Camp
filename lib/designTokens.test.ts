@@ -554,9 +554,37 @@ describe('DE — Dark Engineering Token-Vollständigkeit & Kontraste', () => {
     expect(deCss).toContain('repeating-linear-gradient');
   });
 
-  it('DE: Legacy Mapping wire-* -> de-* im .dark vorhanden', () => {
-    expect(deCss).toContain('--wire-dc: var(--de-wire-dc-12v-plus)');
-    expect(deCss).toContain('--wire-ac: var(--de-wire-ac-l)');
+  it('AP-2: jede Signalrolle hat genau ein Literal, und es steht in globals.css', () => {
+    // Vor der Konsolidierung deckte dark-engineering.css diese Rollen mit einer
+    // unlayered Mapping über die Literale in globals.css `@layer base` — zwei
+    // Werte pro Rolle, einer davon nie gerendert. Die de-* Palette bleibt die
+    // Quelle der Planer-Klassen; die Rollen selbst dürfen kein zweites Literal.
+    const rollen = [
+      'wire-dc',
+      'wire-dc-minus',
+      'wire-ac',
+      'wire-solar',
+      'pipe-fresh',
+      'pipe-gray',
+      'canvas-grid',
+      'edge-glow',
+      'ok',
+      'warn',
+      'error',
+    ];
+    const deklarationen = (quelle: string, rolle: string) => {
+      let anzahl = 0;
+      postcss.parse(quelle, { from: rolle }).walkRules((rule) => {
+        rule.walkDecls((decl) => {
+          if (decl.prop === `--${rolle}`) anzahl += 1;
+        });
+      });
+      return anzahl;
+    };
+    for (const rolle of rollen) {
+      expect(deklarationen(deCss, rolle), `--${rolle} in dark-engineering.css`).toBe(0);
+      expect(deklarationen(css, rolle), `--${rolle} in globals.css (hell + dunkel)`).toBe(2);
+    }
   });
 
   it('DE: non-scaling-stroke für Kanten (Modul 5)', () => {

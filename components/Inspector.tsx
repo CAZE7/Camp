@@ -6,6 +6,7 @@ import { type Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { MousePointerClick, Trash2 } from 'lucide-react';
 import { type CableEdgeData } from './edges/CableEdge';
+import { PIPE_COLORS, WIRE_COLORS } from './edges/utils/edgeColors';
 import { EdgeInspector } from './inspector/EdgeInspector';
 import {
   BatteryInspector,
@@ -79,17 +80,19 @@ type LegendEntry = {
 };
 
 function RoutingLegend({ viewMode }: { viewMode: PlannerViewMode }) {
+  // Dieselbe Quelle wie die gemalten Kanten (edgeColors.ts): die Legende kann
+  // so nicht mehr hinter der Leitung herlaufen, wenn eine Rolle umzieht.
   const entries: LegendEntry[] =
     viewMode === 'water'
       ? [
-          { label: 'Frischwasser', stroke: 'var(--pipe-fresh)' },
-          { label: 'Abwasser', stroke: 'var(--pipe-gray)', dash: '10 6' },
+          { label: 'Frischwasser', stroke: PIPE_COLORS.fresh },
+          { label: 'Abwasser', stroke: PIPE_COLORS.gray, dash: '10 6' },
         ]
       : [
-          { label: '12 V DC · Plus', stroke: 'var(--wire-dc)' },
-          { label: '12 V DC · Minus', stroke: 'var(--wire-dc-minus)' },
-          { label: '230 V AC', stroke: 'var(--wire-ac)', dash: '10 6' },
-          { label: 'Solar', stroke: 'var(--wire-solar)', dash: '3 5' },
+          { label: '12 V DC · Plus', stroke: WIRE_COLORS.dcPlus },
+          { label: '12 V DC · Minus', stroke: WIRE_COLORS.dcMinus },
+          { label: '230 V AC', stroke: WIRE_COLORS.acL, dash: '10 6' },
+          { label: 'Solar', stroke: WIRE_COLORS.solar, dash: '3 5' },
         ];
 
   return (
