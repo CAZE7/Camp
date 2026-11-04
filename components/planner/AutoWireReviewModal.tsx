@@ -307,9 +307,9 @@ export function AutoWireReviewModal() {
                           className="border-b border-border/60 align-top"
                         >
                           <td className="p-1 pr-2">
-                            <strong>{row.label}</strong>
+                            <strong>{toPlainGerman(row.label)}</strong>
                             <br />
-                            <code className="opacity-70">{row.id}</code>
+                            <code className="opacity-70">{toPlainGerman(row.id)}</code>
                             <br />
                             <span className="opacity-80">{DIFF_STATUS_LABEL[row.status]}</span>
                           </td>
@@ -324,9 +324,15 @@ export function AutoWireReviewModal() {
                               {row.reasons.map((reason) => (
                                 <li key={reason}>{reason}</li>
                               ))}
+                              {/* Klartext-Vertrag (tests/e2e/mobile-geometry.spec.ts:853):
+                                  Der Dialog zeigt keine rohen Regel-IDs. Die ID bleibt
+                                  maschinenlesbar am Element, der Leser bekommt nur den Grund. */}
                               {row.conflicts.map((conflict) => (
-                                <li key={`${conflict.ruleId}-${conflict.message}`}>
-                                  <strong>{conflict.ruleId}:</strong> {toPlainGerman(conflict.message)}
+                                <li
+                                  key={`${conflict.ruleId}-${conflict.message}`}
+                                  data-rule-id={conflict.ruleId}
+                                >
+                                  {toPlainGerman(conflict.message)}
                                 </li>
                               ))}
                             </ul>

@@ -356,7 +356,8 @@ verlangte Regression für eine Verhaltensänderung.
 - 24-px-Domänengate (ROUTE-003), ROUTE-018, ELE-002 (0,8 Ω, UNVERIFIED),
   ELE-001-Rest (B2 statt ISO 6722, f₃ = 1,0), PERF-001 (16 ms/Frame),
   Tastatur-/Accessibility-Abnahme M11-3.
-- Keine normgeprüfte 230-V-Abnahme; kein PR, kein Merge, kein Push.
+- Keine normgeprüfte 230-V-Abnahme. PR #601 gegen `main` ist offen, der
+  Branch ist gepusht; **kein Merge** in `main` ohne ausdrückliche Anweisung.
 - §9 Punkt 8 bleibt protokollarisch offen. Im Nachlauf wurde `npm run build`
   nachgeholt (grün), die Regel-Docs aber erneut zu spät gelesen (siehe §10
   Eingang und §10.6) und E2E/Pixel-Baselines konnten aus
@@ -395,3 +396,52 @@ Trennung). `WarningCenter.test.tsx` prüft mit der **echten**
 technischen Details nach dem Aufklappen vollständig erscheinen. Der neue
 `ENGINE_LIMITATIONS`-Eintrag enthält selbst keine der verbotenen Zeichen
 (Probe). Die Doku (§4/§5, VALIDATION-CONTEXT §8.3, LEDGER) ist präzisiert.
+
+### 10.8 Nachtrag — CI-E2E-Befund und Klartext-Vertrag im AutoWire-Review
+
+Der Push von `094862a` hat die CI vollständig durchlaufen. Ergebnis des Laufs
+`41808094796` / `41808094797`:
+
+| Check                                           | Ergebnis                                                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `Quality Gate / Typecheck, Tests & Build`       | **pass** (13 min 28 s)                                                                                        |
+| `Routing Quality Regression Check`              | **pass** (44 s)                                                                                               |
+| `Qualität / Visuelles Gate (nicht blockierend)` | **pass** (4 min 47 s) — der Lighthouse-Fehler des vorherigen Laufs trat nicht erneut auf; kein Pixel-Mismatch |
+| `Update Golden Master Baseline`                 | skipping (wie vorgesehen)                                                                                     |
+| `Quality Gate / End-to-End (Playwright)`        | **fail** (28 min 55 s): 360 passed / 259 skipped / **1 failed**                                               |
+
+Der Job-Log-Host (`results-receiver.actions.githubusercontent.com`,
+`productionresultssa10.blob.core.windows.net`) ist von diesem Arbeitsbereich aus
+nicht erreichbar (`EOF`); das Playwright-Report-Artefakt ließ sich deshalb nicht
+herunterladen. Über die **Check-Run-Annotations** war der Fall dennoch eindeutig:
+`[mobile-375] › tests/e2e/mobile-geometry.spec.ts:844 › Auto-verbinden abbrechen
+› der Dialog spricht Klartext und Abbrechen ändert die Befunde nicht`. Der
+Dialog muss ohne Rohkennungen auskommen
+(`/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/`); die empfangene
+Zeichenkette enthielt `AUTO-BMS-000: Benötigt: 59 A …` aus der Spalte
+„Begründung“ der in §10.2 ergänzten Leitungstabelle.
+
+**Korrektur (LEDGER 2026-11-04 (4)):** Die Regel-ID steht nur noch als
+`data-rule-id` am Element, nicht mehr im Klartext. Leitungslabel und Kanten-ID
+werden durch `toPlainGerman` geschrieben; Konflikttexte waren es bereits.
+`AutoWireReviewModal.test.tsx` hat jetzt 11 Fälle, darunter ein Vertragstest mit
+**genau** dem E2E-Regex gegen `dialog.textContent` (strenger als `innerText`)
+und ein Fall für technische Knoten-IDs/`%20`.
+Es wurde kein Test entfernt, entschärft oder übersprungen. Die Änderung betrifft
+ausschließlich die Anzeige — kein `lib/`-Modul, kein Sizing, keine Topologie,
+kein Store-Feld.
+
+**Verfahren:** `AGENTS.md`, `ARCHITECTURE-RULES.md`, `CHANGE-WORKFLOW.md` sowie
+die thematischen Kontext-Dokumente (`AUTOWIRE-CONTEXT.md` §7.6a/§7.8,
+`TESTING-CONTEXT.md` §9.3) wurden **vor** der Codeänderung gelesen (§23). Für
+die früheren Commits bleibt §9 Punkt 8 offen; die falsche Reihenfolge ist nicht
+nachträglich heilbar.
+
+**Weiterhin offen:** Der CI-Lauf auf dem neuen Head ist abzuwarten. Lokal können
+E2E und Pixel-Baselines wegen des fehlenden Browser-Binaries nicht ausgeführt
+werden; §24 verlangt für UI außerdem Vorher/Nachher 375/768/1440 hell+dunkel.
+Das DoD ist damit **nicht vollständig erfüllt**, und es wird kein „E2E grün“
+behauptet. Der erste Lauf hat aber gezeigt, dass der statisch geprüfte
+Klartext-Vertrag aus §10.7 (`fresh-session-retest.spec.ts`) in CI **bestanden**
+hat — der einzige Fehler lag im zweiten, erst durch die neue Tabelle
+entstandenen Dialogtext.

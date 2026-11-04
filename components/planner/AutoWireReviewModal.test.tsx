@@ -190,8 +190,44 @@ describe('AutoWireReviewModal — Änderungen je Leitung', () => {
     expect(table).toHaveTextContent('25 A');
     expect(table).toHaveTextContent('Motorraum');
     expect(table).toHaveTextContent('I_z-Basis');
-    expect(table).toHaveTextContent('AUTO-BMS-001');
+    expect(table).toHaveTextContent('Kritisch: BMS 50 A reicht nicht');
+    // Regel-IDs bleiben maschinenlesbar, aber nicht im Klartext des Dialogs.
+    expect(table).not.toHaveTextContent(/AUTO-[A-Z0-9-]+/);
+    expect(table.querySelector('[data-rule-id]')).toHaveAttribute('data-rule-id', 'AUTO-BMS-001');
     expect(table).toHaveTextContent('keine');
+  });
+
+  it('hält den Klartext-Vertrag des E2E-Dialogs ein (mobile-geometry.spec.ts:844)', () => {
+    render(<AutoWireReviewModal />);
+    const dialog = screen.getByRole('dialog', { name: 'Automatisch verbinden — Vorschlag prüfen' });
+    const visibleText = dialog.textContent ?? '';
+    expect(visibleText).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/);
+    expect(dialog.querySelector('[data-rule-id]')).toHaveAttribute('data-rule-id', 'AUTO-BMS-001');
+  });
+
+  it('schreibt technische Knoten-IDs und URL-Kodierung nicht in den Klartext', () => {
+    usePlannerStore.setState({
+      nodes: [] as never,
+      edges: [] as never,
+      autoWirePreview: {
+        nodes: [],
+        edges: [
+          {
+            id: 'auto-node:fuse:Kühlschrank%20Plus',
+            source: 'auto-node:shunt:Batteriecomputer',
+            target: 'inv',
+            data: { crossSection: 6, fuseSize: 32 },
+          },
+        ] as never,
+        report: { conflicts: [], questions: [] },
+        previousEdgeCount: 0,
+        previousNodeCount: 0,
+      },
+    });
+    render(<AutoWireReviewModal />);
+    const table = screen.getByTestId('autowire-edge-diff');
+    expect(table.textContent ?? '').not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/);
+    expect(table).toHaveTextContent('Sicherung „Kühlschrank Plus“');
   });
 
   it('kennzeichnet eine neue Leitung mit leerem Vorher-Wert', () => {

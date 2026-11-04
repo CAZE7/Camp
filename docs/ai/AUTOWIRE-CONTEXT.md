@@ -218,10 +218,19 @@ die Projektion liegt in `lib/autoWire/reviewDiff.ts`:
 | Plan zwischenzeitlich geändert | `previousEdgeCount` stimmt nicht mehr mit `state.edges.length` überein ⇒ es werden **keine** Vorher-Werte angezeigt, sondern ein Hinweis mit der Aufforderung, neu zu berechnen. Kein falscher Vergleich.              |
 | UI                             | `components/planner/AutoWireReviewModal.tsx`, klappbare Tabelle, `data-testid="autowire-edge-diff"` / `autowire-edge-row`. Keine Rechnung in der Komponente (Regel D).                                                 |
 
+**Klartext-Vertrag (CI-Befund 2026-11-04):** Der Dialog ist ein
+Erstnutzer-Text. `tests/e2e/mobile-geometry.spec.ts:844` verbietet im sichtbaren
+Dialog Rohkennungen (`AUTO-[A-Z0-9-]+`, `%20`, `auto-node:`, `ul248-classT`,
+`i2A`). Regel-IDs der Konflikte stehen deshalb nur als `data-rule-id` am
+`<li>`, nicht im Text; Leitungslabel und Kanten-ID laufen durch
+`toPlainGerman`. `AutoWireReviewModal.test.tsx` pinnt denselben Regex gegen
+`dialog.textContent`. Siehe LEDGER 2026-11-04 (4) und Abnahmebericht §10.8.
+
 **Tests:** `lib/autoWire/reviewDiff.test.ts` (7),
-`components/planner/AutoWireReviewModal.test.tsx` (4 neue). Der Golden Master
-bleibt unberührt — die Änderung betrifft ausschließlich die Anzeige eines
-bestehenden Vorschlags, keine Topologie und kein Sizing.
+`components/planner/AutoWireReviewModal.test.tsx` (11 Fälle, davon 6 für die
+Leitungstabelle inkl. Klartext-Vertrag). Der Golden Master bleibt unberührt —
+die Änderung betrifft ausschließlich die Anzeige eines bestehenden Vorschlags,
+keine Topologie und kein Sizing.
 
 ---
 

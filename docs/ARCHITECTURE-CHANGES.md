@@ -3672,3 +3672,43 @@ Querschnitt war vor der Übernahme nicht **je Leitung** nachvollziehbar.
   betroffen; sie werden im Abnahmebericht §10 trotzdem erneut ausgeführt.
 - **Bewusst nicht geändert:** kein Sizing, keine Topologie, keine Auto-Ableitung
   einer „besseren" Sicherung, keine neue Begründung aus angenommenen Strömen.
+
+## LEDGER 2026-11-04 (4) — Klartext-Vertrag im AutoWire-Review (CI-E2E-Befund)
+
+**Anlass:** Erster CI-Lauf auf PR #601 (Head `094862a`): `Quality Gate /
+End-to-End (Playwright)` = fail. Das Job-Log liegt auf einem im Sandbox nicht
+erreichbaren Azure-Blob-Host, aber die Check-Run-Annotations nannten den **einen**
+fehlgeschlagenen Fall: `tests/e2e/mobile-geometry.spec.ts:844` („Auto-verbinden
+abbrechen … der Dialog spricht Klartext“) mit
+`expect(dialog.innerText()).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/)`.
+Ergebnis des Laufs: 360 passed / 259 skipped / 1 failed (26,3 min). Ursache war
+die in (3) ergänzte Tabelle „Änderungen je Leitung“: die Spalte Begründung
+schrieb `<strong>AUTO-BMS-000:</strong>` vor den Konflikttext.
+
+**Verhalten:** Regel-IDs bleiben maschinenlesbar (`data-rule-id` am `<li>`),
+stehen aber nicht mehr im sichtbaren Klartext. Leitungslabel und technische
+Kanten-ID laufen zusätzlich durch `toPlainGerman`, damit `auto-node:` und
+URL-Kodierung auch bei fehlenden Bauteil-Labels nicht im Dialog erscheinen.
+Konflikttexte liefen bereits durch `toPlainGerman`. **Keine** Änderung an
+`lib/`, am Store, an Sizing, Topologie oder Persistenz (Regeln A/D/M unberührt).
+
+**Regression:** `AutoWireReviewModal.test.tsx` (11 Fälle). Der bestehende Fall
+prüft jetzt „kein `AUTO-…` im Text, ID am Element“ statt die ID im Text zu
+erwarten; ein neuer Fall pinnt exakt den E2E-Regex gegen `dialog.textContent`
+(strenger als `innerText`, weil auch zugeklappte Bereiche mitzählen), ein
+weiterer zeigt, dass technische Knoten-IDs (`auto-node:…`, `%20`) als
+Bauteilnamen erscheinen. Kein Test abgeschwächt (O-4), kein Skip, keine
+Baseline gesenkt.
+
+**Verfahren:** Vor dieser Änderung wurden `AGENTS.md`,
+`docs/ai/ARCHITECTURE-RULES.md`, `docs/ai/CHANGE-WORKFLOW.md`,
+`docs/ai/AUTOWIRE-CONTEXT.md` §7.6a/§7.8 und `docs/ai/TESTING-CONTEXT.md` §9.3
+**vor** dem Code gelesen (§23). Damit ist die Reihenfolge für diesen Commit
+eingehalten; die Wiederholung aus §9 Punkt 8 bei den früheren Commits bleibt
+davon unberührt und protokollarisch offen.
+
+**Doku:** `docs/ai/AUTOWIRE-CONTEXT.md` §7.6a, Abnahmebericht §10.8.
+
+**Offen:** Der CI-Lauf auf dem neuen Head steht aus; E2E/Pixel-Baselines können
+lokal weiterhin nicht ausgeführt werden (kein Browser-Binary im Sandbox).
+§24-UI-DoD bleibt offen; es wird kein „E2E grün“ behauptet.
