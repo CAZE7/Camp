@@ -313,3 +313,119 @@ test.describe('Katalog und angewandte Prüfungen', () => {
     expect(falsch, `Durchgänge ohne Gegenstand als erfüllt:\n${falsch.join('\n')}`).toEqual([]);
   });
 });
+
+/**
+ * §10 · Befund B6 (Freigabe 2026-11-04): „Statusanzeigen sind nie gefüllte
+ * Knöpfe." Die Decisions-Stufe in `lib/designTokens.test.ts` rechnet mit
+ * Klassennamen; hier wird die gemalte Fläche selbst befragt — dasselbe Muster,
+ * das schon die Legacy-Map überführt hat (Zeilen 8-12 oben).
+ */
+
+/**
+ * Der Löschknopf sitzt im Inspector, und der ist nicht auf jeder Breite offen:
+ * ab Desktop gibt es den Klappgriff, unter 768 px einen Reiter
+ * (`nav-tab-inspector`). Beides wird versucht — gemessen an `zeigeLegende`.
+ */
+async function zeigeLoeschKnopf(
+  page: import('@playwright/test').Page
+): Promise<import('@playwright/test').Locator> {
+  const loesch = page.getByRole('button', { name: /^Löschen$/ }).first();
+  if (await loesch.isVisible().catch(() => false)) return loesch;
+
+  const reiter = page.getByTestId('nav-tab-inspector');
+  if (await reiter.isVisible().catch(() => false)) {
+    await reiter.click();
+  } else {
+    const griff = page.getByRole('button', { name: /Rechte Sidebar ausklappen/ });
+    if (await griff.isVisible().catch(() => false)) await griff.click();
+  }
+  await expect(loesch, 'Inspector zeigt keinen Löschknopf').toBeVisible({ timeout: 15_000 });
+  return loesch;
+}
+test.describe('§10 B6 — der Löschknopf malt keine Fehlerfläche', () => {
+  for (const schema of ['hell', 'dunkel'] as const) {
+    test(`Löschknopf im Inspector: Umriss in Fehlerfarbe, Kontrast ≥ 4,5:1 (${schema})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: schema === 'dunkel' ? 'dark' : 'light' });
+      await page.goto(`${PLANNER_URL}?template=kastenwagen`);
+      await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
+
+      const dialog = page.getByRole('dialog');
+      await dialog
+        .first()
+        .waitFor({ state: 'visible', timeout: 8_000 })
+        .catch(() => undefined);
+      if ((await dialog.count()) > 0) {
+        await dialog.getByRole('button', { name: 'Dialog schließen' }).click();
+      }
+
+      // Bauteil auswählen — derselbe Tastaturweg wie im A11y-Szenario.
+      const knoten = page.locator('.react-flow__node[role="group"]').first();
+      await expect(knoten).toBeVisible({ timeout: 20_000 });
+      await knoten.focus();
+      await page.keyboard.press('Enter');
+
+      // Der Inspector startet je Breite anders: Klappgriff oder Reiter.
+      const loesch = await zeigeLoeschKnopf(page);
+
+      const gemessen = await loesch.evaluate((el) => {
+        const hex = (wert: string): string | null => {
+          const m = wert.match(/rgba?\(([^)]+)\)/);
+          if (!m) return null;
+          const teile = (m[1] ?? '')
+            .split(/[,\s/]+/)
+            .filter(Boolean)
+            .map(Number);
+          if ((teile[3] ?? 1) < 0.02) return null; // durchsichtig
+          const zwei = (n: number) => Math.round(n).toString(16).padStart(2, '0');
+          return `#${zwei(teile[0] ?? 0)}${zwei(teile[1] ?? 0)}${zwei(teile[2] ?? 0)}`;
+        };
+        const stil = getComputedStyle(el);
+        const eigeneFlaeche = hex(stil.backgroundColor);
+        const flaeche =
+          eigeneFlaeche ??
+          (() => {
+            for (let n = el.parentElement; n; n = n.parentElement) {
+              const c = hex(getComputedStyle(n).backgroundColor);
+              if (c) return c;
+            }
+            return '#ffffff';
+          })();
+        return {
+          schrift: hex(stil.color),
+          rand: hex(stil.borderColor),
+          flaeche,
+          gefüllt: eigeneFlaeche,
+          fehlerfarbe: hex(
+            `rgb(${getComputedStyle(document.documentElement)
+              .getPropertyValue('--destructive-rgb')
+              .trim()
+              .split(/\s+/)
+              .join(',')})`
+          ),
+        };
+      });
+
+      // Ohne diesen Nachweis wären die drei Vergleiche darunter vacuous: ein
+      // nicht auflösbares Token lieferte `null` und „nicht gleich null" fiele
+      // nie auf.
+      expect(gemessen.fehlerfarbe, '--destructive-rgb ist nicht auflösbar').not.toBeNull();
+      // 1. Keine Fehlerfläche: der Knopf darf nicht in der Statusfarbe grundiert
+      //    sein — genau das war der Befund.
+      expect(gemessen.gefüllt, `Grundierung ${gemessen.gefüllt} = Fehlerfarbe`).not.toBe(
+        gemessen.fehlerfarbe
+      );
+      // 2. Umriss und Text tragen die Fehlerfarbe.
+      expect(gemessen.rand).toBe(gemessen.fehlerfarbe);
+      expect(gemessen.schrift).toBe(gemessen.fehlerfarbe);
+      // 3. Der Text bleibt lesbar: gegen die tatsächlich gemalte Fläche.
+      expect(gemessen.schrift, `unbekannte Schriftfarbe ${schema}`).not.toBeNull();
+      const x = relativLuminanz(gemessen.schrift ?? '#000000');
+      const y = relativLuminanz(gemessen.flaeche ?? '#ffffff');
+      const verhaeltnis = (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+      expect(
+        verhaeltnis,
+        `${schema}: ${gemessen.schrift} auf ${gemessen.flaeche} = ${verhaeltnis.toFixed(2)}:1`
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});

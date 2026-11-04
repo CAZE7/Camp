@@ -91,7 +91,7 @@ damit real den Wert, der gemalt wird. **Ein Kontrast-Blinder Fleck existiert nic
 Befunde B3 und B17 sind reiner Pflege- und Doku-Risiken, keine sichtbaren Fehler.
 | B4 | Vier semantische Kollisionen: Akzent/Status = Leiterfarbe (Detail §3.3) | `dark-engineering.css:124-131` |
 | B5 | Auswahl im Katalog per CSS vorhanden, aber tot: `aria-selected` ist hart `false` | `globals.css:2295`; `sidebar/ComponentTile.tsx:49` |
-| B6 | Statusfarbe auf Knöpfen gegen die Regel „Prüfstatus ist kein Primärknopf" | `Inspector.tsx:289,374`; `PlannerDashboard.tsx:460`; `CanvasContextMenu.tsx:232` |
+| B6 | Statusfarbe auf Knöpfen gegen die Regel „Prüfstatus ist kein Primärknopf" — umgesetzt 2026-11-04, siehe §10 und `docs/AP-3-ZEICHENFLAECHE-VERMESSUNG-2026-11-04.md` §10 | `Inspector.tsx:293,378` (gefüllt, behoben); `PlannerDashboard.tsx:460` und `planner/ui/CanvasContextMenu.tsx:232` (bereits Umriss bzw. Text) |
 | B7 | Type-Decke 32 px, kein `clamp()` in der Papierwelt; `.h1` 26 px; sechs handgebaute Überschriften umgehen `SiteSection` | `globals.css:457-486`; `elektrik-planung/page.tsx:121,144,299,356,396,442` |
 | B8 | 12-px-Untergrenze im Planer gebrochen (`text-[10px]`, `text-[11px]`), Wächter prüft nur ≥ 11 px und läuft auf `/design-system` | `VerificationSeal.tsx:231,237`; `WarningCenter.tsx:805`; `tests/e2e/visual-de.spec.ts:107,114` |
 | B9 | 170 Halbschritt-Utilities (Stufe `.5`) gegen das eigene 4-px-Raster — Nachmessung, der Auditlauf meldete 44 | `ToolCard.tsx:64`; `PlanPreview.tsx:35`; `page.tsx:214` u. a. |
@@ -558,6 +558,17 @@ Alle Funktionen bleiben; nichts fällt einem optischen Wunsch.
 - Statusanzeigen sind nie gefüllte Knöpfe: `variant="destructive"` verschwindet
   aus Prüf-, Warn- und Kontextflächen; Zerstörungsaktionen behalten einen
   eindeutig benannten Weg (B6).
+  **Eingelöst 2026-11-04 und nachgemessen:** gefüllt waren nur die beiden
+  Löschknöpfe im Inspector — und die sind zugleich die einzigen echten
+  Zerstörungsaktionen. Die Freigabe ließ offen, was gilt, wenn ein Knopf beides
+  ist; entschieden ist **Umriss in Fehlerfarbe** (`border-destructive
+text-destructive`, Taston `hover:bg-destructive/10`), Wort + Symbol + Rückfrage
+  bleiben der benannte Weg. Kontrast gemessen: 6,54 : 1 hell, 6,11 : 1 dunkel.
+  Wächter: `lib/designTokens.test.ts` (Describe „§10 B6") und
+  `components/Inspector.test.tsx`. **Offener Nachbefund:**
+  `components/nodes/InverterNode.tsx:72` malt `bg-destructive` gefüllt auf einer
+  Karte der Zeichenfläche — kein Knopf, von §10 wörtlich nicht erreicht,
+  bewusst nicht geändert und zur Entscheidung nach AP-6 gestellt.
 - Animation nur als Rückmeldung: 100–160 ms, keine Dauerbewegung ohne Zustand,
   `prefers-reduced-motion` respektiert. Die RoadTrip-Animation behält ihre
   Begründung und ihre Reduced-Motion-Absicherung, ihre Inline-Maße gehen in

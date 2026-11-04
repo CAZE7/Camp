@@ -310,3 +310,110 @@ Teil von AP-6** — zusammen mit §3.4: dort sind die Baselines im Auslieferungs
 zustand, in beiden Themen und auf beiden Geräten neu zu erfassen und gegen
 diesen Stand zu vergleichen. Ein Pixellauf kann die Zeichenfläche nicht sehen
 (B22, B26); die Bauteilbenennung ist also auch in AP-6 nicht durch ihn erledigt.
+
+## 10. §10 B6 umgesetzt: Statusfarbe nie als gefüllter Knopf (2026-11-04)
+
+### Vorgängige Vermessung
+
+Die Freigabe nannte vier Stellen (`Inspector.tsx:289,374`;
+`PlannerDashboard.tsx:460`; `CanvasContextMenu.tsx:232`). Nachgemessen sind es
+**zwei gefüllte** und **zwei bereits unkritische**, und eine der genannten
+Dateien existiert nicht mehr unter dem genannten Pfad:
+
+| Stelle                                 | Gemessener Zustand                                                         | Bewertung                     |
+| -------------------------------------- | -------------------------------------------------------------------------- | ----------------------------- |
+| `Inspector.tsx:293` (Bauteil)          | `variant="destructive"` → `bg-destructive` + `text-destructive-foreground` | gefüllter Statusknopf         |
+| `Inspector.tsx:378` (Leitung)          | dito                                                                       | gefüllter Statusknopf         |
+| `PlannerDashboard.tsx:460`             | `cad-btn--line` mit `border-destructive text-destructive`                  | bereits Umriss, kein Eingriff |
+| `planner/ui/CanvasContextMenu.tsx:232` | Menüpunkt `text-destructive` (Datei ist nach `planner/ui/` umgezogen)      | bereits Text, kein Eingriff   |
+
+Beide gefüllten Knöpfe sind zugleich die **einzigen echten Zerstörungsaktionen**
+im Planer. §10 verlangt aber beides — „verschwindet aus Prüf-, Warn- und
+Kontextflächen" _und_ „Zerstörungsaktionen behalten einen eindeutig benannten
+Weg". Die Freigabe ließ offen, was an einem Knopf gilt, der beides ist.
+
+### Entscheidung (Freigabe 2026-11-04)
+
+**Umriss in Fehlerfarbe.** `variant="outline"` mit
+`border-destructive text-destructive` und einem Taston `hover:bg-destructive/10`.
+Damit ist die Behandlung aller vier Stellen einheitlich, die Fläche bleibt die
+Panel-Fläche, und Wort („Löschen"), Symbol (`Trash2`) und Rückfrage bleiben der
+benannte Weg.
+
+### Kontrast gemessen, nicht angenommen
+
+Die Änderung verschiebt die Farbe von der Fläche auf den Text — das ist der
+eigentliche Kontrast-Risiko dieser Änderung. Über die Alias-Kette
+(`--destructive: var(--error)`) gemessen:
+
+| Theme  | Text auf Knopffläche                     | Verhältnis | gefordert |
+| ------ | ---------------------------------------- | ---------- | --------- |
+| hell   | `#b3261e` auf `--surface-raised #ffffff` | 6,54 : 1   | ≥ 4,5 : 1 |
+| dunkel | `#ff7a7a` auf `--surface-raised #212529` | 6,11 : 1   | ≥ 4,5 : 1 |
+
+Der Umriss erfüllt dieselben Werte und damit auch die 3:1 für Nicht-Text.
+
+### Wächter
+
+`lib/designTokens.test.ts` · Describe „§10 B6 — destruktive Farbe nie als
+gefüllter Knopf":
+
+1. Quelltext-Durchlauf über `app/ components/ lib/ store/`: kein
+   `variant="destructive"` außerhalb der Variantendefinition in
+   `components/ui/button.tsx`. Die Definition bleibt — die Regel verbietet die
+   _Nutzung_ auf Flächen, nicht das Bauteil.
+2. `Inspector.tsx` trägt genau zwei `border-destructive` und keine Fläche
+   `bg-destructive`. Verboten ist die Fläche, nicht der Taston: das Muster
+   schließt `hover:bg-destructive/10` ausdrücklich ein.
+3. `components/Inspector.test.tsx` prüft am gerenderten DOM: keine Füllung, kein
+   `text-destructive-foreground`, Umriss und Text in Fehlerfarbe — und die
+   Rückfrage bleibt der benannte Weg (ihr Aufruf wird beobachtet, weil der
+   imperative Modul-Dialog in jsdom kein `role="dialog"` liefert).
+4. `tests/e2e/rendered-contrast.spec.ts` · Describe „§10 B6" mißt im **gebauten
+   Export** die computed styles des tatsächlich gemalten Knopfs und rechnet den
+   Kontrast gegen die Fläche, die wirklich dahinter liegt — 8 Szenarien
+   (vier Viewports × zwei Themen) grün. Der Wächter wäre auf dem Handy
+   zunächst vacuous durchgegangen: der Inspector startet dort nicht als
+   aufklappbare Leiste, sondern als Reiter (`nav-tab-inspector`); der Helfer
+   `zeigeLoeschKnopf` bedient beide Wege, und die erste Fassung fiel auf
+   `mobile-375`/`touch-pixel5` mit „element(s) not found" durch — nicht der
+   Knopf war falsch, der Test war zu blind.
+   Zusätzlich ist `fehlerfarbe` auf Nicht-`null` geprüft: ohne diese Zeile
+   hätte ein nicht auflösbares `--destructive-rgb` drei Vergleiche gegen `null`
+   gewonnen, und die wären immer grün.
+
+**Injektion geprüft:** `variant="outline"` → `variant="destructive"` gesetzt =
+Exit 1, beide Wächter fallen. Rücknahme über eine Byte-Sicherung der Datei (nicht
+`git checkout --`, das würde den uncommitteten Stand löschen), danach Exit 0.
+
+### Nicht angefasst — bewusster Befund zur Entscheidung
+
+`components/nodes/InverterNode.tsx:72` malt `bg-destructive` als **gefüllte**
+Statusfläche auf einer Karte der Zeichenfläche. Das ist kein Knopf, §10 erreicht
+ihn also wörtlich nicht; die Füllung sitzt außerdem auf der Zeichenfläche, wo
+§3.4 Statusfarbe anders behandelt. Bewusst **nicht** geändert: eine
+Farbänderung nebenbei war nicht freigegeben. Zu entscheiden ist, ob diese Meldung
+(a) als Umriss, (b) als neutrale Textfarbe auf bestehender Fläche oder (c) genau so bleiben
+soll — mit Verweis auf AP-6, wo die Zeichenfläche erstmals visuell abgenommen
+wird.
+
+### Visuell
+
+Anders als §3.4 und §3.6 ist das **ein sichtbarer Eingriff**: Der Löschknopf ändert
+Aussehen in beiden Themen. Pixel-Baselines erfassen den Planer-Chrome, also genau
+hier — die Abnahme gehört in AP-6, und bis dahin ist der Linux-Pixellauf der
+einzige Nachweis, dass nichts anderes mitgezogen wurde.
+
+### Nachgemessener Stand dieses Schritts
+
+- `npm run check` vollständig grün: eslint, `prettier --check`, beide Typechecks,
+  `vitest --coverage` mit **298 Dateien / 3904 Tests** (1 übersprungen).
+- E2E ohne die drei Pixel-Baseline-Specs über alle vier Projekte:
+  **384 bestanden, 254 übersprungen, 2 Fehler.** Beide Fehler sind
+  **kein Rückfall dieser Änderung**, sondern ein alter Isolationmangel im Test:
+  `ui-audit-overlaps.spec.ts:173` und `mobile-geometry.spec.ts` (Frischstart)
+  verlangen eine frische Sitzung; laufen sie mit anderen Specs in denselben
+  Workern, ist das Speicher-Layout nicht mehr jungfräulich und
+  `.planner-entry-notice` fehlt. Einzeln bzw. in kleinerer Auswahl laufen beide
+  grün (1 bestanden; 6 bestanden). dasselbe Bild zeigte sich schon vor §10.
+  Zu beheben ist der Test, nicht die Oberfläche — Befund für AP-6.

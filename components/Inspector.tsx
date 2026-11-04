@@ -290,7 +290,7 @@ const NodeInspector = ({
       />
 
       <Button
-        variant="destructive"
+        variant="outline"
         size="sm"
         onClick={() => {
           void requestConfirm(
@@ -299,7 +299,10 @@ const NodeInspector = ({
             if (ok) onDelete(node.id);
           });
         }}
-        className="w-full gap-2"
+        // §10 (B6, Freigabe 2026-11-04): Statusfarbe wird nicht gefüllt — die
+        // Löschaktion behält Wort, Symbol und Rückfrage als benannten Weg und
+        // trägt die Fehlerfarbe als Umriss.
+        className="w-full gap-2 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
         <Trash2 size={16} />
         Löschen
@@ -375,7 +378,7 @@ export default function Inspector({
           )}
           {onDelete && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onClick={() => {
                 void requestConfirm(
@@ -384,7 +387,7 @@ export default function Inspector({
                   if (ok) onDelete();
                 });
               }}
-              className="w-full gap-2"
+              className="w-full gap-2 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               <Trash2 size={16} />
               Löschen

@@ -678,3 +678,53 @@ describe('AUDIT A1/A2 — Tastaturfokus im Canvas ist sichtbar (WCAG 2.4.7)', ()
     expect(before).toMatch(/Bedienmodell|Ausnahme|Ausschluss/i);
   });
 });
+
+/**
+ * §10 · Befund B6 (Freigabe 2026-11-04): „Statusanzeigen sind nie gefüllte
+ * Knöpfe." Die Richtung ist entschieden — Umriss in Fehlerfarbe, kein
+ * Flächenknopf; die Zerstörungsaktion behält ihren benannten Weg (Wort, Symbol,
+ * Rückfrage). Gemessen war die Regel an genau zwei Stellen gebrochen, beide im
+ * Inspector; `PlannerDashboard.tsx` und `CanvasContextMenu.tsx` trugen die
+ * Fehlerfarbe bereits als Umriss bzw. Text.
+ */
+describe('§10 B6 — destruktive Farbe nie als gefüllter Knopf', () => {
+  const WURZELN = ['app', 'components', 'lib', 'store'];
+  const DEFINITION = 'components/ui/button.tsx';
+
+  function quellen(dir: string): string[] {
+    const out: string[] = [];
+    for (const eintrag of readdirSync(dir)) {
+      const voll = join(dir, eintrag);
+      if (statSync(voll).isDirectory()) {
+        if (eintrag === 'node_modules') continue;
+        out.push(...quellen(voll));
+      } else if (/\.(ts|tsx)$/.test(eintrag) && !/\.(test|spec|stories)\.[jt]sx?$/.test(eintrag)) {
+        out.push(voll.replace(/\\/g, '/'));
+      }
+    }
+    return out;
+  }
+
+  it('rufen variant="destructive" nirgends außerhalb der Variantendefinition auf', () => {
+    const fehl: string[] = [];
+    for (const quell of WURZELN.flatMap(quellen)) {
+      if (quell.endsWith(DEFINITION)) continue;
+      readFileSync(resolve(process.cwd(), quell), 'utf8')
+        .split('\n')
+        .forEach((zeile, i) => {
+          if (/variant=\{?["']destructive/.test(zeile)) {
+            fehl.push(`${quell}:${i + 1}  ${zeile.trim().slice(0, 80)}`);
+          }
+        });
+    }
+    expect(fehl, `gefüllter destruktiver Knopf (§10 B6):\n${fehl.join('\n')}`).toEqual([]);
+  });
+
+  it('halten die benannten Löschwege die Fehlerfarbe als Umriss, nicht als Fläche', () => {
+    const inspector = readFileSync(resolve(process.cwd(), 'components/Inspector.tsx'), 'utf8');
+    // Zwei Löschaktionen (Bauteil, Leitung) — beide als Umriss.
+    expect(inspector.match(/border-destructive/g)).toHaveLength(2);
+    // Verboten ist die Fläche; ein Taston (`hover:bg-destructive/10`) ist keine.
+    expect(inspector).not.toMatch(/(?:^|[\s"'`])bg-destructive/);
+  });
+});
