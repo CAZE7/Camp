@@ -565,10 +565,11 @@ Alle Funktionen bleiben; nichts fällt einem optischen Wunsch.
 text-destructive`, Taston `hover:bg-destructive/10`), Wort + Symbol + Rückfrage
   bleiben der benannte Weg. Kontrast gemessen: 6,54 : 1 hell, 6,11 : 1 dunkel.
   Wächter: `lib/designTokens.test.ts` (Describe „§10 B6") und
-  `components/Inspector.test.tsx`. **Offener Nachbefund:**
+  `components/Inspector.test.tsx`. **Offener Nachbefund, registriert als B28:**
   `components/nodes/InverterNode.tsx:72` malt `bg-destructive` gefüllt auf einer
   Karte der Zeichenfläche — kein Knopf, von §10 wörtlich nicht erreicht,
-  bewusst nicht geändert und zur Entscheidung nach AP-6 gestellt.
+  bewusst nicht geändert und verbindlich in AP-6 abzuarbeiten (Register
+  `docs/AP-2-TOKEN-KONSOLIDIERUNG-2026-11-04.md` §7, Arbeitspaket §13).
 - Animation nur als Rückmeldung: 100–160 ms, keine Dauerbewegung ohne Zustand,
   `prefers-reduced-motion` respektiert. Die RoadTrip-Animation behält ihre
   Begründung und ihre Reduced-Motion-Absicherung, ihre Inline-Maße gehen in
@@ -673,7 +674,7 @@ Abnahme (Auftrag §9), jeweils mit Beleg, nicht mit Behauptung:
 | **AP-3 Zeichenfläche**         | Kollisionsprüfung §3.3 mit Freigabe, Auswahl per Form im Katalog, Status weg vom Knopf, Zustands-Vollständigkeit, Touch- und Fokus-Nachzug                                                                                                                                                                                                   | Planer                               |
 | **AP-4 Planer-Chrome**         | Panel-Raster aus einem Token, Node-Breiten aus Maßen, Media-Query-Zusammenführung mit Begründung, Dichte                                                                                                                                                                                                                                     | Planer                               |
 | **AP-5 Content und Werkzeuge** | 26 Routen auf die Sprache, Headings über `SiteSection`, Texte nach §6, Rechner-Ergebnisblock mit Bemaßung                                                                                                                                                                                                                                    | Website                              |
-| **AP-6 Wächter und Beweise**   | Tests 1–8 aus §12, Baseline-Ausbau auf Inspector/WarningCenter/BOM/Guided, `baselines.yml`-Lauf, Vorher/Nachher nach `docs/UI-BASELINE.md` §4                                                                                                                                                                                                | —                                    |
+| **AP-6 Wächter und Beweise**   | Tests 1–8 aus §12, Baseline-Ausbau auf Inspector/WarningCenter/BOM/Guided, `baselines.yml`-Lauf, Vorher/Nachher nach `docs/UI-BASELINE.md` §4, **B28** klären: gefüllte Alarmfläche auf der Wechselrichter-Karte (`InverterNode.tsx:72`) — Umriss, neutrale Textfarbe oder bewusst behalten                                                  | —                                    |
 
 Reihenfolge ist bindend: AP-1 vor AP-2, damit die Richtung früh sichtbar ist;
 AP-2 vor AP-3 bis AP-5, damit danach nichts mehr doppelt gepflegt wird. Jedes

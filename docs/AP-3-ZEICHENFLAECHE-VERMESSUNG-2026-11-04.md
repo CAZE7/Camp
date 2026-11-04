@@ -391,11 +391,13 @@ Exit 1, beide Wächter fallen. Rücknahme über eine Byte-Sicherung der Datei (n
 `components/nodes/InverterNode.tsx:72` malt `bg-destructive` als **gefüllte**
 Statusfläche auf einer Karte der Zeichenfläche. Das ist kein Knopf, §10 erreicht
 ihn also wörtlich nicht; die Füllung sitzt außerdem auf der Zeichenfläche, wo
-§3.4 Statusfarbe anders behandelt. Bewusst **nicht** geändert: eine
-Farbänderung nebenbei war nicht freigegeben. Zu entscheiden ist, ob diese Meldung
-(a) als Umriss, (b) als neutrale Textfarbe auf bestehender Fläche oder (c) genau so bleiben
-soll — mit Verweis auf AP-6, wo die Zeichenfläche erstmals visuell abgenommen
-wird.
+§3.4 Statusfarbe anders behandelt. Bewusst **nicht** geändert und bleibt es auch
+jetzt: eine Farbänderung nebenbei war nicht freigegeben. Der Befund ist
+verbindlich als **B28** in das Register von
+`docs/AP-2-TOKEN-KONSOLIDIERUNG-2026-11-04.md` §7 eingetragen und in AP-6
+abzuarbeiten — zusammen mit der Frage, ob diese Meldung (a) als Umriss, (b) als
+neutrale Textfarbe auf bestehender Fläche oder (c) genau so bleiben soll. AP-6
+ist ohnehin der erste Lauf, in dem die Zeichenfläche visuell abgenommen wird.
 
 ### Visuell
 

@@ -431,18 +431,19 @@ geht.
 
 Aus der Messung dieses Pakets, bisher undokumentiert:
 
-| ID  | Befund                                                                                                                                   | Beleg                                                     | Paket        |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------ |
-| B18 | Elf Markenrollen hatten durch das Legacy Mapping zwei Werte; der Token-Guard prüfte den nie gemalten.                                    | §1.1                                                      | hier behoben |
-| B19 | Die Zeichenfläche malte die Seitenfarbe; das Raster war bei 1,02:1 unwirksam.                                                            | §1.2, `scripts/design-audit/ergebnis/canvas-vor-dark.png` | hier behoben |
-| B20 | Legende und Leitungen bezogen verschiedene Token-Familien.                                                                               | §1.3                                                      | hier behoben |
-| B21 | Ein Prüfdurchgang ohne Gegenstand wurde als »erfüllt« gezeigt — in sechs von neun Plänen.                                                | §1.5                                                      | hier behoben |
-| B22 | `.react-flow__node` trägt kein `aria-selected`; die Auswahl ist assistierender Technik nicht benannt.                                    | §1.4                                                      | AP-3         |
-| B23 | Die Routing-Legende ist bei 768 px nicht erreichbar.                                                                                     | §3.2                                                      | AP-4         |
-| B24 | Das Status-Panel überdeckt bei 1440 px Bauteilkarten; die »React Flow«-Attribution ist im Produkt sichtbar.                              | `scripts/design-audit/ergebnis/canvas-vor-dark.png`       | AP-4         |
-| B25 | `--de-*` dupliziert die Markenpalette als eigene Literale.                                                                               | §1.1, Inventar                                            | AP-6         |
-| B26 | Das visuelle Gate vergleicht den Erstbesuch: Zeichenfläche liegt unter einem Scrim, Alarmfarbe ist auf keiner erfassten Route vorhanden. | §6.1                                                      | AP-6         |
-| B27 | Lighthouse-Budget `/camper-elektrik/ladebooster/` Perf 76 — seit PR #599 auf `main`, unabhängig von AP-2.                                | §6.2, Runs 353/354/580                                    | nicht Design |
+| ID  | Befund                                                                                                                                                                                          | Beleg                                                     | Paket        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------ |
+| B18 | Elf Markenrollen hatten durch das Legacy Mapping zwei Werte; der Token-Guard prüfte den nie gemalten.                                                                                           | §1.1                                                      | hier behoben |
+| B19 | Die Zeichenfläche malte die Seitenfarbe; das Raster war bei 1,02:1 unwirksam.                                                                                                                   | §1.2, `scripts/design-audit/ergebnis/canvas-vor-dark.png` | hier behoben |
+| B20 | Legende und Leitungen bezogen verschiedene Token-Familien.                                                                                                                                      | §1.3                                                      | hier behoben |
+| B21 | Ein Prüfdurchgang ohne Gegenstand wurde als »erfüllt« gezeigt — in sechs von neun Plänen.                                                                                                       | §1.5                                                      | hier behoben |
+| B22 | `.react-flow__node` trägt kein `aria-selected`; die Auswahl ist assistierender Technik nicht benannt.                                                                                           | §1.4                                                      | AP-3         |
+| B23 | Die Routing-Legende ist bei 768 px nicht erreichbar.                                                                                                                                            | §3.2                                                      | AP-4         |
+| B24 | Das Status-Panel überdeckt bei 1440 px Bauteilkarten; die »React Flow«-Attribution ist im Produkt sichtbar.                                                                                     | `scripts/design-audit/ergebnis/canvas-vor-dark.png`       | AP-4         |
+| B25 | `--de-*` dupliziert die Markenpalette als eigene Literale.                                                                                                                                      | §1.1, Inventar                                            | AP-6         |
+| B26 | Das visuelle Gate vergleicht den Erstbesuch: Zeichenfläche liegt unter einem Scrim, Alarmfarbe ist auf keiner erfassten Route vorhanden.                                                        | §6.1                                                      | AP-6         |
+| B27 | Lighthouse-Budget `/camper-elektrik/ladebooster/` Perf 76 — seit PR #599 auf `main`, unabhängig von AP-2.                                                                                       | §6.2, Runs 353/354/580                                    | nicht Design |
+| B28 | `InverterNode.tsx:72` malt `bg-destructive` als gefüllte Statusfläche auf einer Karte der Zeichenfläche — kein Knopf, von §10 wörtlich nicht erreicht; unangetastet und in AP-6 zu entscheiden. | AP-3 §10, `components/nodes/InverterNode.tsx:72`          | AP-6         |
 
 ## 8. Abschluss
 
