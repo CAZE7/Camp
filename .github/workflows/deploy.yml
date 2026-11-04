@@ -104,10 +104,11 @@ jobs:
         # `app/impressum/page.tsx` wird öffentlich ausgeliefert; ein unvollständiges
         # Impressum ist abmahnfähig. Der Wächter läuft hier und nicht im Quality
         # Gate: ein Pull Request ist keine Veröffentlichung.
-        # Stufe ist Entscheidung des Betreibers (2026-09-26): `warn` meldet offen
-        # an der Stelle des Risikos, `block` stoppt die Veröffentlichung.
+        # Stufe ist Entscheidung des Betreibers: bis 2026-11-03 `warn`, weil die
+        # Angaben fehlten. Seit die fünf Felder eingetragen und freigegeben sind,
+        # stoppt `block` den Deploy bei jedem Rückfall auf Platzhalter.
         env:
-          LEGAL_NOTICE_GATE: warn
+          LEGAL_NOTICE_GATE: block
         run: npm run ci:verify-legal-notice
 
       - name: Pages konfigurieren

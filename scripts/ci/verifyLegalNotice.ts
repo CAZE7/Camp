@@ -12,17 +12,18 @@
  * (`.github/workflows/deploy.yml`, Job `build`, nach `npm ci`, vor dem Build)
  * und schreibt die offenen Felder in Log, Run-Annotation und Step-Summary.
  *
- * Stufe — Entscheidung des Betreibers (2026-09-26):
- *   `LEGAL_NOTICE_GATE=warn`  (Default) meldet und lässt den Deploy laufen.
+ * Stufe — Entscheidung des Betreibers:
+ *   2026-09-26 `warn`  (Default im Skript) meldet und lässt den Deploy laufen.
+ *   2026-11-03 Der Deploy-Workflow steht auf `block`: Die fünf Angaben sind
+ *              eingetragen und freigegeben, ein Rückfall soll die
+ *              Veröffentlichung jetzt stoppen statt nur zu melden.
  *   `LEGAL_NOTICE_GATE=block` stoppt den Deploy bei offenen Angaben.
- * Begründung für `warn`: Die Angaben kann nur der Betreiber liefern, und ein
- * Block stoppt die gesamte Veröffentlichung für ein Dokument, das er selbst
- * nachtragen muss. Der Mangel bleibt trotzdem sichtbar an der Stelle, an der
- * aus ihm ein Rechtsrisiko wird — und `block` ist eine Env-Variable entfernt.
- * Im Quality Gate läuft der Wächter bewusst nicht: Ein Pull Request ist keine
- * Veröffentlichung.
+ * Die frühere Begründung für `warn` („nur der Betreiber kann liefern") ist mit
+ * der Lieferung der Angaben weggefallen. Im Quality Gate läuft der Wächter
+ * bewusst nicht: Ein Pull Request ist keine Veröffentlichung.
  *
- * Auszufüllen: `SITE_LEGAL` in `lib/siteLegal.ts` (fünf Felder, ein Ort).
+ * Quelle der Angaben: `SITE_LEGAL` in `lib/siteLegal.ts` (fünf Felder, ein Ort),
+ * Herkunft in `docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md` §6.
  *
  * Aufruf (CI):  npx tsx scripts/ci/verifyLegalNotice.ts
  * Aufruf (lokal): npm run ci:verify-legal-notice

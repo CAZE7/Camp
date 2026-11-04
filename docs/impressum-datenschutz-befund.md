@@ -1,5 +1,28 @@
 # Befund: Impressum & Datenschutz — Platzhalter und Optionen
 
+> **Fortschreibung 2026-11-03 (dieser Abschnitt ist aktuell, der Befund unten
+> bleibt als historische Bestandsaufnahme stehen):** Der Betreiber hat die fünf
+> Angaben geliefert und in dieser Sitzung freigegeben. `lib/siteLegal.ts` ist
+> vollständig befüllt, `missingLegalFields()` ist leer, und
+> `.github/workflows/deploy.yml` steht auf `LEGAL_NOTICE_GATE: block`. Die
+> Aussage unten „Es wurden keine personenbezogenen Daten eingetragen" und die
+> Tabelle der fünf offenen Felder sind damit **erledigt**. Die sichtbaren
+> Normzitate sind längst DDG/MStV (nicht mehr TMG/RStV). Die eingefrorenen
+> Pixel-Baselines für `/impressum/` sind durch die echten Angaben veraltet und
+> müssen in CI neu gezogen werden.
+>
+> **Korrektur 2026-11-03:** Die unten zitierte „Kurzfassung" beschreibt einen
+> älteren/anderen Baum. In **diesem** Checkout ist `app/datenschutz/page.tsx`
+> eine vollständige Erklärung (Hosting/Logs, DPF/SCC, localStorage, keine
+> Cookies/Analyse, inaktiver Assistent, E-Mail-Kontakt, Betroffenenrechte).
+> Rechtstexte sind damit vollständig; ein CMP ist ohne Cookies nicht nötig,
+> Consent Mode v2 wird erst mit einem Ads-/Analytics-Tag relevant. Offen
+> bleiben Ads-Konto, Search Console und Conversion-Messung sowie die generell
+> empfehlenswerte anwaltliche Endabnahme. Herkunft und Abgleich:
+> `docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md` §6.
+>
+> Diese Datei ist eine Bestandsaufnahme, **keine Rechtsberatung**.
+
 Stand: 2026-10-12 · Erhoben durch Code-Sicht (`lib/siteLegal.ts`, `app/impressum/page.tsx`,
 `app/datenschutz/page.tsx`, `.github/workflows/deploy.yml`). **Es wurden keine
 personenbezogenen Daten eingetragen** — das kann und darf nur der Betreiber

@@ -19,22 +19,122 @@ export function LadeboosterVergleichBehavior() {
     const { signal } = controller;
 
     const filterButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-lb-filter]'));
+    const sortButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-lb-sort]'));
     const devices = Array.from(root.querySelectorAll<HTMLElement>('[data-lb-class]'));
+    const tbody = root.querySelector<HTMLTableSectionElement>('[data-lb-tbody]');
+    const grid = root.querySelector<HTMLElement>('#geraete-karten');
+    const rows = tbody ? Array.from(tbody.querySelectorAll<HTMLTableRowElement>('tr[data-lb-class]')) : [];
+    const cards = grid ? Array.from(grid.querySelectorAll<HTMLElement>('article[data-lb-class]')) : [];
+    const originalRows = [...rows];
+    const originalCards = [...cards];
+    const countEl = root.querySelector<HTMLElement>('[data-lb-count]');
+    const cleanups: Array<() => void> = [() => controller.abort()];
 
+    const updateCount = () => {
+      const visible = cards.filter((card) => !card.classList.contains('is-hidden')).length;
+      if (countEl && cards.length > 0) countEl.textContent = `${visible} von ${cards.length} Geräten`;
+    };
+
+    /** Der Filter wirkt auf Tabelle UND Karten — nicht nur auf eine von beiden. */
     const applyFilter = (value: string) => {
-      devices.forEach((card) => {
-        const match = value === 'all' || card.dataset.lbClass === value;
-        card.classList.toggle('is-hidden', !match);
+      devices.forEach((element) => {
+        const match = value === 'all' || element.dataset.lbClass === value;
+        element.classList.toggle('is-hidden', !match);
       });
       filterButtons.forEach((button) => {
-        const active = button.dataset.lbFilter === value;
-        button.setAttribute('aria-pressed', String(active));
+        button.setAttribute('aria-pressed', String(button.dataset.lbFilter === value));
       });
+      updateCount();
     };
 
     filterButtons.forEach((button) => {
       button.addEventListener('click', () => applyFilter(button.dataset.lbFilter ?? 'all'), { signal });
     });
+
+    /** `null` (nicht belegt) sortiert immer ans Ende, nie an den Anfang. */
+    const numericSort = <T extends HTMLElement>(
+      elements: readonly T[],
+      attr: string,
+      descending: boolean
+    ): T[] =>
+      [...elements].sort((a, b) => {
+        const av = a.getAttribute(attr);
+        const bv = b.getAttribute(attr);
+        if (!av) return 1;
+        if (!bv) return -1;
+        return descending ? Number(bv) - Number(av) : Number(av) - Number(bv);
+      });
+
+    const applySort = (mode: string) => {
+      let nextRows = originalRows;
+      let nextCards = originalCards;
+      if (mode === 'strom') {
+        nextRows = numericSort(originalRows, 'data-lb-strom', true);
+        nextCards = numericSort(originalCards, 'data-lb-strom', true);
+      } else if (mode === 'preis') {
+        nextRows = numericSort(originalRows, 'data-lb-preis', false);
+        nextCards = numericSort(originalCards, 'data-lb-preis', false);
+      }
+      nextRows.forEach((row) => tbody?.appendChild(row));
+      nextCards.forEach((card) => grid?.appendChild(card));
+      sortButtons.forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.lbSort === mode));
+      });
+    };
+
+    sortButtons.forEach((button) => {
+      button.addEventListener('click', () => applySort(button.dataset.lbSort ?? 'rang'), { signal });
+    });
+    updateCount();
+
+    /**
+     * Ein Sprungziel innerhalb eines <details> wird vor dem Scrollen geöffnet.
+     * <details> ist natives HTML: Ohne JavaScript bleibt es per Klick bedienbar,
+     * die Anker zeigen dann auf die sichtbare Zusammenfassung.
+     */
+    const navLinks = Array.from(root.querySelectorAll<HTMLAnchorElement>('[data-lb-nav] a[href^="#"]'));
+    const openTarget = (hash: string) => {
+      if (!hash.startsWith('#')) return;
+      const target = document.getElementById(hash.slice(1));
+      if (!target) return;
+      const details = target.closest<HTMLDetailsElement>('details');
+      if (details) details.open = true;
+    };
+
+    navLinks.forEach((link) => {
+      link.addEventListener(
+        'click',
+        () => {
+          openTarget(link.getAttribute('href') ?? '');
+          navLinks.forEach((other) => other.removeAttribute('aria-current'));
+          link.setAttribute('aria-current', 'true');
+        },
+        { signal }
+      );
+    });
+    if (window.location.hash) openTarget(window.location.hash);
+
+    const sections = navLinks
+      .map((link) => document.getElementById((link.getAttribute('href') ?? '').slice(1)))
+      .filter((element): element is HTMLElement => element !== null);
+    if ('IntersectionObserver' in window && sections.length > 0) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const top = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!top) return;
+          navLinks.forEach((link) => {
+            const id = (link.getAttribute('href') ?? '').slice(1);
+            if (id === top.target.id) link.setAttribute('aria-current', 'true');
+            else link.removeAttribute('aria-current');
+          });
+        },
+        { rootMargin: '-90px 0px -70% 0px' }
+      );
+      sections.forEach((section) => observer.observe(section));
+      cleanups.push(() => observer.disconnect());
+    }
 
     const form = root.querySelector<HTMLFormElement>('#lb-calc-form');
     const ahInput = root.querySelector<HTMLInputElement>('#lb-ah');
@@ -57,7 +157,7 @@ export function LadeboosterVergleichBehavior() {
       !loadOut ||
       !noteBox
     ) {
-      return () => controller.abort();
+      return () => cleanups.forEach((fn) => fn());
     }
 
     const toNumber = (value: string) => Number(value.replace(',', '.'));
@@ -179,7 +279,7 @@ export function LadeboosterVergleichBehavior() {
 
     calculate();
 
-    return () => controller.abort();
+    return () => cleanups.forEach((fn) => fn());
   }, []);
 
   return null;

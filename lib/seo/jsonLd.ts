@@ -11,7 +11,12 @@
  * Grundsätze:
  *   - Verweise über `@id`, nicht über wiederholte Adressen.
  *   - Nur Typen, die der sichtbare Inhalt belegt (keine Bewertungen, keine
- *     Autoren, keine Preise — es gibt sie in Camp nicht).
+ *     Autoren).
+ *   - Preise sind seit dem Ladebooster-Vergleich auf der Seite sichtbar,
+ *     stehen aber bewusst NICHT im Schema: Ein beobachteter Straßenpreis mit
+ *     Stand-Datum würde als maschinelle Zusage veralten. Deshalb kein `Offer`,
+ *     kein `Review`, kein `aggregateRating` und keine fremde URL — letzteres
+ *     meldet das Gate `json-ld-adresse` in `scripts/seo/checks.ts` als Fehler.
  *   - Texte kommen aus derselben Quelle wie die Anzeige; sonst beschreibt die
  *     Maschinenfassung etwas anderes als die Seite.
  */
@@ -53,6 +58,14 @@ export function webPageNode(input: {
   mainEntityId?: string;
   hasPartIds?: readonly string[];
   breadcrumbId?: string;
+  /**
+   * Verschachtelte `ImageObject`-Knoten aus `lib/seo/bildSitemap.ts`. Bewusst
+   * KEINE eigenen Top-Level-Knoten: Das Gate `json-ld-inventar` erwartet je
+   * angekündigtem Typ genau einen Knoten, und eine Seite kann mehrere Bilder
+   * haben. Die verschachtelte Form kann außerdem nicht etwas behaupten, das
+   * die sichtbare Seite nicht zeigt.
+   */
+  images?: readonly JsonLdNode[];
   /** `CollectionPage` für Übersichten, sonst `WebPage`. */
   type?: Extract<StructuredDataType, 'WebPage' | 'CollectionPage'>;
 }): JsonLdNode {
@@ -72,7 +85,55 @@ export function webPageNode(input: {
     node['hasPart'] = input.hasPartIds.map((id) => ({ '@id': id }));
   }
   if (input.breadcrumbId) node['breadcrumb'] = { '@id': input.breadcrumbId };
+  if (input.images && input.images.length > 0) node['image'] = [...input.images];
   return node;
+}
+
+/**
+ * Rangliste der Vergleichsseite. Bewusst EIN ItemList-Knoten mit verschachtelten
+ * Product-Einträgen statt neun Top-Level-Knoten: Das Gate `json-ld-inventar`
+ * erwartet je angekündigtem Typ genau einen Knoten.
+ *
+ * Keine Preise, keine Bewertungen, keine fremden Adressen: Ein beobachteter
+ * Straßenpreis mit Stand-Datum würde als maschinelle Zusage veralten, und
+ * `json-ld-adresse` meldet jede fremde Origin als Fehler. Die `@id`s zeigen
+ * auf Anker derselben Seite — dadurch kann die Maschinenfassung nicht etwas
+ * behaupten, das die sichtbare Rangliste nicht zeigt.
+ */
+export function itemListNode(input: {
+  path: string;
+  name: string;
+  items: readonly {
+    id: string;
+    name: string;
+    brand: string;
+    klasse: string;
+    attribute: readonly { label: string; wert: string }[];
+  }[];
+}): JsonLdNode {
+  return {
+    '@type': 'ItemList',
+    '@id': pageNodeId(input.path, 'itemlist'),
+    name: input.name,
+    numberOfItems: input.items.length,
+    itemListElement: input.items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: {
+        '@type': 'Product',
+        '@id': pageNodeId(input.path, `product-${item.id}`),
+        name: item.name,
+        brand: { '@type': 'Brand', name: item.brand },
+        category: `Ladebooster ${item.klasse}`,
+        additionalProperty: item.attribute.map((attribut) => ({
+          '@type': 'PropertyValue',
+          name: attribut.label,
+          value: attribut.wert,
+        })),
+      },
+    })),
+  };
 }
 
 /** Ein Eintrag der Brotkrumenspur: Anzeigename und Ziel. */
