@@ -36,5 +36,6 @@ export * from './pathSearch';
 export * from './ampacity';
 export * from './powerPath';
 export * from './protection';
+export * from './acScope';
 export * from './context';
 export * from './pipeline';

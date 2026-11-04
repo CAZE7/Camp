@@ -203,6 +203,28 @@ sperrt die **Freigabe**, nicht die Kabelwahl.
 
 ---
 
+## 7.6a Review: Vorher/Nachher je Leitung (P0-Nachlauf, 2026-11-04)
+
+Der Review-Dialog zeigt vor der Übernahme **je Leitung** Querschnitt, Sicherung,
+Verlegebedingung und eine Begründung — nicht nur eine Sammelzahl. Datenquelle ist
+ausschließlich `autoWirePreview.edges` ( Nachher ) plus der aktuelle Plan ( Vorher );
+die Projektion liegt in `lib/autoWire/reviewDiff.ts`:
+
+| Aspekt                         | Verhalten                                                                                                                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoWireEdgeDiff()`           | Reine, deterministische Projektion: geänderte → neue → entfernte → unveränderte Leitungen, je nach ID sortiert. Liest `edge.data`, rechnet **nichts** elektrisch.                                                      |
+| Begründung                     | Aus den geänderten Feldern, der I_z-Herkunft (`cableSizingFor`: Label, Bewertungsstufe, `explanation`) und den Konflikten desselben `AutoWireReport` (nur für Leitungen in `conflict.edgeIds`). Kein erfundener Grund. |
+| Ungültige Verlegebedingung     | `valid: false` ⇒ „Nicht ausführbar … UNVERIFIABLE". Kein stiller Rückfall auf die Referenz (Regel M).                                                                                                                  |
+| Plan zwischenzeitlich geändert | `previousEdgeCount` stimmt nicht mehr mit `state.edges.length` überein ⇒ es werden **keine** Vorher-Werte angezeigt, sondern ein Hinweis mit der Aufforderung, neu zu berechnen. Kein falscher Vergleich.              |
+| UI                             | `components/planner/AutoWireReviewModal.tsx`, klappbare Tabelle, `data-testid="autowire-edge-diff"` / `autowire-edge-row`. Keine Rechnung in der Komponente (Regel D).                                                 |
+
+**Tests:** `lib/autoWire/reviewDiff.test.ts` (7),
+`components/planner/AutoWireReviewModal.test.tsx` (4 neue). Der Golden Master
+bleibt unberührt — die Änderung betrifft ausschließlich die Anzeige eines
+bestehenden Vorschlags, keine Topologie und kein Sizing.
+
+---
+
 ## 7.7 Fehler- und Grenzfälle
 
 | Fall                                          | Verhalten                                                                                                                                        |
@@ -232,6 +254,8 @@ sperrt die **Freigabe**, nicht die Kabelwahl.
 | `store/usePlannerStore.test.ts`, `usePlannerStoreExtended.test.ts` | Store-Integration, Historie, Nutzerkanten-Erhalt                                                                                                    |
 | `scripts/goldenmaster/goldenMaster.test.ts`                        | AutoWire-Ergebnis aller sechs Referenzpläne eingefroren                                                                                             |
 | `scripts/routing/finalValidation.test.ts`                          | Routing-Invarianten auf dem **auto-verdrahteten** Plan                                                                                              |
+| `lib/autoWire/reviewDiff.test.ts`                                  | Vorher/Nachher-Projektion: Werte unverändert, Änderungsgründe, ungültige Bedingung, Sortierung, Konfliktzuordnung                                   |
+| `components/planner/AutoWireReviewModal.test.tsx`                  | Anzeige je Leitung, neue Leitung, Konsistenz-Wächter, Auf-/Zuklappen                                                                                |
 
 **Bei einer AutoWire-Änderung ist der Golden Master der Maßstab.** Er schlägt fehl bei
 Topologie-, Sizing- oder Routing-Änderung. Zulässige Ausgänge: Fix (Regression) **oder**

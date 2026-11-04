@@ -40,7 +40,12 @@ Der AutoWire-Review nennt eigene Verlegebedingungen jetzt vor der Übernahme.
 (8), `lib/verify/cableConditions.test.ts` (7), `edgeSchema.test.ts` (9),
 `store/cableConditions.store.test.ts` (5), `EdgeInspector.test.tsx` (2 neue),
 `AutoWireReviewModal.test.tsx` (2 neue). Referenzpfad-Tests belegen
-byte-stabile Querschnitte/Sicherungen; Golden Master, Regression und Vollsuite grün.
+byte-stabile Querschnitte/Sicherungen. **Finale Gates nach der Review-Korrektur
+(2026-11-04):** `npm run check` 301 Dateien / 3935 Tests / 1 skipped / 431,86 s,
+`npx vitest run lib/` 104 / 1707, Golden Master 13 ohne Neuerfassung,
+Regression 68, `routing:audit` I1–I7 = 0 / `determ=true`, `perf:edge-routing`
+allein 1,74 ms (p90 1,98 ms) bzw. 189,27 ms (p90 221,16 ms) ⇒ OK. E2E,
+Pixel-Baselines, `npm run build` und PR waren nicht ausgeführt.
 
 ## LEDGER 2026-11-03 (2) — P0: BMS als echte Design-Constraint
 
@@ -3368,3 +3373,59 @@ die Routing-Stufe bleibt byte-gleich. Anlass:
 - **Nicht Teil dieses Schnitts:** vollständige Einbauort-Dämpfung für
   AMP-004-Zweigsicherungen, 24/48-V-Spannungsfallbudget in der Anzeige,
   Serien-/Parallel-Solarstrom auf der Panel-Seite und AC-Durchgangsmodell.
+
+## LEDGER 2026-11-04 (Nachlauf) — 230-V-Modellgrenzen explizit abgesichert, AutoWire-Einzelbegründung
+
+**Anlass:** Aus dem P0-Sprint blieb der 230-V-Punkt der P0-Tabelle bewusst
+ausgeklammert (nicht Teil der drei Sprint-Aufgaben). Der Nachlauf sollte die
+Lücke entweder schließen oder **explizit absichern**; gewählt wurde die zweite
+Variante ohne neue Features (`AGENTS.md` Zeile 95).
+
+- **Keine Neuarchitektur:** Keine L/N/PE-Kanten, kein Netzform-, Umschalt- oder
+  Rückspeisemodell, keine normgeprüfte Abnahme. Das einleiterige Modell bleibt.
+- **Prüfbares Gate:** `NET-003-ac-model-scope` in `lib/verify/acScope.ts`,
+  `RULE_MATRIX` (30 Regeln), `runPass5` (zehn Checks), `ENGINE_LIMITATIONS`
+  (siebter Eintrag). Drei Stufen: rechnerisch bewertet / mit Annahmen bewertet /
+  nicht überprüfbar. Neun strukturierte Einzelpunkte in `details.acScopeItems`.
+- **Sichtbar:** Warn-Zentrale (`ac-scope-items`), Bauteil-Inspektor
+  (`inspector-230v-scope-note`), Kabel-Inspektor (`edge-230v-scope-note`),
+  Prüfbericht/Prüfsiegel. Keine elektrische Rechnung in der UI (Regel D).
+- **Verdikt:** 230-V-Plan ⇒ `INCOMPLETE` (UNPROVABLE), 12-V-Plan ⇒ `COMPLIANT`
+  mit `NET-003` in `skippedRules`. Kein stiller Fallback (Regel M).
+- **AutoWire-Einzelbegründung:** siehe LEDGER 2026-11-04 (3).
+- **Regression/Ledger:** Verhalten geändert (neue Regel, neue Ereignisse) ⇒
+  bestehende Verträge in `pipeline.test.ts`, `protection.test.ts`,
+  `verificationWarnings.test.ts` und `VerificationSeal.test.tsx` **verschärft**
+  statt aufgeweicht; neue Suite `lib/verify/acScope.test.ts`. Golden Master und
+  Regressionspläne werden nicht neu erfasst.
+- **Doku:** `docs/AC-230V-MODELLGRENZEN.md` (Datengrundlage, drei Stufen,
+  Einzelpunkte, Tests, offene Punkte), `docs/ai/KNOWN-PROBLEMS.md`
+  (`AC-230V-001`), `docs/ai/VALIDATION-CONTEXT.md` §8.3, Abnahmebericht §10.
+
+## LEDGER 2026-11-04 (3) — AutoWire: Vorher/Nachher je Leitung im Review
+
+**Anlass:** Der Review-Dialog nannte nur Sammelzahlen und eine Sammelnote für
+eigene Verlegebedingungen. Eine geänderte Sicherung oder ein geänderter
+Querschnitt war vor der Übernahme nicht **je Leitung** nachvollziehbar.
+
+- **Neue reine Projektion** `lib/autoWire/reviewDiff.ts`:
+  `autoWireEdgeDiff(previous, proposed, nodes, conflicts)` liefert je Leitung
+  `before`/`after` (Querschnitt, Sicherung, Bedingung, Domäne, Gültigkeit),
+  Status (`new`/`changed`/`unchanged`/`removed`), Begründungen und die
+  namentlich zugehörigen Konflikte des Reports. **Keine elektrische Rechnung**
+  (Regeln A/D/M): die Werte kommen aus `edge.data`, die I_z-Herkunft aus
+  `cableSizingFor`, die Gründe aus Feldvergleich und `AutoWireReport`.
+- **Anzeige** `components/planner/AutoWireReviewModal.tsx`: klappbare Tabelle
+  mit stabiler Sortierung, `data-testid="autowire-edge-diff"` und
+  `autowire-edge-row` (`data-edge-id`, `data-status`). Vorher = aktueller Plan
+  aus dem Store; `previousEdgeCount` prüft die Konsistenz — bei Abweichung
+  werden **keine** Vorher-Werte erfunden, sondern ein Hinweis gezeigt.
+- **Keine Store-Schema-Änderung:** `autoWirePreview` bleibt unverändert; die
+  Vorher-Kanten werden aus dem aktuellen Zustand gelesen. Damit bleiben die
+  Persistenz-, Import- und Store-Verträge unberührt.
+- **Regression:** `lib/autoWire/reviewDiff.test.ts` (7) und vier neue
+  `AutoWireReviewModal.test.tsx`-Fälle. Golden Master, Regressionspläne,
+  Routing-Audit und Perf-Gate sind von der reinen Anzeigeänderung nicht
+  betroffen; sie werden im Abnahmebericht §10 trotzdem erneut ausgeführt.
+- **Bewusst nicht geändert:** kein Sizing, keine Topologie, keine Auto-Ableitung
+  einer „besseren" Sicherung, keine neue Begründung aus angenommenen Strömen.

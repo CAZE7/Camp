@@ -178,7 +178,9 @@ describe('verificationReportFor — der Plan wird geprüft, nicht geglättet', (
     expect(report.limitations.some((line) => line.startsWith('Nicht angewandt (Profil/Kontext)'))).toBe(
       false
     );
-    expect(report.coverage.rulesApplied).toBe(29);
+    // 29 Bestandsregeln + NET-003 (230-V-Modellgrenzen, bewusst auch im
+    // NORM_CORE-Profil aktiv, damit kein Lauf wie eine Abnahme aussieht).
+    expect(report.coverage.rulesApplied).toBe(30);
   });
 
   it('ist deterministisch (gleicher Plan ⇒ gleiches Zertifikat)', () => {
@@ -249,16 +251,35 @@ describe('verificationReportFor — der Plan wird geprüft, nicht geglättet', (
     for (const finding of summary.findings) expect(finding.remedy?.length ?? 0).toBeGreaterThan(10);
   });
 
-  it('meldet die Energiebilanz-Lücke eines reinen 230-V-Plans als Hinweis ohne Fokus', () => {
+  it('meldet die Energiebilanz-Lücke und die 230-V-Modellgrenzen als Hinweise ohne Fokus', () => {
     // Der Landstrom-Plan hat keine Aufbaubatterie: Die Engine sagt das als
     // »nicht entscheidbar« — sie erfindet keine Kapazität und meldet auch
-    // keinen Pass. Anklickbar ist der Hinweis nicht (er betrifft den Plan).
+    // keinen Pass. Zusätzlich weist NET-003 je Gruppe aus, was das
+    // Single-Line-Modell an 230 V NICHT prüfen kann. Anklickbar ist keiner
+    // dieser Hinweise (sie betreffen den Plan, kein Bauteil).
     const warnings = verificationWarnings(plan(shorePlan()));
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]?.ruleId).toBe('PWR-001-energy-balance');
-    expect(warnings[0]?.type).toBe('info');
-    expect(warnings[0]?.unverified).toBe(true);
-    expect(warnings[0]?.focusId).toBeUndefined();
+    expect(warnings).toHaveLength(4);
+    const energy = warnings.filter((w) => w.ruleId === 'PWR-001-energy-balance');
+    expect(energy).toHaveLength(1);
+    expect(energy[0]?.type).toBe('info');
+    expect(energy[0]?.unverified).toBe(true);
+    expect(energy[0]?.focusId).toBeUndefined();
+
+    const scope = warnings.filter((w) => w.ruleId === 'NET-003-ac-model-scope');
+    expect(scope).toHaveLength(3);
+    for (const finding of scope) {
+      expect(finding.type).toBe('info');
+      expect(finding.unverified).toBe(true);
+      expect(finding.focusId).toBeUndefined();
+      expect(finding.details?.acAssessment).toBe('unverifiable');
+      expect(finding.details?.acScopeItems?.length ?? 0).toBeGreaterThan(0);
+      expect(finding.message).toContain('qualifiziertes Personal');
+    }
+    const items = scope.flatMap((w) => w.details?.acScopeItems ?? []);
+    expect(new Set(items.map((i) => i.id)).size).toBe(items.length);
+    expect(new Set(items.map((i) => i.assessment))).toEqual(
+      new Set(['assumption-based', 'computed', 'unverifiable'])
+    );
   });
 
   it('verlinkt die kritischen Befunde des Inselplans auf die betroffenen Leitungen', () => {

@@ -181,6 +181,24 @@ describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
     );
   });
 
+  it('weist im 230-V-Block auf die Modellgrenzen hin (NET-003)', () => {
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={vi.fn()}
+      />
+    );
+    const note = screen.getByTestId('edge-230v-scope-note');
+    expect(note).toHaveTextContent('NET-003');
+    expect(note).toHaveTextContent('Rückspeiseschutz');
+    expect(note).toHaveTextContent('qualifiziertes Personal');
+  });
+
   it('meldet den Fehlerstromtyp des RCBO und behält die übrigen Felder', () => {
     const onChangeAcProtection = vi.fn();
     render(

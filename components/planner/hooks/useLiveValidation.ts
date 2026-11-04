@@ -123,6 +123,16 @@ export interface ValidationWarningDetails {
     explanation: string;
   };
   protectionChain?: readonly string[];
+  /** NET-003: Bewertungsstufe und einzelne 230-V-Modellgrenzen (nur Anzeige). */
+  acAssessment?: 'computed' | 'assumption-based' | 'unverifiable';
+  acScopeItems?: readonly {
+    id: string;
+    group: string;
+    assessment: 'computed' | 'assumption-based' | 'unverifiable';
+    title: string;
+    basis: string;
+    remedy: string;
+  }[];
 }
 
 /** Reihenfolge der Schwere für die Sortierung in der Warn-Zentrale. */

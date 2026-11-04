@@ -68,7 +68,7 @@ describe('VerificationSeal', () => {
     expect(panel).toHaveTextContent('1. Syntax & Konnektivität');
     expect(panel).toHaveTextContent('5. Erdung & Personenschutz');
     expect(panel).toHaveTextContent('nicht erfüllt');
-    expect(panel).toHaveTextContent(/9 Regeln/);
+    expect(panel).toHaveTextContent(/10 Regeln/);
   });
 
   it('zeigt die Modellgrenzen und das Zertifikat', () => {

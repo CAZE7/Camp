@@ -238,3 +238,141 @@ Alle Prüfungen liefen **nach** den Korrekturen 1–7, ohne konkurrierende Last:
 | Gezielte UI-/Store-/Verify-Suiten                                    | 5 Dateien / 54 Tests grün                                                |
 
 E2E/Playwright, visuelle Pixel-Baselines und `npm run build` bleiben offen.
+_Dies ist der Prüfstand von §9; der Nachlauf in §10 hat daran zwei Punkte
+geändert (230 V, Vorher/Nachher) und `npm run build` nachgeholt._
+
+---
+
+## 10. Nachlauf 2026-11-04 — zwei Restlücken, ohne neue Features
+
+Auf die offene Liste aus §9 hin wurden **nacheinander** zwei Punkte bearbeitet.
+Der Auftrag blieb „P0-Sprint mit genau drei Aufgaben"; beide Punkte sind
+Nachlauf-Arbeiten, **keine** Freigabe für eine neue 230-V-Architektur und
+**kein** neues Feature im Sinne von `AGENTS.md` Zeile 95.
+
+**Verfahren, ehrlich benannt:** `docs/ai/ARCHITECTURE-RULES.md` und
+`docs/ai/CHANGE-WORKFLOW.md` wurden in diesem Nachlauf **erst nach** den ersten
+Codeänderungen gelesen — dieselbe Reihenfolge-Verfehlung wie §9 Punkt 8, hier
+nicht beschönigt und nicht rückgängig zu machen. Die Änderungen wurden danach
+gegen Regeln A/B/D/M/O-3/O-4, den Electrical-Workflow §22 und die
+Review-Checkliste §23 nachgeprüft (§10.6). Die Nachprüfung ergab keinen
+Regelverstoß; sie ändert aber nichts an der falschen Reihenfolge.
+
+### 10.1 230-V-Absicherung — „explizit absichern" statt „Modellgrenzen schließen"
+
+Das Gutachten ließ zwei Wege zu. Gewählt wurde der kleine: Das einleiterige
+Modell bleibt, aber seine Reichweite wird zu einem **prüfbaren Gate**.
+
+- `NET-003-ac-model-scope` (`lib/verify/acScope.ts`, `RULE_MATRIX`, `runPass5`,
+  `ENGINE_LIMITATIONS`): drei `UNVERIFIABLE`-Befunde je Plan mit `AC_LV`-Kanten
+  und **neun strukturierte Einzelpunkte** in `details.acScopeItems`. Ohne
+  230-V-Kante `PASS`/0 Entitäten — reine 12-V-Pläne bleiben `COMPLIANT`.
+- **Drei Bewertungsstufen** werden nie gleichwertig dargestellt:
+  rechnerisch bewertet / mit Annahmen bewertet / nicht überprüfbar.
+- Sichtbar in `report.limitations`, Warn-Zentrale (`ac-scope-items`),
+  Bauteil-Inspektor (`inspector-230v-scope-note`) und Kabel-Inspektor
+  (`edge-230v-scope-note`). **Keine** elektrische Rechnung in der UI (Regel D).
+- `provenance: 'UNVERIFIED'`, `clause: null`, kein erfundenes Normzitat,
+  bewusst auch im `NORM_CORE`-Profil aktiv. 230-V-Prüfung und Abnahme bleiben
+  ausschließlich qualifiziertem Personal vorbehalten.
+- Datengrundlage und Abgrenzung: `docs/AC-230V-MODELLGRENZEN.md`;
+  `docs/ai/KNOWN-PROBLEMS.md` führt `AC-230V-001` als
+  „abgesichert, Modellgrenze bleibt offen".
+
+**Nicht gebaut:** L/N/PE als getrennte Kanten, Netzformmodell, Trenn-/Umschalt-
+und Rückspeiselogik, reale Messwerte, normative Abnahme. Das war ausdrücklich
+nicht freigegeben.
+
+### 10.2 AutoWire — Vorher/Nachher je Leitung
+
+- Neue reine Projektion `lib/autoWire/reviewDiff.ts`: je Leitung
+  `before`/`after` für Querschnitt, Sicherung, Verlegebedingung, Domäne und
+  Gültigkeit; Status `new`/`changed`/`unchanged`/`removed`; Begründungen aus
+  Feldvergleich, I_z-Herkunft und den **namengebundenen** Konflikten desselben
+  `AutoWireReport`. Keine Rechnung, keine zweite Fachlogik.
+- `components/planner/AutoWireReviewModal.tsx`: klappbare Tabelle
+  (`autowire-edge-diff`, `autowire-edge-row`) mit stabiler Sortierung.
+  „Vorher" ist der aktuelle Plan aus dem Store; `previousEdgeCount` prüft die
+  Konsistenz — bei Abweichung werden **keine** Vorher-Werte erfunden, sondern
+  ein Hinweis gezeigt (Regel M).
+- **Keine Store-Schema-Änderung**: `autoWirePreview` bleibt unverändert,
+  Persistenz-/Import-/Store-Verträge unberührt.
+- Dokumentation: `docs/ai/AUTOWIRE-CONTEXT.md` §7.6a,
+  `docs/KABEL-VERLEGEBEDINGUNGEN.md` §4.2, `lib/autoWire/README.md`.
+
+### 10.3 Verträge, die durch die neue Regel angepasst werden mussten
+
+Eine neue Pass-5-Regel ändert Bericht und Anzeige. Statt Erwartungen
+aufzuweichen, wurden sie **verschärft** und der neue Befund mitgeprüft:
+
+| Datei                                                   | Änderung                                                                                                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/verify/protection.test.ts`                         | Pass-5-Liste 9 → 10 IDs                                                                                                                         |
+| `lib/verify/pipeline.test.ts`                           | `shorePlan()` muss zusätzlich drei NET-003-Befunde mit Fachpersonal-Hinweis ausweisen                                                           |
+| `components/planner/utils/verificationWarnings.test.ts` | `rulesApplied` 29 → 30; vier Hinweise (1× PWR-001 + 3× NET-003), alle `info`/ohne Fokus, strukturierte `acScopeItems` mit drei Stufen           |
+| `components/planner/ui/VerificationSeal.test.tsx`       | Pass 5 zeigt 10 Regeln                                                                                                                          |
+| `components/planner/hooks/useLiveValidation.test.ts`    | Autark-Vorlage: 4 statt 1 Befund, alles `info`, 3× NET-003 mit `unverified`/`incomplete` und `acScopeItems`                                     |
+| `store/usePlannerStoreExtended.test.ts`                 | `NET-003` in der Whitelist benannter Modellgrenzen, zusätzlich **nur** als `info`/`incomplete`/`unverified` und genau 0 oder 3 pro Plan erlaubt |
+
+Neue Suiten: `lib/verify/acScope.test.ts` (8),
+`lib/autoWire/reviewDiff.test.ts` (7), vier neue Modal-Fälle und je ein
+WarningCenter-/Inspector-Test.
+
+### 10.4 Gates nach dem Nachlauf
+
+Alle Prüfungen liefen **nach** beiden Phasen. `npm run perf:edge-routing`
+allein, ohne konkurrierende Last.
+
+| Prüfung                                                               | Ergebnis                                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `npm run lint`                                                        | grün                                                                                 |
+| `npm run format:check`                                                | grün („All matched files use Prettier code style!")                                  |
+| `npx tsc -p tsconfig.typecheck.json --noEmit` + `tsconfig.tests.json` | grün                                                                                 |
+| `npm run check` (Lint, Format, beide Typechecks, Coverage-Vollsuite)  | **grün**: 303 Dateien / 3957 Tests / 1 skipped, 429,38 s                             |
+| `npx vitest run lib/`                                                 | 106 Dateien / 1722 Tests grün                                                        |
+| `npm run routing:audit`                                               | 6 Pläne, I1–I7 = 0, `determ = true`                                                  |
+| `npm run test:goldenmaster`                                           | 13 Tests grün, **keine Neuerfassung**                                                |
+| `npm run test:regression`                                             | 68 Tests grün                                                                        |
+| `npm run perf:edge-routing` (allein)                                  | Referenz 1,80 ms / p90 2,07 ms ≤ 16 ms; Live 189,85 ms / p90 207,32 ms ≤ 300 ms ⇒ OK |
+| Gezielte 8 UI-/Verify-/AutoWire-Suiten                                | 8 Dateien / 117 Tests grün                                                           |
+| `npm run build` (`next build` + SEO-Exportprüfung)                    | **grün**, 42 geprüfte Seiten, „Export-Prüfung grün"                                  |
+
+**Erster `npm run check`-Lauf war rot** (4 Verfehlungen in 2 Dateien): zwei
+bislang nicht berücksichtigte Verträge in `store/usePlannerStoreExtended.test.ts`
+und `components/planner/hooks/useLiveValidation.test.ts` erwarteten für
+230-V-Pläne keine neuen Hinweise. Beide wurden wie oben beschrieben verschärft;
+der zweite Lauf ist grün. Das ist kein stilles Aufweichen, sondern die
+verlangte Regression für eine Verhaltensänderung.
+
+### 10.5 Ehrlich weiterhin offen
+
+- **E2E/Playwright und visuelle Pixel-Baselines:** nicht ausgeführt.
+  `npx playwright test --list` findet 696 Tests in 23 Dateien, aber im Sandbox
+  ist kein Browser installiert; `npx playwright install chromium` scheitert an
+  `ECONNRESET` beim Download von `cdn.playwright.dev` (Netzwerk-Allowlist
+  dieses Arbeitsbereichs lässt den Host nicht zu). Diese Grenze ist eine
+  Umgebungsbedingung, kein Testergebnis — es wird **kein** „E2E grün"
+  behauptet.
+- 24-px-Domänengate (ROUTE-003), ROUTE-018, ELE-002 (0,8 Ω, UNVERIFIED),
+  ELE-001-Rest (B2 statt ISO 6722, f₃ = 1,0), PERF-001 (16 ms/Frame),
+  Tastatur-/Accessibility-Abnahme M11-3.
+- Keine normgeprüfte 230-V-Abnahme; kein PR, kein Merge, kein Push.
+- §9 Punkt 8 bleibt protokollarisch offen. Im Nachlauf wurde `npm run build`
+  nachgeholt (grün), die Regel-Docs aber erneut zu spät gelesen (siehe §10
+  Eingang und §10.6) und E2E/Pixel-Baselines konnten aus
+  Umgebungsgründen nicht ausgeführt werden. `docs/ai/CHANGE-WORKFLOW.md` §24 verlangt für UI
+  zusätzlich E2E für den Bedienpfad und Vorher/Nachher 375/768/1440 hell+dunkel;
+  dieses DoD ist damit **nicht vollständig erfüllt**.
+
+### 10.6 Nachprüfung gegen ARCHITECTURE-RULES / CHANGE-WORKFLOW
+
+| Regel / Schritt                                           | Befund                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A** `lib/` importiert keine App-Schicht                 | `lib/verify/acScope.ts` und `lib/autoWire/reviewDiff.ts` importieren nur `lib/**`. `scripts/architecture/libBoundary.test.ts` grün (Allowlist bleibt leer).                                                                                                                                                                 |
+| **B / D** kein React, keine UI-Rechnung                   | Beide neuen Module sind reine TypeScript-Projektionen. `WarningCenter.tsx` importiert nur `AC_ASSESSMENT_LABEL` (Anzeigetexte); `EdgeValues` im Review-Modal formatiert vorhandene Zahlen. `scripts/routing/architecture.test.ts`, `lib/routing/tokens.test.ts`, `lib/vde-consistency.test.ts` grün (4 Dateien / 40 Tests). |
+| **M / N** kein stiller Fallback, ungültige Daten sichtbar | Ungültige Verlegebedingung ⇒ `valid: false` + „Nicht ausführbar … UNVERIFIABLE"; inkonsistenter Review-Vorher-Stand ⇒ **keine** erfundenen Werte, sondern Hinweis. `NET-003` hat `clause: null`, `provenance: 'UNVERIFIED'` — keine erfundene VDE-Anforderung (§22 Schritt 2).                                              |
+| **O-3** Regressionstest + Ledger je Verhaltensänderung    | Zwei neue Suiten (15 Tests), vier neue Modal-Tests, zwei Inspector-/WarningCenter-Tests; LEDGER 2026-11-04 (2) und (3) in `docs/ARCHITECTURE-CHANGES.md`.                                                                                                                                                                   |
+| **O-4** keine Tests abschwächen                           | Sechs bestehende Verträge wurden **verschärft** (§10.3); der erste `npm run check`-Lauf war deshalb rot und wurde nicht durch Erwartungs-Senkung grün gemacht.                                                                                                                                                              |
+| **§22 Electrical**                                        | Es wurde **keine** physikalische Größe, Formel oder Tabelle geändert ⇒ keine neue G1–G7-Prüfung nötig; Normal-/Grenz-/Negativfälle der Projektion in `reviewDiff.test.ts` (Werte unverändert, ungültige Bedingung, leerer Plan), `tsconfig.tests.json` grün, Golden Master 13 ohne Neuerfassung.                            |
+| **§23 Review-Checkliste**                                 | Invariante benannt (Modellreichweite / keine zweite Rechnung), Datenfluss `preview.edges` + `state.edges` → `reviewDiff` → Modal, `Called By` über die Tests abgedeckt, Determinismus über `localeCompare` und ID-Sortierung gesichert (Test), keine versteckte Konstante, keine Routing-/Sizing-Semantik geändert.         |
+| **§24 UI-DoD**                                            | Komponententests grün; **E2E für den Bedienpfad und Pixel-Vorher/Nachher fehlen** → nicht vollständig erfüllt, siehe §10.5.                                                                                                                                                                                                 |

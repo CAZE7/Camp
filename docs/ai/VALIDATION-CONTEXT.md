@@ -113,6 +113,17 @@ Ort: `components/planner/hooks/useLiveValidation.ts`. Ausgabe: `ValidationWarnin
 **Bewusste Lücke:** Landstrom-Knoten werden **nie** automatisch als RCD-geschützt markiert —
 ein gesetzter FI würde einen fehlenden FI verschleiern.
 
+**230-V-Modellgrenzen (2026-11-04):** Die Verifikations-Engine weist mit
+`NET-003-ac-model-scope` (`lib/verify/acScope.ts`, Pass 5) für jeden Plan mit
+`AC_LV`-Kanten drei `UNVERIFIABLE`-Befunde aus: Leiter/Netzform,
+Trennung/Umschaltung/Rückspeisung, Messwerte/Abnahme. Sie unterscheidet dabei
+**rechnerisch bewertet**, **mit Annahmen bewertet** und **nicht überprüfbar**.
+Die Punkte stehen offen in der Warn-Zentrale (`ac-scope-items`), im Bauteil- und
+Kabel-Inspektor und in `report.limitations`. Ein 230-V-Plan wird `INCOMPLETE`,
+ein reiner 12-V-Plan bleibt `COMPLIANT`. Es entsteht dadurch **keine** neue
+L/N/PE-Architektur und **keine** normgeprüfte Abnahme — Details und Datengrundlage:
+[`docs/AC-230V-MODELLGRENZEN.md`](../AC-230V-MODELLGRENZEN.md).
+
 ---
 
 ## 8.4 Routing Validation

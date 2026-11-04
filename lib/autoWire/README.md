@@ -56,6 +56,10 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 6. **Kein stilles Raten.** Fehlen Daten (z. B. Bank-Ik nicht schätzbar), wird **nichts**
    gestempelt.
 7. Keine UI-Abhängigkeit: `lib/` importiert keine App-Schicht (Rule A).
+8. **Keine zweite Rechnung im Review.** `reviewDiff.ts` projiziert nur die
+   vorhandenen `edge.data` des Vorschlags und des aktuellen Plans; der Dialog
+   zeigt sie. Ein neu berechneter Querschnitt in der Anzeige wäre eine zweite
+   Fachlogik neben `performAutoWiring`.
 
 ## Which tests protect it?
 
@@ -65,6 +69,7 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 | `lib/autoWire/sizing.test.ts`               | Querschnitt, Sicherung, Drop-Budgets, Solar-Faktoren                                                     |
 | `lib/autoWire/placement.test.ts`            | Raster, Flussrichtung, Überlappungsfreiheit                                                              |
 | `lib/autoWire/conflicts.test.ts`            | Bericht: Dedup, Sortierung, stärkere Schwere gewinnt, Eigenschaften E9/E10                               |
+| `lib/autoWire/reviewDiff.test.ts`           | Vorher/Nachher je Leitung, Begründungen, ungültige Bedingungen, Konfliktzuordnung                        |
 | `tests/scale/plannerScale.test.ts`          | Determinismus/Idempotenz/Nutzerabsicht bei 10…250 Knoten                                                 |
 | `lib/vde-properties.test.ts`                | **G5** Idempotenz · **G6** AC/DC-Trennung + „jede Kante dimensioniert“ · **G7** `sizeDcEdges`-Konvergenz |
 | `scripts/goldenmaster/goldenMaster.test.ts` | Ergebnis aller sechs Referenzpläne eingefroren                                                           |

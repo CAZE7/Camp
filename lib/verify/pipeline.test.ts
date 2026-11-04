@@ -53,7 +53,13 @@ describe('lib/verify/pipeline — Verdikt und Deckung', () => {
     expect(report.coverage.unprovable).toBeGreaterThan(0);
     expect(report.coverage.failed).toBe(0);
     expect(report.events.some((event) => event.kind === 'UNVERIFIABLE')).toBe(true);
-    expect(report.events.every((event) => event.ruleId.startsWith('PWR-001'))).toBe(true);
+    expect(report.events.some((event) => event.ruleId.startsWith('PWR-001'))).toBe(true);
+    // 230-V-Kreise dürfen nicht als „nur ein PWR-001-Datenloch" durchgehen:
+    // NET-003 weist die nicht modellierten Gegenstände einzeln aus.
+    const scopeEvents = report.events.filter((event) => event.ruleId === 'NET-003-ac-model-scope');
+    expect(scopeEvents).toHaveLength(3);
+    expect(scopeEvents.every((event) => event.kind === 'UNVERIFIABLE')).toBe(true);
+    expect(scopeEvents.every((event) => event.message.includes('qualifiziertes Personal'))).toBe(true);
   });
 
   it('lässt FAIL das Verdikt bestimmen — NON_COMPLIANT schlägt INCOMPLETE', () => {

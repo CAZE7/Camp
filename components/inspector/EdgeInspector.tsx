@@ -8,6 +8,7 @@ import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';
 import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
 import { edgeIntentOf } from '../../lib/electricalGraph/intent';
+import { QUALIFIED_PERSONNEL_NOTICE } from '../../lib/verify/acScope';
 import {
   CABLE_INSULATION_LABELS,
   CABLE_INSTALLATION_CONDITIONS,
@@ -574,6 +575,11 @@ export function EdgeInspector({
                   )}
                 </div>
               )}
+              <p className="text-xs leading-relaxed text-muted-foreground" data-testid="edge-230v-scope-note">
+                Modellgrenze (NET-003): Diese Felder beschreiben EIN Schutzorgan im Single-Line-Modell.
+                Zweipolige Trennung als reales Gerät, Umschaltung, Rückspeiseschutz und der PE-Anschluss zur
+                Karosserie sind nicht modelliert und nicht überprüfbar. {QUALIFIED_PERSONNEL_NOTICE}
+              </p>
             </div>
           )}
         </div>

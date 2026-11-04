@@ -642,6 +642,7 @@ const ALLOWED_DATA_GAP_RULES = new Set([
   'RCD-002-rcd-type', // integrierter FI des Wechselrichters ohne Typangabe
   'RCD-004-two-pole-switching', // Polzahl des Einspeise-Schutzorgans nicht angegeben
   'RCD-005-loop-impedance', // Wechselrichter-Insel: Abschaltbedingung nur über Herstellerdaten belegbar
+  'NET-003-ac-model-scope', // 230-V-Modellgrenzen: bewusst ausgewiesene, nicht behebbare Grenzen
 ]);
 
 function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
@@ -663,6 +664,14 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       .map((w) => `${w.ruleId ?? w.id}: ${w.message}`)
       .join('\n')}`
   ).toEqual([]);
+  // NET-003 ist ERLAUBT, aber nur als offengelegte Modellgrenze: drei
+  // Hinweise je 230-V-Plan, nie ein behebbarer Defekt, nie eine Sicherheits-
+  // Warnung. Ohne 230-V-Kante darf die Regel gar nicht auftauchen.
+  const scope = result.current.filter((w) => w.ruleId === 'NET-003-ac-model-scope');
+  expect(scope.length === 0 || scope.length === 3).toBe(true);
+  expect(scope.every((w) => w.type === 'info' && w.unverified === true && w.status === 'incomplete')).toBe(
+    true
+  );
 
   // 2. Kanten-Logik der Anzeige (CableEdge-Errors)
   const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];

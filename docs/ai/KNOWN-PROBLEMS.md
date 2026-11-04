@@ -10,6 +10,36 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## AC-230V-001 — 230-V-Teilmodell ohne L/N/PE-Trennung, Umschaltung und Rückspeiselogik — **EXPLIZIT ABGESICHERT (2026-11-04), MODELLGRENZE BLEIBT**
+
+- **AREA:** 230-V-Seite / Verifikations-Engine (`lib/verify`), Warn-Zentrale, Inspektoren
+- **STATUS:** Die Grenze ist **nicht geschlossen**, aber seit 2026-11-04 prüfbar
+  ausgewiesen. **STATUS: OFFEN als Modellgrenze; ABGESICHERT als Berichtsaussage.**
+- **DESCRIPTION:** Der Graph ist einleiterig. L/N/PE als getrennte Leiter,
+  zweipolige Trennung als reales Gerät, Umschaltung Landstrom ↔ Wechselrichter,
+  Verriegelung gegen Rückspeisung und der PE-Anschluss zur Karosserie sind nicht
+  modelliert; Messwerte und Herstellernachweise sind nicht Gegenstand des Plans.
+  Vor dem Nachlauf stand das nur in Kommentaren, `ENGINE_LIMITATIONS` und dem
+  SEO-Text — es gab kein Gate, das einen 230-V-Plan daran hinderte, wie
+  „geprüft" auszusehen.
+- **CURRENT BEHAVIOR:** `NET-003-ac-model-scope` (`lib/verify/acScope.ts`,
+  `runPass5`) erzeugt je Plan mit `AC_LV`-Kanten drei `UNVERIFIABLE`-Befunde mit
+  neun strukturierten Einzelpunkten und drei Bewertungsstufen; Verdikt
+  `INCOMPLETE`. Reine 12-V-Pläne bleiben `COMPLIANT`. Die Punkte erscheinen in
+  `report.limitations`, Warn-Zentrale, Bauteil- und Kabel-Inspektor. **Keine**
+  neue L/N/PE-Architektur, **kein** Normzitat, **keine** Abnahme.
+- **NICHT BEHOBEN / NICHT BEABSICHTIGT:** Normative 230-V-Abnahme; diese darf nur
+  durch qualifiziertes Personal erfolgen. Siehe `docs/AC-230V-MODELLGRENZEN.md`.
+- **VERIFICATION:** `lib/verify/acScope.test.ts` (8),
+  `lib/verify/protection.test.ts`, `lib/verify/pipeline.test.ts`,
+  `components/planner/utils/verificationWarnings.test.ts`,
+  `components/planner/ui/WarningCenter.test.tsx`,
+  `components/inspector/{NodeInspectors,EdgeInspector}.test.tsx`.
+- **SEVERITY:** hoch (Falschannahme „geprüft") → durch Ausweisung behoben;
+  Modelllücke selbst bleibt bewusst offen.
+
+---
+
 ## ELEC-002 (Audit-ROUTING-2026) — Auto-Wire stempelte Landstrom-RCD pauschal — **GELÖST (2026-10-14)**
 
 - **AREA:** Elektrik / Schutzmaßnahmen (DIN VDE 0100-721), Auto-Wire + Warn-Zentrale

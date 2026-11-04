@@ -399,3 +399,47 @@ describe('WarningCenter — gemeinsamer Prüf-Einstieg mit Kabeltrassen', () => 
     expect(chip).toHaveTextContent(/^1 von 3 kritisch$/);
   });
 });
+
+describe('WarningCenter — NET-003 (230-V-Modellgrenzen)', () => {
+  it('zeigt die nicht überprüfbaren Gegenstände einzeln mit Bewertungsstufe', () => {
+    const scopeWarning = warning({
+      id: 'w-ac',
+      type: 'info',
+      category: 'estimation',
+      title: '230-V-Modellgrenzen sind ausgewiesen',
+      message: 'Hinweis: 230 V · Leiter & Netzform — nicht überprüfbar.',
+      unverified: true,
+      ruleId: 'NET-003-ac-model-scope',
+      details: {
+        acAssessment: 'unverifiable',
+        acScopeItems: [
+          {
+            id: 'separate-conductors',
+            group: 'conductors',
+            assessment: 'unverifiable',
+            title: 'L/N/PE als getrennte Leiter',
+            basis: 'Der Plan ist einleiterig.',
+            remedy: 'Verdrahtung am Aufbau durch qualifiziertes Personal prüfen.',
+          },
+          {
+            id: 'assumed-network',
+            group: 'conductors',
+            assessment: 'assumption-based',
+            title: 'Netzform aus deklarierten Feldern',
+            basis: 'NET-001/002 werten systemForm aus.',
+            remedy: 'Datenblattangaben eintragen.',
+          },
+        ],
+      },
+    });
+    openPanel([scopeWarning]);
+
+    const block = screen.getByTestId('ac-scope-items');
+    expect(block).toHaveTextContent('230-V-Modellgrenzen');
+    expect(block).toHaveTextContent('nicht überprüfbar');
+    expect(block).toHaveTextContent('mit Annahmen bewertet');
+    expect(block).toHaveTextContent('L/N/PE als getrennte Leiter');
+    expect(block).toHaveTextContent('Der Plan ist einleiterig.');
+    expect(block).toHaveTextContent('qualifiziertes Personal');
+  });
+});

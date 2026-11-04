@@ -92,6 +92,17 @@ absichtlich im Plan sichtbar: Sie werden nicht durch einen Ranger-Check
 gelöscht, sondern als Fehler gemeldet. Nur Werte außerhalb der Schema-Grenzen
 werden beim Speichern bzw. Import verworfen.
 
+### 4.2 Begründung im AutoWire-Review (P0-Nachlauf 2026-11-04)
+
+Der Review-Dialog zeigt je vorgeschlagener Leitung Vorher/Nachher für
+Querschnitt, Sicherung und Verlegebedingung. Die Begründung nennt bei eigener
+Bedingung die **Bewertungsstufe** (`Referenzmodell`, `eigene Annahmen`,
+`Datenblatt`) und die `explanation` aus `lib/cableConditions.ts`; bei ungültigen
+Angaben steht „Nicht ausführbar … UNVERIFIABLE". Die Werte stammen aus den
+Kantendaten, **nicht** aus einer erneuten Berechnung der Anzeige
+(`lib/autoWire/reviewDiff.ts`). Eine Sammelnote allein (`autowire-condition-note`)
+hätte die Änderung an der einzelnen Leitung unsichtbar gelassen.
+
 ## 5. Wo die Bedingungen wirken
 
 - **AutoWire:** `sizeDcEdges` (thermischer Mindestquerschnitt), `applyFuseSizes`

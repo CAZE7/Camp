@@ -130,3 +130,112 @@ describe('AutoWireReviewModal — Verlegebedingungen', () => {
     expect(screen.queryByTestId('autowire-condition-note')).not.toBeInTheDocument();
   });
 });
+
+/** P0-Nachlauf: Vorher/Nachher je Leitung, ohne neue Rechnung in der UI. */
+describe('AutoWireReviewModal — Änderungen je Leitung', () => {
+  beforeEach(() => {
+    usePlannerStore.setState({
+      nodes: [
+        { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbaubatterie' } },
+        { id: 'inv', type: 'inverter', position: { x: 1, y: 0 }, data: { label: 'Wechselrichter' } },
+      ] as never,
+      edges: [
+        {
+          id: 'e-1',
+          source: 'bat',
+          target: 'inv',
+          data: { crossSection: 2.5, fuseSize: 20, edgeDomain: 'DC_12V' },
+        },
+      ] as never,
+      autoWirePreview: {
+        nodes: [],
+        edges: [
+          {
+            id: 'e-1',
+            source: 'bat',
+            target: 'inv',
+            data: { crossSection: 4, fuseSize: 25, installationCondition: 'engine-bay' },
+          },
+        ] as never,
+        report: {
+          conflicts: [
+            {
+              kind: 'load-exceeds-limit',
+              severity: 'critical',
+              ruleId: 'AUTO-BMS-001',
+              message: 'Kritisch: BMS 50 A reicht nicht.',
+              edgeIds: ['e-1'],
+              nodeIds: ['bat'],
+            },
+          ],
+          questions: [],
+        },
+        previousEdgeCount: 1,
+        previousNodeCount: 2,
+      },
+    });
+  });
+
+  it('nennt je Leitung Vorher, Nachher, Begründung und den zugehörigen Konflikt', () => {
+    render(<AutoWireReviewModal />);
+    const table = screen.getByTestId('autowire-edge-diff');
+    const rows = screen.getAllByTestId('autowire-edge-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute('data-edge-id', 'e-1');
+    expect(rows[0]).toHaveAttribute('data-status', 'changed');
+    expect(table).toHaveTextContent('Aufbaubatterie → Wechselrichter');
+    expect(table).toHaveTextContent('2,5 mm²');
+    expect(table).toHaveTextContent('4 mm²');
+    expect(table).toHaveTextContent('20 A');
+    expect(table).toHaveTextContent('25 A');
+    expect(table).toHaveTextContent('Motorraum');
+    expect(table).toHaveTextContent('I_z-Basis');
+    expect(table).toHaveTextContent('AUTO-BMS-001');
+    expect(table).toHaveTextContent('keine');
+  });
+
+  it('kennzeichnet eine neue Leitung mit leerem Vorher-Wert', () => {
+    usePlannerStore.setState({
+      edges: [] as never,
+      autoWirePreview: {
+        nodes: [],
+        edges: [
+          { id: 'e-new', source: 'bat', target: 'inv', data: { crossSection: 6, fuseSize: 32 } },
+        ] as never,
+        report: { conflicts: [], questions: [] },
+        previousEdgeCount: 0,
+        previousNodeCount: 2,
+      },
+    });
+    render(<AutoWireReviewModal />);
+    const row = screen.getByTestId('autowire-edge-row');
+    expect(row).toHaveAttribute('data-status', 'new');
+    expect(row).toHaveTextContent('neu');
+    expect(row).toHaveTextContent('Neu vorgeschlagene Leitung');
+  });
+
+  it('zeigt keine falschen Vorher-Werte, wenn der Plan zwischenzeitlich geändert wurde', () => {
+    usePlannerStore.setState({
+      edges: [
+        { id: 'e-1', source: 'bat', target: 'inv', data: {} },
+        { id: 'e-2', source: 'bat', target: 'inv', data: {} },
+      ] as never,
+    });
+    render(<AutoWireReviewModal />);
+    expect(screen.getByTestId('autowire-edge-diff')).toHaveTextContent(
+      /Vorher-Werte sind nicht mehr eindeutig/
+    );
+    expect(screen.queryByTestId('autowire-edge-row')).not.toBeInTheDocument();
+  });
+
+  it('lässt die Liste einklappen und wieder öffnen', () => {
+    render(<AutoWireReviewModal />);
+    const toggle = screen.getByRole('button', { name: /Änderungen je Leitung/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('autowire-edge-diff')).toHaveAttribute('hidden');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+});

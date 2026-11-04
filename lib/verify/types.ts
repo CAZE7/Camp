@@ -237,7 +237,8 @@ export type RuleId =
   | 'RCD-005-loop-impedance'
   | 'RCD-006-rcd-selectivity'
   | 'NET-001-pen-forbidden'
-  | 'NET-002-island-fault-loop';
+  | 'NET-002-island-fault-loop'
+  | 'NET-003-ac-model-scope';
 
 // ============================================================================
 // 3. ENTITÄTEN (GEGENSTAND EINES BEFUNDS)
@@ -581,6 +582,22 @@ export interface AuditEventDetails {
    * ordnet ihn ein — mehrere echte Leitungsfehler bleiben sichtbar.
    */
   rootCauseId?: string;
+  /**
+   * NET-003: Bewertungsstufe des 230-V-Befunds. Die Engine unterscheidet
+   * ausdrücklich zwischen gerechnet, mit Annahmen bewertet und nicht
+   * überprüfbar — ein Datenlücken-Hinweis darf nicht wie ein Rechenergebnis
+   * aussehen.
+   */
+  acAssessment?: 'computed' | 'assumption-based' | 'unverifiable';
+  /** NET-003: die einzelnen nicht modellierten 230-V-Gegenstände. */
+  acScopeItems?: readonly {
+    id: string;
+    group: string;
+    assessment: 'computed' | 'assumption-based' | 'unverifiable';
+    title: string;
+    basis: string;
+    remedy: string;
+  }[];
 }
 
 export interface AuditEvent {

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
 import { toPlainGerman } from '../utils/plainGerman';
 import { useRoutingStatusView } from './routingStatusView';
+import { AC_ASSESSMENT_LABEL } from '../../../lib/verify/acScope';
 import { RoutingStatusSummary } from './RoutingStatusSummary';
 
 interface WarningCenterProps {
@@ -222,6 +223,7 @@ function FindingCard({
     (details?.assumptions?.length ?? 0) > 0 ||
     details?.protectionChain?.length !== undefined ||
     (rootCause?.affectedEdges.length ?? 0) > 1 ||
+    (details?.acScopeItems?.length ?? 0) > 0 ||
     details?.rcdsElsewhere !== undefined;
 
   return (
@@ -253,6 +255,29 @@ function FindingCard({
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
+          {/* NET-003: Die 230-V-Modellgrenzen stehen offen im Befund, nicht
+              versteckt hinter „Warum?“. Jeder Punkt nennt seine Stufe — ein
+              gerechnetes Ergebnis darf nicht wie eine ungeprüfte Grenze
+              aussehen und umgekehrt. */}
+          {details?.acScopeItems && details.acScopeItems.length > 0 && (
+            <div className="mt-2 rounded border border-border bg-card/60 p-2" data-testid="ac-scope-items">
+              <p className="text-xs font-semibold text-foreground">
+                230-V-Modellgrenzen · {AC_ASSESSMENT_LABEL[details.acAssessment ?? 'unverifiable']}
+              </p>
+              <ul className="mt-1 flex flex-col gap-2">
+                {details.acScopeItems.map((item) => (
+                  <li key={item.id} className="text-xs leading-relaxed text-ink-soft">
+                    <strong className="text-foreground">{item.title}</strong> —{' '}
+                    <span className="font-semibold">{AC_ASSESSMENT_LABEL[item.assessment]}</span>
+                    <br />
+                    <span>Grund: {item.basis}</span>
+                    <br />
+                    <span>Prüfung: {item.remedy}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {/* Gleiche Ursache, mehrere Leitungen (Phase 10/11) — kompakt, ohne
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
           {rootCause && rootCause.findingCount > 1 && (

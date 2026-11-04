@@ -74,6 +74,7 @@ export const ENGINE_LIMITATIONS: readonly string[] = Object.freeze([
   'Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen ab 16 A) — kein Normnachweis; die Norm fordert Herstellerangaben.',
   'Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Temperatureinflüsse auf die Kapazität sind nicht modelliert.',
   'Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur und die Häufung des Laufs abgebildet — nicht als Feldfunktion.',
+  '230 V wird in drei Stufen ausgewiesen: [rechnerisch bewertet] Strom, Querschnitt, Schutzorgan und Spannungsfall der einen Leitung; [mit Annahmen bewertet] Netzform/N-PE-Bezug aus deklarierten Feldern sowie Schleifenimpedanz mit UPSTREAM_IMPEDANCE_ASSUMPTION_OHM = 0,8 (UNVERIFIED); [nicht überprüfbar] L/N/PE als getrennte Leiter, zweipolige Trennung als reales Gerät, Umschaltung Landstrom/Wechselrichter, Rückspeiseschutz, PE-Anschluss zur Karosserie und die normative Abnahme. Einzelbefunde: NET-003, Datengrundlage docs/AC-230V-MODELLGRENZEN.md. Die 230-V-Prüfung und die Abnahme dürfen nur durch entsprechend qualifiziertes Personal erfolgen; dieser Bericht ist kein Normnachweis.',
 ]);
 
 /** FNV-1a 32 Bit (zwei Startwerte ⇒ 64 Bit Fingerabdruck, keine Krypto-Zusage). */
