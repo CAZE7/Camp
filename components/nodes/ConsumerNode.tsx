@@ -14,9 +14,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
 
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || '12-V-Gerät'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="consumer" dinCode={resolvedDesignator(designators, id, data)} />

@@ -14,9 +14,7 @@ const SolarNode = function ({ id, data, isConnectable, selected }: PlannerNodePr
 
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || 'Solarmodul'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="solar" dinCode={resolvedDesignator(designators, id, data)} />

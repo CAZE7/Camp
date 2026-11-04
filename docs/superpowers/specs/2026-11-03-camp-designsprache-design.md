@@ -264,8 +264,10 @@ tabIndex: isFocusable ? 0 : undefined,
 der Backbone-Gruppenknoten, und `components/planner/utils/backboneGroup.ts:82`
 setzt `focusable: false` für ihn — die fehlende Rolle ist also eine bewusste
 Eigenschaft dieses Deko-Elements, kein Bibliotheksfehler. Echte Bauteile
-(`BatteryNode.tsx:15-21` und elf weitere) bekommen `role="group"` von der
-Bibliothek.
+(`BatteryNode.tsx:15-21` und vierzehn weitere — ausgezählt: 15 Karten trugen
+`role="group"`, 16 ein eigenes `aria-label`; die eine Differenz ist
+`RoofBackgroundNode.tsx` ohne Rolle) bekamen
+`role="group"` von der Bibliothek.
 
 **Daraus folgt ein echter Befund, den die Messung nicht gezeigt hatte:** die
 Komponenten setzen `role="group"` zusätzlich auf ihre **eigene** Karte. Damit
@@ -289,9 +291,20 @@ fehlende Rolle.
    Wrapper sie schon hat; der Zustand bleibt an der Karte lesbar.
 5. **Aussagekräftige lokalisierte Accessible Names** und
    `aria-roledescription="Bauteil"` statt des englischen Bibliotheks-Werts
-   `"node"`. Die Bibliothek erlaubt beides pro Knoten (`ariaLabel`,
-   `ariaRoleDescription`). Die deutschen Texte für die Beschreibung laufen
-   bereits über `FLOW_ARIA_LABEL_CONFIG` (`FlowCanvas.tsx:76-99`).
+   `"node"`.
+   **Korrektur nach dem Nachmessen (2026-11-04):** Dieser Punkt ging von einem
+   Prop aus, das es nicht gibt. `ariaRoleDescription` kommt in
+   `@xyflow/react` 12.11.6 **nirgends** vor (`grep -rn ariaRoleDescription
+node_modules/@xyflow/react/dist/esm/` = leer); die Bibliothek schreibt
+   `"aria-roledescription": "node"` hart (`index.js:2366`). Nur `ariaLabel` ist
+   pro Knoten vorgesehen (`@xyflow/system/types/nodes.d.ts:62`). Der Weg zur
+   deutschen Rollenbeschreibung ist `domAttributes`: die Bibliothek spreizt
+   `...node.domAttributes` **zuletzt** in dasselbe Props-Objekt, sein Schlüssel
+   überschreibt also den harten Wert — und der Typ erlaubt ihn
+   (`types/nodes.d.ts:24` schließt `role` und `aria-label` aus, nicht `aria-*`).
+   Punkt 3 bleibt davon unberührt: die **Rolle** kann `domAttributes` weiterhin
+   nicht setzen. Die deutschen Texte für die Tastenbeschreibung laufen bereits
+   über `FLOW_ARIA_LABEL_CONFIG` (`FlowCanvas.tsx:76-99`).
 6. **Auswahlzustand über eine zugängliche Statusmeldung**, nicht über
    `aria-selected`: die Rolle `group` trägt dieses Attribut nicht, und in
    `@xyflow/react`/`@xyflow/system` kommt `aria-selected` nirgends vor.
@@ -305,8 +318,12 @@ fehlende Rolle.
    `planner-canvas-a11y.spec.ts:29-34` hängt an der deutschen
    „Pfeiltasten"-Beschreibung.
 8. **Screenreader-Prüfung ist Teil der Abnahme**, nicht Annahme. Kein Test im
-   Repo prüft heute eine Knoten-Rolle; `planner-canvas-a11y.spec.ts:27,73`
-   prüfen Rollen nur an Handles.
+   Repo prüfte damals eine Knoten-Rolle; `planner-canvas-a11y.spec.ts:27,73`
+   prüften Rollen nur an Handles. **Eingelöst in diesem Schritt:**
+   `components/nodes/bauteilGruppe.dom.test.tsx` (echte React-Flow-Wrapper im
+   jsdom) und zwei Szenarien in `planner-canvas-a11y.spec.ts` (echter Browser:
+   genau eine Gruppe pro Bauteil, deutsche Rollenbeschreibung, Tastaturauswahl
+   im Namen).
 
 ---
 

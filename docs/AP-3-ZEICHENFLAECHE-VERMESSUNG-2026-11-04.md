@@ -216,3 +216,97 @@ und durch diese Wächter belegt.
 
 §3.4 Punkt 3 (Oxid-Umrandung der Backbone-Gruppen) bleibt als Auflage an jeden
 visuellen Vergleich stehen und ist in `docs/UI-BASELINE.md` nachgetragen.
+
+## 9. §3.6 umgesetzt: eine Bauteil-Gruppe pro Knoten (2026-11-04)
+
+Der Entscheidungsbedarf aus §6 (B22) ist mit Spezifikation §3.6 beantwortet und
+umgesetzt.
+
+### Vorgängige Vermessung der Struktur
+
+Entgegen der Annahme in §6 sind es **15 Karten** mit `role="group"`, nicht zwölf
+(`git grep -l 'role="group"' HEAD -- components/nodes | grep -v '\.test\.'` = 15),
+und **16** mit einem eigenen `aria-label`; die eine Differenz ist
+`RoofBackgroundNode.tsx` — ein Attribut ohne Rolle ist wirkungslos.
+`role="group"` stand also doppelt im DOM: React Flow setzt es am Wrapper
+(`index.js:2366`), die Karte setzte es erneut.
+
+### Gebaut
+
+| Stelle                               | Änderung                                                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `planner/utils/bauteilAria.ts` (neu) | Accessible Name + `aria-roledescription` am **Knotenobjekt**, mit Identitätsvertrag                |
+| `FlowCanvas.tsx:867`                 | ein Aufruf in der bestehenden Knoten-Pipeline, nach `withNodeInteractionState`                     |
+| `app/tools/dach/page.tsx`            | derselbe Aufruf für den Dachplaner (eigener Canvas, eigene `nodeTypes`)                            |
+| 15 Karten in `components/nodes/*`    | `role="group"` und das redundante `aria-label` entfernt; `data-selected` und der Sichttext bleiben |
+| `useTouchContextMenu.ts:50`          | liest den Namen jetzt vom Wrapper (der Long-Press suchte ihn bisher in der Karte)                  |
+| `tests/e2e/touch.spec.ts:121`        | Locator folgt dem Wrapper statt der Karte                                                          |
+
+Der Name setzt sich zusammen aus Registry-Wort (eine Quelle, keine neue
+Tabelle), Kürzel des Canvases, eigener Beschriftung, Abmessungen der
+Dachobjekte und — nach „—" — dem Zustand.
+
+### Zwei Korrekturen an der Freigabe, beide gemessen
+
+1. **`ariaRoleDescription` existiert nicht.** §3.6 Punkt 5 ging davon aus, die
+   Bibliothek erlaube die Rollenbeschreibung pro Knoten als eigenes Prop.
+   `grep -rn ariaRoleDescription node_modules/@xyflow/react/dist/esm/` ist leer;
+   `"aria-roledescription": "node"` steht hart in `index.js:2366`. Der Weg ist
+   `domAttributes`, weil die Bibliothek `...node.domAttributes` **zuletzt** in
+   dasselbe Props-Objekt spreizt und der Typ den Schlüssel zulässt — während er
+   `role` und `aria-label` in `domAttributes` ausdrücklich ausschließt
+   (`types/nodes.d.ts:24`). Punkt 3 bleibt damit unberührt.
+2. **Der Auswahlzustand bleibt nicht „an der Karte lesbar“ im ARIA-Sinne.**
+   `role="group"` kennt kein `aria-selected`, und die Bibliothek setzt es
+   nirgends. Sichtbar ist der Zustand weiterhin an der Karte
+   (`data-selected`, Ring-Klasse); **angesagt** wird er jetzt im Accessible
+   Name („— ausgewählt“).
+
+### Prüfung am tatsächlichen DOM
+
+- `components/nodes/bauteilGruppe.dom.test.tsx` — **echte** React-Flow-Wrapper
+  im jsdom, 8 Tests: genau ein `role="group"` pro Bauteil und keine zweite
+  Gruppe darin, `aria-roledescription="Bauteil"` überschreibt den
+  Bibliothekswert, kein `aria-selected`, `tabindex="0"` und Enter liefert eine
+  `select`-Änderung, der Deko-Rahmen wird ausdrücklich **nicht** zum Bauteil.
+  Zwei Befunde kamen daher: `aria-roledescription` war hart geschrieben
+  (Punkt 1) und der Rahmen behält sein `"node"` — wirkungslos ohne Rolle.
+- `planner-canvas-a11y.spec.ts` — zwei neue Szenarien im echten Browser gegen
+  den gebauten Export: alle Group-Knoten der Beispiel-Anlage deutsch
+  beschrieben und benannt, und die Tastaturauswahl kündigt sich im Namen an.
+- `bauteilAria.test.ts` — 13 Tests auf den Texten und dem Identitätsvertrag.
+- **Injektion geprüft (2026-11-04, Nachmessung):** `role="group"` zurück in
+  `BatteryNode.tsx` gesetzt → `vitest run bauteilGruppe.dom.test.tsx` fällt mit
+  Exit 1 und zwei Fehlschlägen, der Quelltext-Wächter meldet
+  „ARIA direkt an einer Bauteil-Karte". Ohne Injektion: Exit 0, 8 Tests grün.
+- **Zwischenstand berichtigt:** die Meldung „alles grün" vor diesem Checkpoint
+  war falsch. Nachgemessen fiel `npm run check` in der Lint-Stufe mit vier
+  Fehlern aus — ein ungenutzter Import in `bauteilGruppe.dom.test.tsx:8` und
+  drei `no-unsafe-*` an `FlowCanvas.test.tsx:223` (`JSON.parse` ohne Typ). Beide
+  Stellen sind behoben; seither läuft die Kette durch: eslint, prettier, beide
+  Typechecks, `vitest --coverage` mit **298 Dateien / 3899 Tests** (1
+  übersprungen), Exit 0.
+- Weil die Browser-Prüfung den **gebauten Export** mißt
+  (`playwright.config.ts:72` serves `out`), wurde `out/` gelöscht und neu
+  gebaut (Exit 0, Export-Prüfung über 42 Seiten grün) und erst dann gemessen:
+  die E2E-Suite **ohne** die drei Pixel-Baseline-Specs über alle Projekte =
+  **378 bestanden, 254 übersprungen, 0 Fehler** (Exit 0). Die Übersprungen sind
+  Ansichts-Guardes (`test.skip(project…)`) aus dem Lauf über alle Projekte,
+  keine Ausfälle.
+- Bei dieser Nachmessung ging ein Arbeitsschritt selbst verschuldet verloren:
+  das Zurücknehmen der Injektion mit `git checkout -- components/nodes/BatteryNode.tsx`
+  stellte den **HEAD**-Stand wieder her und löschte die uncommittete §3.6-Änderung
+  derselben Datei. Sie ist neu gesetzt und geprüft (Datei wieder `-2` Zeilen,
+  Karten ohne Rolle/Label: keine). **Merksatz für dieses Repo:** zur
+  Rücknahme einer TEMPORÄREN Änderung an einer Datei mit uncommitteter Arbeit
+  gehört die Sicherung des vorherigen Byte-Stands, nicht `git checkout --`.
+
+### Visuell
+
+An Pixeln ändert sich nichts: `role` und `aria-label` werden nicht gemalt.
+Bestätigt ist das hier **nicht** durch einen Linux-Pixellauf (B26), sondern nur
+durch diese DOM-Prüfung. Die visuelle Abnahme bleibt deshalb **offen und ist
+Teil von AP-6** — zusammen mit §3.4: dort sind die Baselines im Auslieferungs-
+zustand, in beiden Themen und auf beiden Geräten neu zu erfassen und gegen
+diesen Stand zu vergleichen. Ein Pixellauf kann die Zeichenfläche nicht sehen
+(B22, B26); die Bauteilbenennung ist also auch in AP-6 nicht durch ihn erledigt.
