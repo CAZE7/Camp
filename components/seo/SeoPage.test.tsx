@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SeoPageContent } from '@/lib/seo/types';
+import { buttonVariants } from '@/components/ui/button';
 
 import { SeoPage } from './SeoPage';
 
@@ -62,6 +63,20 @@ describe('SeoPage', () => {
     // Next normalisiert im gerenderten href den abschließenden Schrägstrich;
     // im Export steht wieder die volle Adresse (geprüft von scripts/seo/).
     expect(screen.getByRole('link', { name: 'Überblick' })).toHaveAttribute('href', '/camper-elektrik');
+  });
+
+  it('nutzt für alle drei Weiter-CTAs den vollständigen Button-Zustandsvertrag (B11)', () => {
+    render(<SeoPage page={SEITE} />);
+
+    const primary = screen.getByRole('link', { name: '12V-Planer öffnen' });
+    const secondary = [
+      screen.getByRole('link', { name: 'Rechner und Normgrundlagen' }),
+      screen.getByRole('link', { name: 'Alle Rechner ansehen' }),
+    ];
+    expect(primary.className).toBe(buttonVariants({ variant: 'default' }));
+    for (const link of secondary) {
+      expect(link.className).toBe(buttonVariants({ variant: 'outline' }));
+    }
   });
 
   it('beschreibt die Seite in genau einer Hauptüberschrift', () => {

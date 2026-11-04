@@ -28,3 +28,8 @@ next-env.d.ts
 # Git config
 .gitattributes
 
+# Messausgaben der Design-Audit-Skripte. Das sind generierte Daten, kein
+# Quelltext: Prettier würde sie bei jedem Messlauf neu formatieren und
+# `format:check` damit gegen genau die Skripte wenden, die sie schreiben.
+scripts/design-audit/ergebnis
+

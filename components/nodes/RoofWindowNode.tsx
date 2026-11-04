@@ -36,9 +36,7 @@ const RoofWindowNode = function ({
         }}
       />
       <div
-        role="group"
-        aria-label={`Dachfenster ${Math.round(width)} mal ${Math.round(height)} Zentimeter${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
-
+        data-testid="roof-window-card"
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-warn-info-bg text-warn-info transition-colors',
           selected ? 'ring-2 ring-warn-info ring-offset-2 ring-offset-paper' : '',

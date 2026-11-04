@@ -28,9 +28,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
 
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || 'Wasser-Komponente'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${bgColor} ${borderColor} ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <div className="mb-2 text-center text-sm font-bold" title={data.label || 'Wasser-Komponente'}>

@@ -15,7 +15,6 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
 
   return (
     <div
-      aria-label={`Dachfläche ${width} mal ${height} Zentimeter`}
       className="relative border-2 border-dashed border-copper bg-paper/40"
       style={{ width: pxWidth, height: pxHeight, pointerEvents: 'none' }}
     >

@@ -59,12 +59,6 @@ const ConduitNode = function ({
 
   return (
     <div
-      role="group"
-      aria-label={`${data.label || 'Leerrohr'} (${declaredType ?? 'Typ nicht angegeben'}).${
-        percentage === null
-          ? ' Füllgrad nicht bewertet.'
-          : ` Füllgrad ${percentage.toFixed(1).replace('.', ',')} Prozent.`
-      } Komponente im Plan.`}
       data-selected={selected || undefined}
       className={`node-card de-node-card custom-drag-handle w-64 p-3 ${overfilled ? 'node-card--error' : ''} ${overfilled ? 'de-node-card--error bg-warn-critical-bg' : ''} ${
         selected ? 'node-card--selected' : ''

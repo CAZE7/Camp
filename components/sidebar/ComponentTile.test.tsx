@@ -28,6 +28,19 @@ describe('ComponentTile — Klick fügt hinzu (Nachtest, Desktop)', () => {
     document.querySelectorAll('body > [style*="position: fixed"]').forEach((node) => node.remove());
   });
 
+  it('meldet den echten Auswahlzustand an der gültigen option-Rolle', () => {
+    const onSelect = vi.fn();
+    const { container } = render(<ComponentTile comp={comp} accent="default" selected onSelect={onSelect} />);
+    const tile = within(container).getByRole('option', {
+      name: /Batterie hinzufügen/,
+      selected: true,
+    });
+
+    expect(tile).toHaveAttribute('aria-selected', 'true');
+    fireEvent.focus(tile);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
   it('a desktop click without moving adds the component at the visible centre', () => {
     const addSpy = vi.spyOn(drag, 'addAtVisibleCenter').mockImplementation(() => {});
     const { container } = render(<ComponentTile comp={comp} accent="default" />);

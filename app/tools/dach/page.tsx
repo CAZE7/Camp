@@ -16,6 +16,7 @@ import RoofSolarNode from '@/components/nodes/RoofSolarNode';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
+import { withBauteilAria } from '@/components/planner/utils/bauteilAria';
 import { PageShell } from '@/components/brand/PageShell';
 import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
@@ -95,6 +96,10 @@ function DachPlanerInner() {
     () => nodes.filter((n) => n.type === 'roofSolar' || n.type === 'roofWindow').length,
     [nodes]
   );
+
+  // §3.6: Auch der Dachplaner malt React-Flow-Knoten — Name und
+  // Rollenbeschreibung gehören an den Knoten, nicht an die Karte.
+  const benannteNodes = useMemo(() => nodes.map((node) => withBauteilAria(node)), [nodes]);
 
   // Onboarding schließt automatisch, sobald der Nutzer platziert hat.
   // AUDIT T1 (react-hooks/set-state-in-effect): Der Abgleich läuft zur
@@ -399,7 +404,7 @@ function DachPlanerInner() {
           onDragOver={onDragOver}
         >
           <ReactFlow
-            nodes={nodes}
+            nodes={benannteNodes}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             fitView

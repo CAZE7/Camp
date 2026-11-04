@@ -10,12 +10,17 @@ function Probe({ enabled, onOpen }: { enabled: boolean; onOpen: (state: ContextM
 }
 
 const makeNode = () => {
+  // §3.6: Rolle und Accessible Name sitzen am Node-Wrapper, die Karte trägt
+  // beides nicht mehr. Der Long-Press beginnt auf der Karte — das Menü muss den
+  // Namen des Wrappers finden.
   const node = document.createElement('div');
   node.className = 'react-flow__node';
   node.dataset.id = 'battery-1';
+  node.setAttribute('role', 'group');
+  node.setAttribute('aria-roledescription', 'Bauteil');
+  node.setAttribute('aria-label', 'Batterie B1, Aufbaubatterie');
   const body = document.createElement('div');
-  body.setAttribute('role', 'group');
-  body.setAttribute('aria-label', 'Batterie. Komponente im Plan.');
+  body.className = 'node-card';
   node.appendChild(body);
   document.body.appendChild(node);
   return body;
@@ -47,7 +52,7 @@ describe('useTouchContextMenu', () => {
       y: 120,
       targetType: 'node',
       targetId: 'battery-1',
-      label: 'Batterie',
+      label: 'Batterie B1',
     });
     expect(vibrate).toHaveBeenCalledWith(15);
   });
