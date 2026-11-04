@@ -376,3 +376,22 @@ verlangte Regression für eine Verhaltensänderung.
 | **§22 Electrical**                                        | Es wurde **keine** physikalische Größe, Formel oder Tabelle geändert ⇒ keine neue G1–G7-Prüfung nötig; Normal-/Grenz-/Negativfälle der Projektion in `reviewDiff.test.ts` (Werte unverändert, ungültige Bedingung, leerer Plan), `tsconfig.tests.json` grün, Golden Master 13 ohne Neuerfassung.                            |
 | **§23 Review-Checkliste**                                 | Invariante benannt (Modellreichweite / keine zweite Rechnung), Datenfluss `preview.edges` + `state.edges` → `reviewDiff` → Modal, `Called By` über die Tests abgedeckt, Determinismus über `localeCompare` und ID-Sortierung gesichert (Test), keine versteckte Konstante, keine Routing-/Sizing-Semantik geändert.         |
 | **§24 UI-DoD**                                            | Komponententests grün; **E2E für den Bedienpfad und Pixel-Vorher/Nachher fehlen** → nicht vollständig erfüllt, siehe §10.5.                                                                                                                                                                                                 |
+
+### 10.7 Nachtrag — Klartext-Vertrag der Warn-Zentrale (vor dem PR)
+
+Beim Öffnen des Pull Requests lief die CI an; eine Durchsicht der E2E-Verträge
+ergab, dass `tests/e2e/fresh-session-retest.spec.ts` im sichtbaren Prüfpanel
+**keine** Rohkennungen (`I_[bnz2]`, `AMP-\d{3}`, `(In ≤`) und in den
+Modellgrenzen dasselbe erwartet. Die zunächst offene `ac-scope-items`-Liste
+hätte technische `basis`-Texte (`AMP-001…006`, `I_z`, `Z_s`) in dieses Panel
+gebracht und den Vertrag gebrochen — E2E konnte im Sandbox nicht laufen, der
+Vertrag wurde deshalb statisch geprüft.
+
+**Korrektur:** Das Primärpanel nennt nur die Anzahl der Punkte in Klartext; die
+vollständige Einzelliste mit Stufe, Grund und nötiger Prüfung steht unter
+„Warum? Technische Details" (`toPlainGerman.ts` verlangt genau diese
+Trennung). `WarningCenter.test.tsx` prüft mit der **echten**
+`AC_230V_SCOPE_ITEMS`, dass das Primärpanel den Vertrag einhält und die
+technischen Details nach dem Aufklappen vollständig erscheinen. Der neue
+`ENGINE_LIMITATIONS`-Eintrag enthält selbst keine der verbotenen Zeichen
+(Probe). Die Doku (§4/§5, VALIDATION-CONTEXT §8.3, LEDGER) ist präzisiert.

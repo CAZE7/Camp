@@ -3638,6 +3638,12 @@ Variante ohne neue Features (`AGENTS.md` Zeile 95).
 - **Doku:** `docs/AC-230V-MODELLGRENZEN.md` (Datengrundlage, drei Stufen,
   Einzelpunkte, Tests, offene Punkte), `docs/ai/KNOWN-PROBLEMS.md`
   (`AC-230V-001`), `docs/ai/VALIDATION-CONTEXT.md` §8.3, Abnahmebericht §10.
+- **Nachtrag (Klartext-Vertrag):** Die technische Einzelliste der Warn-Zentrale
+  steht unter „Warum? Technische Details"; das Primärpanel nennt nur die Anzahl
+  in Klartext. Grund: `tests/e2e/fresh-session-retest.spec.ts` verbietet
+  Rohkennungen (`I_[bnz2]`, `AMP-\d{3}`, `(In ≤`) im sichtbaren Prüfpanel und
+  in den Modellgrenzen. `WarningCenter.test.tsx` pinnt das mit der echten
+  `AC_230V_SCOPE_ITEMS` (keine handgeschriebene Fixture).
 
 ## LEDGER 2026-11-04 (3) — AutoWire: Vorher/Nachher je Leitung im Review
 

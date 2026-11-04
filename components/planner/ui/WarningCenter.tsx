@@ -255,28 +255,16 @@ function FindingCard({
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
-          {/* NET-003: Die 230-V-Modellgrenzen stehen offen im Befund, nicht
-              versteckt hinter „Warum?“. Jeder Punkt nennt seine Stufe — ein
-              gerechnetes Ergebnis darf nicht wie eine ungeprüfte Grenze
-              aussehen und umgekehrt. */}
+          {/* NET-003: Im Primärpanel steht nur Klartext. Die technische
+              Einzelbegründung (Regel-IDs, Formelzeichen, Datenfeldnamen)
+              gehört hinter „Warum?" — `toPlainGerman.ts` verlangt genau diese
+              Trennung, und der E2E-Vertrag `fresh-session-retest` verbietet
+              Rohkennungen im sichtbaren Prüfpanel. */}
           {details?.acScopeItems && details.acScopeItems.length > 0 && (
-            <div className="mt-2 rounded border border-border bg-card/60 p-2" data-testid="ac-scope-items">
-              <p className="text-xs font-semibold text-foreground">
-                230-V-Modellgrenzen · {AC_ASSESSMENT_LABEL[details.acAssessment ?? 'unverifiable']}
-              </p>
-              <ul className="mt-1 flex flex-col gap-2">
-                {details.acScopeItems.map((item) => (
-                  <li key={item.id} className="text-xs leading-relaxed text-ink-soft">
-                    <strong className="text-foreground">{item.title}</strong> —{' '}
-                    <span className="font-semibold">{AC_ASSESSMENT_LABEL[item.assessment]}</span>
-                    <br />
-                    <span>Grund: {item.basis}</span>
-                    <br />
-                    <span>Prüfung: {item.remedy}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+              {details.acScopeItems.length} Punkte dieser 230-V-Modellgrenze sind unter „Warum?" einzeln mit
+              Bewertungsstufe, Grund und nötiger Prüfung aufgeführt.
+            </p>
           )}
           {/* Gleiche Ursache, mehrere Leitungen (Phase 10/11) — kompakt, ohne
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
@@ -364,6 +352,24 @@ function FindingCard({
                       <ul className="mt-0.5 list-disc pl-4">
                         {details.assumptions.map((assumption) => (
                           <li key={assumption}>{assumption}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {details?.acScopeItems && details.acScopeItems.length > 0 && (
+                    <div className="mt-1 font-sans" data-testid="ac-scope-items">
+                      <p className="font-semibold">
+                        230-V-Modellgrenzen · {AC_ASSESSMENT_LABEL[details.acAssessment ?? 'unverifiable']}
+                      </p>
+                      <ul className="mt-0.5 flex flex-col gap-1">
+                        {details.acScopeItems.map((item) => (
+                          <li key={item.id}>
+                            <strong>{item.title}</strong> — {AC_ASSESSMENT_LABEL[item.assessment]}
+                            <br />
+                            Grund: {item.basis}
+                            <br />
+                            Prüfung: {item.remedy}
+                          </li>
                         ))}
                       </ul>
                     </div>

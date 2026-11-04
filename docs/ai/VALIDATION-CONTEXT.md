@@ -118,8 +118,10 @@ ein gesetzter FI würde einen fehlenden FI verschleiern.
 `AC_LV`-Kanten drei `UNVERIFIABLE`-Befunde aus: Leiter/Netzform,
 Trennung/Umschaltung/Rückspeisung, Messwerte/Abnahme. Sie unterscheidet dabei
 **rechnerisch bewertet**, **mit Annahmen bewertet** und **nicht überprüfbar**.
-Die Punkte stehen offen in der Warn-Zentrale (`ac-scope-items`), im Bauteil- und
-Kabel-Inspektor und in `report.limitations`. Ein 230-V-Plan wird `INCOMPLETE`,
+Die Warn-Zentrale nennt die Anzahl im Klartext und zeigt die technische
+Einzelliste (`ac-scope-items`) unter „Warum? Technische Details" — Regel-Codes
+und Formelzeichen gehören nicht ins Primärpanel. Dazu kommen Bauteil- und
+Kabel-Inspektor sowie `report.limitations`. Ein 230-V-Plan wird `INCOMPLETE`,
 ein reiner 12-V-Plan bleibt `COMPLIANT`. Es entsteht dadurch **keine** neue
 L/N/PE-Architektur und **keine** normgeprüfte Abnahme — Details und Datengrundlage:
 [`docs/AC-230V-MODELLGRENZEN.md`](../AC-230V-MODELLGRENZEN.md).
