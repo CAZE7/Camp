@@ -7,6 +7,9 @@ interface ComponentTileProps {
   comp: Comp;
   onMobileAdd?: () => void;
   accent: 'default' | 'device';
+  /** Echte Einzelauswahl der umgebenden `listbox`, nicht nur CSS-Zustand. */
+  selected?: boolean;
+  onSelect?: () => void;
   /** Zeilen-Navigation der Palette (Pfeiltasten) — siehe `Sidebar`. */
   onNavigate?: (direction: 1 | -1) => void;
 }
@@ -23,7 +26,14 @@ interface ComponentTileProps {
 /** Ab dieser Mausbewegung (px) war es ein Ziehen, kein Klick mehr. */
 export const CLICK_DRAG_THRESHOLD_PX = 6;
 
-export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: ComponentTileProps) {
+export function ComponentTile({
+  comp,
+  onMobileAdd,
+  accent,
+  selected = false,
+  onSelect,
+  onNavigate,
+}: ComponentTileProps) {
   const Icon = comp.icon;
   const desktopDragStarted = useRef(false);
   // Nachtest/B-05: Druckpunkt merken, um einen Desktop-Klick (praktisch
@@ -46,13 +56,18 @@ export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: Compone
       data-component-label={comp.label}
       data-accent={accent}
       role="option"
-      aria-selected={false}
+      aria-selected={selected}
       className={cn(
         'cad-item touch-manipulation',
         accent === 'device' ? 'text-foreground' : 'text-foreground',
         'lg:cursor-grab'
       )}
+      onFocus={onSelect}
       onPointerDown={(event) => {
+        // Ein Desktop-Drag verhindert den nativen Fokus. Die Zeile wird
+        // deshalb schon am Druckpunkt zur ausgewählten Option; Klick, Touch
+        // und Tastatur landen über Fokus bzw. onClick im selben Zustand.
+        onSelect?.();
         pressPoint.current = { x: event.clientX, y: event.clientY };
         desktopDragStarted.current = handlePointerDown(event, comp);
       }}
@@ -67,6 +82,9 @@ export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: Compone
         }
       }}
       onClick={(event) => {
+        // Assistierende Technik kann click auslösen, ohne zuvor einen
+        // Pointer- oder Focus-Event zu senden.
+        onSelect?.();
         // A started mouse ghost drag owns this click, even if it was released
         // outside the canvas — UNLESS the pointer practically did not move
         // (B-05): then it was a click, and a click adds like a tap.

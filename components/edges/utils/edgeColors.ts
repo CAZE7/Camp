@@ -31,7 +31,6 @@ export const WIRE_COLORS = {
   sensor: 'var(--de-wire-sensor)',
   // Status
   selected: 'var(--wire-selected)',
-  error: 'var(--wire-error)',
 } as const;
 
 export const PIPE_COLORS = {
@@ -76,7 +75,7 @@ export function cssToken(name: string, fallback: string): string {
  * Liefert die Leitungsfarbe primär aus der Domäne (12V/24V/48V DC Plus/Minus,
  * 230V AC Phase/Neutral/PE, Solar, CAN, Sensor).
  * Der Selektionszustand wird bewusst NICHT als Farbe kodiert (er bleibt ein Glow/Dicken-Effekt);
- * Fehler-Kanten werden separat in CableEdge auf die Fehlerfarbe gesetzt.
+ * ein Spannungsfall ebenfalls nicht — er sitzt im Strichmuster (§3.4, Freigabe 2026-11-04).
  *
  * Shape-Coding: Farbe + Form + Label für Farbenblindheit
  */

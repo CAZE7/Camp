@@ -10,7 +10,7 @@ import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
-import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
+import { getWireColor } from './utils/edgeColors';
 import { hasVoltageDropError, resolveCableLength } from './utils/voltageDrop';
 import {
   assessCableSelection,
@@ -761,7 +761,11 @@ const CableEdge = function ({
       source: 'Strommodell: Datenlücke (die Engine meldet die Kante parallel als „nicht prüfbar“)',
     });
   }
-  const stroke = hasDropError ? WIRE_COLORS.error : getWireColor({ edgeDomain, isPlus });
+  // §3.4 (Freigabe 2026-11-04): Die Domänenfarbe bleibt auch bei verletztem
+  // Spannungsfall — der Zustand sitzt im Strichmuster `8 6`, der Laufanimation
+  // und dem Label-Chip. Ersetzte `--error` die Farbe, war die Fehlerleitung in
+  // beiden Themen farbgleich mit einer anderen Leitung.
+  const stroke = getWireColor({ edgeDomain, isPlus });
   const emphasized = selected || isHovered;
   const isBackbone = useMemo(
     () =>
@@ -822,14 +826,16 @@ const CableEdge = function ({
       {/* R9: Routing-Ausnahmen pro Leitung sichtbar, nicht nur aggregiert im
           Berichtsteil „Kabeltrassen“ (`routingStatusView`). `fallbackHitsObstacles` = Fallback unterschreitet
           die normale Bauteil-Reserve (rot, gepunktet); `tightMarginUsed` =
-          verringerte Reserve an einer Engstelle (orange). Ob auch der
+          verringerte Reserve an einer Engstelle (neutral, §3.4 — die Engstelle
+          ist ein Zustand, keine Domäne, und eine akzentfarbene Halbung wäre zur
+          Plus-Leitung farbgleich). Ob auch der
           verbindliche Mindestabstand verletzt ist, prüft das Final-Gate (I3).
           Der Halo liegt UNTER der Leitung und ändert weder Pfad noch Trefferzone. */}
       {(routeInvalid || routeTight) && (
         <path
           d={edgePath}
           fill="none"
-          stroke={routeInvalid ? 'var(--error)' : 'var(--oxide)'}
+          stroke={routeInvalid ? 'var(--error)' : 'var(--text-high)'}
           strokeWidth={renderedStrokeWidth + 6}
           strokeLinecap="round"
           strokeDasharray="2 7"

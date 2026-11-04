@@ -297,3 +297,37 @@ describe('verificationReportFor — der Plan wird geprüft, nicht geglättet', (
     expect(summary.findings.some((finding) => finding.unverified === true)).toBe(true);
   });
 });
+
+describe('verificationSummary — Prüfkatalog und angewandte Prüfungen sind verschieden', () => {
+  it('zählt die Durchgänge auf die Abdeckung der Engine auf', () => {
+    for (const fixture of [healthyDcPlan(), islandPlan(), shorePlan()]) {
+      const summary = verificationSummary(plan(fixture));
+      const katalog = summary.passes.reduce((sum, pass) => sum + pass.ruleCount, 0);
+      const angewandt = summary.passes.reduce((sum, pass) => sum + pass.appliedCount, 0);
+      expect(katalog).toBe(summary.exercised + summary.notApplicable);
+      expect(angewandt).toBe(summary.exercised);
+    }
+  });
+
+  it('nennt einen Durchgang ohne Gegenstand nicht erfüllt', () => {
+    // Ein Plan ohne Bauteile hat in drei Durchgängen keine Regel mit Gegenstand;
+    // die Engine meldet diese Durchgänge als PASS, weil nichts verletzt ist.
+    const summary = verificationSummary(verificationReportFor([], []));
+    const leer = summary.passes.filter((pass) => pass.appliedCount === 0);
+    expect(leer.length).toBeGreaterThan(0);
+    for (const pass of leer) {
+      expect(pass.displayStatus).toBe('NOT_APPLIED');
+      expect(pass.status).toBe('PASS');
+    }
+    for (const pass of summary.passes) {
+      if (pass.appliedCount > 0) expect(pass.displayStatus).toBe(pass.status);
+    }
+  });
+
+  it('zeigt die Regelzahl nur, wo sie angewandt wurde', () => {
+    const summary = verificationSummary(plan(healthyDcPlan()));
+    const teilweis = summary.passes.find((pass) => pass.appliedCount < pass.ruleCount);
+    expect(teilweis).toBeDefined();
+    expect(teilweis?.ruleCount).toBeGreaterThan(teilweis?.appliedCount ?? 0);
+  });
+});

@@ -43,6 +43,25 @@ describe('Button component', () => {
     });
   });
 
+  it('trägt Aktiv-, Fokus-, Sperr- und Auswahlzustand aus demselben Vertrag (B11)', () => {
+    render(
+      <Button aria-selected="true" aria-disabled="true">
+        Zustände
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: 'Zustände' });
+
+    expect(button).toHaveClass(
+      'motion-safe:active:scale-[var(--press-scale)]',
+      'motion-safe:duration-[var(--motion-press)]',
+      'motion-safe:ease-[var(--ease-out)]',
+      'focus-visible:ring-2',
+      'aria-selected:ring-2',
+      'disabled:opacity-50',
+      'aria-disabled:opacity-50'
+    );
+  });
+
   it('merges custom className correctly', () => {
     render(<Button className="custom-class my-custom-style">Custom</Button>);
     const button = screen.getByRole('button', { name: /custom/i });

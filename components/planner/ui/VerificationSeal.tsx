@@ -46,7 +46,12 @@ const TONE: Record<
   },
 };
 
-const PASS_STATUS_LABEL = { PASS: 'erfüllt', FAIL: 'nicht erfüllt', UNPROVABLE: 'Angaben fehlen' } as const;
+const PASS_STATUS_LABEL = {
+  PASS: 'erfüllt',
+  FAIL: 'nicht erfüllt',
+  UNPROVABLE: 'Angaben fehlen',
+  NOT_APPLIED: 'kommt in diesem Plan nicht vor',
+} as const;
 
 function Stat({ value, label, hint }: { value: number; label: string; hint: string }) {
   return (
@@ -62,6 +67,10 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
   const panelId = useId();
   const tone = TONE[summary.tone];
   const percent = Math.round(summary.decisionRatio * 100);
+  // Der Katalog ist die Summe der Regeln, die die Engine überhaupt kennt:
+  // ausgeführte plus die, die im Plan keinen Gegenstand hatten. Ohne diese
+  // Größe liest „29 Regeln" als wären 29 Prüfungen durchgeführt worden.
+  const katalogRegeln = summary.exercised + summary.notApplicable;
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +93,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         // Der zugängliche Name sagt auf jeder Breite dasselbe. Auf schmalen
         // Geräten ist nur das Symbol sichtbar (Platz in der Kopfzeile, wie
         // beim Speicher-Indikator); die Bewertung selbst steht im Bericht.
-        aria-label={`Prüfbericht: ${summary.label}. ${summary.exercised} Regeln angewandt, ${percent} % entschieden.`}
+        aria-label={`Prüfbericht: ${summary.label}. ${summary.exercised} von ${katalogRegeln} Regeln des Katalogs angewandt, ${percent} % entschieden.`}
         onClick={() => setOpen((value) => !value)}
         className={`inline-flex min-h-11 max-w-full min-w-0 shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
         title="Bericht der Verifikations-Engine: Verdikt, Abdeckung, Modellgrenzen und Zertifikat"
@@ -108,7 +117,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             vollständige Aussage steht im Tooltip, im `aria-label` und im
             Bericht darunter. */}
         <span className="sr-only">
-          {summary.exercised} Regeln angewandt · {percent} % entschieden
+          {summary.exercised} von {katalogRegeln} Regeln angewandt · {percent} % entschieden
         </span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -182,6 +191,10 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
 
             <div className="mb-3">
               <div className="mb-1 font-semibold text-foreground">Prüfungen (5 Durchgänge)</div>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Der Katalog umfasst {katalogRegeln} Regeln; in diesem Plan hatten {summary.exercised} davon
+                einen Gegenstand.
+              </p>
               <ul className="space-y-0.5">
                 {summary.passes.map((pass) => (
                   <li
@@ -191,8 +204,15 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
                     <span className="min-w-0 text-muted-foreground">
                       {pass.pass}. {pass.name}
                     </span>
-                    <span className="text-xs text-foreground">
-                      {PASS_STATUS_LABEL[pass.status]} · {pass.ruleCount} Regeln
+                    <span
+                      className="text-xs text-foreground"
+                      title={`${pass.appliedCount} von ${pass.ruleCount} Regeln des Katalogs hatten in diesem Plan einen Gegenstand.`}
+                    >
+                      {PASS_STATUS_LABEL[pass.displayStatus]}
+                      {' · '}
+                      {pass.appliedCount === pass.ruleCount
+                        ? `${pass.ruleCount} Regeln`
+                        : `${pass.appliedCount} von ${pass.ruleCount} Regeln`}
                     </span>
                   </li>
                 ))}

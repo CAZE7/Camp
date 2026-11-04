@@ -27,6 +27,26 @@ describe('Sidebar Component', () => {
     });
   });
 
+  describe('Katalogauswahl (B5)', () => {
+    it('setzt genau die fokussierte Option auf aria-selected=true', () => {
+      render(<Sidebar />);
+      const battery = screen.getByRole('option', { name: /Batterie hinzufügen/ });
+
+      expect(battery).toHaveAttribute('aria-selected', 'false');
+      expect(battery.closest('[role="listbox"]')).toHaveAttribute('aria-label', 'Strom speichern');
+      fireEvent.focus(battery);
+      expect(battery).toHaveAttribute('aria-selected', 'true');
+
+      fireEvent.click(screen.getByRole('button', { name: /Strom verteilen/ }));
+      const shunt = screen.getByRole('option', { name: /Batteriemonitor.*hinzufügen/ });
+      fireEvent.focus(shunt);
+
+      expect(shunt).toHaveAttribute('aria-selected', 'true');
+      expect(battery).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getAllByRole('option', { selected: true })).toEqual([shunt]);
+    });
+  });
+
   describe('Search and Filtering', () => {
     it('filters components based on search term', () => {
       render(<Sidebar />);

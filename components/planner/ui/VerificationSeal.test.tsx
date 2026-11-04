@@ -36,8 +36,10 @@ describe('VerificationSeal', () => {
     const button = screen.getByTestId('verification-seal-toggle');
     expect(button).toHaveTextContent('Prüfbericht:');
     expect(button).toHaveTextContent('Bestanden');
+    const gesund = summaryFor(healthyDcPlan());
     expect(button.textContent).toMatch(
-      new RegExp(`${summaryFor(healthyDcPlan()).exercised} Regeln angewandt`)
+      // Der Katalog nennt alle Regeln, angewandt nur die mit Gegenstand im Plan.
+      new RegExp(`${gesund.exercised} von ${gesund.exercised + gesund.notApplicable} Regeln angewandt`)
     );
     expect(button).toHaveAttribute('aria-expanded', 'false');
   });

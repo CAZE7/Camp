@@ -44,8 +44,10 @@ describe('RoofSolarNode Component', () => {
     const { container } = render(<RoofSolarNode id="1" data={{}} selected={true} />);
     const resizer = screen.getByTestId('node-resizer');
     expect(resizer).toHaveAttribute('data-isvisible', 'true');
-    // Selected-Ring nutzt jetzt Token-Farben
-    const mainDiv = container.querySelector('[role="group"]') as HTMLElement;
+    // Selected-Ring nutzt jetzt Token-Farben. Selektiert wird die Karte über
+    // ihr eigenes Hook, nicht über eine Rolle: §3.6 legt die Gruppe auf den
+    // React-Flow-Wrapper, die Karte trägt keine eigene Rolle mehr.
+    const mainDiv = container.querySelector('[data-testid="roof-solar-card"]') as HTMLElement;
     expect(mainDiv.className).toContain('ring-2');
     expect(mainDiv.className).toContain('ring-copper');
   });
@@ -54,18 +56,20 @@ describe('RoofSolarNode Component', () => {
     const { container } = render(<RoofSolarNode id="1" data={{}} selected={false} />);
     const resizer = screen.getByTestId('node-resizer');
     expect(resizer).toHaveAttribute('data-isvisible', 'false');
-    const mainDiv = container.querySelector('[role="group"]') as HTMLElement;
+    const mainDiv = container.querySelector('[data-testid="roof-solar-card"]') as HTMLElement;
     expect(mainDiv.className).not.toContain('ring-2');
     expect(mainDiv.className).not.toContain('ring-copper');
   });
 
   it('applies invalid styling when data.isInvalid is true', () => {
     const { container } = render(<RoofSolarNode id="1" data={{ isInvalid: true }} selected={false} />);
-    const mainDiv = container.querySelector('[role="group"]') as HTMLElement;
+    const mainDiv = container.querySelector('[data-testid="roof-solar-card"]') as HTMLElement;
     expect(mainDiv.className).toContain('border-warn-critical');
-    // Der Fehlerzustand kommt bei Sprachausgabe über das aria-label an
-    // (aria-invalid ist an role="group" nicht zulässig — jsx-a11y-Riegel).
-    expect(mainDiv.getAttribute('aria-label')).toContain('ragt aus der Safe Zone');
+    // Der Fehlerzustand wird nicht mehr an der Karte benannt: §3.6 legt den
+    // Accessible Name auf den React-Flow-Wrapper. Geprüft wird er dort in
+    // `bauteilAria.test.ts` (Zeile mit „— ragt aus der Safe Zone") und im
+    // echten DOM: `components/nodes/bauteilGruppe.dom.test.tsx`.
+    // aria-invalid verbietet sich an der Rolle group (jsx-a11y-Riegel).
   });
 
   it('calls onNodeResize callback when NodeResizer triggers onResize', () => {

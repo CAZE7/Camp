@@ -68,6 +68,7 @@ import { DesignatorContext, designatorMapFor } from '../nodes/designators';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
 import { withNodeInteractionState } from './utils/nodeInteractionState';
+import { withBauteilAria } from './utils/bauteilAria';
 import { BackboneGroupNode } from './ui/BackboneGroupNode';
 import { withNodePresentations } from './ui/NodePresentation';
 import { HANDLE_HIT_TARGET_SCREEN_PX, separateHandleHitTargets } from './utils/handleHitTargets';
@@ -852,18 +853,20 @@ export function FlowCanvas() {
     return groupedNodes.map((rawNode) => {
       if (isPresentationOnlyNode(rawNode)) return rawNode;
       const collision = rawNode.id === collidingNodeId;
-      if (!interaction.requiresDragHandle) {
-        return withNodeInteractionState(rawNode, { collision, dragHandle: 'inherit' });
-      }
-      return rawNode.id === armedNodeId
-        ? withNodeInteractionState(rawNode, { collision, dragHandle: 'armed' })
-        : withNodeInteractionState(rawNode, {
-            collision,
-            dragHandle: 'handle',
-            handleSelector: NODE_DRAG_HANDLE_SELECTOR,
-          });
+      const mitInteraktion = !interaction.requiresDragHandle
+        ? withNodeInteractionState(rawNode, { collision, dragHandle: 'inherit' })
+        : rawNode.id === armedNodeId
+          ? withNodeInteractionState(rawNode, { collision, dragHandle: 'armed' })
+          : withNodeInteractionState(rawNode, {
+              collision,
+              dragHandle: 'handle',
+              handleSelector: NODE_DRAG_HANDLE_SELECTOR,
+            });
+      // §3.6: Name und Rollenbeschreibung sitzen am Knotenobjekt, weil React
+      // Flow sie auf den echten Node-Wrapper legt — nicht auf die Karte.
+      return withBauteilAria(mitInteraktion, designators.get(rawNode.id));
     });
-  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId, designators]);
 
   const reviewNodes = useMemo(() => {
     if (!reviewActive) return interactiveNodes;
