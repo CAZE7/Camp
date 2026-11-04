@@ -21,6 +21,7 @@ export function PlannerInspector() {
     handleChangeFuseSize,
     handleChangeFuseOffset,
     handleChangeFuseType,
+    handleChangeCableConditions,
     handleChangeFuseI2,
     handleChangeAcProtection,
     setEdgeIntent,
@@ -42,6 +43,7 @@ export function PlannerInspector() {
       handleChangeFuseSize: state.handleChangeFuseSize,
       handleChangeFuseOffset: state.handleChangeFuseOffset,
       handleChangeFuseType: state.handleChangeFuseType,
+      handleChangeCableConditions: state.handleChangeCableConditions,
       handleChangeFuseI2: state.handleChangeFuseI2,
       handleChangeAcProtection: state.handleChangeAcProtection,
       setEdgeIntent: state.setEdgeIntent,
@@ -112,6 +114,7 @@ export function PlannerInspector() {
             onChangeFuseSize={handleChangeFuseSize}
             onChangeFuseOffset={handleChangeFuseOffset}
             onChangeFuseType={handleChangeFuseType}
+            onChangeCableConditions={handleChangeCableConditions}
             onChangeFuseI2={handleChangeFuseI2}
             onChangeAcProtection={handleChangeAcProtection}
             onChangeIntent={handleChangeIntent}

@@ -56,6 +56,8 @@ interface InspectorProps {
   onChangeFuseOffset?: (id: string, offset: number) => void;
   /** AUDIT DOM-002: Bauform der Sicherung (Abschaltvermögens-Check). */
   onChangeFuseType?: (id: string, fuseType: string | undefined) => void;
+  /** P0-3: auswählbare Verlegebedingungen der Leitung. */
+  onChangeCableConditions?: (id: string, patch: import('../lib/cableConditions').CableConditionPatch) => void;
   /** Konventioneller Auslösestrom I₂ (A) aus dem Datenblatt des Produkts. */
   onChangeFuseI2?: (id: string, i2A: number) => void;
   /** V2-INTENT-002: Verbindlichkeit der Leitung (Automatik/Nutzer/fixiert). */
@@ -322,6 +324,7 @@ export default function Inspector({
   onChangeFuseSize,
   onChangeFuseOffset,
   onChangeFuseType,
+  onChangeCableConditions,
   onChangeFuseI2,
   onChangeIntent,
   onChangeAcProtection,
@@ -371,6 +374,7 @@ export default function Inspector({
               onChangeFuseSize={onChangeFuseSize}
               onChangeFuseOffset={onChangeFuseOffset}
               onChangeFuseType={onChangeFuseType}
+              onChangeCableConditions={onChangeCableConditions}
               onChangeFuseI2={onChangeFuseI2}
               onChangeAcProtection={onChangeAcProtection}
               onChangeIntent={onChangeIntent}

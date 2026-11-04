@@ -137,4 +137,20 @@ export type CableEdgeData = {
   locked?: boolean;
   /** Exakte Wegpunkte des Nutzersnapshots; bleibt bis zum expliziten Entsperren erhalten. */
   lockedWaypoints?: CableWaypoint[];
+  /**
+   * P0-3: Verlegebedingungen DIESER Leitung. Ohne Angabe gilt unverändert das
+   * Referenzmodell (`DERATE_FACTOR` 0,7 auf die B2-Tabelle) — gespeicherte
+   * Pläne und Golden Master bleiben dadurch byte-stabil.
+   * Datenmodell und Herkunft: `lib/cableConditions.ts`,
+   * `docs/KABEL-VERLEGEBEDINGUNGEN.md`.
+   */
+  installationCondition?: string;
+  /** Umgebungstemperatur in °C (eigener Wert überschreibt das Preset). */
+  ambientC?: number;
+  /** Anzahl gleichzeitig belasteter Stromkreise in derselben Trasse (1…9). */
+  bundledCircuits?: number;
+  /** Fahrzeugleitungstyp: FLRY-B (PVC/70 °C) oder FLR2X-B (XLPE/90 °C). */
+  cableInsulation?: string;
+  /** I_z in A aus dem Datenblatt des konkreten Kabels — übersteuert die Tabelle. */
+  manufacturerIzA?: number;
 };

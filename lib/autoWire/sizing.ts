@@ -1,15 +1,5 @@
 import type { Node } from '../domain/graph'; // ARCH-001
-import {
-  VDE_SIZES,
-  FUSE_MAP,
-  calculateCrossSection,
-  calculateMaxFuse,
-  lookupThermalCrossSection,
-  selectFuseSize,
-  isFuseFeasible,
-  crossSectionForFuse,
-  designAmpacity,
-} from '../electrical';
+import { VDE_SIZES, calculateCrossSection, isFuseFeasible, crossSectionForFuse } from '../electrical';
 import { getCableCurrents } from '../electricalGraph/currentFlow';
 import {
   addVolts,
@@ -40,6 +30,7 @@ import {
   type CableEdge,
 } from './primitives';
 import { isVoltageDropStopType } from './validation';
+import { cableSizingFor } from '../cableConditions';
 import { solarDesignCurrentOf, solarDropBasisVoltageOf, solarFuseFloorOf, solarPanelEndOf } from '../solar'; // ELE-007
 import { breakingCapacityAOf, isFuseType, shortCircuitAtFuseA, type FuseType } from '../shortCircuit'; // DOM-002
 
@@ -179,7 +170,12 @@ export function sizeDcEdges(
       // wird erhalten statt verkleinert.
       requiredCs = need > MAX_CROSS_SECTION ? MAX_CROSS_SECTION : nextStandardCrossSection(need);
     }
-    const thermalCs = mm2(lookupThermalCrossSection(maxAmps(sizingI, ZERO_AMPS)));
+    // P0-3: Verlegebedingungen DIESER Leitung bestimmen die thermische
+    // Grenze. Ohne Angabe delegiert `cableSizingFor` an den unveränderten
+    // `lookupThermalCrossSection` (Golden Master byte-stabil).
+    const sizing = cableSizingFor(edge.data ?? {});
+    const thermal = sizing.thermalCrossSection(maxAmps(sizingI, ZERO_AMPS));
+    const thermalCs = mm2(thermal.crossSectionMm2);
     const raw = mm2(Math.max(requiredCs, thermalCs, currentCs, MIN_CROSS_SECTION));
     if (raw <= MAX_CROSS_SECTION) return nextStandardCrossSection(raw);
     return currentCs > MAX_CROSS_SECTION ? currentCs : MAX_CROSS_SECTION;
@@ -313,6 +309,10 @@ export function applyFuseSizes(
     // wächst dadurch bei Bedarf mit (identischer Mechanismus wie bei DC).
     const solarPanel = solarPanelEndOf(sourceNode, targetNode);
     const fuseCurrent = solarPanel ? Math.max(I, solarFuseFloorOf(solarPanel)) : I;
+    // P0-3: Querschnitt UND Sicherung derselben Leitung teilen EINE
+    // Bedingungsableitung — sonst sicherte der Plan nach 0,7 ab, während
+    // der Querschnitt bereits für 60 °C berechnet wurde.
+    const sizing = cableSizingFor(edge.data ?? {});
     let cs: Mm2 = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
     // Altpläne/Importe können Nicht-Normquerschnitte (z. B. 3 mm² oder 95 mm²)
@@ -328,16 +328,16 @@ export function applyFuseSizes(
     if (cs > MAX_CROSS_SECTION) {
       // Kein Norm-Fuse-Map-Eintrag für >70 mm². Größte bekannte Normstufe ist
       // konservativ (kleiner als die tatsächliche Belastbarkeit des Leiters).
-      edge.data.fuseSize = selectFuseSize(fuseCurrent, MAX_CROSS_SECTION);
-      edge.data.fuseWarning = fuseCurrent > (FUSE_MAP[MAX_CROSS_SECTION] ?? 0);
+      edge.data.fuseSize = sizing.selectFuse(fuseCurrent, MAX_CROSS_SECTION);
+      edge.data.fuseWarning = fuseCurrent > sizing.maxFuse(MAX_CROSS_SECTION);
       continue;
     }
 
     // Wenn der Nennstrom die zulässige Sicherung für den Querschnitt
     // übersteigt, muss das Kabel hochdimensioniert werden (thermisch).
     // Eine Sicherung über dem Kabel-Maximalwert wäre Brandgefahr.
-    if (!isFuseFeasible(fuseCurrent, cs)) {
-      const larger = VDE_SIZES.find((s) => s > cs && isFuseFeasible(fuseCurrent, s));
+    if (!sizing.isFuseFeasible(fuseCurrent, cs)) {
+      const larger = VDE_SIZES.find((s) => s > cs && sizing.isFuseFeasible(fuseCurrent, s));
       if (larger !== undefined) {
         cs = mm2(larger);
         edge.data.crossSection = cs;
@@ -345,7 +345,7 @@ export function applyFuseSizes(
         edge.data.fuseWarning = true;
       }
     }
-    edge.data.fuseSize = selectFuseSize(fuseCurrent, cs);
+    edge.data.fuseSize = sizing.selectFuse(fuseCurrent, cs);
   }
 
   // Selektivitäts-Koordination über passive Verteiler (AMP-005: I_n,upstream ≥ 1,6 × I_n,downstream):
@@ -376,6 +376,7 @@ export function applyFuseSizes(
           continue;
         }
         if (!upstream.data) upstream.data = {};
+        const upstreamSizing = cableSizingFor(upstream.data);
         const currentFuse = Number(upstream.data.fuseSize ?? 0);
         // AMP-005 prüft das Verhältnis 1,6:1 erst ab 16 A vorgelagertem Nennstrom
         // (darunter ist nur upstream < downstream ein harter Fehler).
@@ -387,13 +388,13 @@ export function applyFuseSizes(
           currentFuse >= 16 || maxDownstreamFuse >= 10 ? selectivityFloor : amps(maxDownstreamFuse);
         let cs = edgeCrossSection(upstream, MIN_CROSS_SECTION);
         if (cs > MAX_CROSS_SECTION) continue;
-        if (!isFuseFeasible(requiredFloor, cs)) {
-          const larger = VDE_SIZES.find((s) => s > cs && isFuseFeasible(requiredFloor, s));
+        if (!upstreamSizing.isFuseFeasible(requiredFloor, cs)) {
+          const larger = VDE_SIZES.find((s) => s > cs && upstreamSizing.isFuseFeasible(requiredFloor, s));
           if (larger === undefined) continue;
           cs = mm2(larger);
           upstream.data.crossSection = cs;
         }
-        const nextFuse = selectFuseSize(requiredFloor, cs);
+        const nextFuse = upstreamSizing.selectFuse(requiredFloor, cs);
         if (nextFuse > currentFuse) {
           upstream.data.fuseSize = nextFuse;
           raised = true;
@@ -466,17 +467,20 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
       cs = nextStandardCrossSection(cs);
       edge.data.crossSection = cs;
     }
+    // P0-3: EINE Bedingungsableitung für den gesamten AC-Pfad — auch für den
+    // >70-mm²-Zweig. Vorher rechnete dieser Zweig mit FUSE_MAP/selectFuseSize
+    // (Referenz), während der Normalzweig bereits die eigene I_z nutzte.
+    const acSizing = cableSizingFor(edge.data ?? {});
     const rating = shoreSupplyRating(sourceNode) ?? shoreSupplyRating(targetNode);
     if (cs > MAX_CROSS_SECTION) {
       // Querschnitt bleibt unverändert (95 mm² niemals auf 70 schwächen);
       // gesichert wird auf die größte bekannte Normstufe (konservativ).
       // B3: Eine deklarierte Anschluss-Absicherung ist das reale Organ —
       // sie gewinnt, solange sie innerhalb der Normbestung liegt.
+      const maxFuse = acSizing.maxFuse(MAX_CROSS_SECTION);
       edge.data.fuseSize =
-        rating !== undefined && rating <= (FUSE_MAP[MAX_CROSS_SECTION] ?? 0)
-          ? rating
-          : selectFuseSize(I, MAX_CROSS_SECTION);
-      edge.data.fuseWarning = I > (FUSE_MAP[MAX_CROSS_SECTION] ?? 0);
+        rating !== undefined && rating <= maxFuse ? rating : acSizing.selectFuse(I, MAX_CROSS_SECTION);
+      edge.data.fuseWarning = !acSizing.valid || I > maxFuse;
       continue;
     }
     // ELEC-003 (B3): Eine deklarierte Anschluss-Absicherung ist das REALE
@@ -486,6 +490,10 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     // das Kabel nicht. Die Leitung wird deshalb auf den Querschnitt angehoben,
     // den die Absicherung verlangt (nie verkleinert — Nutzerwert bleibt Boden).
     let crossSection = calculateCrossSection(I, length, cs, 'AC_230V');
+    const acThermal = acSizing.isReference ? null : acSizing.thermalCrossSection(I);
+    if (acThermal && acThermal.crossSectionMm2 > crossSection) {
+      crossSection = acThermal.crossSectionMm2;
+    }
     if (rating !== undefined) {
       const protectionCs = crossSectionForFuse(rating);
       if (protectionCs !== undefined && protectionCs > crossSection) {
@@ -497,9 +505,16 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     // Querschnitt sie trägt; sonst der Normwert ≥ Astlast ≤ Kabelträgigkeit
     // (selectFuseSize kapselt beides).
     edge.data.fuseSize =
-      rating !== undefined && rating <= calculateMaxFuse(crossSection)
+      rating !== undefined && rating <= acSizing.maxFuse(crossSection)
         ? rating
-        : selectFuseSize(I, crossSection);
+        : acSizing.selectFuse(I, crossSection);
+    // Nur Leitungen mit eigener Bedingung bekommen hier eine Warnmarke; der
+    // Referenzpfad bleibt byte-stabil (Golden Master). Oberhalb der
+    // Modellgrenze wird nie „70 mm² reicht" behauptet.
+    if (!acSizing.isReference || !acSizing.valid) {
+      edge.data.fuseWarning =
+        !acSizing.valid || acThermal?.status === 'outside-model' || I > acSizing.iz(crossSection);
+    }
   }
 }
 
@@ -549,8 +564,12 @@ export function markInfeasibleSizing(
     // maßgeblich ist Iz = Tabellenwert × 0,7. Beide Fälle sind für den Nutzer
     // derselbe Befund: „diese Leitung ist bei diesem Strom nicht ausführbar“.
     const isPlusConductor = edge.sourceHandle?.includes('plus') ?? false;
-    const infeasible = isPlusConductor ? !isFuseFeasible(I, cs) : I > designAmpacity(cs);
-    edge.data.fuseWarning = I > 0 && infeasible;
+    const sizing = cableSizingFor(edge.data ?? {});
+    const infeasible = isPlusConductor ? !sizing.isFuseFeasible(I, cs) : I > sizing.iz(cs);
+    // Ungültige Verlegebedingungen sind eine DATENLÜCKE, kein Rechenfehler:
+    // die Leitung wird als nicht ausführbar markiert, statt still mit der
+    // 30-°C-Referenz weiterzurechnen (Regel M).
+    edge.data.fuseWarning = !sizing.valid || (I > 0 && infeasible);
   }
 }
 

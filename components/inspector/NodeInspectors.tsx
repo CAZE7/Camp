@@ -5,6 +5,7 @@ import { ValidatingInput, COMMON_RULES, type ValidationRule } from '../ui/Valida
 import { InspectorSection } from './InspectorSection';
 import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
 import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
+import { QUALIFIED_PERSONNEL_NOTICE } from '../../lib/verify/acScope'; // NET-003: Modellgrenzen
 import {
   getSystemVoltage,
   isStarterBatteryLabel,
@@ -871,6 +872,14 @@ export function Consumer230VInspector({
             />
           </div>
         </div>
+      </InspectorSection>
+      <InspectorSection title="230 V · Modellgrenzen">
+        <p className="text-xs leading-relaxed text-muted-foreground" data-testid="inspector-230v-scope-note">
+          Der Plan bildet 230 V einleiterig ab. L/N/PE als getrennte Leiter im Graphen, die Netzform, FI/LS
+          als reale Schaltgeräte, die Umschaltung Landstrom/Wechselrichter, der Rückspeiseschutz und der
+          PE-Anschluss zur Karosserie sind nicht modelliert. Der Prüfbericht weist sie unter NET-003 einzeln
+          als „nicht überprüfbar“ aus. {QUALIFIED_PERSONNEL_NOTICE}
+        </p>
       </InspectorSection>
     </>
   );

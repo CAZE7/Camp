@@ -141,6 +141,15 @@ konservative Annahme (AUDIT NORM-003).
 `= nächstgrößere Normstufe ≥ max(1.5, Drop-Bedarf, thermischer Bedarf, Nutzerquerschnitt)`.
 Ein vorhandener Nutzer-/Importquerschnitt wird **nie verkleinert** — auch nicht von 95 mm² auf 70.
 
+**Verlegebedingungen (P0-3, 2026-11-03):** `lib/cableConditions.ts` setzt die
+zwei dokumentierten Faktoren f₁ (Temperatur, IEC 60364-5-52) und f₂ (Häufung,
+VDE_GROUP_FACTORS) **je Leitung** aus wählbaren Einbausituationen; f₃ bleibt
+mangels geprüfter Tabelle 1,0. `calculateCableIz` bleibt die EINE Wahrheit:
+`I_z = Basis · min(0,7, f₁·f₂·f₃)`. Kein neuer Pauschalfaktor, keine zweite
+Rechnung. AutoWire-Sizing, Sicherung, Infeasibility-Marker und AMP-001 lesen
+dieselbe Ableitung; Referenzpläne ohne Angabe bleiben byte-stabil. Datengrundlage:
+[`docs/KABEL-VERLEGEBEDINGUNGEN.md`](../KABEL-VERLEGEBEDINGUNGEN.md).
+
 **Thermisch:** `lookupThermalCrossSection(I)` → kleinste Normstufe mit
 `Ampacity ≥ I / 0.7` (d. h. `Iz_design = 0.7 × Tabellenwert`). **Modellgrenze 70 mm²:**
 oberhalb der größten Tabellenstufe gibt es keine Tabellenaussage —

@@ -639,6 +639,27 @@ export const RULE_MATRIX: readonly RuleSpec[] = [
     limitation:
       '`neutralEarthBond` ist ein Datenfeld des Wechselrichters (Datenblatt). Fehlt es, meldet die Engine UNPROVABLE — ein Wechselrichter ohne Angabe wird nicht als „potenzialfrei ⇒ sicher“ angenommen.',
   },
+  {
+    id: 'NET-003-ac-model-scope',
+    pass: 5,
+    title: '230-V-Modellgrenzen sind ausgewiesen',
+    requirement:
+      'Ein Prüfbericht zu einem Plan mit 230-V-Kreisen muss jeden nicht modellierten Gegenstand einzeln als nicht überprüfbar ausweisen und darf keine normgeprüfte Abnahme behaupten.',
+    standard: 'CAMP-Modellgrenze (ausdrücklich KEINE Normaussage)',
+    clause: null,
+    provenance: 'UNVERIFIED',
+    testProvenance: 'DERIVED',
+    formalTest:
+      '∃ Kante mit domain = AC_LV ⇒ ∀ Gruppe ∈ {Leiter/Netzform, Schaltgeräte, Messwerte/Abnahme} ein UNVERIFIABLE-Befund',
+    abortCriterion:
+      '∃ 230-V-Kreis ohne ausgewiesene Modellgrenzen ⇒ der Bericht wäre eine leere Zusage; ohne 230-V-Kreis ist die Regel nicht anwendbar',
+    severity: 'EFFICIENCY_WARNING',
+    defaultKind: 'UNVERIFIABLE',
+    profile: 'NORM_CORE',
+    contexts: ALL_CONTEXTS,
+    limitation:
+      'Bewusst auch im NORM_CORE-Profil aktiv: Gerade der strengste Lauf darf nicht wie eine Abnahme aussehen. Diese Regel prüft keine Normforderung, sondern die Reichweite des eigenen Modells — deshalb provenance UNVERIFIED, clause null und kein Klauselzitat. Datengrundlage: docs/AC-230V-MODELLGRENZEN.md. 230-V-Prüfung und Abnahme nur durch qualifiziertes Personal.',
+  },
 ];
 
 /** Regel-Index (ID → Spezifikation). */

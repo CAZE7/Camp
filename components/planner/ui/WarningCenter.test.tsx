@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WarningCenter, consequence, nextStep, valueWithUnit } from './WarningCenter';
 import type { ValidationWarning } from '../hooks/useLiveValidation';
+import { AC_230V_SCOPE_ITEMS } from '../../../lib/verify/acScope';
 import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
 import { validateFinalRouting } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
@@ -397,5 +398,81 @@ describe('WarningCenter — gemeinsamer Prüf-Einstieg mit Kabeltrassen', () => 
 
     const chip = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
     expect(chip).toHaveTextContent(/^1 von 3 kritisch$/);
+  });
+});
+
+describe('WarningCenter — NET-003 (230-V-Modellgrenzen)', () => {
+  it('zeigt die nicht überprüfbaren Gegenstände einzeln mit Bewertungsstufe', () => {
+    const scopeWarning = warning({
+      id: 'w-ac',
+      type: 'info',
+      category: 'estimation',
+      title: '230-V-Modellgrenzen sind ausgewiesen',
+      message: 'Hinweis: 230 V · Leiter & Netzform — nicht überprüfbar.',
+      unverified: true,
+      ruleId: 'NET-003-ac-model-scope',
+      details: {
+        acAssessment: 'unverifiable',
+        acScopeItems: [
+          {
+            id: 'separate-conductors',
+            group: 'conductors',
+            assessment: 'unverifiable',
+            title: 'L/N/PE als getrennte Leiter',
+            basis: 'Der Plan ist einleiterig.',
+            remedy: 'Verdrahtung am Aufbau durch qualifiziertes Personal prüfen.',
+          },
+          {
+            id: 'assumed-network',
+            group: 'conductors',
+            assessment: 'assumption-based',
+            title: 'Netzform aus deklarierten Feldern',
+            basis: 'NET-001/002 werten systemForm aus.',
+            remedy: 'Datenblattangaben eintragen.',
+          },
+        ],
+      },
+    });
+    openPanel([scopeWarning]);
+    fireEvent.click(screen.getByRole('button', { name: /Warum\? Technische Details/ }));
+
+    const block = screen.getByTestId('ac-scope-items');
+    expect(block).toHaveTextContent('230-V-Modellgrenzen');
+    expect(block).toHaveTextContent('nicht überprüfbar');
+    expect(block).toHaveTextContent('mit Annahmen bewertet');
+    expect(block).toHaveTextContent('L/N/PE als getrennte Leiter');
+    expect(block).toHaveTextContent('Der Plan ist einleiterig.');
+    expect(block).toHaveTextContent('qualifiziertes Personal');
+  });
+});
+
+describe('WarningCenter — NET-003 Klartext-Vertrag (E2E fresh-session-retest)', () => {
+  it('zeigt im Primärpanel keine Regel-Codes oder Formelzeichen', () => {
+    const scopeWarning = warning({
+      id: 'w-ac-real',
+      type: 'info',
+      category: 'estimation',
+      title: '230-V-Modellgrenzen sind ausgewiesen',
+      message: 'Hinweis: 230 V · Leiter & Netzform — nicht überprüfbar.',
+      unverified: true,
+      ruleId: 'NET-003-ac-model-scope',
+      details: {
+        acAssessment: 'unverifiable',
+        // Echte Datengrundlage, damit eine neue technische Formulierung den
+        // Test sofort bricht statt nur eine handgeschriebene Test-Fixture.
+        acScopeItems: AC_230V_SCOPE_ITEMS,
+      },
+    });
+    openPanel([scopeWarning]);
+
+    expect(screen.queryByTestId('ac-scope-items')).not.toBeInTheDocument();
+    expect(screen.getByText(/Punkte dieser 230-V-Modellgrenze/)).toBeInTheDocument();
+    // jsdom kennt kein `innerText`; textContent ist hier dieselbe Sicht auf den Baum.
+    const text = screen.getByRole('dialog', { name: 'Planungsprüfung' }).textContent ?? '';
+    expect(text).not.toMatch(/I_[bnz2]|AMP-\d{3}|\(In\s*[≤≥]/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Warum\? Technische Details/ }));
+    expect(screen.getByTestId('ac-scope-items')).toHaveTextContent('L/N/PE');
+    expect(screen.getByTestId('ac-scope-items')).toHaveTextContent('AMP-001');
   });
 });

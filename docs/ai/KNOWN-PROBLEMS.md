@@ -10,6 +10,36 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## AC-230V-001 — 230-V-Teilmodell ohne L/N/PE-Trennung, Umschaltung und Rückspeiselogik — **EXPLIZIT ABGESICHERT (2026-11-04), MODELLGRENZE BLEIBT**
+
+- **AREA:** 230-V-Seite / Verifikations-Engine (`lib/verify`), Warn-Zentrale, Inspektoren
+- **STATUS:** Die Grenze ist **nicht geschlossen**, aber seit 2026-11-04 prüfbar
+  ausgewiesen. **STATUS: OFFEN als Modellgrenze; ABGESICHERT als Berichtsaussage.**
+- **DESCRIPTION:** Der Graph ist einleiterig. L/N/PE als getrennte Leiter,
+  zweipolige Trennung als reales Gerät, Umschaltung Landstrom ↔ Wechselrichter,
+  Verriegelung gegen Rückspeisung und der PE-Anschluss zur Karosserie sind nicht
+  modelliert; Messwerte und Herstellernachweise sind nicht Gegenstand des Plans.
+  Vor dem Nachlauf stand das nur in Kommentaren, `ENGINE_LIMITATIONS` und dem
+  SEO-Text — es gab kein Gate, das einen 230-V-Plan daran hinderte, wie
+  „geprüft" auszusehen.
+- **CURRENT BEHAVIOR:** `NET-003-ac-model-scope` (`lib/verify/acScope.ts`,
+  `runPass5`) erzeugt je Plan mit `AC_LV`-Kanten drei `UNVERIFIABLE`-Befunde mit
+  neun strukturierten Einzelpunkten und drei Bewertungsstufen; Verdikt
+  `INCOMPLETE`. Reine 12-V-Pläne bleiben `COMPLIANT`. Die Punkte erscheinen in
+  `report.limitations`, Warn-Zentrale, Bauteil- und Kabel-Inspektor. **Keine**
+  neue L/N/PE-Architektur, **kein** Normzitat, **keine** Abnahme.
+- **NICHT BEHOBEN / NICHT BEABSICHTIGT:** Normative 230-V-Abnahme; diese darf nur
+  durch qualifiziertes Personal erfolgen. Siehe `docs/AC-230V-MODELLGRENZEN.md`.
+- **VERIFICATION:** `lib/verify/acScope.test.ts` (8),
+  `lib/verify/protection.test.ts`, `lib/verify/pipeline.test.ts`,
+  `components/planner/utils/verificationWarnings.test.ts`,
+  `components/planner/ui/WarningCenter.test.tsx`,
+  `components/inspector/{NodeInspectors,EdgeInspector}.test.tsx`.
+- **SEVERITY:** hoch (Falschannahme „geprüft") → durch Ausweisung behoben;
+  Modelllücke selbst bleibt bewusst offen.
+
+---
+
 ## ELEC-002 (Audit-ROUTING-2026) — Auto-Wire stempelte Landstrom-RCD pauschal — **GELÖST (2026-10-14)**
 
 - **AREA:** Elektrik / Schutzmaßnahmen (DIN VDE 0100-721), Auto-Wire + Warn-Zentrale
@@ -960,16 +990,24 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## ELE-001 — Fahrzeug-Leitungskontext ist nicht modelliert
+## ELE-001 — Fahrzeug-Leitungskontext ist nur teilweise modelliert — **TEILBEHOBEN (2026-11-03)**
 
 - **AREA:** Electrical
 - **FILE:** `lib/electrical.ts` (`VDE_AMPACITY`)
 - **DESCRIPTION:** Die Belastbarkeitstabelle folgt DIN VDE 0298-4, Verlegeart B2, 2 belastete
-  Adern, 30 °C (Kupfer/PVC). Der Fahrzeugkontext (FLRY, DIN EN 1648-2 / ISO 6722) und die
-  individuellen Korrekturfaktoren (0298-4 Tab. 3/4) sind **nicht** modelliert; stattdessen gilt
-  pauschal `DERATE_FACTOR = 0.7`. Die Werte 50/70 mm² weichen von einer verbreiteten Referenz
-  leicht ab und sind unverändert übernommen (Golden Master).
-- **CURRENT BEHAVIOR:** Konservative Näherung — im Code ehrlich kommentiert (AUDIT NORM-003).
+  Adern, 30 °C (Kupfer/PVC). Bis 2026-11-03 galt für ALLE Leitungen pauschal
+  `DERATE_FACTOR = 0.7`; Einbauort und Kabeltyp kamen nicht vor. **Seit P0-3** setzen
+  auswählbare Verlegebedingungen je Leitung f₁ (Temperatur) und f₂ (Häufung), f₃ bleibt 1,0;
+  die 0,7-Pauschale ist die strikte Untergrenze (`min`). **Weiterhin nicht modelliert:** eine
+  Fahrzeug-Ampazitätstabelle (FLRY / DIN EN 1648-2 / ISO 6722), echte Verlegeart-Korrekturen
+  (0298-4 Tab. 3/4), Steckverbinder und Übergangswiderstände. Die Werte 50/70 mm² weichen von
+  einer verbreiteten Referenz leicht ab und sind unverändert übernommen (Golden Master).
+- **CURRENT BEHAVIOR (2026-11-03):** Auswählbare Verlegebedingungen je Leitung
+  (`lib/cableConditions.ts`, `docs/KABEL-VERLEGEBEDINGUNGEN.md`) setzen f₁/f₂
+  der einen I_z-Rechnung und wirken auf AutoWire-Sizing, Sicherung und AMP-001.
+  f₃ = 1,0 und die B2-Hausinstallationstabelle bleiben ausgewiesene Lücken;
+  `manufacturerIzA` erlaubt einen echten Datenblattwert. Referenzpläne ohne
+  Angabe sind byte-stabil. Siehe LEDGER 2026-11-03 (3).
 - **EXPECTED BEHAVIOR:** Entweder Fahrzeugtabelle + echte Korrekturfaktoren oder die jetzige,
   dokumentierte Annahme.
 - **SEVERITY:** mittel (Fachlichkeit, nicht Code-Fehler)
@@ -977,6 +1015,12 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   Quelle zu benennen.
 - **RELATED TEST:** `lib/electrical.test.ts`, `lib/vde-properties.test.ts` (G1)
 - **RELATED ISSUE:** AUDIT NORM-003.
+- **STATUS:** OFFEN (Restbefund, P1) — die P0-3-Aufgabe ist abgenommen, aber eine zitiergeprüfte
+  Fahrzeugleitungstabelle und echte f₃-Werte fehlen. Sie einzuführen verlangt eine
+  Golden-Master-Neuerfassung und eine belegte Quelle; kein stilles „Werte verbessern".
+- **RELATED TEST (P0-3):** `lib/cableConditions.test.ts`,
+  `lib/autoWire/cableConditionsIntegration.test.ts`, `lib/verify/cableConditions.test.ts`,
+  `docs/KABEL-VERLEGEBEDINGUNGEN.md`.
 
 ---
 
@@ -1328,3 +1372,25 @@ Einträgen oben:
 5. **Hebel 4 (vollständig):** Die Positivkontrollen laufen in-memory gegen die
    Regelfunktionen; ein Test, der die Regeln gegen ein temporäres Verzeichnis
    mit echten Dateien laufen lässt, steht noch aus.
+
+---
+
+## ROUTE-018 — Wiedereintritt in das eigene Anschlussgerät bei gemessener Geometrie
+
+- **AREA:** Routing / Final-Validierung
+- **FILE:** `components/edges/utils/routeValidation.ts` (`ROUTE-OWN-NODE`), `routeAll.ts`
+- **DESCRIPTION:** Mit gemessener React-Flow-Geometrie (`tests/fixtures/routing/complex-measured-geometry.json`)
+  liegt der Port teils INNERHALB der Kartenbox. Der Router darf das eigene Gerät als
+  Hindernis ausnehmen; dadurch kann eine Trasse die Karte verlassen und später wieder
+  durch sie hindurchfahren, bevor sie in den Port einbiegt. Gemessen auf `complex`:
+  1 Befund an `e-batt-minus` (`busbar-minus`). Mit ungemessener Fixture-Geometrie
+  (Golden Master, Regression) tritt er nicht auf.
+- **CURRENT BEHAVIOR (2026-11-03):** Der vereinheitlichte strenge Validator meldet
+  ihn im Live-Report als kritischen `ROUTE-OWN-NODE`; `routeAll.test.ts` hält ihn
+  fest. Der Port-Stub selbst ist bewusst ausgenommen (nur Wiedereintritt zählt).
+- **EXPECTED BEHAVIOR:** Der Router vermeidet den Wiedereintritt, ohne I1/I2/I3 und
+  die eingefrorenen Referenz-SVGs zu verschlechtern. Danach kann der Test wieder
+  `VALID` erwarten.
+- **SEVERITY:** mittel (Geometriequalität, keine elektrische Fehlverdrahtung)
+- **STATUS:** OFFEN — P1-Folgeaufgabe, bewusst NICHT Teil des P0-Sprints
+  „Routingvalidierung/BMS/Kabelmodell“.

@@ -76,11 +76,35 @@ Post-Process     nudgeOrthogonalPaths()   – Überlappungen lösen
    ↓
 Hopping          resolveHops() – deterministisch: niedrigere Priorität hüpft
    ↓
-Final Validation computeCableRouteFinalValidation() → validateFinalRouting() (I1/I2/I3)
+Input Gate      checkRoutingInputs() — fehlendes Bauteil / unbekannter Anschluss
+                 ⇒ KEINE Route, EIN eigener Befund (routeInput.ts)
+   ↓
+Final Validation computeCableRouteFinalValidation() (routeValidation.ts, EINE Implementierung)
+                 → validateFinalRouting() (I1/I2/I3) + validateRouteContract()
+                 + Eingabebefunde + Lock-Snapshots
    ↓
 Rendering        publishCableRoutes() → useCableRoute(id) → CableEdge
                  waypointsToPath / waypointsToPathWithHops (Radius 10 px)
 ```
+
+### Eingabevertrag (P0, 2026-11-03)
+
+`routeAllCables`, `resolveRoutingEndpoints`, `fanOutLanesForEdge` und der Live-Report
+rufen **dieselbe** Prüfung `checkRoutingInputs()` (`routeInput.ts`). Ein fehlendes
+Bauteil — auch wenn nur EIN Endpunkt fehlt — oder ein benannter, nicht gemessener
+Anschluss macht die Leitung **nicht routbar**. Es gibt keine Ersatzkoordinate
+`(0,0)` und keinen stillen Wechsel `?? group?.[0]` auf den ersten Anschluss.
+Jede nicht routbare Leitung erhält einen eigenen Befund mit Ort, Ursache und
+Korrekturvorschlag (`ROUTE-MISSING-NODE`, `ROUTE-UNKNOWN-HANDLE`); die
+Warnzentrale zeigt ihn kritisch an. Knoten ohne gemessene Handles bleiben über
+die dokumentierte R-7-Flussrichtung routbar (Golden Layouts, erster Frame).
+
+`cableRouteStore.ts` re-exportiert den strengen Validator aus `routeValidation.ts`
+— die frühere schwächere Zweitimplementierung ist entfernt. Der Live-Report
+veröffentlicht damit `ROUTE-MISSING`, `ROUTE-SHAPE`, `ROUTE-ENDPOINT`,
+`ROUTE-DIRECTION` und `ROUTE-OWN-NODE` genauso wie CI und Optimierer.
+`ROUTE-OWN-NODE` prüft den **Wiedereintritt** in das eigene Anschlussgerät; der
+legitime Port-Stub (bei gemessener Geometrie ggf. mehrere Segmente) ist ausgenommen.
 
 **Reihenfolge ist semantisch.** Hops werden erst **nach** Nudge und Bend-Merge bestimmt —
 vorher liegen die Kreuzungen noch woanders (`routeAll.ts`, WP-7).

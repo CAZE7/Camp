@@ -222,7 +222,7 @@ export interface AmpacityResult {
   /** Kombinierter Faktor (≤ 1, nie kapazitätserhöhend). */
   combinedFactor: number;
   /** Herkunft der angesetzten Korrektur (Reportpflicht). */
-  basis: 'plan-model-pauschale' | 'plan-model-und-physik';
+  basis: 'plan-model-pauschale' | 'plan-model-und-physik' | 'manufacturer-data';
 }
 
 /**

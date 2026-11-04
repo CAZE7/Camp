@@ -44,10 +44,11 @@ Topology (Knoten anlegen/heilen)
 Wiring Strategy
   ↓  Backbone, Verbraucher, Wechselrichter, Solar, Lader, Booster, Landstrom, Masse
 Sizing
-  ↓  sizeDcEdges()     Querschnitt (thermisch + Spannungsfall, iterativ)
+  ↓  sizeDcEdges()     Querschnitt (thermisch + Spannungsfall, iterativ) — thermisch je nach Verlegebedingung der Kante
   ↓  applyFuseSizes()  Sicherungsnennstrom je Plus-Kante
   ↓  applyFuseTypes()  Sicherungs-BAUFORM aus dem Kurzschlussstrom
   ↓  sizeAcEdges()     AC-Querschnitt + AC-Schutzorgan + AC-Sicherung
+  ↓  addDesignBudgetConflicts()  BMS ALS DESIGN-CONSTRAINT (`designBudget.ts`)
   ↓  Masse-Kanten auf ≥ 16 mm² · Sicherungskasten-Rating aus der Zuleitung
 Placement
   ↓  applyFlowLayout() — NUR selbst erzeugte Knoten (M11-2/R-8)
@@ -113,6 +114,45 @@ Tooltip und Stückliste wie eine Nutzereingabe (dreißigste Fassung,
 | Masseanbindung              | `performAutoWiring`                  | ≥ 16 mm² auf jeder direkten Minus-Schiene/Shunt ↔ Masse-Kante                                    |
 | Domänen-Stempel             | `performAutoWiring`                  | jede Nutzer-Kante erhält `edgeDomain`                                                            |
 | Platzierung                 | `applyFlowLayout`                    | nur **selbst erzeugte** Knoten, 16-px-Raster, überlappungsfrei                                   |
+| Design-Budget               | `evaluateDesignBudget`               | BMS · Bauteil · Sicherung · Kabel · 70-mm²-Modellgrenze ⇒ `computeCurrentBudget`                 |
+
+---
+
+## 7.4a BMS ist eine Design-Constraint (P0, 2026-11-03)
+
+Vorher: `sizeDcEdges` rechnete gegen den **Laststrom**; die BMS-Grenze war
+nur eine nachgelagerte Live-Warnung. Ein Plan mit 12,8 V, 50-A-BMS und
+1500-W-Wechselrichter bekam ein 70-mm²-Kabel und eine 100-A-Sicherung — und
+sah damit „passend dimensioniert" aus, obwohl die Batterie ≈147 A nicht
+liefern kann.
+
+Jetzt bewertet `lib/autoWire/designBudget.ts` **nach** der Dimensionierung den
+tatsächlichen Entladestrom der Aufbaubank aus demselben Strommodell
+(`getCableCurrents`, Beiträge mit `role: 'load'`) gegen das kleinste bekannte
+Budget. Vier Aussagen werden getrennt ausgewiesen und im kritischen Konflikt
+(`AUTO-BMS-001`) wörtlich genannt:
+
+```text
+Kabel kann die Last tragen?   I_b ≤ designAmpacity(Querschnitt)
+Sicherung ist passend?        I_b ≤ Sicherungsnennstrom
+Batterie kann liefern?        I_b ≤ BMS-Dauerentladestrom der Bank
+Gesamtsystem geeignet?        I_b ≤ min(aller bekannten Grenzen)
+```
+
+**Bewusst NICHT geändert:** Der Laststrom wird nicht auf das BMS-Budget
+gekappt. Ein Kabel für 50 A bei 147 A Last wäre gefährlicher als die alte
+Warnung. Die physikalische Dimensionierung bleibt beim Laststrom; das BMS
+sperrt die **Freigabe**, nicht die Kabelwahl.
+
+- Fehlender BMS-Wert ⇒ `AUTO-BMS-000` (Warnung) + offene Frage im Review,
+  `batteryCanSupply: undefined` — kein Ersatzwert, kein „geeignet".
+- Reservewarnung ab >90 % der BMS-Grenze ⇒ `AUTO-BMS-002`.
+- Andere kleinste Grenze (Kabel/Sicherung/Modellgrenze) ⇒ `AUTO-BUDGET-001`
+  als benannter Hinweis; diese Fälle sind über `fuseWarning` bereits kritisch
+  in der Live-Validierung verankert (kein zweiter Schweregrad).
+- Kritische Konflikte erscheinen als rotes Banner im `AutoWireReviewModal`
+  und nach dem Anwenden als kritische Warnung mit BMS-spezifischem Titel in
+  `useLiveValidation` ⇒ Freigabe-Gate bleibt wirksam.
 
 ---
 
@@ -163,6 +203,37 @@ Tooltip und Stückliste wie eine Nutzereingabe (dreißigste Fassung,
 
 ---
 
+## 7.6a Review: Vorher/Nachher je Leitung (P0-Nachlauf, 2026-11-04)
+
+Der Review-Dialog zeigt vor der Übernahme **je Leitung** Querschnitt, Sicherung,
+Verlegebedingung und eine Begründung — nicht nur eine Sammelzahl. Datenquelle ist
+ausschließlich `autoWirePreview.edges` ( Nachher ) plus der aktuelle Plan ( Vorher );
+die Projektion liegt in `lib/autoWire/reviewDiff.ts`:
+
+| Aspekt                         | Verhalten                                                                                                                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoWireEdgeDiff()`           | Reine, deterministische Projektion: geänderte → neue → entfernte → unveränderte Leitungen, je nach ID sortiert. Liest `edge.data`, rechnet **nichts** elektrisch.                                                      |
+| Begründung                     | Aus den geänderten Feldern, der I_z-Herkunft (`cableSizingFor`: Label, Bewertungsstufe, `explanation`) und den Konflikten desselben `AutoWireReport` (nur für Leitungen in `conflict.edgeIds`). Kein erfundener Grund. |
+| Ungültige Verlegebedingung     | `valid: false` ⇒ „Nicht ausführbar … UNVERIFIABLE". Kein stiller Rückfall auf die Referenz (Regel M).                                                                                                                  |
+| Plan zwischenzeitlich geändert | `previousEdgeCount` stimmt nicht mehr mit `state.edges.length` überein ⇒ es werden **keine** Vorher-Werte angezeigt, sondern ein Hinweis mit der Aufforderung, neu zu berechnen. Kein falscher Vergleich.              |
+| UI                             | `components/planner/AutoWireReviewModal.tsx`, klappbare Tabelle, `data-testid="autowire-edge-diff"` / `autowire-edge-row`. Keine Rechnung in der Komponente (Regel D).                                                 |
+
+**Klartext-Vertrag (CI-Befund 2026-11-04):** Der Dialog ist ein
+Erstnutzer-Text. `tests/e2e/mobile-geometry.spec.ts:844` verbietet im sichtbaren
+Dialog Rohkennungen (`AUTO-[A-Z0-9-]+`, `%20`, `auto-node:`, `ul248-classT`,
+`i2A`). Regel-IDs der Konflikte stehen deshalb nur als `data-rule-id` am
+`<li>`, nicht im Text; Leitungslabel und Kanten-ID laufen durch
+`toPlainGerman`. `AutoWireReviewModal.test.tsx` pinnt denselben Regex gegen
+`dialog.textContent`. Siehe LEDGER 2026-11-04 (4) und Abnahmebericht §10.8.
+
+**Tests:** `lib/autoWire/reviewDiff.test.ts` (7),
+`components/planner/AutoWireReviewModal.test.tsx` (11 Fälle, davon 6 für die
+Leitungstabelle inkl. Klartext-Vertrag). Der Golden Master bleibt unberührt —
+die Änderung betrifft ausschließlich die Anzeige eines bestehenden Vorschlags,
+keine Topologie und kein Sizing.
+
+---
+
 ## 7.7 Fehler- und Grenzfälle
 
 | Fall                                          | Verhalten                                                                                                                                        |
@@ -192,6 +263,8 @@ Tooltip und Stückliste wie eine Nutzereingabe (dreißigste Fassung,
 | `store/usePlannerStore.test.ts`, `usePlannerStoreExtended.test.ts` | Store-Integration, Historie, Nutzerkanten-Erhalt                                                                                                    |
 | `scripts/goldenmaster/goldenMaster.test.ts`                        | AutoWire-Ergebnis aller sechs Referenzpläne eingefroren                                                                                             |
 | `scripts/routing/finalValidation.test.ts`                          | Routing-Invarianten auf dem **auto-verdrahteten** Plan                                                                                              |
+| `lib/autoWire/reviewDiff.test.ts`                                  | Vorher/Nachher-Projektion: Werte unverändert, Änderungsgründe, ungültige Bedingung, Sortierung, Konfliktzuordnung                                   |
+| `components/planner/AutoWireReviewModal.test.tsx`                  | Anzeige je Leitung, neue Leitung, Konsistenz-Wächter, Auf-/Zuklappen                                                                                |
 
 **Bei einer AutoWire-Änderung ist der Golden Master der Maßstab.** Er schlägt fehl bei
 Topologie-, Sizing- oder Routing-Änderung. Zulässige Ausgänge: Fix (Regression) **oder**

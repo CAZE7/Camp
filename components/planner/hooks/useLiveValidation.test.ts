@@ -850,18 +850,80 @@ describe('useLiveValidation', () => {
  * Der große Standardplan ist die Referenz, die ein Erstbesucher sieht. Er
  * darf keine Warnungen und keine behebbaren Datenlücken zeigen: Batterie-
  * Nennspannungen, MIDI-I₂ und Class-T-I₂ sind in der Vorlage belegt. Übrig
- * bleibt allein die benannte Modellgrenze am Wechselrichter-Ausgang — sie ist
- * kein Planfehler und wird ausdrücklich als solche angezeigt.
+ * bleiben ausschließlich benannte MODELLGRENZEN: die des
+ * Wechselrichter-Ausgangs und (seit NET-003, 2026-11-04) die drei
+ * 230-V-Befunde. Sie sind keine Planfehler und werden ausdrücklich als
+ * „nicht überprüfbar" ausgewiesen — sonst sähe ein AC-Plan wie abgenommen aus.
  */
 describe('Autark-Vorlage — großer Standardplan', () => {
-  it('zeigt keine Warnungen, sondern nur die Wechselrichter-Modellgrenze', () => {
+  it('zeigt keine Warnungen, sondern nur benannte Modellgrenzen', () => {
     const { result } = renderHook(() => useLiveValidation(TEMPLATE_AUTARK.nodes, TEMPLATE_AUTARK.edges));
 
     expect(result.current.filter((warning) => warning.type !== 'info')).toEqual([]);
     expect(result.current.some((warning) => warning.ruleId === 'AMP-002-i2-vs-iz')).toBe(false);
     expect(result.current.some((warning) => warning.ruleId === 'ELE-008-voltage-unknown')).toBe(false);
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0]?.ruleId).toBe('RCD-005-loop-impedance');
-    expect(result.current[0]?.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
+    expect(result.current).toHaveLength(4);
+    const inverter = result.current.filter((warning) => warning.ruleId === 'RCD-005-loop-impedance');
+    expect(inverter).toHaveLength(1);
+    expect(inverter[0]?.title).toBe('Wechselrichter-Ausgang: Modellgrenze');
+    const scope = result.current.filter((warning) => warning.ruleId === 'NET-003-ac-model-scope');
+    expect(scope).toHaveLength(3);
+    expect(scope.every((warning) => warning.unverified === true && warning.status === 'incomplete')).toBe(
+      true
+    );
+    expect(scope.every((warning) => (warning.details?.acScopeItems?.length ?? 0) > 0)).toBe(true);
+  });
+});
+
+/**
+ * P0 / V2-BMS-002: Ein kritischer BMS-Konflikt aus dem AutoWire-Report muss
+ * nach dem Anwenden AUCH im Live-Report als kritische Warnung erscheinen.
+ * Erst damit greift das Freigabe-Gate (guidedSteps/GuidedPlanRail) und der
+ * Plan kann nicht als „geeignet" freigegeben werden.
+ */
+describe('BMS-Designbudget im Live-Report (P0)', () => {
+  it('12,8 V · 50-A-BMS · 1500-W-Wechselrichter ⇒ kritische, klickbare Warnung', () => {
+    act(() => clearCableRoutes());
+    const source: Node[] = [
+      {
+        id: 'bat',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Aufbaubatterie',
+          capacity: 100,
+          chemistry: 'LiFePO4',
+          nominalVoltage: 12.8,
+          bmsContinuousDischarge: 50,
+          bmsContinuousCharge: 50,
+        },
+      },
+      {
+        id: 'inv',
+        type: 'inverter',
+        position: { x: 400, y: 0 },
+        data: { label: '1500-W-Wechselrichter', continuousPower: 1500, watts: 1500 },
+      },
+      {
+        id: 'ac',
+        type: 'consumer230v',
+        position: { x: 800, y: 0 },
+        data: { label: 'Kaffeemaschine', watts: 900 },
+      },
+    ];
+    const wired = performAutoWiring(source as never, []);
+    expect(wired).not.toBeNull();
+    const { result } = renderHook(() =>
+      useLiveValidation(
+        wired!.nodes as Node[],
+        wired!.edges as Edge<CableEdgeData>[],
+        undefined,
+        wired!.report
+      )
+    );
+    const warning = result.current.find((candidate) => candidate.ruleId === 'AUTO-BMS-001');
+    expect(warning).toEqual(expect.objectContaining({ type: 'critical', category: 'safety' }));
+    expect(warning?.title).toContain('BMS');
+    act(() => clearCableRoutes());
   });
 });

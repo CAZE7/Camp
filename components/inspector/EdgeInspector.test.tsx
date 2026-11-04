@@ -181,6 +181,24 @@ describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
     );
   });
 
+  it('weist im 230-V-Block auf die Modellgrenzen hin (NET-003)', () => {
+    render(
+      <EdgeInspector
+        edge={acEdge({
+          edgeDomain: 'AC_230V',
+          fuseSize: 16,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        })}
+        onChangeLength={vi.fn()}
+        onChangeAcProtection={vi.fn()}
+      />
+    );
+    const note = screen.getByTestId('edge-230v-scope-note');
+    expect(note).toHaveTextContent('NET-003');
+    expect(note).toHaveTextContent('Rückspeiseschutz');
+    expect(note).toHaveTextContent('qualifiziertes Personal');
+  });
+
   it('meldet den Fehlerstromtyp des RCBO und behält die übrigen Felder', () => {
     const onChangeAcProtection = vi.fn();
     render(
@@ -200,5 +218,39 @@ describe('EdgeInspector — AC-Schutzorgan: Polzahl und FI-Typ', () => {
       'edge-1',
       expect.objectContaining({ kind: 'rcbo', residualType: 'B' })
     );
+  });
+});
+
+/** P0-3: Verlegebedingungen sind im Inspektor auswählbar und erklärt. */
+describe('EdgeInspector — Verlegebedingungen (P0-3)', () => {
+  const edge: Edge<CableEdgeData> = {
+    id: 'edge-cond',
+    source: 'n1',
+    target: 'n2',
+    data: { crossSection: 10, edgeDomain: 'DC_12V' },
+  };
+
+  it('zeigt Referenzmodell, I_z und einen Wechsel auf Motorraum an', () => {
+    const onChange = vi.fn();
+    render(<EdgeInspector edge={edge} onChangeLength={vi.fn()} onChangeCableConditions={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+
+    expect(screen.getByText(/rechnerisch mit Referenzmodell bewertet/i)).toBeInTheDocument();
+    expect(screen.getByText(/36,4 A/)).toBeInTheDocument(); // 52 A × 0,7 für 10 mm²
+    const select = screen.getByLabelText(/Einbausituation/i);
+    fireEvent.change(select, { target: { value: 'engine-bay' } });
+    expect(onChange).toHaveBeenCalledWith('edge-cond', { installationCondition: 'engine-bay' });
+  });
+
+  it('nennt bei gewählter Bedingung die Annahmen und Datengrundlage', () => {
+    const withEngine: Edge<CableEdgeData> = {
+      ...edge,
+      data: { ...edge.data, installationCondition: 'engine-bay' },
+    };
+    render(<EdgeInspector edge={withEngine} onChangeLength={vi.fn()} onChangeCableConditions={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+    expect(screen.getByText(/mit Annahmen bewertet/i)).toBeInTheDocument();
+    expect(screen.getByText(/IEC 60364-5-52/)).toBeInTheDocument();
+    expect(screen.getByText(/26,0 A/)).toBeInTheDocument(); // 52 A × 0,5 bei 60 °C
   });
 });

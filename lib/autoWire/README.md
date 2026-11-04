@@ -16,19 +16,20 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 
 ## What is the public API?
 
-| Symbol                                                                              | Datei           | Zweck                                          |
-| ----------------------------------------------------------------------------------- | --------------- | ---------------------------------------------- |
-| `performAutoWiring(nodes, existingEdges?)`                                          | `autoWire.ts`   | **Einstieg.** `{nodes, edges, report} \| null` |
-| `AUTO_EDGE_PREFIX`                                                                  | `primitives.ts` | `'e-auto-'` — Kennzeichen aller Auto-Kanten    |
-| `sizeDcEdges`, `applyFuseSizes`, `applyFuseTypes`, `sizeAcEdges`                    | `sizing.ts`     | Sizing-Stufen                                  |
-| `cumulativeDropAt`, `relevantCumulativeDrop`                                        | `sizing.ts`     | Spannungsfall am Knoten                        |
-| `acCurrentA`                                                                        | `sizing.ts`     | AC-Strom einer Kante (Insel-BFS)               |
-| `resolveRails`, `healUserEdges`, `pickHouseBattery`                                 | `routing.ts`    | Topologie-Bausteine                            |
-| `applyFlowLayout`                                                                   | `placement.ts`  | Platzierung **nur** selbst erzeugter Knoten    |
-| `edgeLength`, `edgeCrossSection`, `crossSectionForDrop`, `nextStandardCrossSection` | `primitives.ts` | geprüftes Lesen / Normreihe                    |
-| `chemistriesParallelSafe`                                                           | `primitives.ts` | Parallelschaltbarkeit zweier Akkus             |
-| `createConflictCollector`, `hasCriticalConflict`, `EMPTY_AUTO_WIRE_REPORT`          | `conflicts.ts`  | Konfliktbericht eines Laufs (V2)               |
-| `isAcEdge`, `isSolarEdge`, `isStarterBattery`                                       | `validation.ts` | Klassifikation                                 |
+| Symbol                                                                              | Datei             | Zweck                                          |
+| ----------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------- |
+| `performAutoWiring(nodes, existingEdges?)`                                          | `autoWire.ts`     | **Einstieg.** `{nodes, edges, report} \| null` |
+| `AUTO_EDGE_PREFIX`                                                                  | `primitives.ts`   | `'e-auto-'` — Kennzeichen aller Auto-Kanten    |
+| `sizeDcEdges`, `applyFuseSizes`, `applyFuseTypes`, `sizeAcEdges`                    | `sizing.ts`       | Sizing-Stufen                                  |
+| `cumulativeDropAt`, `relevantCumulativeDrop`                                        | `sizing.ts`       | Spannungsfall am Knoten                        |
+| `acCurrentA`                                                                        | `sizing.ts`       | AC-Strom einer Kante (Insel-BFS)               |
+| `resolveRails`, `healUserEdges`, `pickHouseBattery`                                 | `routing.ts`      | Topologie-Bausteine                            |
+| `applyFlowLayout`                                                                   | `placement.ts`    | Platzierung **nur** selbst erzeugter Knoten    |
+| `edgeLength`, `edgeCrossSection`, `crossSectionForDrop`, `nextStandardCrossSection` | `primitives.ts`   | geprüftes Lesen / Normreihe                    |
+| `chemistriesParallelSafe`                                                           | `primitives.ts`   | Parallelschaltbarkeit zweier Akkus             |
+| `createConflictCollector`, `hasCriticalConflict`, `EMPTY_AUTO_WIRE_REPORT`          | `conflicts.ts`    | Konfliktbericht eines Laufs (V2)               |
+| `evaluateDesignBudget`, `addDesignBudgetConflicts`                                  | `designBudget.ts` | BMS als Design-Constraint im Review (P0)       |
+| `isAcEdge`, `isSolarEdge`, `isStarterBattery`                                       | `validation.ts`   | Klassifikation                                 |
 
 ## What does it own?
 
@@ -55,6 +56,10 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 6. **Kein stilles Raten.** Fehlen Daten (z. B. Bank-Ik nicht schätzbar), wird **nichts**
    gestempelt.
 7. Keine UI-Abhängigkeit: `lib/` importiert keine App-Schicht (Rule A).
+8. **Keine zweite Rechnung im Review.** `reviewDiff.ts` projiziert nur die
+   vorhandenen `edge.data` des Vorschlags und des aktuellen Plans; der Dialog
+   zeigt sie. Ein neu berechneter Querschnitt in der Anzeige wäre eine zweite
+   Fachlogik neben `performAutoWiring`.
 
 ## Which tests protect it?
 
@@ -64,6 +69,7 @@ lib/autoWire/placement.ts  Platzierung selbst erzeugter Knoten (16-px-Raster)
 | `lib/autoWire/sizing.test.ts`               | Querschnitt, Sicherung, Drop-Budgets, Solar-Faktoren                                                     |
 | `lib/autoWire/placement.test.ts`            | Raster, Flussrichtung, Überlappungsfreiheit                                                              |
 | `lib/autoWire/conflicts.test.ts`            | Bericht: Dedup, Sortierung, stärkere Schwere gewinnt, Eigenschaften E9/E10                               |
+| `lib/autoWire/reviewDiff.test.ts`           | Vorher/Nachher je Leitung, Begründungen, ungültige Bedingungen, Konfliktzuordnung                        |
 | `tests/scale/plannerScale.test.ts`          | Determinismus/Idempotenz/Nutzerabsicht bei 10…250 Knoten                                                 |
 | `lib/vde-properties.test.ts`                | **G5** Idempotenz · **G6** AC/DC-Trennung + „jede Kante dimensioniert“ · **G7** `sizeDcEdges`-Konvergenz |
 | `scripts/goldenmaster/goldenMaster.test.ts` | Ergebnis aller sechs Referenzpläne eingefroren                                                           |

@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChargerInspector, InverterInspector, ShorePowerInspector, SolarInspector } from './NodeInspectors';
+import {
+  ChargerInspector,
+  Consumer230VInspector,
+  InverterInspector,
+  ShorePowerInspector,
+  SolarInspector,
+} from './NodeInspectors';
 import { type NodeDataPatch } from '../nodes/types'; // AUDIT T1: Mock-Signatur
 import { closeTo } from '../../test-helpers/matchers'; // AUDIT T1
 import type { InspectorNode } from './NodeInspectors';
@@ -335,5 +341,26 @@ describe('ShorePowerInspector — Netzform der Einspeisung', () => {
 
     fireEvent.change(screen.getByLabelText(/Netzform der Einspeisung/i), { target: { value: 'TN-S' } });
     expect(onUpdateNodeData).toHaveBeenCalledWith('shore-1', { systemForm: 'TN-S' });
+  });
+});
+
+describe('Consumer230VInspector — NET-003 (Modellgrenzen im Bauteil-Inspektor)', () => {
+  it('nennt die nicht modellierten Gegenstände und die Pflicht zur Fachprüfung', () => {
+    render(
+      <Consumer230VInspector
+        node={{
+          id: 'consumer-1',
+          type: 'consumer230v',
+          position: { x: 0, y: 0 },
+          data: { watts: 800, hours: 2 },
+        }}
+      />
+    );
+    const note = screen.getByTestId('inspector-230v-scope-note');
+    expect(note).toHaveTextContent('NET-003');
+    expect(note).toHaveTextContent('L/N/PE');
+    expect(note).toHaveTextContent('Umschaltung');
+    expect(note).toHaveTextContent('Rückspeiseschutz');
+    expect(note).toHaveTextContent('qualifiziertes Personal');
   });
 });

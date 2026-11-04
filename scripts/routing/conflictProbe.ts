@@ -26,6 +26,7 @@ import { REGRESSION_SCENARIOS } from '../regression/scenarios';
 import { measureScenario } from '../regression/layout';
 import { analyzeOverlaps } from './audit';
 import { performAutoWiring } from '../../lib/autoWire';
+import { checkRoutingInputs } from '../../components/edges/utils/routeInput';
 import {
   checkInvariants,
   serializeRoutes,
@@ -216,13 +217,14 @@ const candidatesOf = (plan: PlanInput): ConflictCandidate[] => {
           flow ? { x: -flow.x, y: -flow.y } : undefined
         );
   };
-  return plan.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    from: resolve(edge, 'source'),
-    to: resolve(edge, 'target'),
-  }));
+  // Nicht routbare Kanten sind im Produktivpfad gar nicht erst dabei.
+  const { routableEdgeIds } = checkRoutingInputs(plan.nodes as never, plan.edges);
+  return plan.edges.flatMap((edge) => {
+    if (!routableEdgeIds.has(edge.id)) return [];
+    const from = resolve(edge, 'source');
+    const to = resolve(edge, 'target');
+    return from && to ? [{ id: edge.id, source: edge.source, target: edge.target, from, to }] : [];
+  });
 };
 
 const componentStats = (plan: PlanInput): PlanReport['components'] => {

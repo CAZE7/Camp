@@ -39,6 +39,24 @@ export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
   // Die Punktstruktur wird im Router geprüft, nicht hier still „repariert".
   lockedWaypoints: { type: 'array' },
   lengthIsAssumption: { type: 'boolean' },
+  // P0-3: auswählbare Verlegebedingungen (lib/cableConditions.ts).
+  installationCondition: {
+    type: 'string',
+    enumValues: [
+      'reference',
+      'interior-single',
+      'interior-bundle',
+      'cavity',
+      'engine-bay',
+      'roof-solar',
+      'custom',
+      'datasheet',
+    ],
+  },
+  ambientC: { type: 'number', min: -40, max: 120 },
+  bundledCircuits: { type: 'number', min: 1, max: 9 },
+  cableInsulation: { type: 'string', enumValues: ['FLRY-B', 'FLR2X-B'] },
+  manufacturerIzA: { type: 'number', min: 0, max: 100_000, allowZero: false },
 };
 
 function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {

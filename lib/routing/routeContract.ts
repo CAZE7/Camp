@@ -16,8 +16,17 @@ export type RouteContractViolation = {
     | 'ROUTE-INPUT'
     | 'ROUTE-UNEXPECTED'
     | 'ROUTE-DIRECTION'
-    | 'ROUTE-OWN-NODE';
+    | 'ROUTE-OWN-NODE'
+    /** P0 ROUTE-INPUT-001: Bauteil fehlt / hat keine Geometrie. */
+    | 'ROUTE-MISSING-NODE'
+    /** P0 ROUTE-INPUT-001: benannter Anschluss ist nicht gemessen. */
+    | 'ROUTE-UNKNOWN-HANDLE';
   detail: string;
+  /** Betroffenes Bauteil / angeforderter Anschluss (für Fokus und Meldung). */
+  nodeId?: string;
+  handleId?: string;
+  /** Konkreter Korrekturvorschlag für die Warnzentrale. */
+  remedy?: string;
 };
 
 /** No score can compensate for missing, disconnected or diagonal geometry. */

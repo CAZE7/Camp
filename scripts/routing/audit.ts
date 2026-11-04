@@ -26,6 +26,7 @@
  * Reine Messung: keine Seiteneffekte, keine Zufallsquelle, kein DOM.
  */
 import { performAutoWiring } from '../../lib/autoWire';
+import { checkRoutingInputs } from '../../components/edges/utils/routeInput';
 import {
   portFanOutLanes,
   resolveHandlePoint,
@@ -479,6 +480,9 @@ export function dumpPorts(planName: string): string {
   if (!wired) throw new Error(`AutoWire lieferte kein Ergebnis für "${planName}"`);
   const edges = wired.edges as never as RouteEdgeRef[];
   const nodes = wired.nodes as never as RoutableNode[];
+  // Diagnose spiegelt den Produktivpfad: nur routbare Kanten (P0 ROUTE-INPUT-001).
+  const { routableEdgeIds } = checkRoutingInputs(nodes, edges);
+  const portEdges = edges.filter((edge) => routableEdgeIds.has(edge.id));
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const centerOf = (node: RoutableNode | undefined) =>
     node
@@ -494,19 +498,23 @@ export function dumpPorts(planName: string): string {
     const src = centerOf(srcNode);
     const tgt = centerOf(tgtNode);
     const flow = src && tgt ? { x: tgt.x - src.x, y: tgt.y - src.y } : undefined;
-    return kind === 'source'
-      ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
-      : resolveHandlePoint(
-          tgtNode,
-          edge.targetHandle,
-          'target',
-          flow ? { x: -flow.x, y: -flow.y } : undefined
-        );
+    // Nach `checkRoutingInputs` sind beide Endpunkte auflösbar.
+    const resolved =
+      kind === 'source'
+        ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
+        : resolveHandlePoint(
+            tgtNode,
+            edge.targetHandle,
+            'target',
+            flow ? { x: -flow.x, y: -flow.y } : undefined
+          );
+    if (!resolved) throw new Error(`dumpPorts: Anschluss an ${edge.id} nicht auflösbar`);
+    return resolved;
   };
 
-  const lanes = portFanOutLanes(edges, resolve);
+  const lanes = portFanOutLanes(portEdges, resolve);
   const lines: string[] = [];
-  for (const edge of [...edges].sort((a, b) => compareIds(a.id, b.id))) {
+  for (const edge of [...portEdges].sort((a, b) => compareIds(a.id, b.id))) {
     const src = resolve(edge, 'source');
     const tgt = resolve(edge, 'target');
     const lane = lanes.get(edge.id);

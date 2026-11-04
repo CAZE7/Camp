@@ -7,6 +7,8 @@
  *   - Anzahl vom Automaten geheilter Nutzerkanten (umgehängt)
  *   - Konflikte (Regelverstöße an gepinnten Kanten, Lastgrenze, Spannung …)
  *   - Offene Fragen (Batterietopologie, AC-Quelle)
+ *   - Vorher/Nachher je Leitung: Querschnitt, Sicherung, Verlegebedingung und
+ *     Begründung aus dem Vorschlag (`lib/autoWire/reviewDiff.ts`)
  *
  * Der Nutzer entscheidet mit drei Buttons:
  *   — »Anwenden«: Vorschlag in den Graphen schreiben (applyAutoWirePreview)
@@ -28,12 +30,18 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { AlertTriangle, CheckCircle2, HelpCircle, Wrench, X, Zap } from 'lucide-react';
 import type { AutoWireConflict, AutoWireReport } from '../../lib/autoWire/conflicts';
+import {
+  autoWireDiffSummary,
+  autoWireEdgeDiff,
+  type AutoWireDiffStatus,
+  type AutoWireEdgeValues,
+} from '../../lib/autoWire/reviewDiff';
 import { toPlainGerman } from './utils/plainGerman';
 
 type Summary = {
@@ -68,6 +76,36 @@ function summarizeReport(report: AutoWireReport, previousEdgeCount: number, next
     critical,
     questions: report.questions.length,
   };
+}
+
+const DIFF_STATUS_LABEL: Readonly<Record<AutoWireDiffStatus, string>> = {
+  changed: 'geändert',
+  new: 'neu',
+  removed: 'entfernt',
+  unchanged: 'unverändert',
+};
+
+/** Deutsche Zahl ohne `toLocaleString` — stabil in Tests und SSR. */
+const decimal = (value: number): string => String(value).replace('.', ',');
+
+/** Reine Anzeige der Werte EINER Leitung; keine elektrische Rechnung. */
+function EdgeValues({ values }: { values: AutoWireEdgeValues | null }) {
+  if (values === null) return <span>—</span>;
+  return (
+    <ul className="space-y-0.5">
+      <li>Querschnitt: {values.crossSection === null ? '—' : `${decimal(values.crossSection)} mm²`}</li>
+      <li>Sicherung: {values.fuseSize === null ? '—' : `${decimal(values.fuseSize)} A`}</li>
+      <li>
+        Bedingung: {values.conditionLabel} <span className="opacity-80">({values.assessment})</span>
+      </li>
+      <li>Domäne: {values.domainLabel}</li>
+      {!values.valid && (
+        <li className="font-semibold" style={{ color: 'var(--warn-critical)' }}>
+          Nicht ausführbar
+        </li>
+      )}
+    </ul>
+  );
 }
 
 /**
@@ -123,8 +161,15 @@ const SEVERITY_STYLES: Readonly<
 
 export function AutoWireReviewModal() {
   const preview = usePlannerStore((state) => state.autoWirePreview);
+  // „Vorher" ist der AKTUELLE Plan: Er wird erst mit „Anwenden" überschrieben.
+  // Der Dialog ist fokusgefangen — der Vorschlag bleibt bis zur Entscheidung
+  // unverändert. Ein Zähler-Vergleich verhindert trotzdem, dass bei einem
+  // zwischenzeitlich geänderten Plan falsche Vorher-Werte gezeigt werden.
+  const currentEdges = usePlannerStore((state) => state.edges);
+  const currentNodes = usePlannerStore((state) => state.nodes);
   const apply = usePlannerStore((state) => state.applyAutoWirePreview);
   const dismiss = usePlannerStore((state) => state.dismissAutoWirePreview);
+  const [showDiff, setShowDiff] = useState(true);
 
   // The preview itself is the source of truth. This also opens the dialog when
   // the lazy-loaded modal mounts after the store action; no timing-sensitive
@@ -135,6 +180,36 @@ export function AutoWireReviewModal() {
     if (!preview) return null;
     return summarizeReport(preview.report, preview.previousEdgeCount, preview.edges.length);
   }, [preview]);
+
+  // P0-3: Der Vorschlag muss vor der Übernahme erklären, WARUM Querschnitt
+  // und Sicherung von der 0,7-Pauschale abweichen — sonst wäre die
+  // Verlegebedingung eine unsichtbare Änderung am Plan.
+  const conditionedEdges = useMemo(
+    () =>
+      (preview?.edges ?? []).filter((edge) => {
+        const id = edge.data?.installationCondition;
+        return typeof id === 'string' && id !== 'reference';
+      }).length,
+    [preview]
+  );
+
+  // P0-Nachlauf: Vorher/Nachher je Leitung. Die Projektion liegt in lib/ und
+  // rechnet NICHTS — sie liest nur die Daten beider Kantenmengen und die
+  // Konflikte desselben Reports. Keine zweite Fachlogik im Dialog.
+  const diff = useMemo(() => {
+    if (!preview) return null;
+    const previous = currentEdges ?? [];
+    const consistent = previous.length === preview.previousEdgeCount;
+    const rows = consistent
+      ? autoWireEdgeDiff(
+          previous,
+          preview.edges,
+          [...(currentNodes ?? []), ...preview.nodes],
+          preview.report.conflicts
+        )
+      : [];
+    return { consistent, rows, summary: autoWireDiffSummary(rows) };
+  }, [preview, currentEdges, currentNodes]);
 
   const handleApply = () => apply();
   const handleCancel = () => dismiss();
@@ -170,6 +245,113 @@ export function AutoWireReviewModal() {
           />
         </div>
 
+        {conditionedEdges > 0 && (
+          <p className="aw-section text-xs" data-testid="autowire-condition-note">
+            <strong>{conditionedEdges} Leitung(en) mit eigener Verlegebedingung:</strong> Querschnitt und
+            Sicherung wurden gegen die eigene I_z aus Temperatur, Bündelung oder Datenblatt dimensioniert,
+            nicht gegen die 0,7-Pauschale. Ungültige Angaben werden im Plan als „nicht ausführbar" markiert.
+            Datengrundlage: docs/KABEL-VERLEGEBEDINGUNGEN.md — keine normgeprüfte Auslegung.
+          </p>
+        )}
+
+        {/* P0-Nachlauf: Vorher/Nachher je Leitung mit Begründung. */}
+        {diff && (
+          <section aria-labelledby="aw-diff-heading" className="aw-section">
+            <button
+              type="button"
+              onClick={() => setShowDiff((value) => !value)}
+              aria-expanded={showDiff}
+              aria-controls="aw-diff-body"
+              className="flex w-full items-center justify-between gap-2 text-left font-semibold"
+            >
+              <span id="aw-diff-heading">Änderungen je Leitung</span>
+              <span className="text-xs font-normal opacity-80">{diff.summary}</span>
+            </button>
+            <div id="aw-diff-body" hidden={!showDiff} data-testid="autowire-edge-diff">
+              {!diff.consistent && (
+                <p className="mt-2 text-xs" style={{ color: 'var(--warn-warning)' }}>
+                  Der Plan hat sich seit der Vorschau geändert. Vorher-Werte sind nicht mehr eindeutig
+                  zuordenbar und werden deshalb nicht angezeigt — bitte den Vorschlag verwerfen und neu
+                  berechnen.
+                </p>
+              )}
+              {diff.consistent && diff.rows.length === 0 && (
+                <p className="mt-2 text-xs opacity-80">Der Vorschlag enthält keine Leitungen.</p>
+              )}
+              {diff.consistent && diff.rows.length > 0 && (
+                <div className="mt-2 max-h-64 overflow-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th scope="col" className="p-1 pr-2 align-top font-semibold">
+                          Leitung
+                        </th>
+                        <th scope="col" className="p-1 pr-2 align-top font-semibold">
+                          Vorher
+                        </th>
+                        <th scope="col" className="p-1 pr-2 align-top font-semibold">
+                          Nachher
+                        </th>
+                        <th scope="col" className="p-1 align-top font-semibold">
+                          Begründung
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diff.rows.map((row) => (
+                        <tr
+                          key={row.id}
+                          data-testid="autowire-edge-row"
+                          data-edge-id={row.id}
+                          data-status={row.status}
+                          className="border-b border-border/60 align-top"
+                        >
+                          <td className="p-1 pr-2">
+                            <strong>{toPlainGerman(row.label)}</strong>
+                            <br />
+                            <code className="opacity-70">{toPlainGerman(row.id)}</code>
+                            <br />
+                            <span className="opacity-80">{DIFF_STATUS_LABEL[row.status]}</span>
+                          </td>
+                          <td className="p-1 pr-2">
+                            <EdgeValues values={row.before} />
+                          </td>
+                          <td className="p-1 pr-2">
+                            <EdgeValues values={row.after} />
+                          </td>
+                          <td className="p-1">
+                            <ul className="list-disc space-y-0.5 pl-4">
+                              {row.reasons.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                              {/* Klartext-Vertrag (tests/e2e/mobile-geometry.spec.ts:853):
+                                  Der Dialog zeigt keine rohen Regel-IDs. Die ID bleibt
+                                  maschinenlesbar am Element, der Leser bekommt nur den Grund. */}
+                              {row.conflicts.map((conflict) => (
+                                <li
+                                  key={`${conflict.ruleId}-${conflict.message}`}
+                                  data-rule-id={conflict.ruleId}
+                                >
+                                  {toPlainGerman(conflict.message)}
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="mt-2 text-xs opacity-80">
+                Alle Werte stammen aus dem Vorschlag bzw. dem aktuellen Plan; die Anzeige berechnet keine
+                Querschnitte oder Sicherungen. Keine normgeprüfte Auslegung — Datengrundlage:
+                docs/KABEL-VERLEGEBEDINGUNGEN.md.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Fragen */}
         {preview.report.questions.length > 0 && (
           <section
@@ -197,6 +379,33 @@ export function AutoWireReviewModal() {
             <p className="mt-2 text-xs" style={{ opacity: 0.8 }}>
               Diese Entscheidungen kann die Automatik nicht ohne Deine Angabe treffen. Die Leitungen sind mit
               der sicheren Annahme verdrahtet; bitte im Inspektor die endgültige Verschaltung wählen.
+            </p>
+          </section>
+        )}
+
+        {/* P0 / V2-BMS-002: Ein kritischer Konflikt darf nicht zwischen
+            Zahlen und Hinweisen untergehen. Ohne diesen Satz wirkt ein
+            „passend dimensionierter" Vorschlag weiterhin geeignet, obwohl
+            z. B. das BMS die Last nicht liefern kann. */}
+        {hasCritical && (
+          <section
+            role="alert"
+            className="aw-section"
+            style={{
+              background: 'var(--warn-critical-bg)',
+              borderColor: 'var(--warn-critical-border)',
+              color: 'var(--warn-critical)',
+            }}
+          >
+            <h3 className="flex items-center gap-2 font-semibold">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              Vorschlag ist fachlich nicht geeignet
+            </h3>
+            <p className="mt-1">
+              Kabel und Sicherungen sind für den berechneten Laststrom dimensioniert, aber mindestens eine
+              Systemgrenze ist überschritten. Bitte die unten genannten kritischen Konflikte beheben (z. B.
+              BMS-Dauerentladestrom, Batteriebank oder Wechselrichterleistung), bevor der Plan freigegeben
+              wird.
             </p>
           </section>
         )}

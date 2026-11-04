@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
 import { toPlainGerman } from '../utils/plainGerman';
 import { useRoutingStatusView } from './routingStatusView';
+import { AC_ASSESSMENT_LABEL } from '../../../lib/verify/acScope';
 import { RoutingStatusSummary } from './RoutingStatusSummary';
 
 interface WarningCenterProps {
@@ -222,6 +223,7 @@ function FindingCard({
     (details?.assumptions?.length ?? 0) > 0 ||
     details?.protectionChain?.length !== undefined ||
     (rootCause?.affectedEdges.length ?? 0) > 1 ||
+    (details?.acScopeItems?.length ?? 0) > 0 ||
     details?.rcdsElsewhere !== undefined;
 
   return (
@@ -253,6 +255,17 @@ function FindingCard({
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
+          {/* NET-003: Im Primärpanel steht nur Klartext. Die technische
+              Einzelbegründung (Regel-IDs, Formelzeichen, Datenfeldnamen)
+              gehört hinter „Warum?" — `toPlainGerman.ts` verlangt genau diese
+              Trennung, und der E2E-Vertrag `fresh-session-retest` verbietet
+              Rohkennungen im sichtbaren Prüfpanel. */}
+          {details?.acScopeItems && details.acScopeItems.length > 0 && (
+            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+              {details.acScopeItems.length} Punkte dieser 230-V-Modellgrenze sind unter „Warum?" einzeln mit
+              Bewertungsstufe, Grund und nötiger Prüfung aufgeführt.
+            </p>
+          )}
           {/* Gleiche Ursache, mehrere Leitungen (Phase 10/11) — kompakt, ohne
               zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
           {rootCause && rootCause.findingCount > 1 && (
@@ -339,6 +352,24 @@ function FindingCard({
                       <ul className="mt-0.5 list-disc pl-4">
                         {details.assumptions.map((assumption) => (
                           <li key={assumption}>{assumption}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {details?.acScopeItems && details.acScopeItems.length > 0 && (
+                    <div className="mt-1 font-sans" data-testid="ac-scope-items">
+                      <p className="font-semibold">
+                        230-V-Modellgrenzen · {AC_ASSESSMENT_LABEL[details.acAssessment ?? 'unverifiable']}
+                      </p>
+                      <ul className="mt-0.5 flex flex-col gap-1">
+                        {details.acScopeItems.map((item) => (
+                          <li key={item.id}>
+                            <strong>{item.title}</strong> — {AC_ASSESSMENT_LABEL[item.assessment]}
+                            <br />
+                            Grund: {item.basis}
+                            <br />
+                            Prüfung: {item.remedy}
+                          </li>
                         ))}
                       </ul>
                     </div>

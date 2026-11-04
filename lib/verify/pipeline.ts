@@ -69,11 +69,12 @@ export interface VerificationInput {
  */
 export const ENGINE_LIMITATIONS: readonly string[] = Object.freeze([
   'Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussagen über einzelne Leiter (z. B. PEN-Führung) stützen sich auf deklarierte Felder.',
-  'Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PVC) mit den Korrekturfaktoren des Laufs. Verlegeart, Kabeltyp (FLRY/FLR2X), Kanal- oder Rohrverlegung sind nur über diese Faktoren abgebildet.',
+  'Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PVC) mit den Korrekturfaktoren des Laufs. Verlegeart, Kabeltyp (FLRY/FLR2X), Kanal- oder Rohrverlegung sind nur über diese Faktoren abgebildet; kantenspezifische Verlegebedingungen überschreiben die Laufannahmen (docs/KABEL-VERLEGEBEDINGUNGEN.md), f₃ bleibt mangels geprüfter Tabelle 1,0.',
   'Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 20 °C; Datenblattwerte des konkreten Aufbaus schlagen das Modell.',
   'Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen ab 16 A) — kein Normnachweis; die Norm fordert Herstellerangaben.',
   'Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Temperatureinflüsse auf die Kapazität sind nicht modelliert.',
   'Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur und die Häufung des Laufs abgebildet — nicht als Feldfunktion.',
+  '230 V wird in drei Stufen ausgewiesen: [rechnerisch bewertet] Strom, Querschnitt, Schutzorgan und Spannungsfall der einen Leitung; [mit Annahmen bewertet] Netzform/N-PE-Bezug aus deklarierten Feldern sowie Schleifenimpedanz mit UPSTREAM_IMPEDANCE_ASSUMPTION_OHM = 0,8 (UNVERIFIED); [nicht überprüfbar] L/N/PE als getrennte Leiter, zweipolige Trennung als reales Gerät, Umschaltung Landstrom/Wechselrichter, Rückspeiseschutz, PE-Anschluss zur Karosserie und die normative Abnahme. Einzelbefunde: NET-003, Datengrundlage docs/AC-230V-MODELLGRENZEN.md. Die 230-V-Prüfung und die Abnahme dürfen nur durch entsprechend qualifiziertes Personal erfolgen; dieser Bericht ist kein Normnachweis.',
 ]);
 
 /** FNV-1a 32 Bit (zwei Startwerte ⇒ 64 Bit Fingerabdruck, keine Krypto-Zusage). */

@@ -82,6 +82,7 @@ import {
   pickExistingStarter,
 } from './autoWire/routing';
 import { createConflictCollector, type AutoWireReport } from './autoWire/conflicts';
+import { addDesignBudgetConflicts } from './autoWire/designBudget';
 import { deriveBatteryBanks, primaryHouseBank, type BatteryBank } from './electricalGraph/batteryBank';
 import { buildAcSystem, resolveAcSourceForLoad } from './electricalGraph/acSystem';
 import { compareIds } from './sortOrder';
@@ -916,6 +917,15 @@ export function performAutoWiring(
   // in jedem Auto-Plan „Abschaltvermögen unbekannt".
   applyFuseTypes(allDcEdges, currentNodes, sysVoltage);
   sizeAcEdges(allEdges, currentNodes);
+
+  // P0 / V2-BMS-002: Das BMS ist eine DESIGN-CONSTRAINT, keine nachgelagerte
+  // Warnung. Nach der Dimensionierung wird der tatsächliche Entladestrom der
+  // Aufbaubank gegen das kleinste bekannte Budget (BMS, Bauteil, Sicherung,
+  // Kabel, Modellgrenze) bewertet. Ein Überschreiten der BMS-Grenze erzeugt
+  // einen KRITISCHEN Konflikt im Review-Dialog — der Plan wird nicht still
+  // „passend“ dimensioniert. `sizeDcEdges` bleibt bewusst beim Laststrom:
+  // ein auf 50 A gekapptes Kabel bei 147 A Last wäre gefährlicher.
+  addDesignBudgetConflicts(currentNodes, allEdges, sysVoltage, batteryNode.id, conflicts);
 
   const fuseBoxFeed = allDcEdges.find(
     (e) => e.source === rails.plus.id && e.target === fuseBoxNode.id && e.sourceHandle === 'plus'

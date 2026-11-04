@@ -1,5 +1,111 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-03 (3) — P0: Fahrzeugspezifische Kabeldimensionierung
+
+**Anlass:** Review/ELE-001. Für ALLE Leitungen galt pauschal
+`VDE_AMPACITY(B2/30 °C) × 0,7`; Einbauort, Bündelung und Leitungstyp
+beeinflussten weder Querschnitt noch Sicherung noch Prüfbericht.
+
+**Verhalten:** Neues `lib/cableConditions.ts` mit auswählbaren
+Einbausituationen (Innenraum einzeln / Bündel / Hohlraum / Motorraum 60 °C /
+Dach unterm Modul / eigene Werte / Herstellerangabe). **Kein neuer
+Pauschalfaktor**: Die Presets setzen ausschließlich die bereits dokumentierten
+f₁ (IEC 60364-5-52 Wurzelformel) und f₂ (VDE_GROUP_FACTORS, Q1/Q2) der EINEN
+`calculateCableIz`. f₃ bleibt ausdrücklich 1,0, weil keine geprüfte
+Verlegeart-Tabelle vorliegt. `calculateCableIz` nimmt `installationFactor`
+als geprüften Parameter auf (Default 1,0). AutoWire (`sizeDcEdges`,
+`applyFuseSizes`, `markInfeasibleSizing`, AC-Pfad, Selektivität) und AMP-001
+lesen dieselbe Ableitung; Inspektor zeigt I_z, maximale Sicherung, Rechenweg
+und Bewertungsstufe. Persistenz über fünf neue `edge.data`-Felder mit
+Schema-Prüfung. Gespeicherte Pläne ohne Angabe bleiben byte-stabil — keine
+Golden-Master-Neuerfassung.
+
+**Bewusst NICHT Teil:** ISO-6722-Fahrzeug Ampazitätstabelle, echte f₃-Werte,
+normative Abnahme, 230-V-Prüfung (qualifiziertes Personal). Siehe
+`docs/KABEL-VERLEGEBEDINGUNGEN.md`; ELE-001 bleibt als Restbefund offen.
+
+**Review-Korrektur 2026-11-04:** Beim Selbst-Audit fiel auf, dass eigene Werte
+OHNE gewähltes Preset (`ambientC`, `bundledCircuits`, `manufacturerIzA`) still als
+Referenz galten, dass „Datenblatt" ohne I_z eine 30-°C-Annahme erzeugte, dass
+ungültige Plandaten den AutoWire-Lauf mit `RangeError` abbrechen konnten und dass
+der AC->70-mm²-Zweig weiter mit der Referenz-Sicherung rechnete. Alle vier
+Punkte sind behoben: solche Felder erzwingen `custom`, „Datenblatt" verlangt
+einen Wert, `cableSizingFor` meldet `valid: false` statt zu werfen (Aufrufer
+markieren „nicht ausführbar"; Prüfbericht UNVERIFIABLE), und der AC-Pfad nutzt
+dieselbe Ableitung. Außerdem werden Herstellerwerte im Bericht nicht mehr als
+`plan-model-und-physik` geführt und AMP-002 nennt den richtigen UNVERIFIABLE-Grund.
+Der AutoWire-Review nennt eigene Verlegebedingungen jetzt vor der Übernahme.
+
+**Tests:** `cableConditions.test.ts` (20), `cableConditionsIntegration.test.ts`
+(8), `lib/verify/cableConditions.test.ts` (7), `edgeSchema.test.ts` (9),
+`store/cableConditions.store.test.ts` (5), `EdgeInspector.test.tsx` (2 neue),
+`AutoWireReviewModal.test.tsx` (2 neue). Referenzpfad-Tests belegen
+byte-stabile Querschnitte/Sicherungen. **Finale Gates nach der Review-Korrektur
+(2026-11-04):** `npm run check` 301 Dateien / 3935 Tests / 1 skipped / 431,86 s,
+`npx vitest run lib/` 104 / 1707, Golden Master 13 ohne Neuerfassung,
+Regression 68, `routing:audit` I1–I7 = 0 / `determ=true`, `perf:edge-routing`
+allein 1,74 ms (p90 1,98 ms) bzw. 189,27 ms (p90 221,16 ms) ⇒ OK. E2E,
+Pixel-Baselines, `npm run build` und PR waren nicht ausgeführt.
+
+## LEDGER 2026-11-03 (2) — P0: BMS als echte Design-Constraint
+
+**Anlass:** Review-Beispiel 12,8 V · 50-A-BMS · 1500-W-Wechselrichter.
+`sizeDcEdges`/`applyFuseSizes` dimensionierten gegen den Laststrom
+(≈147 A im Strommodell), die BMS-Grenze war nur eine nachgelagerte
+Live-Warnung. Der Review-Dialog zeigte trotzdem einen „passenden" Vorschlag.
+
+**Verhalten:** Neues `lib/autoWire/designBudget.ts`. Nach der Sizing-Pipeline
+bewertet `addDesignBudgetConflicts()` den Entladestrom der Aufbaubank aus
+`getCableCurrents` gegen `computeCurrentBudget` (BMS · Bauteil · Sicherung ·
+Kabel · 70-mm²-Modellgrenze). `performAutoWiring` schreibt
+`AUTO-BMS-001` **kritisch** in den Report, mit getrennten Aussagen zu Kabel,
+Sicherung, Batterie und Gesamtsystem samt Lösungswegen (andere Batteriebank /
+kleinerer Wechselrichter / Last reduzieren / Datenblatt prüfen). Fehlende
+BMS-Angabe ⇒ `AUTO-BMS-000` plus offene Frage statt eines Ersatzwerts.
+Der Review-Dialog zeigt ein rotes „fachlich nicht geeignet"-Banner; die
+Live-Warnung trägt einen BMS-spezifischen Titel und bleibt freigabesperrend.
+
+**Bewusst NICHT geändert:** Kein Kappen des Laststroms auf das BMS-Budget.
+Kabel und Sicherung bleiben physikalisch für die tatsächliche Last
+dimensioniert — ein 50-A-Kabel bei 147 A wäre gefährlicher als die Warnung.
+Keine Golden-Master-Neuerfassung, keine Änderung an `sizing.ts`.
+
+**Tests:** `designBudget.test.ts` (11 Fälle inkl. Vier-Aussagen-Trennung,
+parallele Bank, fehlende Angabe, Reserve, Review-Beispiel, Determinismus),
+`useLiveValidation.test.ts` (kritische Warnung nach dem Anwenden),
+`AutoWireReviewModal.test.tsx` (Banner). `npm test` für die betroffenen
+Suiten, `npx vitest run lib/`, Golden/Regression unauffällig.
+
+## LEDGER 2026-11-03 (1) — P0: Ein strenger Routing-Validator im Produktivpfad
+
+**Anlass:** Review/Audit 2026-10-24 (B-01/B-02/B-03). `routeAllCables` routete
+Leitungen mit NUR EINEM fehlenden Endpunkt über `resolveHandlePoint → (0,0)`
+zum Plan-Ursprung; ein unbekannter benannter Anschluss fiel still auf den ersten
+gemessenen Handle zurück. Der normale Live-Lauf veröffentlichte zusätzlich eine
+schwächere Zweitimplementierung der Final-Validierung ohne Route-Vertrag.
+
+**Verhalten:** Neues Eingangstor `components/edges/utils/routeInput.ts`
+(`checkRoutingInputs`) für Router, Endpunkt-Auflösung, Renderer-Fallback und
+Report. Nicht routbare Kanten werden vor Port-Fan-Out und A* entfernt und
+erscheinen je als strukturierter, zuordenbarer kritischer Befund mit Remedy.
+`resolveHandlePoint` liefert `undefined` statt `(0,0)`; ein benannter,
+ungemessener Handle liefert ebenfalls `undefined` (kein `?? group?.[0]`).
+`cableRouteStore.ts` re-exportiert `routeValidation.ts`: EIN Validator für
+Live, Optimierung und CI. `ROUTE-OWN-NODE` erkennt den Wiedereintritt, erlaubt
+aber mehrsegmentige Port-Stubs bei gemessener Geometrie.
+
+**Bekannter Restbefund (P1):** Mit gemessener React-Flow-Geometrie fährt
+`e-batt-minus` im `complex`-Plan durch die Karte ihres eigenen Ziel-Bauteils,
+bevor sie in den Port einbiegt (`ROUTE-OWN-NODE`). Der Befund war vorher
+unsichtbar und ist jetzt im Test festgeschrieben; die Trassenführung selbst
+wurde in diesem Schnitt NICHT geändert.
+
+**Tests:** `routeInput.test.ts` (15 Fälle: Hängekante, positionsloser Knoten,
+unbekannter Handle, fehlende Route, Diagonalroute, Wiedereintritt, Port-Stub,
+Determinismus, Live-Report). `npm test` (Routing-Suite 1155 Tests),
+`npm run routing:audit` (I1–I7 = 0), `npm run test:regression` (68),
+`npm run test:goldenmaster` (13) grün; Golden-Fixtures unverändert.
+
 ## LEDGER 2026-11-03 — Impressum mit Betreiberangaben
 
 **Anlass:** § 5 DDG. Die Seite zeigte Aufforderungstexte statt der Anschrift.
@@ -3504,3 +3610,105 @@ Planer-Semantik berührt.
 **Offen:** P2 setzt das Hero-Foto erst nach eigenen Aufnahmen und
 `BILDRECHTE.md` ein; die optischen Gates (Screenshots 375/768/1440, LCP/CLS,
 axe, Lighthouse) gehören zu P2/P4 und sind für P1 nicht behauptet.
+
+## LEDGER 2026-11-04 (Nachlauf) — 230-V-Modellgrenzen explizit abgesichert, AutoWire-Einzelbegründung
+
+**Anlass:** Aus dem P0-Sprint blieb der 230-V-Punkt der P0-Tabelle bewusst
+ausgeklammert (nicht Teil der drei Sprint-Aufgaben). Der Nachlauf sollte die
+Lücke entweder schließen oder **explizit absichern**; gewählt wurde die zweite
+Variante ohne neue Features (`AGENTS.md` Zeile 95).
+
+- **Keine Neuarchitektur:** Keine L/N/PE-Kanten, kein Netzform-, Umschalt- oder
+  Rückspeisemodell, keine normgeprüfte Abnahme. Das einleiterige Modell bleibt.
+- **Prüfbares Gate:** `NET-003-ac-model-scope` in `lib/verify/acScope.ts`,
+  `RULE_MATRIX` (30 Regeln), `runPass5` (zehn Checks), `ENGINE_LIMITATIONS`
+  (siebter Eintrag). Drei Stufen: rechnerisch bewertet / mit Annahmen bewertet /
+  nicht überprüfbar. Neun strukturierte Einzelpunkte in `details.acScopeItems`.
+- **Sichtbar:** Warn-Zentrale (`ac-scope-items`), Bauteil-Inspektor
+  (`inspector-230v-scope-note`), Kabel-Inspektor (`edge-230v-scope-note`),
+  Prüfbericht/Prüfsiegel. Keine elektrische Rechnung in der UI (Regel D).
+- **Verdikt:** 230-V-Plan ⇒ `INCOMPLETE` (UNPROVABLE), 12-V-Plan ⇒ `COMPLIANT`
+  mit `NET-003` in `skippedRules`. Kein stiller Fallback (Regel M).
+- **AutoWire-Einzelbegründung:** siehe LEDGER 2026-11-04 (3).
+- **Regression/Ledger:** Verhalten geändert (neue Regel, neue Ereignisse) ⇒
+  bestehende Verträge in `pipeline.test.ts`, `protection.test.ts`,
+  `verificationWarnings.test.ts` und `VerificationSeal.test.tsx` **verschärft**
+  statt aufgeweicht; neue Suite `lib/verify/acScope.test.ts`. Golden Master und
+  Regressionspläne werden nicht neu erfasst.
+- **Doku:** `docs/AC-230V-MODELLGRENZEN.md` (Datengrundlage, drei Stufen,
+  Einzelpunkte, Tests, offene Punkte), `docs/ai/KNOWN-PROBLEMS.md`
+  (`AC-230V-001`), `docs/ai/VALIDATION-CONTEXT.md` §8.3, Abnahmebericht §10.
+- **Nachtrag (Klartext-Vertrag):** Die technische Einzelliste der Warn-Zentrale
+  steht unter „Warum? Technische Details"; das Primärpanel nennt nur die Anzahl
+  in Klartext. Grund: `tests/e2e/fresh-session-retest.spec.ts` verbietet
+  Rohkennungen (`I_[bnz2]`, `AMP-\d{3}`, `(In ≤`) im sichtbaren Prüfpanel und
+  in den Modellgrenzen. `WarningCenter.test.tsx` pinnt das mit der echten
+  `AC_230V_SCOPE_ITEMS` (keine handgeschriebene Fixture).
+
+## LEDGER 2026-11-04 (3) — AutoWire: Vorher/Nachher je Leitung im Review
+
+**Anlass:** Der Review-Dialog nannte nur Sammelzahlen und eine Sammelnote für
+eigene Verlegebedingungen. Eine geänderte Sicherung oder ein geänderter
+Querschnitt war vor der Übernahme nicht **je Leitung** nachvollziehbar.
+
+- **Neue reine Projektion** `lib/autoWire/reviewDiff.ts`:
+  `autoWireEdgeDiff(previous, proposed, nodes, conflicts)` liefert je Leitung
+  `before`/`after` (Querschnitt, Sicherung, Bedingung, Domäne, Gültigkeit),
+  Status (`new`/`changed`/`unchanged`/`removed`), Begründungen und die
+  namentlich zugehörigen Konflikte des Reports. **Keine elektrische Rechnung**
+  (Regeln A/D/M): die Werte kommen aus `edge.data`, die I_z-Herkunft aus
+  `cableSizingFor`, die Gründe aus Feldvergleich und `AutoWireReport`.
+- **Anzeige** `components/planner/AutoWireReviewModal.tsx`: klappbare Tabelle
+  mit stabiler Sortierung, `data-testid="autowire-edge-diff"` und
+  `autowire-edge-row` (`data-edge-id`, `data-status`). Vorher = aktueller Plan
+  aus dem Store; `previousEdgeCount` prüft die Konsistenz — bei Abweichung
+  werden **keine** Vorher-Werte erfunden, sondern ein Hinweis gezeigt.
+- **Keine Store-Schema-Änderung:** `autoWirePreview` bleibt unverändert; die
+  Vorher-Kanten werden aus dem aktuellen Zustand gelesen. Damit bleiben die
+  Persistenz-, Import- und Store-Verträge unberührt.
+- **Regression:** `lib/autoWire/reviewDiff.test.ts` (7) und vier neue
+  `AutoWireReviewModal.test.tsx`-Fälle. Golden Master, Regressionspläne,
+  Routing-Audit und Perf-Gate sind von der reinen Anzeigeänderung nicht
+  betroffen; sie werden im Abnahmebericht §10 trotzdem erneut ausgeführt.
+- **Bewusst nicht geändert:** kein Sizing, keine Topologie, keine Auto-Ableitung
+  einer „besseren" Sicherung, keine neue Begründung aus angenommenen Strömen.
+
+## LEDGER 2026-11-04 (4) — Klartext-Vertrag im AutoWire-Review (CI-E2E-Befund)
+
+**Anlass:** Erster CI-Lauf auf PR #601 (Head `094862a`): `Quality Gate /
+End-to-End (Playwright)` = fail. Das Job-Log liegt auf einem im Sandbox nicht
+erreichbaren Azure-Blob-Host, aber die Check-Run-Annotations nannten den **einen**
+fehlgeschlagenen Fall: `tests/e2e/mobile-geometry.spec.ts:844` („Auto-verbinden
+abbrechen … der Dialog spricht Klartext“) mit
+`expect(dialog.innerText()).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/)`.
+Ergebnis des Laufs: 360 passed / 259 skipped / 1 failed (26,3 min). Ursache war
+die in (3) ergänzte Tabelle „Änderungen je Leitung“: die Spalte Begründung
+schrieb `<strong>AUTO-BMS-000:</strong>` vor den Konflikttext.
+
+**Verhalten:** Regel-IDs bleiben maschinenlesbar (`data-rule-id` am `<li>`),
+stehen aber nicht mehr im sichtbaren Klartext. Leitungslabel und technische
+Kanten-ID laufen zusätzlich durch `toPlainGerman`, damit `auto-node:` und
+URL-Kodierung auch bei fehlenden Bauteil-Labels nicht im Dialog erscheinen.
+Konflikttexte liefen bereits durch `toPlainGerman`. **Keine** Änderung an
+`lib/`, am Store, an Sizing, Topologie oder Persistenz (Regeln A/D/M unberührt).
+
+**Regression:** `AutoWireReviewModal.test.tsx` (11 Fälle). Der bestehende Fall
+prüft jetzt „kein `AUTO-…` im Text, ID am Element“ statt die ID im Text zu
+erwarten; ein neuer Fall pinnt exakt den E2E-Regex gegen `dialog.textContent`
+(strenger als `innerText`, weil auch zugeklappte Bereiche mitzählen), ein
+weiterer zeigt, dass technische Knoten-IDs (`auto-node:…`, `%20`) als
+Bauteilnamen erscheinen. Kein Test abgeschwächt (O-4), kein Skip, keine
+Baseline gesenkt.
+
+**Verfahren:** Vor dieser Änderung wurden `AGENTS.md`,
+`docs/ai/ARCHITECTURE-RULES.md`, `docs/ai/CHANGE-WORKFLOW.md`,
+`docs/ai/AUTOWIRE-CONTEXT.md` §7.6a/§7.8 und `docs/ai/TESTING-CONTEXT.md` §9.3
+**vor** dem Code gelesen (§23). Damit ist die Reihenfolge für diesen Commit
+eingehalten; die Wiederholung aus §9 Punkt 8 bei den früheren Commits bleibt
+davon unberührt und protokollarisch offen.
+
+**Doku:** `docs/ai/AUTOWIRE-CONTEXT.md` §7.6a, Abnahmebericht §10.8.
+
+**Offen:** Der CI-Lauf auf dem neuen Head steht aus; E2E/Pixel-Baselines können
+lokal weiterhin nicht ausgeführt werden (kein Browser-Binary im Sandbox).
+§24-UI-DoD bleibt offen; es wird kein „E2E grün“ behauptet.

@@ -42,6 +42,7 @@
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 import { REGRESSION_SCENARIOS } from '../regression/scenarios';
 import { performAutoWiring } from '../../lib/autoWire';
+import { checkRoutingInputs } from '../../components/edges/utils/routeInput';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter';
 import {
   routeAllCables,
@@ -116,15 +117,20 @@ type ForeignSegment = {
 /** Kernmessung für ein Layout: Knoten + Kanten → Potenzialzahlen. */
 export function probeLayout(nodes: Node[], edges: RouteEdgeRef[], label: string): LaneProbe {
   const nodeById = new Map(nodes.map((n) => [n.id, n as unknown as RoutableNode]));
-  const resolve = (edge: RouteEdgeRef, kind: 'source' | 'target'): HandlePoint =>
-    resolveHandlePoint(
+  const resolve = (edge: RouteEdgeRef, kind: 'source' | 'target'): HandlePoint => {
+    const point = resolveHandlePoint(
       nodeById.get(kind === 'source' ? edge.source : edge.target) as never,
       kind === 'source' ? edge.sourceHandle : edge.targetHandle,
       kind
-    ) as HandlePoint;
+    );
+    if (!point) throw new Error(`laneProbe: Anschluss an ${edge.id} nicht auflösbar`);
+    return point;
+  };
 
-  const lanes = portFanOutLanes(edges, resolve);
-  const routes = routeAllCables(nodes as never, edges as never);
+  const { routableEdgeIds } = checkRoutingInputs(nodes as never, edges);
+  const probeEdges = edges.filter((edge) => routableEdgeIds.has(edge.id));
+  const lanes = portFanOutLanes(probeEdges, resolve);
+  const routes = routeAllCables(nodes as never, probeEdges as never);
 
   // 1. Ideal-Routen anmelden.
   const registry = new LaneRegistry();

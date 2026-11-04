@@ -112,7 +112,7 @@ function addRcd(
 }
 
 describe('lib/verify/protection — Pass 5 auf dem gesunden 12-V-Plan', () => {
-  it('führt alle neun Regeln und lässt nur GND-001 mit einer Entität laufen', () => {
+  it('führt alle zehn Regeln und lässt nur GND-001 mit einer Entität laufen', () => {
     const checks = runPass5(contextOf(healthyDcPlan()));
     expect(checks.map((check) => check.ruleId)).toEqual([
       'GND-001-chassis-bond-cross-section',
@@ -124,6 +124,7 @@ describe('lib/verify/protection — Pass 5 auf dem gesunden 12-V-Plan', () => {
       'RCD-006-rcd-selectivity',
       'NET-001-pen-forbidden',
       'NET-002-island-fault-loop',
+      'NET-003-ac-model-scope',
     ]);
     for (const check of checks) {
       expect(check.status, check.ruleId).toBe('PASS');

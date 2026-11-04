@@ -9,6 +9,7 @@
  *   npx tsx scripts/routing/tracePlan.ts camper e-fuse-usb e-fuse-cool
  */
 import { performAutoWiring } from '../../lib/autoWire';
+import { checkRoutingInputs } from '../../components/edges/utils/routeInput';
 import {
   portFanOutLanes,
   resolveHandlePoint,
@@ -18,6 +19,9 @@ import {
 import { nodesToObstacles } from '../../components/edges/utils/pathfinding';
 import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth } from '../../components/edges/utils/nodeGeometry';
 import { simplifyWaypoints } from '../../lib/routing/geometry';
+import type { Position } from '@xyflow/react';
+
+type HandlePoint = { x: number; y: number; position: Position };
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 
 type Wired = Parameters<typeof nodesToObstacles>[0];
@@ -28,15 +32,20 @@ const plan = GOLDEN_PLANS[planName]!;
 const wired = performAutoWiring(plan.nodes as never, plan.edges as never)!;
 const nodes = wired.nodes as never as Wired;
 const edges = wired.edges as never as RouteEdgeRef[];
-const routes = routeAllCables(nodes as never, edges);
+const { routableEdgeIds } = checkRoutingInputs(nodes as never, edges);
+const traceEdges = edges.filter((edge) => routableEdgeIds.has(edge.id));
+const routes = routeAllCables(nodes as never, traceEdges);
 
-const resolve = (edge: RouteEdgeRef, kind: 'source' | 'target') =>
-  resolveHandlePoint(
+const resolve = (edge: RouteEdgeRef, kind: 'source' | 'target'): HandlePoint => {
+  const point = resolveHandlePoint(
     nodes.find((n) => (n as { id: string }).id === (kind === 'source' ? edge.source : edge.target)),
     kind === 'source' ? edge.sourceHandle : edge.targetHandle,
     kind
   );
-const lanes = portFanOutLanes(edges, resolve);
+  if (!point) throw new Error(`tracePlan: Anschluss an ${edge.id} nicht auflösbar`);
+  return point;
+};
+const lanes = portFanOutLanes(traceEdges, resolve);
 
 console.log(`### Plan ${planName}`);
 console.log('### Nodes (Boxen wie der Router sie als Hindernis sieht)');
@@ -49,7 +58,7 @@ for (const node of nodes) {
 }
 
 console.log('### Kanten');
-for (const edge of edges) {
+for (const edge of traceEdges) {
   const route = routes.get(edge.id);
   if (!route) {
     console.log(`  ${edge.id}: KEINE ROUTE`);

@@ -33,6 +33,7 @@ import { auditEvent, checkOrNotApplicable, passedCheck } from './events';
 import { labelOfNode } from './graph';
 import { RCD_SELECTIVITY_RATIO_HEURISTIC } from './physics';
 import { sortedCables, upstreamChain } from './pathSearch';
+import { checkAcModelScope } from './acScope';
 import { buildPortGraph, type PortGraph } from './topology';
 import type {
   AuditEvent,
@@ -1145,5 +1146,6 @@ export function runPass5(context: PassContext): CheckResult[] {
     checkRcdSelectivity(context),
     checkPenForbidden(context),
     checkIslandFaultLoop(context),
+    checkAcModelScope(context),
   ];
 }
