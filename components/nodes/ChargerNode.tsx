@@ -14,9 +14,7 @@ const ChargerNode = function ({ id, data, isConnectable, selected }: PlannerNode
 
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || 'Ladequelle'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="charger" dinCode={resolvedDesignator(designators, id, data)} />

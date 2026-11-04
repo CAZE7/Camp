@@ -38,9 +38,7 @@ const RoofSolarNode = function ({
         }}
       />
       <div
-        role="group"
-        aria-label={`Solarpanel ${Math.round(width)} mal ${Math.round(height)} Zentimeter, ${watts} Watt${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
-
+        data-testid="roof-solar-card"
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-soot text-paper transition-colors',
           selected ? 'ring-2 ring-copper ring-offset-2 ring-offset-paper' : '',

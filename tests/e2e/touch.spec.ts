@@ -117,7 +117,8 @@ test.describe('Touch-Bedienung', () => {
     await openPlanner(page);
     await addComponent(page, 'battery');
     await showCanvas(page);
-    const card = page.locator('.react-flow__node-battery [role="group"]').first();
+    // §3.6: Die Gruppe sitzt am Node-Wrapper, nicht mehr an der Karte.
+    const card = page.locator('.react-flow__node-battery[role="group"]').first();
     const box = await card.boundingBox();
     expect(box).not.toBeNull();
     await card.dispatchEvent('pointerdown', {

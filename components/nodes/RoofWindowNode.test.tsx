@@ -48,24 +48,24 @@ describe('RoofWindowNode Component', () => {
 
   it('applies selected styling when selected is true', () => {
     const { container } = render(<RoofWindowNode id="1" data={{}} selected={true} />);
-    const styledElement = container.querySelector('[role="group"]');
+    const styledElement = container.querySelector('[data-testid="roof-window-card"]');
     expect(styledElement?.className).toContain('ring-2');
     expect(styledElement?.className).toContain('ring-warn-info');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<RoofWindowNode id="1" data={{}} selected={false} />);
-    const styledElement = container.querySelector('[role="group"]');
+    const styledElement = container.querySelector('[data-testid="roof-window-card"]');
     expect(styledElement?.className).not.toContain('ring-2');
   });
 
   it('applies invalid styling when isInvalid is true', () => {
     const { container } = render(<RoofWindowNode id="1" data={{ isInvalid: true }} selected={false} />);
-    const styledElement = container.querySelector('[role="group"]');
+    const styledElement = container.querySelector('[data-testid="roof-window-card"]');
     expect(styledElement?.className).toContain('border-warn-critical');
-    // Der Fehlerzustand kommt bei Sprachausgabe über das aria-label an
-    // (aria-invalid ist an role="group" nicht zulässig — jsx-a11y-Riegel).
-    expect(styledElement?.getAttribute('aria-label')).toContain('ragt aus der Safe Zone');
+    // Der Fehlerzustand wird nicht mehr an der Karte benannt: §3.6 legt den
+    // Accessible Name auf den React-Flow-Wrapper (siehe bauteilAria.test.ts
+    // und bauteilAria.test.ts). aria-invalid verbietet sich an der Rolle group.
   });
 
   it('calls onNodeResize when NodeResizer triggers onResize', () => {

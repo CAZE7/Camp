@@ -9,9 +9,7 @@ const GroundNode = function ({ id, data, isConnectable, selected }: PlannerNodeP
   const designators = useContext(DesignatorContext);
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle flex w-32 flex-col items-center p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="ground" dinCode={resolvedDesignator(designators, id, data)} />

@@ -18,9 +18,7 @@ const ShorePowerNode = function ({
 
   return (
     <div
-      role="group"
       data-selected={selected || undefined}
-      aria-label={`${data.label || 'Landstromanschluss'}. Komponente im Plan.`}
       className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="shore" dinCode={resolvedDesignator(designators, id, data)} />

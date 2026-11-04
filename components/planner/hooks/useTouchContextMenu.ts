@@ -44,9 +44,11 @@ export function useTouchContextMenu(enabled: boolean, onOpen: (state: ContextMen
       start.current = { x, y };
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
+        // §3.6: Der Accessible Name sitzt am Node-Wrapper, nicht mehr an der
+        // Karte. Für das Menü genügt der erste Teil — Typ und Kürzel; eigene
+        // Beschriftung und Auswahlzustand würden die Zeile überfüllen.
         const label = node
-          ? node.querySelector<HTMLElement>('[role="group"]')?.getAttribute('aria-label')?.split('.')[0] ||
-            'Bauteil'
+          ? (node.getAttribute('aria-label')?.split(',')[0] ?? '').trim() || 'Bauteil'
           : 'Leitung';
         navigator.vibrate?.(15);
         window.dispatchEvent(new CustomEvent('planner-touch-context-open'));

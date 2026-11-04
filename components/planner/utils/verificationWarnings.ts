@@ -182,7 +182,16 @@ export interface VerificationSummary {
     pass: PassNumber;
     name: string;
     status: 'PASS' | 'FAIL' | 'UNPROVABLE';
+    /** Regeln im Katalog dieses Durchgangs — nicht alle sind angewandt. */
     ruleCount: number;
+    /** Regeln, die im Plan einen Gegenstand hatten (evaluatedEntities > 0). */
+    appliedCount: number;
+    /**
+     * Status für die Anzeige. Hat ein Durchgang in diesem Plan nichts zu prüfen
+     * gehabt, ist er nicht »erfüllt« — die Engine meldet ihn trotzdem als PASS,
+     * weil keine Bedingung verletzt wurde. Die Aussage darf daraus nicht folgen.
+     */
+    displayStatus: 'PASS' | 'FAIL' | 'UNPROVABLE' | 'NOT_APPLIED';
   }>;
   /**
    * Regeln, die **Profil oder Kontext** ausschließen (z. B. AC-Regeln in einem
@@ -247,12 +256,22 @@ export function verificationSummary(report: VerificationReport): VerificationSum
     engineVersion: report.certificate.engineVersion,
     profile: report.certificate.profile,
     context: report.certificate.context,
-    passes: report.passes.map((pass) => ({
-      pass: pass.pass,
-      name: pass.name,
-      status: pass.status,
-      ruleCount: pass.checks.length,
-    })),
+    passes: report.passes.map((pass) => {
+      // Dasselbe Kriterium wie die Engine (lib/verify/pipeline.ts: coverageOf):
+      // „nicht anwendbar" ist ein PASS ohne Gegenstand. Nur so stimmt die
+      // Summe der Durchgänge mit coverage.exercised überein.
+      const appliedCount = pass.checks.filter(
+        (check) => !(check.status === 'PASS' && check.evaluatedEntities === 0)
+      ).length;
+      return {
+        pass: pass.pass,
+        name: pass.name,
+        status: pass.status,
+        ruleCount: pass.checks.length,
+        appliedCount,
+        displayStatus: appliedCount === 0 ? ('NOT_APPLIED' as const) : pass.status,
+      };
+    }),
     notAppliedRules: rulesForContext(report.certificate.profile, report.certificate.context).skipped.map(
       (rule) => rule.id
     ),

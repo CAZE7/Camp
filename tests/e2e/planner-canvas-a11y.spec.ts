@@ -53,6 +53,64 @@ test.describe('Planer-Canvas: Barrierefreiheit', () => {
     ).toEqual([]);
   });
 
+  test('§3.6: genau eine Bauteil-Gruppe pro Knoten, deutsch benannt', async ({ page }) => {
+    await openExampleCanvas(page);
+    const knoten = page.locator('.react-flow__node');
+    const anzahl = await knoten.count();
+    expect(anzahl, 'das Beispiel muss Knoten auf der Zeichenfläche haben').toBeGreaterThan(0);
+
+    let gruppen = 0;
+    for (let index = 0; index < anzahl; index += 1) {
+      const wrapper = knoten.nth(index);
+      // §3.6 Punkt 3: die Rolle kommt von der Bibliothek, aber nur für
+      // fokussierbare Knoten. Dekoration (der Backbone-Rahmen) ist nicht
+      // fokussierbar und soll deshalb ausdrücklich keine Gruppe sein.
+      if ((await wrapper.getAttribute('role')) !== 'group') {
+        await expect(wrapper).not.toHaveAttribute('aria-roledescription', 'Bauteil');
+        continue;
+      }
+      gruppen += 1;
+      await expect(wrapper, `Knoten ${index} ohne lokale Rollenbeschreibung`).toHaveAttribute(
+        'aria-roledescription',
+        'Bauteil'
+      );
+      const name = await wrapper.getAttribute('aria-label');
+      expect((name ?? '').trim(), `Knoten ${index} ohne Accessible Name`).not.toBe('');
+      // aria-selected kennt die Rolle group nicht; der Zustand sitzt im Namen.
+      await expect(wrapper).not.toHaveAttribute('aria-selected');
+      // Genau ein Group-Element je Bauteil: in der Karte darf keine zweite stecken.
+      expect(await wrapper.locator('[role="group"]').count(), `Knoten ${index} mit zweiter Gruppe`).toBe(0);
+      const karte = wrapper.locator('.node-card');
+      if ((await karte.count()) > 0) {
+        await expect(karte.first()).not.toHaveAttribute('role');
+        await expect(karte.first()).not.toHaveAttribute('aria-label');
+      }
+    }
+    expect(gruppen, 'mindestens ein Bauteil muss eine Gruppe sein').toBeGreaterThan(0);
+  });
+
+  test('§3.6: Tastaturauswahl kündigt den Zustand im Namen an', async ({ page }) => {
+    await openExampleCanvas(page);
+    const alle = page.locator('.react-flow__node');
+    const anzahl = await alle.count();
+    // Gesucht wird ein Bauteil, das **nicht** schon ausgewählt ist — sonst
+    // bewiese der Test nichts.
+    let ziel = null;
+    for (let index = 0; index < anzahl; index += 1) {
+      const kandidat = alle.nth(index);
+      if ((await kandidat.getAttribute('role')) !== 'group') continue;
+      if (!(await kandidat.getAttribute('aria-label'))?.includes('ausgewählt')) {
+        ziel = kandidat;
+        break;
+      }
+    }
+    expect(ziel, 'mindestens ein Bauteil ist unausgewählt').not.toBeNull();
+    await ziel!.focus();
+    await page.keyboard.press('Enter');
+    await expect(ziel!).toHaveAttribute('aria-label', /ausgewählt/);
+    await expect(ziel!).not.toHaveAttribute('aria-selected');
+  });
+
   test('nicht verbindbare interne Handles sind keine Tastatur- oder Screenreader-Stopps', async ({
     page,
   }) => {

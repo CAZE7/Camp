@@ -295,18 +295,13 @@
   --de-focus-dim: 0.28;
   --de-domain-dim: 0.15;
 
-  /* Legacy Mapping — bestehende Tokens zeigen auf DE für perfekte Migration */
-  --wire-dc: var(--de-wire-dc-12v-plus);
-  --wire-dc-minus: var(--de-wire-dc-12v-minus);
-  --wire-ac: var(--de-wire-ac-l);
-  --wire-solar: var(--de-wire-solar);
-  --pipe-fresh: var(--de-pipe-fresh);
-  --pipe-gray: var(--de-pipe-gray);
-  --canvas-grid: var(--de-canvas-grid);
-  --edge-glow: var(--de-edge-glow);
-  --ok: var(--de-ok);
-  --warn: var(--de-warn);
-  --error: var(--de-error);
+  /* Legacy Mapping — entfernt am 03.11.2026 (AP-2).
+     Diese Zeilen lagen unlayered und gewannen damit gegen `@layer base` in
+     globals.css — unabhängig von der Reihenfolge. Die betroffenen Rollen
+     (--wire-*, --pipe-*, --canvas-grid, --edge-glow, --ok/--warn/--error)
+     stehen jetzt als gemessene Werte in globals.css `.dark`; ein zweites
+     Literal pro Rolle wäre wieder dieselbe Zweiquelle. Die de-* Palette
+     bleibt unverändert Quelle der Planer-Klassen (.de-node-card, .cad-*). */
 }
 
 /* ---- 6. TYPOGRAFIE-UTILITIES ------------------------------------------- */

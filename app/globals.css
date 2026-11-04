@@ -41,6 +41,13 @@
        Magazinreferenz. Die Ingenieurs-App behält --oxide als Hauptakzent. */
     --surface-hover: #e7eaed; /* Hover/Active auf Panel */
 
+    /* Flächenrollen — zwei getrennte Rollen, auch wenn sie in hell denselben
+       Grund haben: außen die Seite mit Chrome und Panels, innen die technische
+       Zeichenfläche. In dunkel trennt #131518 (Seite) und #0e1114 (Zeichnung);
+       die Trennung ist Absicht und trägt die Hierarchie des Zeichenblatts. */
+    --surface-page: var(--surface-canvas);
+    --surface-drawing: var(--surface-canvas);
+
     /* Linien — das 1-px-Raster */
     --rule: #d3d7db;
     --rule-strong: #b4bac1;
@@ -138,7 +145,7 @@
     /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
        Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
        überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
-    --canvas-bg: var(--surface-canvas);
+    --canvas-bg: var(--surface-drawing);
     --canvas-grid: #a8aeb5;
     --canvas-dim: 0.32;
     --canvas-domain-dim: 0.18;
@@ -270,6 +277,10 @@
     --surface-raised: #212529;
     --surface-hover: #23282d;
 
+    /* Zeichenfläche ist die dunklere der beiden Flächen (siehe :root). */
+    --surface-page: var(--surface-canvas);
+    --surface-drawing: var(--de-surface-0);
+
     /* Linien */
     --rule: #2c3136;
     --rule-strong: #3d434a;
@@ -282,10 +293,13 @@
     --text-med: #a6adb3;
     --text-low: #8b939a;
 
-    /* Semantik */
+    /* Semantik — gemessene Computed Values des gebauten Produkts vom
+       03.11.2026. Vorher stand hier ein zweites Literal pro Rolle
+       (--error: #f26b60), das von der Legacy-Map in dark-engineering.css
+       überdeckt wurde und nie renderte. Die Werte sind jetzt die Quelle. */
     --ok: #6fcf97;
     --warn: #e5b45b;
-    --error: #f26b60;
+    --error: #ff7a7a;
 
     /* Designkonzept 2026-11 (P1): in dunkel ist die Bildkante weiß.
        Bewegung ist themenunabhängig, wird aber gespiegelt, damit der
@@ -323,25 +337,26 @@
     --soot: #101214;
 
     /* Canvas & Leitungen: Signal-Farben bleiben Signalfarben — auf dunklem
-       Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten. */
-    --canvas-bg: var(--surface-canvas);
-    --canvas-grid: #3d434a;
+       Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten.
+       Werte = gemessen gerendert (03.11.2026); die überholten Duplikate
+       (#f87171, #cbd5e1, #7aa2f7, #fbbf24, #3d434a) sind entfernt. */
+    --canvas-bg: var(--surface-drawing);
+    --canvas-grid: #1f262e;
     --canvas-dim: 0.5;
     --canvas-domain-dim: 0.3;
     --canvas-minimap-mask: rgba(0, 0, 0, 0.55);
-    --edge-glow: rgba(0, 0, 0, 0.6);
+    --edge-glow: rgba(226, 168, 106, 0.35);
     --scrim: rgba(0, 0, 0, 0.65);
     --scrim-soft: rgba(0, 0, 0, 0.5);
     --on-signal: #131518; /* Text AUF gesättigter Signalfarbe (dunkel: hell → dunkler Text) */
-    --wire-dc: #f87171;
-    --wire-dc-minus: #cbd5e1;
-    --wire-ac: #7aa2f7;
-    --wire-solar: #fbbf24;
+    --wire-dc: #ff6b6b; /* Gleichstrom Plus auf dunklem Grund */
+    --wire-dc-minus: #8e9aaf;
+    --wire-ac: #6aa6ff;
+    --wire-solar: #ffc857;
     --wire-selected: var(--text-high);
-    --wire-error-bg: rgba(242, 107, 96, 0.14);
 
-    --pipe-fresh: #60a5fa;
-    --pipe-gray: #94a3b8;
+    --pipe-fresh: #5ac8fa;
+    --pipe-gray: #9aa0a6;
 
     --warn-critical-bg: rgba(242, 107, 96, 0.12);
     --warn-critical-border: rgba(242, 107, 96, 0.4);
@@ -366,15 +381,15 @@
     --text-low-rgb: 139 147 154;
     --ok-rgb: 111 207 151;
     --warn-rgb: 229 180 91;
-    --error-rgb: 242 107 96;
+    --error-rgb: 255 122 122;
     --soot-rgb: 16 18 20;
     --on-signal-rgb: 19 21 24;
-    --wire-dc-rgb: 248 113 113;
-    --wire-dc-minus-rgb: 203 213 225;
-    --wire-ac-rgb: 122 162 247;
-    --wire-solar-rgb: 251 191 36;
-    --pipe-fresh-rgb: 96 165 250;
-    --pipe-gray-rgb: 148 163 184;
+    --wire-dc-rgb: 255 107 107;
+    --wire-dc-minus-rgb: 142 154 175;
+    --wire-ac-rgb: 106 166 255;
+    --wire-solar-rgb: 255 200 87;
+    --pipe-fresh-rgb: 90 200 250;
+    --pipe-gray-rgb: 154 160 166;
     --warn-info-rgb: var(--text-med-rgb);
     /* Aliase, die in dunkel einen anderen Ursprung haben als in hell —
        sie spiegeln die Overrides oben (primar/destruktiv-fläche dunkler,

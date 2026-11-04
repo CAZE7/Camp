@@ -28,7 +28,14 @@ type MockReactFlowProps = {
 };
 type MockControlsProps = { showInteractive?: boolean };
 /** Nodes, die der Canvas zuletzt an React Flow übergeben hat (Identität). */
-type CapturedNode = { id: string; type?: string; data?: Record<string, unknown> };
+type CapturedNode = {
+  id: string;
+  type?: string;
+  data?: Record<string, unknown>;
+  position?: { x: number; y: number };
+  ariaLabel?: string;
+  domAttributes?: Record<string, string>;
+};
 let lastNodesProp: CapturedNode[] = [];
 /** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
 type DragEventish = MouseEvent & {
@@ -205,6 +212,21 @@ const defaultPlannerStoreState = {
   calculatePathVoltageDrop: vi.fn(() => 0),
 } as unknown as PlannerState;
 
+/**
+ * §3.6 legt an jedem Knoten `ariaLabel` und `domAttributes` ab. Die
+ * Durchreich-Tests vergleichen deshalb den Rest der Knoten gegen den Store und
+ * prüfen die ARIA-Felder getrennt — sonst wäre jede Benennung ein angeblicher
+ * Durchreich-Fehler.
+ */
+type KnotenAttr = { ariaLabel?: string; domAttributes?: Record<string, string> };
+type KnotenRoh = KnotenAttr & Record<string, unknown>;
+const ohneBauteilAria = (roh: string | null) =>
+  (JSON.parse(roh ?? '[]') as KnotenRoh[]).map(({ ariaLabel: _, domAttributes: __, ...rest }) => rest);
+const jedeBauteilRolle = (roh: string | null) =>
+  (JSON.parse(roh ?? '[]') as KnotenAttr[]).every(
+    (knoten) => knoten.domAttributes?.['aria-roledescription'] === 'Bauteil' && !!knoten.ariaLabel
+  );
+
 vi.mock('../../store/usePlannerStore', () => ({
   // AUDIT T1: Der Selektor war implizit `any` — Rückgabe und Aufruf damit auch.
   usePlannerStore: vi.fn((selector: (state: PlannerState) => unknown) => {
@@ -265,9 +287,16 @@ describe('FlowCanvas', () => {
 
     const passedComponents = lastNodesProp.filter((node) => node.id !== '__planner-backbone-group');
     expect(passedComponents).toHaveLength(2);
-    // Identität, nicht Gleichheit: dieselben Objekte wie im Store.
-    expect(passedComponents[0]).toBe(coreNodes[0]);
-    expect(passedComponents[1]).toBe(coreNodes[1]);
+    // §3.6 legt Name und Rollenbeschreibung am Knoten ab. Das ist eine flache
+    // Kopie, kein Neubau: Datenobjekt und Position bleiben **dieselben
+    // Referenzen** wie im Store. Die Objektidentität selbst kann nicht mehr
+    // gelten — dass ein zweiter Durchlauf über denselben, bereits benannten
+    // Knoten wieder dasselbe Objekt liefert, prüft bauteilAria.test.ts.
+    expect(passedComponents[0]?.data).toBe(coreNodes[0]?.data);
+    expect(passedComponents[0]?.position).toBe(coreNodes[0]?.position);
+    expect(passedComponents[0]?.ariaLabel).toContain('Batterie');
+    expect(passedComponents[0]?.domAttributes?.['aria-roledescription']).toBe('Bauteil');
+    expect(passedComponents[1]?.ariaLabel).toContain('Batteriemonitor');
   });
 
   it('renders domain filter chips in electric mode', () => {
@@ -407,8 +436,13 @@ describe('FlowCanvas', () => {
     render(<FlowCanvas />);
     const reactFlowElement = screen.getByTestId('react-flow-mock');
 
-    // In electric mode, nodes and edges should correspond to defaultPlannerStoreState.nodes/edges
-    expect(reactFlowElement.getAttribute('data-nodes')).toBe(JSON.stringify(defaultPlannerStoreState.nodes));
+    // In electric mode, nodes and edges should correspond to defaultPlannerStoreState.nodes/edges.
+    // §3.6 ergänzt am Knoten Name und Rollenbeschreibung; verglichen wird der
+    // Rest — der muss unverändert durchgereicht werden.
+    expect(ohneBauteilAria(reactFlowElement.getAttribute('data-nodes'))).toEqual(
+      defaultPlannerStoreState.nodes
+    );
+    expect(jedeBauteilRolle(reactFlowElement.getAttribute('data-nodes'))).toBe(true);
     expect(reactFlowElement.getAttribute('data-edges')).toBe(JSON.stringify(defaultPlannerStoreState.edges));
   });
 
@@ -424,10 +458,12 @@ describe('FlowCanvas', () => {
     render(<FlowCanvas />);
     const reactFlowElement = screen.getByTestId('react-flow-mock');
 
-    // In water mode, nodes and edges should correspond to defaultPlannerStoreState.waterNodes/waterEdges
-    expect(reactFlowElement.getAttribute('data-nodes')).toBe(
-      JSON.stringify(defaultPlannerStoreState.waterNodes)
+    // In water mode, nodes and edges should correspond to defaultPlannerStoreState.waterNodes/waterEdges.
+    // §3.6: Name und Rollenbeschreibung kommen additiv dazu, der Rest bleibt.
+    expect(ohneBauteilAria(reactFlowElement.getAttribute('data-nodes'))).toEqual(
+      defaultPlannerStoreState.waterNodes
     );
+    expect(jedeBauteilRolle(reactFlowElement.getAttribute('data-nodes'))).toBe(true);
     expect(reactFlowElement.getAttribute('data-edges')).toBe(
       JSON.stringify(defaultPlannerStoreState.waterEdges)
     );

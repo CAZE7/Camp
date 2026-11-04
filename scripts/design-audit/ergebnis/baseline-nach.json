@@ -1,0 +1,2358 @@
+{
+ "erfasst": "2026-11-04T07:22:21.271Z",
+ "bezug": "AP-2 Messlauf",
+ "vorlagen": {
+  "minimalist": {
+   "verdict": "COMPLIANT",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 11,
+    "checks": 29,
+    "exercised": 18,
+    "notApplicable": 11,
+    "passed": 18,
+    "failed": 0,
+    "unprovable": 0,
+    "decisionRatio": 1
+   },
+   "certificateHash": "b4beed8472825f95",
+   "planFingerprintHash": "30750a6cd65941cb",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "violated": 0,
+    "incomplete": 0,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 6,
+   "kanten": 5,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 7,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-006-conduit-fill",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-004-two-pole-switching",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "kastenwagen": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 9,
+    "checks": 29,
+    "exercised": 20,
+    "notApplicable": 9,
+    "passed": 19,
+    "failed": 0,
+    "unprovable": 1,
+    "decisionRatio": 0.95
+   },
+   "certificateHash": "5a163c9a0c4eed11",
+   "planFingerprintHash": "c19deaeed073dc73",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 1,
+    "violated": 0,
+    "incomplete": 1,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 13,
+   "kanten": 13,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 13,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 11,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 12,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 1
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-004-two-pole-switching",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "autark": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 7,
+    "checks": 29,
+    "exercised": 22,
+    "notApplicable": 7,
+    "passed": 21,
+    "failed": 0,
+    "unprovable": 1,
+    "decisionRatio": 0.9545454545454546
+   },
+   "certificateHash": "1005b7026dc3ce39",
+   "planFingerprintHash": "29b02f672c7f736e",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 1,
+    "violated": 0,
+    "incomplete": 1,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 14,
+   "kanten": 14,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 12,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 12,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 2,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "UNPROVABLE",
+       "entities": 2,
+       "events": 1
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-002-island-fault-loop",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  }
+ },
+ "knownPlans": {
+  "acdc.json": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 19,
+    "checks": 29,
+    "exercised": 10,
+    "notApplicable": 19,
+    "passed": 3,
+    "failed": 0,
+    "unprovable": 7,
+    "decisionRatio": 0.3
+   },
+   "certificateHash": "845ae097e278e59c",
+   "planFingerprintHash": "3882245086be3769",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 4,
+    "violated": 0,
+    "incomplete": 4,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 6,
+   "kanten": 0,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 2,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 2
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 1
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-001-ib-in-iz",
+    "AMP-002-i2-vs-iz",
+    "AMP-003-source-protection-position",
+    "AMP-004-breaking-capacity",
+    "AMP-005-selectivity",
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop",
+    "TOPO-005-fluid-electrical-bridge",
+    "VDR-001-voltage-drop-edge",
+    "VDR-002-voltage-drop-path"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "camper.json": {
+   "verdict": "COMPLIANT",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 11,
+    "checks": 29,
+    "exercised": 18,
+    "notApplicable": 11,
+    "passed": 18,
+    "failed": 0,
+    "unprovable": 0,
+    "decisionRatio": 1
+   },
+   "certificateHash": "b4beed8472825f95",
+   "planFingerprintHash": "30750a6cd65941cb",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "violated": 0,
+    "incomplete": 0,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 6,
+   "kanten": 5,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 6,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 7,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-006-conduit-fill",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-004-two-pole-switching",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "complex.json": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 7,
+    "checks": 29,
+    "exercised": 22,
+    "notApplicable": 7,
+    "passed": 21,
+    "failed": 0,
+    "unprovable": 1,
+    "decisionRatio": 0.9545454545454546
+   },
+   "certificateHash": "1005b7026dc3ce39",
+   "planFingerprintHash": "29b02f672c7f736e",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 1,
+    "violated": 0,
+    "incomplete": 1,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 14,
+   "kanten": 14,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 14,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 12,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 12,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 5,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 3,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 2,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "UNPROVABLE",
+       "entities": 2,
+       "events": 1
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-002-island-fault-loop",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "inverter.json": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 21,
+    "checks": 29,
+    "exercised": 8,
+    "notApplicable": 21,
+    "passed": 3,
+    "failed": 0,
+    "unprovable": 5,
+    "decisionRatio": 0.375
+   },
+   "certificateHash": "f0cd27bf004058e0",
+   "planFingerprintHash": "3f7cdd4f854eb914",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 2,
+    "violated": 0,
+    "incomplete": 2,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 4,
+   "kanten": 0,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 2
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-001-ib-in-iz",
+    "AMP-002-i2-vs-iz",
+    "AMP-003-source-protection-position",
+    "AMP-004-breaking-capacity",
+    "AMP-005-selectivity",
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-004-two-pole-switching",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop",
+    "TOPO-005-fluid-electrical-bridge",
+    "VDR-001-voltage-drop-edge",
+    "VDR-002-voltage-drop-path"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "simple.json": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 21,
+    "checks": 29,
+    "exercised": 8,
+    "notApplicable": 21,
+    "passed": 3,
+    "failed": 0,
+    "unprovable": 5,
+    "decisionRatio": 0.375
+   },
+   "certificateHash": "f0cd27bf004058e0",
+   "planFingerprintHash": "815423f4e1684067",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 2,
+    "violated": 0,
+    "incomplete": 2,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 4,
+   "kanten": 0,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 1,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 2
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-001-ib-in-iz",
+    "AMP-002-i2-vs-iz",
+    "AMP-003-source-protection-position",
+    "AMP-004-breaking-capacity",
+    "AMP-005-selectivity",
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-004-two-pole-switching",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop",
+    "TOPO-005-fluid-electrical-bridge",
+    "VDR-001-voltage-drop-edge",
+    "VDR-002-voltage-drop-path"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  },
+  "solar.json": {
+   "verdict": "INCOMPLETE",
+   "coverage": {
+    "rulesApplied": 29,
+    "rulesSkipped": 21,
+    "checks": 29,
+    "exercised": 8,
+    "notApplicable": 21,
+    "passed": 3,
+    "failed": 0,
+    "unprovable": 5,
+    "decisionRatio": 0.375
+   },
+   "certificateHash": "fbf0bc721be58eb9",
+   "planFingerprintHash": "e570f30a9a3b68fd",
+   "stateCounts": {
+    "critical": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 1,
+    "violated": 0,
+    "incomplete": 1,
+    "satisfied": 0,
+    "not_applicable": 0
+   },
+   "knoten": 4,
+   "kanten": 0,
+   "passes": [
+    {
+     "pass": 1,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "SYN-001-dangling-endpoint",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "SYN-002-unmodeled-component",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-003-unknown-port",
+       "status": "PASS",
+       "entities": 4,
+       "events": 0
+      },
+      {
+       "ruleId": "SYN-004-domain-crossing",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      }
+     ]
+    },
+    {
+     "pass": 2,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "DOM-001-polarity-cross",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "DOM-002-positive-to-reference",
+       "status": "UNPROVABLE",
+       "entities": 0,
+       "events": 1
+      },
+      {
+       "ruleId": "TOPO-001-short-path",
+       "status": "PASS",
+       "entities": 2,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-002-shunt-direct-bypass",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-003-shunt-cut",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-004-ground-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "TOPO-005-fluid-electrical-bridge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 3,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "AMP-001-ib-in-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-002-i2-vs-iz",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-003-source-protection-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-004-breaking-capacity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-005-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "AMP-006-conduit-fill",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 4,
+     "status": "UNPROVABLE",
+     "checks": [
+      {
+       "ruleId": "PWR-001-energy-balance",
+       "status": "UNPROVABLE",
+       "entities": 1,
+       "events": 1
+      },
+      {
+       "ruleId": "VDR-001-voltage-drop-edge",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "VDR-002-voltage-drop-path",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    },
+    {
+     "pass": 5,
+     "status": "PASS",
+     "checks": [
+      {
+       "ruleId": "GND-001-chassis-bond-cross-section",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-001-pen-forbidden",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "NET-002-island-fault-loop",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-001-rcd-deviation",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-002-rcd-type",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-003-rcd-position",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-004-two-pole-switching",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-005-loop-impedance",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      },
+      {
+       "ruleId": "RCD-006-rcd-selectivity",
+       "status": "PASS",
+       "entities": 0,
+       "events": 0
+      }
+     ]
+    }
+   ],
+   "skippedRules": [
+    "AMP-001-ib-in-iz",
+    "AMP-002-i2-vs-iz",
+    "AMP-003-source-protection-position",
+    "AMP-004-breaking-capacity",
+    "AMP-005-selectivity",
+    "AMP-006-conduit-fill",
+    "GND-001-chassis-bond-cross-section",
+    "NET-001-pen-forbidden",
+    "NET-002-island-fault-loop",
+    "RCD-001-rcd-deviation",
+    "RCD-002-rcd-type",
+    "RCD-003-rcd-position",
+    "RCD-004-two-pole-switching",
+    "RCD-005-loop-impedance",
+    "RCD-006-rcd-selectivity",
+    "TOPO-002-shunt-direct-bypass",
+    "TOPO-003-shunt-cut",
+    "TOPO-004-ground-loop",
+    "TOPO-005-fluid-electrical-bridge",
+    "VDR-001-voltage-drop-edge",
+    "VDR-002-voltage-drop-path"
+   ],
+   "limitations": [
+    "Das Modell ist EINLEITERIG: L/N/PE bzw. Plus/Minus sind als je eine Kante abgebildet, nicht als getrennte Leiter. Aussag",
+    "Die zulässige Strombelastbarkeit der Leitung stammt aus der Tabellenbasis des Planers (Verlegeart B2, 30 °C Referenz, PV",
+    "Kurzschlussströme sind Schätzungen aus Batterie-Innenwiderstand (Chemie oder Datenblatt), reiner Parallelschaltung und 2",
+    "Selektivität ohne Durchlassenergie-Daten beider Geräte ist eine Verhältnis-Heuristik (mindestens 1,6:1 für Sicherungen a",
+    "Peukert-Exponenten und Entladetiefen sind Chemie-Faustwerte (UNVERIFIED) bzw. Datenblattfelder; BMS-Abschaltungen und Te",
+    "Wärmetechnische Rückwirkungen (Kabelbündel im Kanal, Umgebung über 60 °C, Motorraum) sind über die Umgebungstemperatur u",
+    "Umgebungstemperatur 30 °C, Isolierstoff PVC, Häufung 1 Stromkreis(e) — Vorgabe des Laufs, nicht je Kabel gemessen.",
+    "Spannungsfall mit Leiter-Betriebstemperatur 70 °C (konservativ gegen den kalten 20-°C-Wert der Dimensionierung).",
+    "Regeln ohne Eingabe im Plan (nicht geprüft, weil ihr Gegenstand fehlt): TOPO-002-shunt-direct-bypass, TOPO-003-shunt-cut"
+   ]
+  }
+ }
+}

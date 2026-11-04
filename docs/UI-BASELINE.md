@@ -186,6 +186,29 @@ Miniaturübersicht), `route-planung-light-touch-pixel5` (5 × 5 px) und
 39–109). Die bestehenden PNGs bleiben dort die Review-Referenz. Vorher/Nachher-Bilder
 stehen im PR-Kommentar.
 
+**Zeichenflächen-Änderung ohne Bildwirkung (2026-11-04, Spezifikation §3.4)** —
+auf der Zeichenfläche ist etwas sichtbar Neues passiert: eine Leitung bei
+verletztem Spannungsfall behält ihre Domänenfarbe (der Zustand sitzt nur noch im
+Strichmuster `8 6`), und der Engstellen-Halo ist neutral in `--text-high` statt
+in `--oxide`. **Kein Baseline-Refresh wurde durchgeführt**, und zwar nicht aus
+Nachlässigkeit: die bestehenden Bilder können die Änderung nicht zeigen.
+`tests/e2e/visual.spec.ts` vergleicht den **Erstbesuch**, und über der
+Zeichenfläche liegt der `planner-dialog-backdrop` (Befund B26, Spezifikation
+§3.5). Hinzu kommt: keine der sechs erfassten Routen hat eine Leitung im
+fehlerhaften Zustand, und die Routing-Ausnahmen (`routeInvalid`, `routeTight`)
+erscheinen nur an ungünstig gerouteten Plänen.
+
+Nachzuholen ist das mit einem zweiten Baselinesatz im **bedienten Zustand**
+(Onboarding zu, Plan geladen, beide Themen, mindestens ein Plan mit tatsächlich
+gerendertem kritischen Warnzustand) — vorgesehen für AP-6.
+
+Auflage aus §3.4 Punkt 3, die bei **jedem** visuellen Vergleich der
+Zeichenfläche mitzubetrachten ist: die Backbone-Gruppen zeichnen ihre
+gestrichelte Umrandung in Oxid — dieselbe Farbe, die der Engstellen-Halo bis
+2026-11-04 hatte. Ein Diff, der Oxid-Pixel in der Zeichenfläche bewegt, trifft
+heute drei Stellen: Backbone-Umrandung, Routing-Halo (`--error`) und Selektions-
+Glow. Welche gemeint ist, ergibt sich aus dem Bild allein nicht.
+
 ## 5. Lokale Nicht-Pixel-Gates
 
 Auch ohne Playwright-Browser schützen diese schnellen Checks die Baseline:
