@@ -12,7 +12,10 @@ import {
   serializeJsonLd,
   webApplicationNode,
   webPageNode,
+  type JsonLdNode,
 } from '@/lib/seo/jsonLd';
+import { siteUrl } from '@/lib/site';
+import { freigegebeneBilder, bildZuSchemaKnoten } from '@/lib/seo/bildSitemap';
 import { topicOf } from '@/lib/seo/topics';
 import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
@@ -32,13 +35,17 @@ import { RichText } from './RichText';
  */
 
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
-export function jsonLdFor(page: SeoPageContent) {
+export function jsonLdFor(page: SeoPageContent, extraNodes: readonly JsonLdNode[] = []) {
   const breadcrumb = breadcrumbsFor(page);
   const pageId = pageNodeId(page.path, 'webpage');
   const hasCalculator = page.sections.some((section) => section.calculator !== undefined);
   const calculatorId = page.sections.find((section) => section.calculator)?.calculator;
 
   const faqEntries = page.faq ?? [];
+  // Dieselbe Liste wie die Bild-Sitemap. Mit leerer Liste bleibt der Graph
+  // bitidentisch zum vorherigen Stand — kein Bild wird erfunden.
+  const bilder = freigegebeneBilder().filter((bild) => bild.seite === page.path);
+  const bildKnoten = bilder.map((bild) => bildZuSchemaKnoten(bild, siteUrl(bild.pfad)));
 
   return jsonLdGraph([
     webPageNode({
@@ -47,9 +54,13 @@ export function jsonLdFor(page: SeoPageContent) {
       description: page.description,
       breadcrumbId: pageNodeId(page.path, 'breadcrumb'),
       mainEntityId: hasCalculator ? pageNodeId(page.path, 'webapplication') : undefined,
+      ...(bildKnoten.length > 0 ? { images: bildKnoten } : {}),
       hasPartIds: [
         ...(faqEntries.length > 0 ? [pageNodeId(page.path, 'faq')] : []),
         pageNodeId(page.path, 'breadcrumb'),
+        ...(extraNodes.some((node) => node['@type'] === 'ItemList')
+          ? [pageNodeId(page.path, 'itemlist')]
+          : []),
       ],
     }),
     breadcrumbNode({ path: page.path, items: breadcrumb }),
@@ -71,6 +82,7 @@ export function jsonLdFor(page: SeoPageContent) {
         ]
       : []),
     ...(faqEntries.length > 0 ? [faqNode({ path: page.path, entries: faqEntries, pageId })] : []),
+    ...extraNodes,
   ]);
 }
 
@@ -78,6 +90,7 @@ export function SeoPage({
   page,
   children,
   afterHeader,
+  extraJsonLdNodes,
 }: {
   page: SeoPageContent;
   /** Zusätzlicher Inhalt zwischen Abschnitten und Fragen (z. B. Themenverzeichnis). */
@@ -85,11 +98,16 @@ export function SeoPage({
   /**
    * Inhalt direkt unter der Kopfzeile (Überschrift und Einleitung) und VOR den
    * Abschnitten — gedacht für den Schnellzugriff auf die Einzelrechner
-   * (`RechnerLeiste`). Bewusst ein eigener Slot und nicht Teil der Abschnitte:
-   * Die Reihenfolge „was ist das hier zuerst, was kann ich hier rechnen" ist
-   * eine Layout-, keine Inhaltsentscheidung.
+   * (`RechnerLeiste`) und für die Scan-Schicht einer Vergleichsseite
+   * (`LadeboosterVergleich`: Rangliste zuerst, Ratgeber darunter). Bewusst ein
+   * eigener Slot und nicht Teil der Abschnitte: Die Reihenfolge „was ist das
+   * hier zuerst, was kann ich hier rechnen bzw. vergleichen" ist eine Layout-,
+   * keine Inhaltsentscheidung. `children` bleibt der Platz für Nachträge HINTER
+   * den Abschnitten.
    */
   afterHeader?: React.ReactNode;
+  /** Seitenspezifische Knoten (z. B. die Rangliste des Ladebooster-Vergleichs). */
+  extraJsonLdNodes?: readonly JsonLdNode[];
 }) {
   const breadcrumb = breadcrumbsFor(page);
   const topic = topicOf(page.topicId);
@@ -100,7 +118,7 @@ export function SeoPage({
     <PageShell variant="article" breadcrumbs={breadcrumb}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLdFor(page)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLdFor(page, extraJsonLdNodes)) }}
       />
       <div className="container-page space-y-14">
         {/* Kopf mit Einordnung: Thema, eine H1, die Einleitung darunter. Die

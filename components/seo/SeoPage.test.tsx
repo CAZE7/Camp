@@ -71,4 +71,18 @@ describe('SeoPage', () => {
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent('Prüfseite');
   });
+
+  /**
+   * Reihenfolge-Vertrag aus der Agenten-Sitzung „Ladebooster Vergleichsplan":
+   * Die Scan-Schicht muss VOR den Ratgeber-Abschnitten stehen, Nachträge
+   * (`children`) danach. Sonst rutscht der Vergleich wieder ans Seitenende.
+   */
+  it('rendert afterHeader vor den Abschnitten und children danach', () => {
+    render(<SeoPage page={SEITE} afterHeader={<p>Vergleich zuerst</p>} children={<p>Ratgeber danach</p>} />);
+
+    const text = document.body.textContent ?? '';
+    const abschnitt = text.indexOf('Spannungsfall je Querschnitt');
+    expect(text.indexOf('Vergleich zuerst')).toBeLessThan(abschnitt);
+    expect(text.indexOf('Ratgeber danach')).toBeGreaterThan(abschnitt);
+  });
 });

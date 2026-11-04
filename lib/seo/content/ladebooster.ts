@@ -10,10 +10,12 @@
  *      beim Import aus `lib/cableSizing.ts` GERECHNET, nicht getippt. Eine
  *      Themenseite, die andere Zahlen zeigt als der Rechner daneben, wäre
  *      schlimmer als keine Tabelle.
- *   2. Kein Markenvergleich. Die Seite nennt Bauformen, Ströme und
- *      Anschlussbedingungen; Produktdaten (Wirkungsgrad eines konkreten
- *      Geräts, Kabelquerschnitt der Herstellerempfehlung) stammen aus
- *      Datenblättern und stehen nicht im Modell.
+ *   2. Diese Datendatei beschreibt NUR den Rechenteil: Bauformen, Ströme und
+ *      Anschlussbedingungen, ohne Produktnamen. Der Vergleichsblock, den
+ *      `app/camper-elektrik/[slug]/page.tsx` zusätzlich einhängt, nennt sehr
+ *      wohl neun Marken mit Preis-Momentaufnahmen. Beide Teile bleiben
+ *      getrennt: Die Werte hier kommen aus `lib/cableSizing.ts`, die
+ *      Produktdaten dort aus Datenblättern und stehen nicht im Modell.
  */
 
 import { sizeCable } from '@/lib/cableSizing';

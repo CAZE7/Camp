@@ -3374,6 +3374,243 @@ die Routing-Stufe bleibt byte-gleich. Anlass:
   AMP-004-Zweigsicherungen, 24/48-V-Spannungsfallbudget in der Anzeige,
   Serien-/Parallel-Solarstrom auf der Panel-Seite und AC-Durchgangsmodell.
 
+## LEDGER 2026-11-03 (14) — P4: Gates, Baselines, Bild-Sitemap
+
+**Visuelle Baselines bewusst erneuert.** Die 22 auf `main` (`e0c2cfc`) bereits
+freigegebenen Pixel-Baselines wurden übernommen, nicht mit dem in der Sandbox
+verfügbaren Lambda-Chromium neu erzeugt. `visual.spec.ts` und
+`visual-de-pixel.spec.ts` sind damit **76/76 grün**; die 17 zuvor roten
+Screenshot-Vergleiche sind erledigt.
+
+**Lighthouse-Budget M11-5.** Neu `scripts/ci/lighthouseGate.ts`: prüft den
+gebauten Export über einen gzip-Server (wie GitHub Pages) gegen `BUDGETS` für
+Performance, A11y, Best Practices, SEO, LCP und CLS. `pruefeBudgets()` ist rein
+und ohne Browser in `scripts/ci/lighthouseGate.test.ts` getestet; ein fehlendes
+Audit gilt als Verstoß, nicht als Bestehen. `npm run perf:lighthouse` ist lokal
+ein hartes Gate und hier grün (Vergleich 99/100/100/100, LCP 1,5 s, CLS 0).
+In `quality.yml` läuft der Schritt als Berichtsgate im nicht-blockierenden
+Visual-Job; `docs/ci/workflows/quality.yml` bleibt 1:1 synchron. Das höhere
+CLS-Limit für die Startseite (0,25) steht ausdrücklich im Budget und
+beschönigt den vorbestehenden Font-Swap nicht.
+
+**Bild-Sitemap und ImageObject.** Neu `lib/seo/bildSitemap.ts`: die EINE Liste
+auslieferbarer Bilder, leer bis eigene Fotos mit geklärten Rechten vorliegen.
+`app/sitemap.ts` schreibt `images`, `webPageNode()` verschachtelte
+`ImageObject`-Knoten aus derselben Liste. Verschachtelt statt als Top-Level-
+Knoten, weil `json-ld-inventar` je Typ genau einen Knoten erwartet und eine
+Seite mehrere Bilder haben kann. `og:image:alt`/`twitter:image:alt` waren
+bereits Teil der Exportprüfung. 19 neue Tests sichern die Regeln; ohne
+freigegebene Bilder bleibt die Sitemap bitidentisch zum vorherigen Stand.
+
+**Invarianten:** Keine KI-Platzhalter in der Auslieferung, keine erfundenen
+Bild-Adressen, keine Änderung an Routing, Electrical oder Rechner-Formel.
+`npm run check`, `npm run build`, `npm run seo:audit` und die visuellen Specs
+grün. Offen bleiben die eigenen Fotos (P2), Ads-/Search-Console-Setup, die
+vorbestehende CLS der Startseite und global ungenutztes CSS/JS. Kein
+Ranking-/CPA-Versprechen.
+
+## LEDGER 2026-11-03 (13) — Browser-Verifikation nachgeholt
+
+**Anlass:** Der Betreiber hat verlangt, die nötigen Werkzeuge selbst zu
+beschaffen und alles im Browser zu prüfen. `cdn.playwright.dev` und
+`storage.googleapis.com` sind blockiert; ein Chromium 153 (headless shell)
+wurde daher aus dem npm-Paket `@sparticuz/chromium` geholt, mit den
+mitgelieferten NSS-Libs, Fonts und `LD_LIBRARY_PATH`/`FONTCONFIG_PATH`
+lauffähig gemacht und über den vorhandenen Haken
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` in Playwright 1.63 eingebunden.
+Lighthouse 13.6 kam ebenfalls aus dem npm-Registry.
+
+**Gates:** `npm run check` (298 Testdateien), `npm run build`,
+`npm run seo:audit` grün. Komplette E2E-Suite über vier Projekte:
+**420 bestanden, 259 übersprungen, 17 Fehler** — ausschließlich
+`toHaveScreenshot`. Kein einziger Funktions-, A11y-, No-JS- oder
+Responsive-Fehler. axe (inkl. Vergleich hell/dunkel), No-JS und
+`prefers-reduced-motion` grün.
+
+**Lighthouse (mit gzip, wie GitHub Pages):** Vergleichsseite **Perf 99,
+A11y 100, Best Practices 100, SEO 100**, LCP 1,5 s, CLS 0, TBT 70 ms.
+Startseite Perf 90 / LCP 1,2 s, aber simulierte CLS 0,194 — ein
+vorbestehender Font-Swap in der Kopfzeile, ungedrosselt lokal CLS 0.
+
+**Eigene Messreihe:** 375/768/1440 × hell/dunkel, kein horizontaler Overflow,
+9 Karten + 9 Zeilen je Lauf, eine H1, keine doppelten IDs, keine
+Konsolenfehler. Filter wirkt auf Tabelle und Karten (4/9), Sortierung,
+Anker-Öffnung, Hover und Press im echten Browser bestätigt. Ohne JavaScript
+vollständig. LCP 148 ms / CLS 0,0065 / INP 32 ms lokal ungedrosselt.
+
+**Während der Prüfung behoben:** Press-Feedback fehlte auf den Filter-/
+Sortierknöpfen. Neue Reduced-Motion-geschützte CSS-Regel setzt
+`scale: var(--press-scale)` bei `:active`, ohne die Farb-Transition zu
+überschreiben; neu gebaut und im Browser gegengeprüft.
+
+**Zwei offene Baseline-Gruppen (nicht überschrieben):** 8 × `impressum`
+light/dark — gewollte Änderung, erwartet 1192 px, erhalten 1220 px Höhe;
+9 × `design-system` — vorbestehend, Baseline 400 px breit gegen 375 px
+Viewport plus abweichende Font-Metriken. Mit diesem Lambda-Chromium dürfen
+**keine** Pixelbaselines erzeugt werden; Neuaufnahme gehört in Linux-CI mit dem
+offiziellen Playwright-Browser plus optischer Freigabe.
+
+**Details:** `docs/design-2026-11/VERIFIKATION-2026-11-03.md` mit Messwerten,
+Werkzeugkette, Grenzen und acht Screenshot-Belegen im Ordner `verifikation/`.
+Kein Ranking-/CPA-Versprechen; Rechtstexte sind vollständig, offen sind
+Ads-Konto, Search Console und Conversion-Events als Setup/Messung.
+
+## LEDGER 2026-11-03 (12) — Ladebooster-Vergleich fertig ausgebaut
+
+**Anlass:** Der Betreiber will keine abstrakte Vorlage, sondern die eine
+Vergleichsseite „gleich perfekt, komplett durchdacht, immersiv und ohne
+Fehler". Freigabe liegt vor.
+
+**Eine Quelle:** Neu `lib/seo/ladeboosterGeraete.ts` — neun Geräte, acht
+einheitliche Attribute, Nennstrom als Zahl, Preis mit Prüfdatum, „Passt für",
+Einordnung, Haken, Belege, vier Einsatzfälle. `null` ist belegt unbekannt und
+wird als „nicht belegt" angezeigt. Rangliste (`tbody`), neun Karten und
+`ItemList` werden daraus erzeugt; die drei handgepflegten Darstellungen und
+die fünf doppelten Kompaktkarten sind entfernt.
+
+**Struktur und Interaktion:** Kurzentscheidung mit Deeplinks, Rangliste mit
+Zeilenköpfen und Legenden, identische Attribut-Reihenfolge je Karte, Anker
+`#p-<id>`. `LadeboosterVergleichBehavior.tsx` filtert jetzt Tabelle **und**
+Karten, sortiert nach Strom/Preis (`null` ans Ende), zählt sichtbare Geräte,
+öffnet `<details>` vor Anker-Sprüngen und markiert den aktiven Abschnitt per
+IntersectionObserver. Lange Kapitel sind natives `<details>` — ohne Skript
+bedienbar. Rechner-Formel und alle festgenagelten Ausgaben bleiben bitidentisch.
+
+**SEO:** `StructuredDataType` um `ItemList` erweitert; `itemListNode()` in
+`lib/seo/jsonLd.ts` baut genau einen Knoten mit neun verschachtelten
+`Product`-Einträgen, ohne Preise/Bewertungen/fremde Adressen. `SeoPage`
+nimmt `extraJsonLdNodes` auf, `app/camper-elektrik/[slug]/page.tsx` übergibt
+den Knoten nur für `ladebooster`. Inventar kündigt ihn an; `json-ld-inventar`
+und `json-ld-adresse` bleiben grün. Vier interne Verweise statt null.
+
+**CSS:** Der globale Import in `app/layout.tsx` ist weg; das Stylesheet hängt
+am Bauteil und lädt im Export nur auf dieser Route (ein zusätzlicher Chunk,
+nachgemessen). Neue Regeln für Zeilenköpfe, Werkzeugleiste, Legenden,
+Vertiefung, Hover-Zeilen; Bewegung bleibt hinter den globalen
+`prefers-reduced-motion`- und `@media (hover: hover)`-Regeln. Bewusst keine
+zweite sticky Ebene.
+
+**Tests:** 13 neue Daten-/Schema-Tests, 12 Komponententests, plus die
+bestehenden Pins (H2, Tabellenname, Filter-Knopf, Rechner-Ausgaben, externe
+Belege). `npm run check` (297+ Testdateien) und `npm run build` inklusive
+Exportprüfung grün. Im Export nachgemessen: neun ItemList-Positionen, neun
+Karten, keine doppelten IDs, keine Anker ohne Ziel, eine H1.
+
+**Invarianten:** Keine Routing-/Electrical-Semantik, keine Rechner-Formel,
+keine e2e-Erwartung geändert oder gelöscht. Kein Code aus den Anhängen
+kopiert. Keine Fotos eingesetzt (eigene Aufnahmen fehlen). **Nicht geprüft:**
+Browser-Render, 375/768/1440, Dark Mode, axe, Lighthouse — keine
+Browser-Binaries. Die acht Impressum-Pixel-Baselines bleiben veraltet (11).
+Korrektur 2026-11-03: Datenschutzerklärung in diesem Baum vollständig, keine
+Cookies → kein CMP nötig; offen sind Ads-Konto/Search-Console/Conversion-Events.
+Kein Ranking-/CPA-Versprechen.
+
+## LEDGER 2026-11-03 (11) — Wissen der Anhänge in diesem Repo angewandt
+
+**Anlass:** Der Betreiber hat die Impressumsangaben aus den beiden
+Agenten-Sitzungen ausdrücklich freigegeben und verlangt, das gesamte Wissen
+dieser Sitzungen hier als verbesserte Version umzusetzen statt es nur zu
+dokumentieren.
+
+**Impressum (P0, teilweise erledigt):** `lib/siteLegal.ts` enthält jetzt alle
+fünf Felder (`Jonas Rieckhoff`, `Franzosenkoppel 46`, `22547 Hamburg`,
+`kontakt@12v-planer.de`, `contentResponsible` mit Name und Anschrift
+derselben Person). Der Anbieter ist eine natürliche Person — Feldbezeichnung und
+Modulkommentar sagen jetzt, dass ein Rechtsformzusatz nur bei juristischen
+Personen nötig ist. Die drei betroffenen Testsuiten arbeiten mit einer eigenen
+Platzhalter-Fixture statt den Baumzustand vorauszusetzen; `lib/siteLegal.test.ts`
+pinnt die freigegebenen Werte. `scripts/ci/verifyLegalNotice.ts` und
+`.github/workflows/deploy.yml` stellen den Wächter von `warn` auf `block` — bei
+vollständigen Angaben grün, bei jedem Rückfall stoppt der Deploy. Die
+1:1-Spiegelkopie in `docs/ci/workflows/deploy.yml` ist mitgezogen, weil
+`scripts/ci/workflows.test.ts` die Übereinstimmung als Gate prüft.
+
+**Vergleichsseite (Wissen aus Anhang B, hier neu gebaut):**
+`app/camper-elektrik/[slug]/page.tsx` hängt `LadeboosterVergleich` nicht mehr als
+`children` hinter die Abschnitte, sondern über `afterHeader` **vor** die
+Ratgeber-Abschnitte; `SeoPage` dokumentiert den Slot für beide Zwecke. Die zwei
+sichtbaren Kacheln „Eigenes Foto folgt" sind entfernt, ihre Aussage steht als
+Text mit internem Verweis auf den Kabelquerschnitt-Rechner, die toten
+`lb-photo-*`-CSS-Regeln sind gelöscht. Die falschen Dateikopf-Zusagen in
+`lib/seo/jsonLd.ts` („keine Preise — es gibt sie in Camp nicht") und
+`lib/seo/content/ladebooster.ts` („Kein Markenvergleich") beschreiben jetzt den
+tatsächlichen Zustand: Preise und neun Marken sind sichtbar, stehen aber bewusst
+nicht im Schema.
+
+**Regression:** `components/seo/SeoPage.test.tsx` (Slot-Reihenfolge), neu
+`app/camper-elektrik/[slug]/page.test.tsx` (Vergleich ist die erste H2 der
+Route), `components/seo/LadeboosterVergleich.test.tsx` (keine Foto-Platzhalter,
+interner Verweis vorhanden).
+
+**Invarianten:** Kein Code aus den Anhängen kopiert, keine Routing-/Electrical-
+Semantik berührt, keine Rechner-Formel und keine festgenagelten
+Rechner-Ausgaben geändert, keine e2e-Erwartung gelöscht. Das vollständige
+Vergleichs-Template und die 24 Inhaltsseiten aus Anhang A sind **nicht**
+gebaut — eigene Features mit eigener Freigabe.
+
+**Bekannte offene Gates:** Die acht Pixel-Baselines
+`tests/e2e/visual.spec.ts-snapshots/route-impressum-*` zeigen noch die
+Platzhalter-Texte und sind durch die echten Angaben veraltet; Neuaufnahme auf
+Linux-CI nötig. Hier sind keine Browser-Binaries installiert, das visuelle Gate
+ist **nicht** geprüft. Korrektur 2026-11-03: In diesem Baum ist die Datenschutzerklärung bereits
+vollständig und die Seite setzt keine Cookies; Rechtstexte sind damit erledigt.
+Offen sind Ads-Konto, Search Console und Conversion-Events (Setup/Messung).
+Kein Ranking-/CPA-Versprechen.
+
+## LEDGER 2026-11-03 (10) — Zwei externe Anhänge eingearbeitet (Doku, kein Verhalten)
+
+**Anlass:** Am 2026-11-03 wurden zwei exportierte Agenten-Sitzungen zum selben
+Repo hochgeladen („Nischenforschung und Content-Ausbau", „Ladebooster
+Vergleichsplan erstellen"; je ~59.000 Zeilen). Sie sollten in die laufende
+Konzeptarbeit einfließen.
+
+**Was passiert ist:** Verdichtung in
+`docs/design-2026-11/ANHAENGE-INTEGRATION-2026-11-03.md` mit Herkunft, Zahlen,
+Abgleich gegen diesen Checkout (`af7f646`; `353efd5` hier unbekannt) und einer
+Liste bewusst nicht übernommener Punkte. 28 zusätzliche Hero-Motive und 28
+Diagramm-Briefings liegen in
+`docs/design-2026-11/FOTOMOTIV-ERGAENZUNG-2026-11-03.md`; `BILDRECHTE.md` und
+`DESIGN-KONZEPT-2026-11.md` (§4.1, neuer §11, Anhang-Links) verweisen darauf.
+
+**Invarianten:** Kein Code, kein Commit, kein Merge aus den Anhängen. Beide
+Sitzungen enden mit Fehler/Kompaktierung, in A steht „nicht committet und nicht
+gepusht". Fremde Gate-Ergebnisse (67 Seiten, 3.775 Tests) gelten nicht für
+diesen Baum. Die Rohdateien (7,5 MB Thinking-/Tool-Blöcke, lokale Pfade,
+Betreiberangaben) sind nicht im Repo. `lib/siteLegal.ts` blieb in diesem Schritt noch unverändert mit fünf
+Platzhaltern; die Eintragung und Freigabe erfolgte danach in LEDGER (11).
+
+**Kein Verhalten geändert**, deshalb keine Routing-/Electrical-Gates und keine
+optischen Baselines nötig. Kein Ranking-, Traffic- oder CPA-Versprechen
+übernommen.
+
+## LEDGER 2026-11-02 (9) — Designkonzept 2026-11, P1: Bildvertrag statt Bildverbot
+
+**Anlass:** Das Konzept „Werkstattprotokoll“ ersetzt die bildfreie Startseite
+durch eigene Fotografie als Beleg. P1 ist freigegeben, aber es liegen noch
+keine Aufnahmen vor — es durfte also kein Bild ausgeliefert werden.
+
+**Änderung (Fundament, keine sichtbare Renderverschiebung):**
+`app/globals.css` erhält sieben Tokens in `:root` und `.dark`
+(`--image-outline`, `--motion-*`, `--press-scale`, `--ease-*`), zwei
+Bewegungs-Primitives hinter `prefers-reduced-motion: no-preference` und
+`@media (hover: hover)` sowie die Bildklassen. Neu ist
+`components/brand/ContentImage.tsx`: einzige erlaubte `<img>`-Stelle,
+`<picture>` mit vorgefertigten AVIF-Varianten, JPEG-Fallback, `sizes`,
+`alt`, feste Maße, `<figcaption>`, LCP-Priorität. `app/page.test.tsx` stellt
+vom Bildverbot auf einen Bildvertrag um (ein H1, jedes Bild mit
+Alt/Maßen/Bildunterschrift). `app/page.tsx` und `PlanPreview.tsx` tragen nur
+korrigierte Kommentare, keine geänderte Ausgabe.
+
+**Invariante:** `lib/designTokens.test.ts` (Tokens in hell und dunkel,
+`transition-property` statt `all`, Hover nur bei hover-fähigem Zeiger) und
+`ContentImage.test.tsx` (RTL-Vertrag plus statischer Guard gegen rohe
+`<img>`-Tags in `app/` und `components/`). Keine Routing-, Electrical- oder
+Planer-Semantik berührt.
+
+**Offen:** P2 setzt das Hero-Foto erst nach eigenen Aufnahmen und
+`BILDRECHTE.md` ein; die optischen Gates (Screenshots 375/768/1440, LCP/CLS,
+axe, Lighthouse) gehören zu P2/P4 und sind für P1 nicht behauptet.
+
 ## LEDGER 2026-11-04 (Nachlauf) — 230-V-Modellgrenzen explizit abgesichert, AutoWire-Einzelbegründung
 
 **Anlass:** Aus dem P0-Sprint blieb der 230-V-Punkt der P0-Tabelle bewusst

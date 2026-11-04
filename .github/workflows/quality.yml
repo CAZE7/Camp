@@ -261,6 +261,16 @@ jobs:
       - name: Pixel-Baselines prüfen
         run: npx playwright test --grep "hält die Baseline"
 
+      # M11-5: Lighthouse vermisst denselben gebauten Export über einen
+      # gzip-Server (wie GitHub Pages). Die Budgets stehen in
+      # scripts/ci/lighthouseGate.ts und sind ohne Browser unit-getestet.
+      # Der Job ist bewusst nicht blockierend (siehe Kommentar oben): Ein
+      # Lab-Wert soll den Deploy nicht stoppen. Lokal ist `npm run
+      # perf:lighthouse` dagegen ein hartes Gate.
+      - name: Lighthouse-Budget (M11-5, Berichtsgate)
+        if: always()
+        run: npm run perf:lighthouse
+
       - name: Diff-Artefakt für die Bewertung
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
