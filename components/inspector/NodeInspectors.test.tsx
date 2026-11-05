@@ -364,3 +364,61 @@ describe('Consumer230VInspector — NET-003 (Modellgrenzen im Bauteil-Inspektor)
     expect(note).toHaveTextContent('qualifiziertes Personal');
   });
 });
+
+/**
+ * AUD-005 — Semantik-Bruch zwischen Auswahl und Kabelauslegung.
+ *
+ * Der Nutzer wählt „gleichzeitige 230-V-Geräte". Diese Auswahl steuert nur die
+ * Überlast-Prüfung (Karten-Badge + Dashboard-Warnung). Das Strommodell
+ * (`buildAcIslandWatts` in lib/electricalGraph/currentFlow.ts) summiert dagegen
+ * ALLE consumer230v der AC-Insel — Kabel und Sicherung werden also für die
+ * volle Insel ausgelegt. Das ist die sichere Seite, war aber nicht erklärt:
+ * Karte sagte „nicht überlastet", das Kabel wurde für ein Vielfaches geführt.
+ *
+ * Die Auslegung bleibt unverändert konservativ. Diese Tests halten fest, dass
+ * die Oberfläche den Unterschied jetzt benennt statt ihn zu verstecken.
+ */
+describe('InverterInspector — AUD-005 Gleichzeitigkeit ist eine Überlast-Prüfung', () => {
+  const inverter = (data: Record<string, unknown>): InspectorNode<'inverter'> => ({
+    id: 'inv-1',
+    type: 'inverter',
+    position: { x: 0, y: 0 },
+    data: { label: 'Wechselrichter', continuousPower: 1000, ...data },
+  });
+
+  const acConsumer = (id: string, watts: number) => ({
+    id,
+    type: 'consumer230v' as const,
+    position: { x: 0, y: 0 },
+    data: { label: id, watts },
+  });
+
+  it('erklärt, dass Kabel und Schutz für ALLE angeschlossenen Verbraucher ausgelegt werden', () => {
+    render(
+      <InverterInspector
+        node={inverter({ concurrentDevices: ['cooker'] })}
+        nodes={[acConsumer('coffee', 1500), acConsumer('cooker', 500)]}
+        onUpdateNodeData={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Gleichzeitige Nutzung \(Überlast-Prüfung\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/alle angeschlossenen 230-V-Verbraucher/i, { exact: false })).toBeInTheDocument();
+  });
+
+  it('zeigt die ausgewählte Leistung getrennt von der Dauerleistung', () => {
+    render(
+      <InverterInspector
+        node={inverter({ concurrentDevices: ['cooker'] })}
+        nodes={[acConsumer('coffee', 1500), acConsumer('cooker', 500)]}
+        onUpdateNodeData={vi.fn()}
+      />
+    );
+
+    const readout = screen.getByTestId('inverter-concurrent-watts');
+    // Nur der Kocher ist ausgewählt: 500 W, nicht die Insel-Summe 2000 W.
+    expect(readout.textContent).toContain('500 W');
+    expect(readout.textContent).toContain('1000 W');
+    expect(readout.textContent).not.toContain('2000 W');
+  });
+});

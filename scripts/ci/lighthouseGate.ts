@@ -72,11 +72,24 @@ export const BUDGETS: Readonly<Record<string, Budget>> = {
     cls: 0.1,
   },
   '/': {
-    performance: 85,
+    // M11-5 fordert Performance >= 90. Das Budget stand hier auf 85 und lag
+    // damit unter der eigenen Zusage. Gemessen am gebauten Static Export
+    // ueber den gzip-Server (npm run perf:lighthouse):
+    //   /                             Perf 98 · LCP 1207 ms · CLS 0.063
+    //   /camper-elektrik/ladebooster/  Perf 100 · LCP 1515 ms · CLS 0
+    //   /impressum/                    Perf 99 · LCP 1063 ms · CLS 0.0003
+    // 90 haelt damit 8 Punkte Abstand zum Messwert — genug fuer die
+    // Streuung zwischen Laufumgebungen, ohne die Zusage zu unterschreiten.
+    performance: 90,
     accessibility: 100,
     bestPractices: 95,
     seo: 100,
     lcpMs: 2500,
+    // CLS bleibt bewusst grosszuegig: Beim Laden der selbst gehosteten
+    // Schriften verschieben sich Navigationselemente um wenige Pixel
+    // (vorbestehender Befund, siehe Dateikopf). Aktuell gemessen 0.063.
+    // Das Limit wird erst angezogen, wenn die Ursache behoben ist — nicht
+    // weil ein einzelner Lauf gerade gut aussah.
     cls: 0.25,
   },
   '/impressum/': {

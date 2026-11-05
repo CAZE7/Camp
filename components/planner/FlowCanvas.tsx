@@ -1034,7 +1034,10 @@ export function FlowCanvas() {
         <EmptyState
           className="pb-44 sm:pb-28 lg:pb-0"
           title="Starte mit dem Frischwassertank"
-          description="Dein Wassersystem beginnt beim Frischwassertank. Danach folgen Pumpe, Filter und Entnahmestellen."
+          // AUD-019: Der Wassermodus ist eine Zeichenfläche ohne Fachprüfung.
+          // Das muss hier stehen, nicht nur im Prüfbericht — sonst wirkt er
+          // wie der geprüfte Elektrik-Teil.
+          description="Dein Wassersystem beginnt beim Frischwassertank. Danach folgen Pumpe, Filter und Entnahmestellen. Der Wasserplan wird nicht fachlich geprüft: Druck, Durchfluss und Schlauchquerschnitte legst du selbst aus. Die Prüfregeln des Planers gelten für die Elektrik."
           actionLabel="Frischwassertank hinzufügen"
           onAction={() => {
             addNode('freshWaterTank', 'Frischwassertank', { x: 0, y: 0 });

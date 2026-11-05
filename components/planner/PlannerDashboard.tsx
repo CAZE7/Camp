@@ -204,7 +204,11 @@ export function PlannerDashboard() {
             title: 'Wechselrichter überlastet',
             focusId: node.id,
             focusType: 'node',
-            message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät.`,
+            // AUD-005: Diese Prüfung betrifft die Dauerleistung des Geräts.
+            // Kabel und Schutzorgane werden unabhängig davon für die volle
+            // angeschlossene Insel-Last ausgelegt — der Hinweis sagt das, damit
+            // Karte, Warn-Zentrale und Kabelauslegung nicht zweierlei erzählen.
+            message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät. Hinweis: Kabel und Sicherung werden für alle angeschlossenen 230-V-Verbraucher dieser Insel ausgelegt, nicht nur für die Auswahl.`,
           });
       });
     // Leerrohr-Füllgrad wird hier NICHT zweitgeprüft: Die Regel AMP-006 der

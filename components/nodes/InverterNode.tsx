@@ -69,8 +69,14 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       </div>
 
       {overloadStats.isOverloaded && (
-        <div className="mt-2 rounded bg-destructive p-1 text-center text-xs leading-tight font-bold text-on-signal">
-          Überlastung! Wechselrichter zu schwach für angeschlossene AC-Geräte.
+        // AUD-005: Der Badge rechnete mit der AUSWAHL „gleichzeitige Nutzung",
+        // sprach aber von „angeschlossenen" Geräten. Kabel und Schutz werden
+        // für die volle Insel ausgelegt — der Text trennt das jetzt sauber.
+        <div
+          className="mt-2 rounded bg-destructive p-1 text-center text-xs leading-tight font-bold text-on-signal"
+          title={`Gleichzeitig ausgewählt: ${overloadStats.totalWatts} W · Dauerleistung: ${overloadStats.continuousPower} W`}
+        >
+          Überlastung! Zu schwach für die gleichzeitig ausgewählten Geräte.
         </div>
       )}
 

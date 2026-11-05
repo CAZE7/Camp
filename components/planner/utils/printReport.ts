@@ -39,6 +39,25 @@ export interface PrintReportInput {
   /** Zeitpunkt der Erzeugung (ISO), nur zur Anzeige. */
   generatedAt: string;
   projectName: string;
+  /**
+   * AUD-004: Schaltplan als eingebettetes Bild. Vorher war der Bericht eine
+   * reine Stücklisten-/Prüfliste und der Plan musste separat als PNG exportiert
+   * werden — zwei Dateien, die auseinanderlaufen konnten. Der Bericht ist jetzt
+   * EIN Übergabedokument aus demselben Snapshot.
+   */
+  planImage?: PlanImageInput;
+  /**
+   * Grund, warum kein Schaltplan eingebettet werden konnte. Wird ausdrücklich
+   * im Bericht genannt statt das Bild stillschweigend wegzulassen.
+   */
+  planImageError?: string;
+}
+
+export interface PlanImageInput {
+  /** PNG-Data-URL aus `capturePlanImage()`. */
+  dataUrl: string;
+  width: number;
+  height: number;
 }
 
 /** HTML-Escaping für jede Nutzer- oder Engine-Zeichenkette. */
@@ -164,6 +183,38 @@ function verificationBlock(summary: VerificationSummary | null): string {
 }
 
 /**
+ * AUD-004: Der Schaltplan als eigene Seite.
+ *
+ * Ein Übergabedokument ohne Plan ist eine Einkaufsliste. Das Bild steht auf
+ * einer eigenen Seite (`break-before: page`), damit eine lange Stückliste den
+ * Plan nicht auf Restzeilen quetscht, und wird proportional auf die Satzbreite
+ * begrenzt. Ein fehlendes Bild wird BENANNT, nicht verschwiegen.
+ */
+function planImageBlock(image: PlanImageInput | undefined, error: string | undefined): string {
+  if (image) {
+    const ratio = image.width > 0 && image.height > 0 ? image.height / image.width : 0;
+    // Querformatige Pläne dürfen die Seite nicht überlaufen lassen: die Höhe
+    // wird gegen das nutzbare A4-Fenster begrenzt (297mm − 2×16mm Rand,
+    // abzüglich Überschrift). Beide Grenzen greifen über max-*, das Seiten-
+    // verhältnis bleibt über das Attribut-Verhältnis erhalten.
+    const maxHeightMm = ratio > 1.2 ? 240 : 200;
+    return `<section class="plan-sheet">
+    <h2>Schaltplan</h2>
+    <p class="meta">Aufnahme desselben Planstands wie Stückliste und Prüfbericht.</p>
+    <img class="plan-image" src="${escapeHtml(image.dataUrl)}" alt="Schaltplan der geplanten Elektroinstallation" width="${image.width}" height="${image.height}" style="max-height:${maxHeightMm}mm">
+  </section>`;
+  }
+  const reason =
+    error ??
+    'Der Schaltplan konnte nicht eingebettet werden. Erzeuge ihn zusätzlich über „Plan als Bild exportieren".';
+  return `<section class="plan-sheet">
+    <h2>Schaltplan</h2>
+    <p><strong>Kein Schaltplanbild in diesem Bericht.</strong> ${escapeHtml(reason)}</p>
+    <p class="meta">Stückliste und Prüfbericht beziehen sich dennoch auf den oben genannten Planstand.</p>
+  </section>`;
+}
+
+/**
  * Baut das vollständige HTML-Dokument. Die Funktion ist rein: gleicher Input,
  * gleiches Ergebnis (bis auf nichts — der Zeitstempel kommt von außen).
  */
@@ -176,7 +227,10 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
     blockersBlock(assessment),
     blocked
       ? '<section><p><strong>Stückliste und Dokument werden nicht ausgegeben, solange kritische Befunde offen sind.</strong></p></section>'
-      : bomBlock(bom),
+      : // AUD-004: Plan vor die Stückliste — der Leser sieht zuerst die Anlage,
+        // dann die Materialliste. Bei gesperrtem Plan kein Bild (wie keine BOM).
+        planImageBlock(input.planImage, input.planImageError),
+    blocked ? '' : bomBlock(bom),
     verificationBlock(summary),
   ].join('\n');
 
@@ -213,6 +267,11 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
   h2, h3 { break-after: avoid-page; }
   .print-actions { margin: 12pt 0; }
   .print-actions button { font-size: 12pt; padding: 8pt 16pt; cursor: pointer; }
+  /* AUD-004: Der Schaltplan bekommt eine eigene Seite und bleibt proportional.
+     Kein Beschnitt (object-fit: contain), damit keine Leitung abgeschnitten
+     wird — ein unvollständiger Plan ist schlechter als ein kleinerer. */
+  .plan-sheet { break-before: page; }
+  .plan-image { display: block; width: 100%; height: auto; object-fit: contain; border: 1px solid gray; }
   @media print { .print-actions { display: none; } }
 </style>
 </head>

@@ -213,3 +213,43 @@ Für den „meldungsfreien AutoWire-Plan“ gibt es zwei echte Helfer in
 Sie laufen dort über Handpläne und über `TEMPLATE_MINIMALIST`, **nicht** über alle sechs
 `knownPlans`. `scripts/routing/audit.ts` misst nur Routing (I1–I7), keine
 Validierungsregeln.
+
+---
+
+## Batteriebank: Erklärungs- und Bewertbarkeitsregeln (AUD-001 / AUD-011)
+
+Zwei Regeln, die **nicht** rechnen, sondern einen nicht bewertbaren Zustand
+sichtbar machen. Quelle ist `deriveBatteryBanks`
+(`lib/electricalGraph/batteryBank.ts`); die Meldung erzeugt
+`components/planner/hooks/useLiveValidation.ts`.
+
+| `ruleId`                  | Bedeutung                       | Auslöser                                                                         | Stufe    |
+| ------------------------- | ------------------------------- | -------------------------------------------------------------------------------- | -------- |
+| `BANK-AMBIGUOUS-TOPOLOGY` | Verschaltung noch nicht erklärt | mehrere Aufbaubatterien, keine gemeinsame `bankId`/`bankTopology` (`unassigned`) | warning  |
+| `BANK-SERIES-UNSUPPORTED` | Reihenschaltung nicht bewertet  | deklarierte Bank mit `topology === 'series'` oder `'series-parallel'`            | critical |
+
+**Warum `BANK-SERIES-UNSUPPORTED` kritisch ist:** `deriveBatteryBanks` liefert
+für `series` eine Bankspannung (Zellspannung × Reihen). `getSystemVoltage`
+nimmt aber die Vorrangbatterie und `shortCircuit` schätzt rein parallel. Ein
+über eine Projektdatei importierter Serien-Plan bekäme damit **24 V in der
+Bank-Anzeige und 12,8 V in der Auslegung** — still und widersprüchlich. Die
+Rechenkette wird nicht angefasst (`lib/vde-standards.ts`, `lib/shortCircuit.ts`
+sind DO-NOT-TOUCH und bräuchten eine Fachprüfung); stattdessen wird der Zustand
+gemeldet (Regel M: kein stiller Fallback). Ausweg im Meldungstext: das System
+als **eine** Batterie mit der Nennspannung des Gesamtsystems erfassen.
+
+**UI-Vertrag:** `components/inspector/BatteryBankSection.tsx` bietet nur
+`single` und `parallel` an. `series`/`series-parallel` sind **nicht wählbar**;
+eine importierte Serien-Deklaration zeigt die Reset-Karte
+`battery-bank-series-unsupported`. Die Meldung ist damit der zweite, unabhängige
+Weg — sie greift auch, wenn der Inspektor nie geöffnet wird.
+
+**Bank-Key nicht vergessen:** Der Schlüssel ist `declared:<bankId>`, sonst
+`single:<nodeId>`. Eine Bank entsteht also nur, wenn **alle** Mitglieder
+dieselbe `bankId` tragen. `parallel` setzt `bankSeries`/`bankParallel` auf
+`undefined`; `single` löscht `bankId`.
+
+**Tests:** `components/planner/hooks/useLiveValidation.test.ts`
+(`BANK-AMBIGUOUS-TOPOLOGY`, drei AUD-011-Fälle),
+`components/inspector/BatteryBankSection.test.tsx` (10 Fälle inkl. geschlossener
+Kette UI → Modell → AutoWire).

@@ -395,3 +395,16 @@ FlowCanvas  ──rendert──>  <CableRouteSync/>  (cableRouteStore.ts)
 
 > **Wichtig:** `components/edges/utils/orthogonalRouting.ts` (`buildOrthogonalPath`) ist
 > **nicht** Teil dieses Pfades. Siehe [LEGACY.md](./LEGACY.md).
+
+---
+
+## Ergänzung 2026-11-05 (Produktreife-Runde AUD)
+
+| Ort            | Datei                                                           | Zweck                                                                                                                                                                     |
+| -------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inspektor      | `components/inspector/BatteryBankSection.tsx`                   | Batteriebank erklären (Topologie + gemeinsamer Bank-Name), Kennwerte aus `deriveBatteryBanks`. Typen aus `../nodes/types` — **nicht** aus `NodeInspectors` (Zyklus).      |
+| Wechselrichter | `components/inspector/NodeInspectors.tsx` → `InverterInspector` | „Gleichzeitige Nutzung (Überlast-Prüfung)"; `selectedWatts`-useMemo, Readout `inverter-concurrent-watts`. Steuert **nur** die Überlast-Prüfung, nicht die Kabelauslegung. |
+| Bericht        | `components/planner/utils/exportPlanImage.ts`                   | `capturePlanImage({watermark?})` → `{dataUrl,width,height}`; gemeinsamer Renderer für Share-PNG und Druckbericht.                                                         |
+| Bericht        | `components/planner/utils/printReport.ts`                       | `planImageBlock()`, `.plan-sheet` (eigene Seite), `planImage`/`planImageError`.                                                                                           |
+| 230-V-Grenze   | `lib/verify/acScope.ts` → `AC_230V_PRODUCT_SCOPE_NOTE`          | **Eine** Kurzform für Surfaces außerhalb des Prüfberichts (Startseite, Onboarding). Wortlaut-Drift ist getestet.                                                          |
+| Stromquelle    | `lib/electricalGraph/currentFlow.ts` → `getCableCurrents`       | **Eine** Stromquelle für DC und AC. `.byEdgeId.get(id).operatingCurrent`, `null` = Datenlücke. Fünf Produktiv-Konsumenten, per `docsIntegrity.test.ts` bewacht.           |

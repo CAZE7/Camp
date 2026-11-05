@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Home from './page';
+import { AC_230V_PRODUCT_SCOPE_NOTE } from '@/lib/verify/acScope';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -61,5 +62,27 @@ describe('Home Page', () => {
     // "Ausbau-Fahrplan" erscheint als Empfehlung UND als Guide-Link — mindestens 1×.
     expect(within(main).getAllByRole('link', { name: /Ausbau-Fahrplan/ }).length).toBeGreaterThan(0);
     expect(within(main).getByRole('link', { name: /Holzausbau in sechs Schritten/ })).toBeInTheDocument();
+  });
+});
+
+/**
+ * AUD-002 — die Leistungszusage „12 V- und 230 V-Anlage" durfte nicht ohne
+ * die Modellgrenze stehen. Die Engine weist sie aus (NET-003); die Startseite
+ * muss dieselbe Grenze nennen, sonst hält ein Laie den 230-V-Plan für geprüft.
+ */
+describe('Home Page — AUD-002 230-V-Modellgrenze', () => {
+  it('nennt die 230-V-Grenze dort, wo die Leistung beworben wird', () => {
+    render(<Home />);
+    const note = screen.getByTestId('ac-scope-note');
+    expect(note.textContent).toContain(AC_230V_PRODUCT_SCOPE_NOTE);
+    expect(note.textContent).toContain('einleiterig');
+    expect(note.textContent).toContain('Elektrofachkraft');
+  });
+
+  it('verwendet denselben Wortlaut wie die Engine (kein Drift)', () => {
+    render(<Home />);
+    // Die Startseite darf die Grenze nicht selbst umformulieren.
+    expect(screen.getByTestId('ac-scope-note').textContent).toContain(AC_230V_PRODUCT_SCOPE_NOTE);
+    expect(AC_230V_PRODUCT_SCOPE_NOTE.length).toBeGreaterThan(120);
   });
 });

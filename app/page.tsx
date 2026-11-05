@@ -11,6 +11,7 @@ import { SiteSection } from '@/components/brand/SiteSection';
 import { ToolCard } from '@/components/brand/ToolCard';
 import { buttonVariants } from '@/components/ui/button';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
+import { AC_230V_PRODUCT_SCOPE_NOTE } from '@/lib/verify/acScope';
 
 /**
  * D-7 Startseite: typografischer Einstieg mit direkt erreichbaren
@@ -191,6 +192,23 @@ export default function Home() {
             </div>
             <p className="caption-xs mt-5 text-ink-soft">
               Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
+            </p>
+            {/* AUD-002: Die 230-V-Grenze gehört dorthin, wo der Nutzer die
+                Leistungszusage liest — nicht erst ins Warnzentrum. Wortlaut
+                kommt aus lib/verify/acScope.ts, damit Produkt und Engine
+                dieselbe Grenze nennen.
+
+                Bewusst HINTER den Handlungsbuttons: Vor ihnen stehend hat der
+                Hinweis auf 375 px den Haupt-CTA aus dem sichtbaren Bereich
+                geschoben (Pixel-Abgleich gegen die Baseline). Die Grenze muss
+                vor der Planung lesbar sein, aber sie darf den Einstieg nicht
+                verdecken. */}
+            <p
+              className="prose-measure mt-5 rounded border border-rule bg-paper p-3 text-xs leading-relaxed text-ink-soft"
+              data-testid="ac-scope-note"
+            >
+              <strong className="font-semibold text-ink">230 V nur als Planungshilfe:</strong>{' '}
+              {AC_230V_PRODUCT_SCOPE_NOTE}
             </p>
           </div>
 

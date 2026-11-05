@@ -3712,3 +3712,146 @@ davon unberührt und protokollarisch offen.
 **Offen:** Der CI-Lauf auf dem neuen Head steht aus; E2E/Pixel-Baselines können
 lokal weiterhin nicht ausgeführt werden (kein Browser-Binary im Sandbox).
 §24-UI-DoD bleibt offen; es wird kein „E2E grün“ behauptet.
+
+---
+
+## LEDGER 2026-11-05 (AUD) — Produktreife-Umsetzung AUD-001…019
+
+**Anlass:** `docs/PRODUCT-READINESS-AUDIT.md` (20 Befunde, vom Nutzer zur
+Umsetzung freigegeben). Leitfrage: Kann ein normaler Camper-Besitzer seine
+Elektroinstallation vollständig, verständlich und zuverlässig planen, prüfen
+und dokumentieren? Dieser Eintrag zieht die Ledger-Pflicht für die gesamte
+Runde nach; die Commits waren bis dahin nur mit Teil-Gates gefahren.
+
+**Hinweis zur Historie:** Die Runde entstand mit einem Commit je Befund in
+einer Sandbox-Sitzung, die später neu aufgesetzt wurde. Die Dateiänderungen
+blieben vollständig erhalten, die damalige Git-Historie nicht. Die unten
+genannten Kurz-Hashes bezeichnen die ursprünglichen Commits und sind in der
+Historie dieses Branches nicht auflösbar; sie dokumentieren Zuordnung und
+Reihenfolge. Die Gates wurden auf dem zusammengeführten Stand erneut gefahren.
+
+**Gelesene Vorgaben vor Code (§23):** `AGENTS.md`, `agent.md`,
+`docs/ai/ARCHITECTURE-RULES.md`, `CHANGE-WORKFLOW.md` §20–23,
+`ELECTRICAL-CONTEXT.md`, `AUTOWIRE-CONTEXT.md`, `VALIDATION-CONTEXT.md`,
+`TESTING-CONTEXT.md`, `DOMAIN-CONTEXT.md`, `ROUTING-CONTEXT.md`,
+`CODE-MAP.md`, `KNOWN-PROBLEMS.md`.
+
+### Verhalten je Befund
+
+**AUD-001 (`c347321`) — Batteriebank über die UI erklärbar.** Neue
+`components/inspector/BatteryBankSection.tsx`: Topologie-Select
+(`single`/`parallel`), Bank-Name mit `datalist` aus bestehenden Bänken,
+Kennwerte aus `deriveBatteryBanks`. Schreibt `bankTopology`/`bankId`, setzt bei
+`parallel` die Reihen-/Parallelzähler auf `undefined`, bei `single` löscht es
+`bankId`. `ambiguous-topology` wird in `useLiveValidation` nicht mehr
+herausgefiltert (`BANK-AMBIGUOUS-TOPOLOGY`), `AUTO-BANK-001` nennt den UI-Weg
+statt Rohfelder. **Grenze bewusst:** `series`/`series-parallel` sind nicht
+wählbar; eine importierte Serien-Deklaration zeigt eine Reset-Karte.
+Geschlossene Kette belegt: 2×100 Ah ohne Erklärung ⇒ zweite Batterie hat
+0 Kanten; nach Erklärung ⇒ verdrahtet, Bank 200 Ah.
+
+**AUD-005 (`b889a20`) — Semantik, keine Rechnungsänderung.** `concurrentDevices`
+steuert ausschließlich die Überlast-Prüfung. `buildAcIslandWatts` summiert per
+BFS über `AC_230V`-Kanten **alle** `consumer230v`; Kabel und Schutz gelten für
+die volle Insel. Überschrift „Gleichzeitige Nutzung (Überlast-Prüfung)",
+Klartext-Absatz, Readout, Badge-Text und Dashboard-Hinweis korrigiert.
+**Auslegung unverändert konservativ** — Wächter
+`lib/electricalGraph/currentFlow.concurrency.test.ts` pinnt 196,08 A
+(2000 W / 12,0 V / 0,85) für alle drei Auswahlzustände.
+
+**AUD-004 (`6d09681`) — Schaltplan im Druckbericht.**
+`capturePlanImage({watermark?})` als gemeinsamer Renderer; das
+Foren-Wasserzeichen erscheint nur im geteilten PNG, nicht im Übergabedokument.
+Bericht bettet den Plan auf eigener Seite (`.plan-sheet{break-before:page}`),
+unbeschnitten, vor der Stückliste. Fehlende Aufnahme wird benannt, nicht still
+weggelassen; Data-URL escaped. `BOMModal.printReport` async mit Planstand-Wächter
+über `certificate.planFingerprintHash` vs. `snapshot.assessment.planFingerprintHash`
+— kein Dokument aus zwei Planständen.
+
+**AUD-002a (`1052b20`) — Modellgrenze in der Produktkommunikation.**
+`AC_230V_PRODUCT_SCOPE_NOTE` in `lib/verify/acScope.ts` als **eine** Kurzform für
+Surfaces außerhalb des Berichts. Startseite zeigt sie an der Leistungszusage,
+Onboarding kontextuell nur bei gewähltem „Landstrom". **Keine** neue Leiter-,
+Netzform-, Umschalt- oder Rückspeiselogik (Variante b bleibt Fachprojekt).
+Drift-Tests prüfen Wortlaut-Identität.
+
+**AUD-010 (`38c7c90`) — Doku-Drift Stromquelle.** Eine Stromquelle ist
+`getCableCurrents` (DC **und** AC), Ergebnis
+`.byEdgeId.get(id).operatingCurrent`, `null` = Datenlücke.
+`ELECTRICAL-CONTEXT.md` und `AGENTS.md` §4 umgestellt, alte Namen als
+„Veraltet" markiert, §8-Verbotsliste auf den echten Stand (offen nur PWA +
+Multi-Plan). Neuer Wächter in `scripts/ci/docsIntegrity.test.ts` prüft Doku
+**und** die fünf Produktiv-Konsumenten. `lib/vde-standards.ts` bewusst nicht
+angefasst (DO-NOT-TOUCH).
+
+**AUD-019 (`85dd15a`) — keine geliehene Prüfaussage im Wassermodus.** Die
+Statusleiste zeigte „Keine Fehler" aus **Elektrik**-Warnungen — eine positive
+Sicherheitsaussage über einen ungeprüften Bereich. Jetzt „Wasser: keine
+Prüfung" mit Erläuterung; der Wasser-Leerzustand nennt Druck, Durchfluss und
+Querschnitte als selbst auszulegen. Kein neues Wasser-Fachmodell.
+
+**AUD-011 (`5406863`) — Serienbank kritisch melden.** `deriveBatteryBanks`
+liefert für `series` eine Bankspannung, `getSystemVoltage` nimmt die
+Vorrangbatterie und `shortCircuit` schätzt rein parallel — ein importierter
+Serien-Plan bekäme 24 V in der Anzeige und 12,8 V in der Auslegung. Die
+Rechenkette bleibt unangetastet (DO-NOT-TOUCH + Fachprüfung); stattdessen
+`BANK-SERIES-UNSUPPORTED` (kritisch) mit konkretem Ausweg. Regel M: kein
+stiller Fallback.
+
+**AUD-016/018 (`2728318`) — Pixel-Gate gefahren, eigener Fehler behoben.**
+Erstlauf 102 grün / 6 Fehler (Startseite, 375/768/touch). Zuordnung geprüft
+statt vermutet: `app/page.tsx` auf `7d8a464`, Neubau, gleiche Tests → 8 passed.
+Die Fehler stammten aus AUD-002a. Eigentlicher Befund war UX: Der Grenzhinweis
+stand vor den Buttons und schob den Haupt-CTA auf 375 px aus dem ersten
+Bildschirm. Hinweis hinter die Buttons verschoben; Geometrie-Regressionstest
+in `responsive.spec.ts` (Gegenprobe: alte Platzierung fällt durch).
+Baselines **begründet** aktualisiert: Höhendifferenz 241 px = Hinweisblock
+221 px + 20 px `margin-top`, also vollständig additiv erklärt; nur die
+6 Startseiten-Baselines, Desktop byte-identisch. Ergebnis 108 passed / 0 failed.
+Lighthouse: Startseite-Budget 85 → **90** (lag unter der eigenen M11-5-Zusage),
+gemessen Perf 98/99/99. CLS bewusst nicht angezogen — Ursache (Font-Shift) ist
+nicht behoben.
+
+### Als Fehlbefund zurückgenommen (nicht erneut geöffnet)
+
+- **AUD-007** Tastatur-Abnahme: `tests/e2e/planner-keyboard.spec.ts` baut den
+  Mini-Plan vollständig per Tastatur; der `test.skip` gilt nur
+  Nicht-Desktop-Projekten. Beleg `--project=desktop-1440` → 1 passed.
+  **M11-3 in `AGENTS.md` §9 gestrichen.**
+- **AUD-015** AC-Messwert-Eingang: `prospectiveIkA`-Feld,
+  `prospectiveIkSource: 'declared' | 'assumed'` und der Klartext
+  „angegeben/gemessen … nicht gegen eine Netzimpedanz-Annahme" existieren und
+  sind getestet. Keine Umsetzung nötig.
+
+### Grenzen — unverändert und ausdrücklich nicht zugesagt
+
+`lib/electrical.ts`, `lib/vde-standards.ts`, `lib/shortCircuit.ts`,
+`lib/acProtection.ts`, Routing-Garantien und Golden-Fixtures wurden **nicht**
+verändert. Kein elektrischer Grenzwert, kein Normwert, keine Zusicherung
+geändert. AUD-003 (FLRY/ISO-6722-Tabelle) bleibt offen, weil eine zitiergeprüfte
+externe Quelle fehlt. AUD-002b, AUD-006, AUD-008/009, AUD-012/013/014 und
+AUD-017 bleiben offen; Gründe stehen in §9.3 des Audits.
+
+### Gates
+
+`npm run check` **exit 0** (Lint, Format, beide Typechecks, Coverage-Schwellen);
+`routing:audit` I1–I7 = 0 auf 6 Plänen; Golden-Master **13/13**; Regression
+**68/68**; Build 47 Seiten; visueller Satz **108 passed / 0 failed**;
+E2E-Smoke (planner-flow, planner-keyboard, a11y, touch) **72 passed /
+28 skipped / 0 failed**; Lighthouse-Gate grün.
+
+**Nachtrag Endstand (nach AUD-003-Kennzeichnung, `f7dd352`):**
+`npm run check` erneut **exit 0** mit **313 Dateien / 4117 passed / 1 skipped**
+(Ausgangsstand 311/4076). Die **vollständige E2E-Suite** wurde auf diesem Head
+gefahren: **509 passed / 259 skipped / 0 failed** (30,8 min). Der visuelle Satz
+ist vollständig grün (108), `rendered-contrast` + `routing-stability` isoliert
+nachgeprüft (52). Lighthouse hält alle Budgets (Perf 98/99/99).
+
+AUD-003 wurde im **Kennzeichnungszweig** geschlossen: Inspektor, Prüfbericht und
+AMP-001 nennen jetzt ausdrücklich, dass die Belastbarkeitstabelle aus der
+Hausinstallation (DIN VDE 0298-4) stammt und keine geprüfte Fahrzeugleitungs-
+Tabelle nach ISO 6722 / FLRY ist. **Kein Zahlenwert geändert.** Der Datenzweig
+bleibt offen.
+
+**Weiterhin ungeprüft:** Realgeräte/iOS Safari/Firefox (nur Chromium verfügbar)
+und der GitHub-Actions-Lauf auf diesem Head — die Gates oben sind lokal gefahren.

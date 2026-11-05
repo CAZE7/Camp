@@ -3,6 +3,7 @@ import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES, type ValidationRule } from '../ui/ValidatingInput';
 import { InspectorSection } from './InspectorSection';
+import { BatteryBankSection } from './BatteryBankSection'; // AUD-001: Bank-Erklärung
 import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
 import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
 import { QUALIFIED_PERSONNEL_NOTICE } from '../../lib/verify/acScope'; // NET-003: Modellgrenzen
@@ -88,11 +89,14 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
 export function BatteryInspector({
   node,
   onUpdateNodeData,
+  nodes,
   chargingTimeStr,
   calculatedSolarWatts,
 }: {
   node: InspectorNode<'battery'>;
   onUpdateNodeData?: InspectorUpdate;
+  /** AUD-001: für die Bank-Ableitung braucht die Sektion alle Batterien. */
+  nodes?: PlannerFlowNode[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }) {
@@ -195,6 +199,10 @@ export function BatteryInspector({
           </div>
         </div>
       </InspectorSection>
+      {/* AUD-001: die Bank-Verschaltung ist eine Eingabe des Nutzers, keine
+          aus der Mitgliederzahl geratene Annahme. Ohne diese Sektion war der
+          Normalfall „zwei Aufbaubatterien" über die UI nicht abschließbar. */}
+      <BatteryBankSection node={node} nodes={nodes} onUpdateNodeData={onUpdateNodeData} />
       <InspectorSection title="Anschluss">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col">
@@ -640,6 +648,17 @@ export function InverterInspector({
     return nodes?.filter((n) => n.type === 'consumer230v') || [];
   }, [nodes]);
 
+  // AUD-005: dieselbe Auswahl, die Karten-Badge und Dashboard-Überlastwarnung
+  // auswerten — hier nur angezeigt, nicht in die Kabelauslegung gerechnet.
+  const selectedWatts = React.useMemo(() => {
+    const selected = new Set(node.data?.concurrentDevices ?? []);
+    return consumerNodes.reduce(
+      (sum, consumer) => (selected.has(consumer.id) ? sum + (Number(consumer.data?.watts) || 0) : sum),
+      0
+    );
+  }, [consumerNodes, node.data?.concurrentDevices]);
+  const continuousPower = Number(node.data?.continuousPower ?? 0) || 0;
+
   const sysVoltage = React.useMemo(() => getSystemVoltage(nodes ?? []), [nodes]);
   const currentPowerW = Number(node.data?.continuousPower ?? node.data?.watts ?? 0) || 0;
   const floorVoltage = Math.max(1, sysVoltage * VDE_DISCHARGE_VOLTAGE_FACTOR);
@@ -789,8 +808,25 @@ export function InverterInspector({
           <div className="mt-4 flex flex-col">
             {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
             <span className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
-              Gleichzeitige 230V Geräte
+              Gleichzeitige Nutzung (Überlast-Prüfung)
             </span>
+            {/* AUD-005: Die Auswahl steuerte nur die Überlast-Warnung, während
+                das Strommodell (getCableCurrents → buildAcIslandWatts) die
+                VOLLE Insel-Summe ansetzt. Karte und Kabel erzählten dadurch
+                zwei Geschichten. Die Auslegung bleibt bewusst konservativ —
+                die Oberfläche sagt jetzt ehrlich, was die Auswahl bewirkt. */}
+            <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+              Diese Auswahl prüft nur, ob der Wechselrichter die gleichzeitig laufenden Geräte dauerhaft
+              liefern kann. Kabelquerschnitt und Schutzorgane werden unabhängig davon für{' '}
+              <strong className="font-medium text-foreground">alle angeschlossenen 230-V-Verbraucher</strong>{' '}
+              dieser Insel ausgelegt — das ist die sichere Seite und lässt sich nicht wegkonfigurieren.
+            </p>
+            {selectedWatts > 0 && (
+              <p className="mb-2 text-xs text-muted-foreground" data-testid="inverter-concurrent-watts">
+                Ausgewählt: <strong className="font-medium text-foreground">{selectedWatts} W</strong>
+                {continuousPower > 0 && <> von dauerhaft {continuousPower} W</>}
+              </p>
+            )}
             <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded border border-rule p-1">
               {consumerNodes.map((consumer) => {
                 const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);

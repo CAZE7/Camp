@@ -21,7 +21,12 @@ import {
   type LengthAssumption,
 } from './utils/bom';
 import { downloadTextFile } from './utils/fileIO';
-import { buildPrintReportHtml, formatReportTimestamp, openPrintReport } from './utils/printReport';
+import {
+  buildPrintReportHtml,
+  formatReportTimestamp,
+  openPrintReport,
+  type PlanImageInput,
+} from './utils/printReport';
 import { subscribeToBomModalOpen } from './utils/bomModalEvents';
 
 function fmtMeters(value: number | undefined): string {
@@ -55,6 +60,8 @@ export function BOMModal() {
   const [copied, setCopied] = useState(false);
   // M6-4: Fehlerursache sichtbar machen statt stillem catch.
   const [copyError, setCopyError] = useState<string | null>(null);
+  // AUD-004: Die Plan-Aufnahme dauert einen Moment — der Knopf zeigt das.
+  const [reportBusy, setReportBusy] = useState(false);
 
   useEffect(() => {
     const handleShowBom = () => {
@@ -106,15 +113,44 @@ export function BOMModal() {
     downloadTextFile(`stueckliste-${planFingerprint.slice(0, 8)}.csv`, csv, 'text/csv;charset=utf-8');
   };
 
-  const printReport = () => {
+  const printReport = async () => {
     if (!snapshot || !assessment?.canExportDocument) return;
+    // AUD-004: Der Bericht soll EIN Übergabedokument sein — Schaltplan,
+    // Stückliste und Prüfbericht aus demselben Snapshot. Die Aufnahme wird
+    // deshalb vor dem Bauen des HTML geholt. Scheitert sie, wird der Bericht
+    // trotzdem erzeugt und benennt das fehlende Bild ausdrücklich.
+    // Der Snapshot entsteht beim Öffnen des Dialogs. Würde sich der Plan
+    // inzwischen geändert haben, gehörte das Bild zu einem anderen Stand als
+    // Stückliste und Prüfbericht. Das wird geprüft statt vorausgesetzt.
+    const current = usePlannerStore.getState();
+    const currentHash = verificationReportFor(current.nodes, current.edges).certificate.planFingerprintHash;
+    if (snapshot.assessment.planFingerprintHash !== currentHash) {
+      setCopyError(
+        'Der Plan hat sich seit dem Öffnen der Stückliste geändert. Öffne die Stückliste erneut, damit Schaltplan, Stückliste und Prüfbericht denselben Planstand haben.'
+      );
+      return;
+    }
+    setReportBusy(true);
+    let planImage: PlanImageInput | undefined;
+    let planImageError: string | undefined;
+    try {
+      const { capturePlanImage } = await import('./utils/exportPlanImage');
+      planImage = await capturePlanImage();
+    } catch (error) {
+      planImageError = `Aufnahme fehlgeschlagen${
+        error instanceof Error && error.name ? ` (${error.name})` : ''
+      }. Der Bericht enthält Stückliste und Prüfbericht, aber kein Schaltplanbild.`;
+    }
     const html = buildPrintReportHtml({
       bom: snapshot.bom,
       summary: snapshot.summary,
       assessment,
       generatedAt: formatReportTimestamp(new Date()),
       projectName: '12V-Planer',
+      planImage,
+      planImageError,
     });
+    setReportBusy(false);
     if (!openPrintReport(html)) {
       setCopyError(
         'Der Druckbericht konnte nicht geöffnet werden – der Browser blockiert vermutlich Pop-ups. Erlaube Pop-ups für diese Seite und versuche es erneut.'
@@ -423,18 +459,20 @@ export function BOMModal() {
           </Button>
           <Button
             variant="outline"
-            onClick={printReport}
-            disabled={empty || !assessment?.canExportDocument}
+            onClick={() => {
+              void printReport();
+            }}
+            disabled={empty || !assessment?.canExportDocument || reportBusy}
             data-testid="bom-print-report"
             title={
               assessment?.canExportDocument
-                ? 'Druckbericht öffnen – im Druckdialog „Als PDF speichern“ wählen'
+                ? 'Druckbericht mit Schaltplan, Stückliste und Prüfbericht öffnen – im Druckdialog „Als PDF speichern“ wählen'
                 : 'Gesperrt: kritische Befunde müssen zuerst behoben werden.'
             }
             className="min-h-11 gap-2"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
-            Druckbericht (PDF)
+            {reportBusy ? 'Schaltplan wird aufgenommen…' : 'Druckbericht (PDF)'}
           </Button>
           <Button
             variant="outline"

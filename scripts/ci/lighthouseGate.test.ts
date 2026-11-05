@@ -75,8 +75,62 @@ describe('BUDGETS', () => {
     for (const budget of Object.values(BUDGETS)) {
       expect(budget.accessibility).toBe(100);
       expect(budget.seo).toBe(100);
-      expect(budget.performance).toBeGreaterThanOrEqual(85);
+      // M11-5: Performance >= 90 auf ALLEN vermessenen Seitentypen.
+      // Vorher stand die Startseite auf 85 und damit unter der Zusage.
+      expect(budget.performance).toBeGreaterThanOrEqual(90);
       expect(budget.lcpMs).toBeLessThanOrEqual(2500);
     }
+  });
+});
+
+/**
+ * M11-5 — die Startseite darf nicht unter der eigenen Zusage budgetiert sein.
+ *
+ * Der Befund war nicht ein zu langsames Seitenverhalten, sondern ein Budget,
+ * das unter der Zusage lag: `performance: 85` bei geforderten >= 90. Gemessen
+ * werden 98 Punkte. Ein Budget unter der Zusage haette eine Regression auf 86
+ * durchgelassen, obwohl sie die Zusage verletzt.
+ */
+describe('M11-5 — Startseite hält die Performance-Zusage', () => {
+  it('budgetiert die Startseite mit mindestens 90 Punkten', () => {
+    const start = BUDGETS['/'];
+    expect(start).toBeDefined();
+    expect(start!.performance).toBeGreaterThanOrEqual(90);
+  });
+
+  it('lässt 86 Punkte auf der Startseite nicht mehr durchgehen', () => {
+    const start = BUDGETS['/']!;
+    const regression: LighthouseBericht = {
+      categories: {
+        performance: { score: 0.86 },
+        accessibility: { score: 1 },
+        'best-practices': { score: 1 },
+        seo: { score: 1 },
+      },
+      audits: {
+        'largest-contentful-paint': { numericValue: 1200 },
+        'cumulative-layout-shift': { numericValue: 0.06 },
+      },
+    };
+    const verstoesze = pruefeBudgets(regression, start);
+    expect(verstoesze.length).toBeGreaterThan(0);
+    expect(verstoesze.join(' ')).toMatch(/[Pp]erformance/);
+  });
+
+  it('hält den gemessenen Ist-Zustand (98 Punkte) für grün', () => {
+    const start = BUDGETS['/']!;
+    const gemessen: LighthouseBericht = {
+      categories: {
+        performance: { score: 0.98 },
+        accessibility: { score: 1 },
+        'best-practices': { score: 1 },
+        seo: { score: 1 },
+      },
+      audits: {
+        'largest-contentful-paint': { numericValue: 1207 },
+        'cumulative-layout-shift': { numericValue: 0.063 },
+      },
+    };
+    expect(pruefeBudgets(gemessen, start)).toEqual([]);
   });
 });

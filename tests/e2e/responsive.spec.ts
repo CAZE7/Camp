@@ -113,3 +113,39 @@ test.describe('Responsives Layout', () => {
     }
   });
 });
+
+/**
+ * AUD-002a-Folgefehler (Regressionstest).
+ *
+ * Der 230-V-Grenzhinweis stand auf der Startseite VOR den Handlungsbuttons.
+ * Auf 375 px hat er den Haupt-CTA „Schaltplan starten" aus dem sichtbaren
+ * Bereich geschoben — ein Nutzer musste scrollen, um überhaupt zu starten.
+ * Der Pixel-Abgleich hat die Verschiebung gezeigt; dieser Test hält die
+ * Eigenschaft fest, statt nur ein Bild zu vergleichen: Die primäre Handlung
+ * bleibt ohne Scrollen erreichbar, und der Hinweis steht danach.
+ *
+ * Bewusst als Geometrie-Test und nicht als Baseline: Ein Screenshot vergleicht
+ *Pixel, aber nicht die Frage „kommt der Nutzer an den Einstieg?".
+ */
+test.describe('Startseite: Einstieg bleibt ohne Scrollen erreichbar', () => {
+  for (const breite of [375, 768, 1440]) {
+    test(`Haupt-CTA liegt bei ${breite} px im ersten Bildschirm`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: breite === 375 ? 812 : 1024 });
+      await page.goto('/');
+      await expect(page.getByTestId('ac-scope-note')).toBeVisible();
+
+      const hoehe = page.viewportSize()!.height;
+      const cta = page.getByRole('link', { name: /Schaltplan starten/ });
+      const ctaBox = await cta.boundingBox();
+      expect(ctaBox, 'Haupt-CTA muss ein Layout haben').not.toBeNull();
+      expect(
+        ctaBox!.y + ctaBox!.height,
+        `CTA-Unterkante ${Math.round(ctaBox!.y + ctaBox!.height)} px muss im Viewport (${hoehe} px) liegen`
+      ).toBeLessThanOrEqual(hoehe);
+
+      // Der Grenzhinweis darf den Einstieg nicht verdrängen: er steht danach.
+      const hinweis = await page.getByTestId('ac-scope-note').boundingBox();
+      expect(hinweis!.y).toBeGreaterThan(ctaBox!.y);
+    });
+  }
+});

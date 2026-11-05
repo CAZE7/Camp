@@ -174,6 +174,7 @@ function TypeSpecificInspector({
         <BatteryInspector
           node={typedAs(node, 'battery')}
           onUpdateNodeData={onUpdateNodeData}
+          nodes={nodes}
           chargingTimeStr={chargingTimeStr}
           calculatedSolarWatts={calculatedSolarWatts}
         />
