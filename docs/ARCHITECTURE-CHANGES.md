@@ -3855,3 +3855,87 @@ bleibt offen.
 
 **Weiterhin ungeprüft:** Realgeräte/iOS Safari/Firefox (nur Chromium verfügbar)
 und der GitHub-Actions-Lauf auf diesem Head — die Gates oben sind lokal gefahren.
+
+---
+
+## LEDGER 2026-11-05 (AUD-FOLLOWUP) — Konsistenz des Druckberichts
+
+**Anlass:** Gezielte Nachprüfung des PR #606 vor dem Merge. Vier Befunde wurden
+reproduziert, nicht vermutet. Für jeden wurde zuerst ein fehlschlagender Test
+geschrieben und danach der Fix gesetzt; anschließend Gegenprobe durch
+temporäres Entschärfen des Fix.
+
+### Befund 1 — Race Condition zwischen Vorprüfung und Bildaufnahme (kritisch)
+
+`printReport` prüfte den Planstand, dann folgten `await import()`,
+`await capturePlanImage()` (darin zwei weitere Importe, ein Frame, `toPng`).
+Danach wurde **nicht erneut geprüft**. Eine Planänderung in diesem Fenster
+erzeugte ein Dokument mit Bild aus dem neuen und Stückliste/Prüfbericht aus dem
+alten Stand.
+
+**Fix:** Nachprüfung nach der Aufnahme. Zusätzlich meldet `capturePlanImage`
+die Identität, die es beim Store-Lesezugriff gesehen hat; auch sie muss zum
+Snapshot passen. Bei Abweichung wird das Druckfenster geschlossen, kein
+Dokument erzeugt und der Grund genannt.
+
+### Befund 2 — Fingerprint deckt die Darstellung nicht ab (kritisch)
+
+`planFingerprintHash` hasht die **Prüfeingabe** und lässt `position` bewusst
+weg (die Lage ändert kein elektrisches Ergebnis — das ist richtig). Für das
+Bild ist die Lage aber genau das, was sich ändert. Ebenso wenig erfasst er
+`viewMode` oder das Wasser-Gewerk.
+
+**Fix:** Neue, getrennte `planCaptureIdentity`
+(`components/planner/utils/planCaptureIdentity.ts`) über Lage, Größe, Daten,
+Kanten und **beide** Gewerke plus Ansichtsmodus. `planFingerprintHash` bleibt
+unverändert — seine Semantik ist korrekt, und eine Änderung hätte das
+Prüfzertifikat für rein kosmetische Verschiebungen verändert. Beide Prüfungen
+werden kombiniert. `selected` ist bewusst ausgeschlossen (Auswahl ist keine
+Plandaten-Änderung); stattdessen löst `capturePlanImage` die Auswahl jetzt für
+beide Gewerke auf, damit das Bild reproduzierbar ist.
+
+### Befund 3 — Wassermodus: Bild und Prüfung verschiedene Gewerke (kritisch)
+
+`capturePlanImage` wählt nach `viewMode` (Wasser ⇒ `waterNodes`),
+`verificationReportFor(nodes, edges)` prüft **immer** die Elektrik, `buildBom`
+mischt beide. Im Wassermodus entstand ein Dokument mit Wasser-Schaltplan neben
+Elektrik-Prüfbericht — ohne Kennzeichnung, Alt-Text hart auf
+„Elektroinstallation". Zusätzlich waren Wasseränderungen für den
+Elektrik-Fingerprint unsichtbar.
+
+**Fix:** `planViewMode` wandert in den Bericht. Überschrift, Alt-Text und ein
+ausdrücklicher Hinweis nennen das Gewerk; im Wassermodus steht dort, dass der
+Prüfbericht ausschließlich die Elektrik bewertet und die Wasserinstallation
+nicht geprüft ist. Keine neue Fachlogik.
+
+### Befund 4 — Druckfenster verliert die Nutzeraktivierung
+
+`window.open` lief erst **nach** allen `await`s. Browser binden es an eine
+laufende Nutzeraktivierung; bei großen Plänen ist sie abgelaufen und das
+Fenster wird kommentarlos blockiert.
+
+**Fix:** `openPrintReportWindow()` öffnet synchron im Klick und zeigt einen
+Platzhalter; `openPrintReport(html, win)` füllt es später. Bei Abbruch wird es
+geschlossen. Ein blockiertes Fenster wird vor der Aufnahme erkannt und gemeldet.
+
+### Nicht bestätigt — Batteriebank-Kette
+
+Die sechs geforderten Bedienfälle wurden geprüft (einzeln, zwei parallel,
+getrennte Bänke, nachträgliche Änderung, parallel→einzeln, importierte Serie).
+**Kein Defekt:** Oberfläche, `deriveBatteryBanks` und AutoWire stimmen überein.
+Zwei zunächst rot gesehene Erwartungen waren falsche Testannahmen: der
+Platzhalter „noch nicht erklärt" ist Absicht, und im Serien-Fall wird bewusst
+gar kein Auswahlfeld gerendert, sondern eine Reset-Karte.
+
+### Tests und Gegenproben
+
+- `BOMModal.reportConsistency.test.tsx` — 10 Fälle. Vier davon fielen vor dem
+  Fix; nach temporärem Entschärfen der Nachprüfung fallen sie wieder.
+- `BatteryBankSection.workflow.test.tsx` — 6 Fälle, alle grün, kein Fix nötig.
+- `tests/e2e/print-report.spec.ts` — 2 Browserfälle: Fenster geht auf, Bild ist
+  wirklich dekodiert (`naturalWidth > 0`), kein Überlauf; Planänderung nach dem
+  Öffnen verweigert das Dokument. **Gegenprobe:** mit beiden Prüfungen
+  entschärft fällt der Browserfall durch.
+
+**Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
+Routing-Garantien oder Golden Fixtures. `planFingerprintHash` unverändert.

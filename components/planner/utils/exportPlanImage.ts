@@ -114,7 +114,22 @@ export async function exportPlanImage(): Promise<ExportResult> {
 }
 
 /** Ergebnis einer Plan-Aufnahme ohne Download (AUD-004: Bericht bettet es ein). */
-export type PlanCapture = { dataUrl: string; width: number; height: number };
+export type PlanCapture = {
+  dataUrl: string;
+  width: number;
+  height: number;
+  /**
+   * Welches Gewerk das Bild zeigt. Der Bericht muss das benennen: Die
+   * Verifikation prüft immer die Elektrik, das Bild folgt dem Ansichtsmodus.
+   */
+  viewMode: 'electric' | 'water';
+  /**
+   * Identität der Darstellung zum Zeitpunkt des Store-Lesezugriffs. Der
+   * Aufrufer vergleicht sie mit dem Stand vor und nach der Aufnahme — nur so
+   * ist das Fenster zwischen Vorprüfung und fertigem Bild geschlossen.
+   */
+  identity: string;
+};
 
 /**
  * Nimmt die Zeichenfläche als PNG-Data-URL auf — OHNE Wasserzeichen.
@@ -123,21 +138,73 @@ export type PlanCapture = { dataUrl: string; width: number; height: number };
  * Statt eine zweite Renderstrecke zu bauen, nutzen beide diese Funktion. Das
  * Foren-Wasserzeichen gehört nur in den geteilten Bild-Export, nicht in ein
  * Übergabedokument an eine Werkstatt.
+ *
+ * Die Auswahl wird vor dem Rendern aufgelöst (QA B-17) — sonst hinge das Bild
+ * davon ab, was der Nutzer gerade angeklickt hat, und wäre nicht reproduzierbar.
+ * Das gilt für beide Gewerke, nicht nur für die Elektrik.
  */
 export async function capturePlanImage(options?: { watermark?: boolean }): Promise<PlanCapture> {
   const { toPng } = await import('html-to-image');
   const { usePlannerStore } = await import('../../../store/usePlannerStore');
+  const { planCaptureIdentity } = await import('./planCaptureIdentity');
   const state = usePlannerStore.getState();
+  const viewMode = state.viewMode === 'water' ? 'water' : 'electric';
+  const identity = planCaptureIdentity(state);
   const nodes: Node[] =
-    state.viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
-  return renderToDataUrl(toPng, nodes, options?.watermark ?? false);
+    viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
+
+  const selectedNodeIds = state.nodes.filter((n) => n.selected).map((n) => n.id);
+  const selectedEdgeIds = state.edges.filter((e) => e.selected).map((e) => e.id);
+  const selectedWaterNodeIds = state.waterNodes.filter((n) => n.selected).map((n) => n.id);
+  const selectedWaterEdgeIds = state.waterEdges.filter((e) => e.selected).map((e) => e.id);
+  const hadSelection =
+    selectedNodeIds.length +
+      selectedEdgeIds.length +
+      selectedWaterNodeIds.length +
+      selectedWaterEdgeIds.length >
+    0;
+
+  if (hadSelection) {
+    usePlannerStore.setState((s) => ({
+      nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      edges: s.edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      waterNodes: s.waterNodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      waterEdges: s.waterEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      selectedNodes: [],
+      selectedEdges: [],
+    }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }
+
+  try {
+    const image = await renderToDataUrl(toPng, nodes, options?.watermark ?? false);
+    return { ...image, viewMode, identity };
+  } finally {
+    if (hadSelection) {
+      usePlannerStore.setState((s) => ({
+        nodes: s.nodes.map((n) => (selectedNodeIds.includes(n.id) ? { ...n, selected: true } : n)),
+        edges: s.edges.map((e) => (selectedEdgeIds.includes(e.id) ? { ...e, selected: true } : e)),
+        waterNodes: s.waterNodes.map((n) =>
+          selectedWaterNodeIds.includes(n.id) ? { ...n, selected: true } : n
+        ),
+        waterEdges: s.waterEdges.map((e) =>
+          selectedWaterEdgeIds.includes(e.id) ? { ...e, selected: true } : e
+        ),
+        selectedNodes: s.nodes.filter((n) => selectedNodeIds.includes(n.id)),
+        selectedEdges: s.edges.filter((e) => selectedEdgeIds.includes(e.id)),
+      }));
+    }
+  }
 }
+
+/** Reine Bildausgabe — ohne Planstand-Zuordnung. Die ergänzt der Aufrufer. */
+type RenderedImage = { dataUrl: string; width: number; height: number };
 
 async function renderToDataUrl(
   toPng: typeof import('html-to-image').toPng,
   nodes: Node[],
   watermark: boolean
-): Promise<PlanCapture> {
+): Promise<RenderedImage> {
   const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement | null;
   if (!reactFlowWrapper) throw new Error('Planfläche nicht gefunden');
   const styles = getComputedStyle(document.documentElement);
