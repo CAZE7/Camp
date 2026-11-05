@@ -1010,3 +1010,29 @@ wiederhergestellt, weil der Playwright-Download gesperrt ist), Node 22.22.3.
 - Der CI-Lauf auf diesem Head (GitHub Actions) — lokal gefahren, nicht im CI.
 - Lighthouse unter CI-Bedingungen; die Lab-Werte hier sind reproduzierbar
   (zwei unabhängige Läufe: 98/99/99 und 98/100/99), aber nicht auf Realgeräten.
+
+### 9.7 Nachprüfung vor dem Merge — vier weitere Befunde im Druckbericht
+
+AUD-004 hatte den Schaltplan in den Bericht gebracht, aber die **Konsistenz
+über die asynchrone Aufnahme** nicht abgesichert. Die Nachprüfung hat vier
+Befunde reproduziert (Test zuerst rot, dann Fix, dann Gegenprobe):
+
+| Befund                                               | Wirkung                                                            | Behoben                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Race zwischen Vorprüfung und Bildaufnahme            | Bild aus neuem, Stückliste/Prüfbericht aus altem Stand — unbemerkt | Nachprüfung nach der Aufnahme + Identität des Store-Lesezugriffs                       |
+| `planFingerprintHash` deckt die Darstellung nicht ab | verschobenes Bauteil ändert das Bild, nicht den Hash               | eigene `planCaptureIdentity` (Lage, Maße, beide Gewerke, Modus); Prüf-Hash unverändert |
+| Wassermodus mischt die Gewerke                       | Wasser-Schaltplan neben Elektrik-Prüfbericht, unbeschriftet        | Gewerk in Überschrift, Alt-Text und ausdrücklichem Hinweis                             |
+| `window.open` nach den `await`s                      | Browser blockiert das Fenster bei großen Plänen kommentarlos       | Fenster öffnet synchron im Klick, wird bei Abbruch geschlossen                         |
+
+**Nicht bestätigt:** Die Batteriebank-Kette wurde über alle sechs Bedienfälle
+geprüft und ist konsistent (Oberfläche, `deriveBatteryBanks`, AutoWire). Kein
+Fix nötig.
+
+**Auswirkung auf Frage 8:** Ein Übergabedokument kann jetzt nicht mehr
+unbemerkt zwei Planstände mischen. Bei Änderung während der Aufnahme entsteht
+gar kein Dokument, sondern eine verständliche Meldung.
+
+**Eigene Verstöße, die der Wächter gefangen hat:** Direktzugriff auf
+`node.width/height` (Architekturregel: über `nodeGeometry` lesen) und
+`waitForTimeout` im E2E. Beide wurden im **Code** behoben, nicht in der
+Prüfung — ein Beispiel dafür, dass die bestehenden Wächter tragen.
