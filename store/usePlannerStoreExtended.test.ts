@@ -680,11 +680,7 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   // testen die Verkabelungs-Logik, nicht die Nutzer-Eingabe von fuseOffset;
   // deshalb wird hier ein zulässiger Default (0,1 m ≤ 20 cm) angewendet.
   const edgesWithFuseOffset = edges.map((edge) => {
-    if (
-      edge.data?.fuseSize &&
-      edge.data?.fuseOffset === undefined &&
-      edge.data?.edgeDomain !== 'AC_230V'
-    ) {
+    if (edge.data?.fuseSize && edge.data?.fuseOffset === undefined && edge.data?.edgeDomain !== 'AC_230V') {
       return { ...edge, data: { ...edge.data, fuseOffset: 0.1 } };
     }
     return edge;
@@ -1056,11 +1052,7 @@ function assertNoSafetyWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   // testen die Verkabelungs-Logik, nicht die Nutzer-Eingabe von fuseOffset;
   // deshalb wird hier ein zulässiger Default (0,1 m ≤ 20 cm) angewendet.
   const edgesWithFuseOffset = edges.map((edge) => {
-    if (
-      edge.data?.fuseSize &&
-      edge.data?.fuseOffset === undefined &&
-      edge.data?.edgeDomain !== 'AC_230V'
-    ) {
+    if (edge.data?.fuseSize && edge.data?.fuseOffset === undefined && edge.data?.edgeDomain !== 'AC_230V') {
       return { ...edge, data: { ...edge.data, fuseOffset: 0.1 } };
     }
     return edge;

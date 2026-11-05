@@ -23,13 +23,13 @@ Mutation Testing wird **nicht** als Teil von PR #604 implementiert. Stattdessen:
 
 ## 3. Zielmodule
 
-| Modul | Begründung |
-|-------|------------|
-| `lib/electrical.ts` | `I_B ≤ I_n ≤ I_z`, `selectFuseSize` — sicherheitskritisch (CL-001, R-002) |
-| `lib/vde-standards.ts` | Normwerte, Eigentumsgesetze G1–G7 |
-| `lib/shortCircuit.ts` | Kurzschlussberechnung |
-| `lib/acProtection.ts` | AC-Abschaltbedingung `Zs · Ia ≤ U0` (CL-012, R-008) |
-| `lib/connectionRules.ts` | Polarität, Solar-Sonderfälle (CL-002, R-005, R-006) |
+| Modul                    | Begründung                                                                |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `lib/electrical.ts`      | `I_B ≤ I_n ≤ I_z`, `selectFuseSize` — sicherheitskritisch (CL-001, R-002) |
+| `lib/vde-standards.ts`   | Normwerte, Eigentumsgesetze G1–G7                                         |
+| `lib/shortCircuit.ts`    | Kurzschlussberechnung                                                     |
+| `lib/acProtection.ts`    | AC-Abschaltbedingung `Zs · Ia ≤ U0` (CL-012, R-008)                       |
+| `lib/connectionRules.ts` | Polarität, Solar-Sonderfälle (CL-002, R-005, R-006)                       |
 
 ## 4. Mutation-Score-Schwelle
 
