@@ -168,6 +168,11 @@ jobs:
             exit 1
           }
 
+      - name: Playwright-Browser installieren
+        # Nur Chromium: die Suite prüft Anwendungsverhalten, keine
+        # Browser-Unterschiede. Das hält die Laufzeit des Gates niedrig.
+        run: npx playwright install --with-deps chromium
+
       - name: M-14 Accessibility (axe a11y)
         run: npx playwright test tests/e2e/a11y.spec.ts
 
