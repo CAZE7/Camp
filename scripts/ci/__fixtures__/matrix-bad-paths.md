@@ -1,0 +1,3 @@
+| Req-ID       | Anforderung       | Klasse | Fachliche Grundlage | Implementierung                             | Test                                                  | Ergebnis | Release | Claim  | Risk  |
+| ------------ | ----------------- | ------ | ------------------- | ------------------------------------------- | ----------------------------------------------------- | -------- | ------- | ------ | ----- |
+| CAMP-REQ-600 | Fehlerhafte Pfade | S      | ISO 12345 §1        | `scripts/ci/__fixtures__/nicht-existent.ts` | `scripts/ci/__fixtures__/auch-nicht-existent.test.ts` | Offen    | —       | CL-100 | R-100 |

@@ -172,6 +172,39 @@ jobs:
           path: ./out
           retention-days: 7
 
+
+  # ── Requirements-Matrix Konsistenzcheck ─────────────────────────────────────
+  # Prueft die vollstaendige Traceability-Kette (Requirement -> Basis -> Implementierung -> Test -> Ergebnis -> Claim -> Risk)
+  # laut Matrix Rule M-4. Blockiert bei allen Verstößen: fehlende Claims, fehlende
+  # Risk-Einträge, nicht existierende Referenzen, ungültige Statuswerte,
+  # "Erfüllt" ohne vollständigen Nachweis. Offene Klasse-S-Anforderungen
+  # (CAMP-REQ-002, CAMP-REQ-014, CAMP-REQ-023) erscheinen als dokumentierte
+  # Fehler und lassen den Workflow rot — das Safety-Gate darf nicht grün sein,
+  # solange erforderliche Nachweise fehlen.
+  requirements-matrix-check:
+    name: Requirements-Matrix Konsistenzcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproduzierbar)
+        run: npm ci
+
+      - name: Requirements-Matrix Konsistenzcheck
+        run: node scripts/ci/verify-requirements-matrix.mjs
+
   # ── End-to-End gegen den gebauten Static Export ─────────────────────────────
   e2e:
     name: End-to-End (Playwright)

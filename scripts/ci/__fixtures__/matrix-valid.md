@@ -1,0 +1,5 @@
+| Req-ID       | Anforderung               | Klasse | Fachliche Grundlage | Implementierung                           | Test                                           | Ergebnis  | Release     | Claim  | Risk  |
+| ------------ | ------------------------- | ------ | ------------------- | ----------------------------------------- | ---------------------------------------------- | --------- | ----------- | ------ | ----- |
+| CAMP-REQ-100 | Gültige Anforderung       | S      | ISO 12345 §1        | `scripts/ci/__fixtures__/fixture-impl.ts` | `scripts/ci/__fixtures__/fixture-impl.test.ts` | Erfüllt   | Release 1.0 | CL-100 | R-100 |
+| CAMP-REQ-101 | Teilweise erfüllt         | S      | ISO 12345 §2        | `scripts/ci/__fixtures__/fixture-impl.ts` | `scripts/ci/__fixtures__/fixture-impl.test.ts` | Teilweise | —           | CL-101 | R-101 |
+| CAMP-REQ-102 | Nicht sicherheitskritisch | F      | ISO 12345 §3        | `scripts/ci/__fixtures__/fixture-impl.ts` | `scripts/ci/__fixtures__/fixture-impl.test.ts` | Offen     | —           | —      | —     |
