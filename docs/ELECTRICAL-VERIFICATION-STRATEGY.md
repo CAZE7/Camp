@@ -1238,9 +1238,11 @@ Lighthouse-Eingangsgrößen nicht. Die drei Jobs des Visuellen Gates zeigen:
 | 42059246028 | success         | **success** | `28d6ce4` |
 | 42097595906 | success         | failure     | `49b3496` |
 | 42104892376 | success         | failure     | `48dd1d0` |
+| 42112532414 | success         | failure     | `96fa705` |
 
-Derselbe Job mit demselben Budget-Code war im ersten Lauf grün. Das ist der
-Befund: **das Lighthouse-Gate ist instabil, nicht der PR.** Es bleibt beim
+Derselbe Job mit demselben Budget-Code war im ersten Lauf grün, danach
+dreimal rot — bei einem Bundle-Delta von 0,0 KiB in allen drei Läufen. Das ist
+der Befund: **das Lighthouse-Gate ist instabil, nicht der PR.** Es bleibt beim
 Befund aus §12.6 — Lab-Werte auf geteilten Runnern schwanken, und der Job ist
 per `continue-on-error: true` ausdrücklich nicht blockierend. Eine Änderung am
 Budget wäre genau das, was hier nicht getan werden darf (L-1): Schwellen
