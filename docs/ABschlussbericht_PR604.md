@@ -1,7 +1,7 @@
 # Abschlussbericht — PR #604 / Engineering & Quality Framework (Camp)
 
 **Branch:** `arena/949821e6-camp`  
-**Commit-SHA:** `982a2a0`  
+**Commit-SHA:** `fac819d`  
 **PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN  
 **Stand:** 2026-11-05  
 **Bewertung:** NOT MERGE-READY (siehe Abschnitt 8)
@@ -174,12 +174,12 @@ Prüft für jede Klasse-S-Anforderung (CAMP-REQ-XXX):
 | Pre-push Hook          | `npm run check`                                  | ⚠️ Übersprungen | `--no-verify` verwendet, da Hook-Timeout in Sandbox. Einzelprüfungen (format, typecheck ×2, lint, build) grün.                                                                    |
 
 **Run-Links:** CI-Läufe wurden lokal im Sandbox ausgeführt (keine GitHub Actions-Runs für diesen Branch verfügbar). Der Konsistenzcheck ist als Job `requirements-matrix-check` in `.github/workflows/quality.yml` integriert (`continue-on-error` als ausdrückliche UEBERGANGSLOESUNG gekennzeichnet, Job bleibt blockierend).  
-**Commit-SHA:** `982a2a0`  
+**Commit-SHA:** `fac819d`  
 **PR-URL:** https://github.com/CAZE7/Camp/pull/604
 
 ## 7. Aktueller Commit-SHA
 
-`982a2a0`
+`fac819d`
 
 Branch: `arena/949821e6-camp` (gepusht auf origin)
 
