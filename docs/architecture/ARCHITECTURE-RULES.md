@@ -10,12 +10,12 @@
 
 ## Legende
 
-| Kennzeichnung | Bedeutung |
-|---|---|
-| **(erzwungen)** | Regel wird durch ausführbare Tests/CI-Gates erzwungen. Verletzung bricht den Build oder den Commit. |
-| **(erzwungen Teil / Konvention)** | Teilweise automatisiert, teilweise durch Review/Pflicht. |
-| **(Konvention)** | Verpflichtend durch die Engineering Constitution, aber nicht (oder noch nicht) automatisiert. |
-| **(Konvention, testgestützt)** | Konvention mit begleitenden Tests, aber kein hartes CI-Blocker-Gate. |
+| Kennzeichnung                     | Bedeutung                                                                                           |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **(erzwungen)**                   | Regel wird durch ausführbare Tests/CI-Gates erzwungen. Verletzung bricht den Build oder den Commit. |
+| **(erzwungen Teil / Konvention)** | Teilweise automatisiert, teilweise durch Review/Pflicht.                                            |
+| **(Konvention)**                  | Verpflichtend durch die Engineering Constitution, aber nicht (oder noch nicht) automatisiert.       |
+| **(Konvention, testgestützt)**    | Konvention mit begleitenden Tests, aber kein hartes CI-Blocker-Gate.                                |
 
 ---
 
@@ -178,33 +178,33 @@ Jede Verhaltensänderung braucht einen Ledger-Eintrag in `docs/ARCHITECTURE-CHAN
 
 ## D. Arbeitsregeln ohne Test-Gate (Konventionen)
 
-| ID | Regel |
-|---|---|
-| O-1 | Kein `any`, kein `@ts-ignore`, kein `as unknown as` als Dauerzustand. |
+| ID  | Regel                                                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O-1 | Kein `any`, kein `@ts-ignore`, kein `as unknown as` als Dauerzustand.                                                                                                  |
 | O-2 | Neue Konstante mit physikalischer/geometrischer Bedeutung gehört in `lib/routing/tokens.ts` (Routing) bzw. neben ihre Normtabelle (Electrical) — nie inline ins Modul. |
-| O-3 | Jeder Bugfix braucht einen Regressionstest; jede Verhaltensänderung einen Ledger-Eintrag (`docs/ARCHITECTURE-CHANGES.md`). |
-| O-4 | Keine Tests löschen oder abschwächen, damit CI grün wird. Baselines nur senken, wenn der Plan messbar besser wird — mit Begründung. |
-| O-5 | TODOs tragen ein Area-Tag: `TODO[ROUTING]:`, `TODO[ELECTRICAL]:`, `TODO[UX]:`, `TODO[PERF]:`. Nackte `TODO` sind unzulässig. (Derzeit: keine TODOs im Code.) |
+| O-3 | Jeder Bugfix braucht einen Regressionstest; jede Verhaltensänderung einen Ledger-Eintrag (`docs/ARCHITECTURE-CHANGES.md`).                                             |
+| O-4 | Keine Tests löschen oder abschwächen, damit CI grün wird. Baselines nur senken, wenn der Plan messbar besser wird — mit Begründung.                                    |
+| O-5 | TODOs tragen ein Area-Tag: `TODO[ROUTING]:`, `TODO[ELECTRICAL]:`, `TODO[UX]:`, `TODO[PERF]:`. Nackte `TODO` sind unzulässig. (Derzeit: keine TODOs im Code.)           |
 
 ---
 
 ## E. Prüfbefehle je Regel (konkret)
 
-| Regel | Befehl |
-|---|---|
-| A | `npx vitest run scripts/architecture/libBoundary.test.ts` |
-| E, G, H, I, J | `npx vitest run scripts/routing/architecture.test.ts` |
-| E (Werte/Drift) | `npx vitest run lib/routing/tokens.test.ts` |
-| K | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit` |
-| L | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
-| F | `npm run routing:audit` (Spalten I1–I3, fallback) |
-| P | `npx vitest run components/edges/utils/routableNodes.test.ts components/edges/utils/routeAll.test.ts components/edges/utils/cableRouteStore.test.ts` |
-| Q | `npx vitest run store/slices/changeNoise.test.ts components/planner/utils/classFlags.test.ts` |
-| R | `npx vitest run store/slices/persistence.test.ts app/handleGeometry.test.ts` |
-| S-1 / Elektrik | `npx vitest run lib/` (inkl. `vde-properties` G1–G7, `vde-consistency`) · Golden Plans neu rechnen |
-| G1–G7 | `npx vitest run lib/vde-properties.test.ts` |
-| Constitution / Check | `npm run check` (lint + format + typecheck ×2 + Coverage) |
-| CI / Release | `.github/workflows/quality.yml` (siehe `docs/verification/RELEASE-GATES.md`) |
+| Regel                | Befehl                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A                    | `npx vitest run scripts/architecture/libBoundary.test.ts`                                                                                            |
+| E, G, H, I, J        | `npx vitest run scripts/routing/architecture.test.ts`                                                                                                |
+| E (Werte/Drift)      | `npx vitest run lib/routing/tokens.test.ts`                                                                                                          |
+| K                    | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit`                                                                    |
+| L                    | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts`                                               |
+| F                    | `npm run routing:audit` (Spalten I1–I3, fallback)                                                                                                    |
+| P                    | `npx vitest run components/edges/utils/routableNodes.test.ts components/edges/utils/routeAll.test.ts components/edges/utils/cableRouteStore.test.ts` |
+| Q                    | `npx vitest run store/slices/changeNoise.test.ts components/planner/utils/classFlags.test.ts`                                                        |
+| R                    | `npx vitest run store/slices/persistence.test.ts app/handleGeometry.test.ts`                                                                         |
+| S-1 / Elektrik       | `npx vitest run lib/` (inkl. `vde-properties` G1–G7, `vde-consistency`) · Golden Plans neu rechnen                                                   |
+| G1–G7                | `npx vitest run lib/vde-properties.test.ts`                                                                                                          |
+| Constitution / Check | `npm run check` (lint + format + typecheck ×2 + Coverage)                                                                                            |
+| CI / Release         | `.github/workflows/quality.yml` (siehe `docs/verification/RELEASE-GATES.md`)                                                                         |
 
 **Gate vor jedem Commit:** `npm run check` grün (AGENTS.md §7). CI-Reihenfolge: `docs/CI.md`.
 
