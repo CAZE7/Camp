@@ -171,14 +171,6 @@ export function VerificationSeal({ summary, nextStep }: VerificationSealProps) {
             </button>
           </div>
           <p className="planner-sheet-header px-3 pt-2 font-semibold text-foreground">{summary.headline}</p>
-          {nextStep && (
-            <p
-              className="planner-sheet-header px-3 pb-1 text-muted-foreground"
-              data-testid="verification-next-step"
-            >
-              {nextStep}
-            </p>
-          )}
 
           <div
             data-testid="verification-sheet-body"
@@ -277,6 +269,20 @@ export function VerificationSeal({ summary, nextStep }: VerificationSealProps) {
                 </p>
               )}
             </details>
+            {/* Der nächste Schritt steht am ENDE des Fließtexts, nicht am
+              klebenden Kopf: `planner-sheet-header` ist auf schmalen Viewports
+              `position: sticky` und gehört der Überschrift; ein zweites sticky
+              Element verschöbe den Text beim Scrollen. Inhaltlich gehört die
+              Handlungsaufforderung ohnehin hinter die Begründung. */}
+            {nextStep && (
+              <p
+                className="mt-2 rounded border border-rule-strong px-2 py-1.5 leading-relaxed text-foreground"
+                data-testid="verification-next-step"
+              >
+                <strong className="font-semibold">Nächster Schritt: </strong>
+                {nextStep}
+              </p>
+            )}
             <p className="mt-1 leading-relaxed text-muted-foreground">
               Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
               Prüfhinweisen. Planungshilfe — ersetzt keine Prüfung oder Abnahme durch eine Elektrofachkraft.
