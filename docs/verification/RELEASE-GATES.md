@@ -70,7 +70,7 @@ G2, G4, G6 sind explizit offen und werden mit der #605-Remediation nachgeliefert
 | M-14 Accessibility                        | G1                    | umgesetzt | `a11y.spec.ts` in quality.yml; G1 (PR #605) konzeptionell abgestimmt |
 | M-15 E2E (blockierende Specs)             | G3                    | umgesetzt | `e2e` Job; G3 (PR #605) konzeptionell abgestimmt                     |
 | —                                         | G2                    | offen     | Mit PR #605-Remediation geplant                                      |
-| —                                         | G4 (Mutation Testing) | offen     | Mit PR #605-Remediation geplant (eigener ADR, eigener PR nach #605)  |
+| —                                         | G4 (Mutation Testing) | offen     | ADR 0039 erstellt; eigener PR nach #605                              |
 | —                                         | G5                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
 | —                                         | G6                    | offen     | Mit PR #605-Remediation geplant                                      |
 | —                                         | G7                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
