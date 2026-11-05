@@ -724,4 +724,37 @@ describe('ELE-004 — 20-cm-Hauptsicherungsregel, normativ verankert', () => {
     expect(errors.find((e) => e.ruleId === 'fuse-offset')).toBeUndefined();
     expect(errors.find((e) => e.ruleId === 'main-fuse-distance')).toBeUndefined();
   });
+
+  describe('fuse-offset-missing (R-004 / S-03)', () => {
+    it('fehlender fuseOffset bei gesetzter fuseSize → kritischer Befund', () => {
+      const errors = collectEdgeErrors({
+        ...base,
+        data: { length: 0.5, crossSection: 4, fuseSize: 30, fuseOffset: undefined },
+      });
+      const rule = errors.find((e) => e.ruleId === 'fuse-offset-missing');
+      expect(rule).toBeDefined();
+      expect(rule!.severity).toBe('critical');
+      expect(rule!.message).toContain('20-cm-Regel nicht prüfbar');
+      expect(rule!.measuredValue).toBeUndefined();
+    });
+
+    it('fuseOffset ≤ 20 cm → kein fuse-offset-Fehler', () => {
+      const errors = collectEdgeErrors({
+        ...base,
+        data: { length: 0.5, crossSection: 4, fuseSize: 30, fuseOffset: 0.15 },
+      });
+      expect(errors.find((e) => e.ruleId === 'fuse-offset')).toBeUndefined();
+      expect(errors.find((e) => e.ruleId === 'fuse-offset-missing')).toBeUndefined();
+    });
+
+    it('fuseOffset > 20 cm → kritischer fuse-offset-Befund', () => {
+      const errors = collectEdgeErrors({
+        ...base,
+        data: { length: 0.5, crossSection: 4, fuseSize: 30, fuseOffset: 0.5 },
+      });
+      const rule = errors.find((e) => e.ruleId === 'fuse-offset');
+      expect(rule).toBeDefined();
+      expect(rule!.severity).toBe('critical');
+    });
+  });
 });
