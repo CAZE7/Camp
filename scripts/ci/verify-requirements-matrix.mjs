@@ -3,131 +3,370 @@
  *
  * Automatisierter Konsistenzcheck für die Requirements Matrix.
  *
- * Prüft für jede Klasse-S-Anforderung (CAMP-REQ-XXX):
- *   1. Ein Safety-Case-Claim (CL-XXX) ist in der Spalte "Claim" zugeordnet.
- *   2. Ein Risk-Register-Eintrag (R-XXX) ist in der Spalte "Risk" zugeordnet.
- *   3. Der referenzierte Claim existiert in docs/safety/SAFETY-CASE.md.
- *   4. Der referenzierte Risk-Eintrag existiert in docs/safety/RISK-REGISTER.md.
+ * Prüft für jede Klasse-S-Anforderung (CAMP-REQ-XXX) die vollständige
+ * Traceability-Kette laut Matrix Rule M-4:
+ *
+ *   1. Requirement-ID im gültigen Format (CAMP-REQ-XXX)
+ *   2. Requirement-Klasse (S, F, D, P, Q; Kombinationen wie "S/F" erlaubt)
+ *   3. Fachliche Grundlage (nicht leer, nicht "—")
+ *   4. Implementierungsreferenz (tatsächliche Dateipfade müssen existieren)
+ *   5. Testreferenz (tatsächliche Dateipfade müssen existieren)
+ *   6. Ergebnisstatus (Erfüllt, Teilweise, Offen, Nicht zutreffend; Zusatztexte in Klammern werden ignoriert)
+ *   7. Safety-Case-Claim (für Klasse S zwingend, muss im Safety Case existieren)
+ *   8. Risk-Register-Eintrag (für Klasse S zwingend, muss im Risk Register existieren)
+ *   9. Release-Status (Warnung, nicht blockierend)
  *
  * Bei Verstößen gibt das Skript die betroffenen Zeilen aus und beendet sich
  * mit Exit-Code 1 (CI-Job schlägt fehl).
  *
- * Aufruf: node scripts/ci/verify-requirements-matrix.mjs
+ * Aufruf: node scripts/ci/verify-requirements-matrix.mjs [matrixPath]
+ *
+ * Wenn matrixPath angegeben wird, wird diese Datei statt der Haupt-Matrix
+ * geprüft (für Unit-Tests des Prüfsystems).
  */
 
 import { readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 
-const MATRIX_PATH = 'docs/verification/REQUIREMENTS-MATRIX.md';
-const SAFETY_CASE_PATH = 'docs/safety/SAFETY-CASE.md';
-const RISK_REGISTER_PATH = 'docs/safety/RISK-REGISTER.md';
+const DEFAULT_MATRIX_PATH = 'docs/verification/REQUIREMENTS-MATRIX.md';
+const DEFAULT_SAFETY_CASE_PATH = 'docs/safety/SAFETY-CASE.md';
+const DEFAULT_RISK_REGISTER_PATH = 'docs/safety/RISK-REGISTER.md';
 
-const errors = [];
+const VALID_KLASSEN = new Set(['S', 'F', 'D', 'P', 'Q']);
+const VALID_ERGEBNISSE = new Set(['Erfüllt', 'Teilweise', 'Offen', 'Nicht zutreffend']);
 
-// --- Hilfsfunktionen -------------------------------------------------------
-
-function readTableRows(path) {
-  const text = readFileSync(path, 'utf8');
-  const rows = [];
-  const tableRe = /^\s*\|(.+)\|\s*$/m;
-  let match;
-  const lines = text.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.startsWith('|')) continue;
-    // Trennzeile überspringen (|---|---|)
-    if (/^\s*\|[\s\-:|]+\|\s*$/.test(line)) continue;
-    const cells = line
-      .split('|')
-      .map((c) => c.trim())
-      .filter((_, idx) => idx > 0 && idx < line.split('|').length - 1);
-    if (cells.length >= 1) rows.push(cells);
-  }
-  return rows;
+/**
+ * Extrahiert den reinen Ergebnisstatus (ohne Zusatztexte in Klammern).
+ * "Teilweise (Annahme nicht messverifiziert)" -> "Teilweise"
+ * "Grün (blockierende Specs)" -> "Erfüllt" (Alias)
+ */
+function extractErgebnisstatus(value) {
+  const trimmed = value.trim();
+  if (/^Grün/i.test(trimmed)) return 'Erfüllt';
+  const match = trimmed.match(/^(Erfüllt|Teilweise|Offen|Nicht zutreffend)/);
+  return match ? match[1] : trimmed;
 }
 
-function extractIds(text, pattern) {
-  const ids = new Set();
-  let m;
-  while ((m = pattern.exec(text)) !== null) {
-    ids.add(m[0]);
-  }
-  return ids;
+/**
+ * Prüft, ob ein String ein tatsächlicher Dateipfad ist (enthält / oder . oder beginnt mit lib/|components/|scripts/|tests/|app/|store/|docs/).
+ * Beschreibende Texte wie "UI-Komponenten delegieren an lib/" werden ignoriert.
+ * Glob-Muster (enthaltend *) sind gültig. Build-Artefakte unter out/ werden ignoriert.
+ */
+function looksLikeFilePath(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.includes('*')) return true;
+  if (trimmed.startsWith('npm ') || trimmed.startsWith('npx ')) return false;
+  if (trimmed.startsWith('out/')) return false; // Build-Artefakt, keine Quelldatei
+  return trimmed.includes('/') || /^(lib|components|scripts|tests|app|store|docs)\//.test(trimmed);
 }
 
-// --- Hauptprüfung ----------------------------------------------------------
+/**
+ * Prüft, ob eine Datei existiert, mit Fallback auf bekannte Endungen.
+ * "lib/validationSeverity" -> prüft auch "lib/validationSeverity.ts", ".tsx", ".mjs", ".js"
+ * Glob-Muster (enthaltend *) werden als existierend behandelt (keine konkrete Datei).
+ */
+function fileExistsWithFallback(filePath) {
+  if (filePath.includes('*')) return true; // Glob-Muster, keine konkrete Datei
+  if (existsSync(filePath)) return true;
+  const knownExtensions = ['.ts', '.tsx', '.mjs', '.js', '.json'];
+  for (const ext of knownExtensions) {
+    if (!filePath.endsWith(ext) && existsSync(filePath + ext)) return true;
+  }
+  return false;
+}
 
-const matrixRows = readTableRows(MATRIX_PATH);
+/**
+ * Extrahiert tatsächliche Dateipfade aus einer Test-/Implementierungsreferenz.
+ *
+ * Extrahiert zuerst alle Backtick-Inhalte (z. B. `lib/electrical.ts` aus
+ * "`lib/electrical.ts` `selectFuseSize`"). Von jedem Backtick-Inhalt wird
+ * nur der Teil vor dem ersten Leerzeichen genommen (Dateipfad ohne
+ * Funktionsname). Glob-Muster (enthaltend *) sind gültig.
+ *
+ * Trennt bei Semikolon und beschreibt nur echte Dateipfade.
+ */
+function extractFilePaths(value) {
+  if (!value) return [];
+  const paths = [];
+  const parts = value.split(/[;,]/);
+  for (const part of parts) {
+    const trimmed = part.trim();
+    const backtickMatches = trimmed.match(/`([^`]+)`/g);
+    if (backtickMatches) {
+      for (const bt of backtickMatches) {
+        const content = bt.slice(1, -1); // Backticks entfernen
+        const filePath = content.split(/\s+/)[0]; // Nur Teil vor erstem Leerzeichen
+        if (filePath && looksLikeFilePath(filePath)) {
+          paths.push(filePath);
+        }
+      }
+    } else {
+      // Keine Backticks: ganzen Teil als Kandidaten betrachten
+      const candidate = trimmed.replace(/`/g, '').split(/\s+/)[0];
+      if (candidate && looksLikeFilePath(candidate)) {
+        paths.push(candidate);
+      }
+    }
+  }
+  // Duplikate entfernen
+  return [...new Set(paths)];
+}
 
-// Spaltenindex in der Matrix-Tabelle:
-// 0: Req-ID, 1: Anforderung, 2: Klasse, 3: Fachliche Grundlage, 4: Implementierung,
-// 5: Test, 6: Ergebnis, 7: Release, 8: Claim, 9: Risk
+/**
+ * Prüft eine Requirements Matrix und gibt ein Ergebnis-Objekt zurück.
+ *
+ * @returns {Object} { errors: string[], warnings: string[], classSCount: number, totalCount: number }
+ */
+function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
+  const errors = [];
+  const warnings = [];
 
-const safetyCaseText = readFileSync(SAFETY_CASE_PATH, 'utf8');
-const riskRegisterText = readFileSync(RISK_REGISTER_PATH, 'utf8');
+  // --- Hilfsfunktionen -------------------------------------------------------
 
-const existingClaims = extractIds(safetyCaseText, /CL-\d{3}/g);
-const existingRisks = extractIds(riskRegisterText, /R-\d{3}/g);
-
-let classSCount = 0;
-
-for (const row of matrixRows) {
-  const reqId = row[0];
-  if (!reqId || !reqId.startsWith('CAMP-REQ-')) continue;
-
-  const klasse = row[2];
-  const claim = row[8];
-  const risk = row[9];
-
-  if (klasse !== 'S') continue;
-
-  classSCount++;
-
-  // Prüfung 1: Klasse-S-Anforderung muss einen Claim haben (Matrix Rule M-4)
-  if (!claim || claim === '—' || claim === '') {
-    errors.push(
-      `FEHLER: ${reqId} (Klasse S) hat keinen Safety-Case-Claim zugewiesen (Spalte "Claim" ist leer). ` +
-        `Matrix Rule M-4 verlangt einen Claim für jede Klasse-S-Anforderung.`
-    );
-    continue; // Weitere Prüfungen für diesen Eintrag überspringen, da Claim fehlt
+  function readTableRows(path) {
+    let text;
+    try {
+      text = readFileSync(path, 'utf8');
+    } catch {
+      return { rows: [], error: `Datei nicht gefunden: ${path}` };
+    }
+    const rows = [];
+    const lines = text.split('\n');
+    for (const line of lines) {
+      if (!line.startsWith('|')) continue;
+      // Trennzeile überspringen (|---|---|)
+      if (/^\s*\|[\s\-:|]+\|\s*$/.test(line)) continue;
+      const cells = line
+        .split('|')
+        .map((c) => c.trim())
+        .filter((_, idx) => idx > 0 && idx < line.split('|').length - 1);
+      if (cells.length >= 1) rows.push(cells);
+    }
+    return { rows, error: null };
   }
 
-  // Prüfung 2: Klasse-S-Anforderung muss einen Risk-Register-Eintrag haben (Matrix Rule M-4)
-  if (!risk || risk === '—' || risk === '') {
-    errors.push(
-      `FEHLER: ${reqId} (Klasse S) hat keinen Risk-Register-Eintrag zugewiesen (Spalte "Risk" ist leer). ` +
-        `Matrix Rule M-4 verlangt einen Risk-Register-Eintrag für jede Klasse-S-Anforderung.`
-    );
-    continue;
+  function extractIds(text, pattern) {
+    const ids = new Set();
+    let m;
+    while ((m = pattern.exec(text)) !== null) {
+      ids.add(m[0]);
+    }
+    return ids;
   }
 
-  // Prüfung 3: Referenzierter Claim muss im Safety Case existieren
-  const claimIds = claim.match(/CL-\d{3}/g) || [];
-  for (const cid of claimIds) {
-    if (!existingClaims.has(cid)) {
-      errors.push(`FEHLER: ${reqId} verweist auf nicht existierenden Claim ${cid} im Safety Case.`);
+  function isEmptyOrDash(value) {
+    return !value || value === '—' || value === '-' || value === '';
+  }
+
+  // --- Dateien einlesen ------------------------------------------------------
+
+  const matrixResult = readTableRows(matrixPath);
+  if (matrixResult.error) {
+    return { errors: [matrixResult.error], warnings: [], classSCount: 0, totalCount: 0 };
+  }
+  const matrixRows = matrixResult.rows;
+
+  let safetyCaseText = '';
+  let riskRegisterText = '';
+  try {
+    safetyCaseText = readFileSync(safetyCasePath, 'utf8');
+  } catch {
+    warnings.push(`Safety-Case nicht gefunden: ${safetyCasePath}`);
+  }
+  try {
+    riskRegisterText = readFileSync(riskRegisterPath, 'utf8');
+  } catch {
+    warnings.push(`Risk Register nicht gefunden: ${riskRegisterPath}`);
+  }
+
+  const existingClaims = extractIds(safetyCaseText, /CL-\d{3}/g);
+  const existingRisks = extractIds(riskRegisterText, /R-\d{3}/g);
+
+  // Spaltenindex in der Matrix-Tabelle:
+  // 0: Req-ID, 1: Anforderung, 2: Klasse, 3: Fachliche Grundlage,
+  // 4: Implementierung, 5: Test, 6: Ergebnis, 7: Release, 8: Claim, 9: Risk
+
+  let classSCount = 0;
+  let totalCount = 0;
+  const seenReqIds = new Set();
+
+  for (let rowIdx = 0; rowIdx < matrixRows.length; rowIdx++) {
+    const row = matrixRows[rowIdx];
+    const reqId = row[0];
+    if (!reqId || !reqId.startsWith('CAMP-REQ-')) continue;
+
+    totalCount++;
+
+    // Duplicate-ID prüfen
+    if (seenReqIds.has(reqId)) {
+      errors.push(`Zeile ${rowIdx + 2}: Doppelte Requirement-ID ${reqId} in der Matrix.`);
+    }
+    seenReqIds.add(reqId);
+
+    const klasseRaw = row[2] || '';
+    const anforderung = row[1] || '';
+    const grundlage = row[3] || '';
+    const implementierung = row[4] || '';
+    const test = row[5] || '';
+    const ergebnisRaw = row[6] || '';
+    const release = row[7] || '';
+    const claim = row[8] || '';
+    const risk = row[9] || '';
+
+    const zeilenInfo = `Zeile ${rowIdx + 2} (${reqId})`;
+
+    // --- Prüfung 1: Requirement-ID Format -------------------------------
+    if (!/^CAMP-REQ-\d{3}$/.test(reqId)) {
+      errors.push(`${zeilenInfo}: Ungültige Requirement-ID-Format: "${reqId}". Erwartet: CAMP-REQ-XXX.`);
+    }
+
+    // --- Prüfung 2: Requirement-Klasse -------------------------------
+    const klassenTeile = klasseRaw.split('/').map((k) => k.trim());
+    let klasseUngueltig = false;
+    for (const k of klassenTeile) {
+      if (!VALID_KLASSEN.has(k)) {
+        klasseUngueltig = true;
+        break;
+      }
+    }
+    if (klasseUngueltig || klassenTeile.length === 0) {
+      errors.push(
+        `${zeilenInfo}: Ungültige Klasse "${klasseRaw}". Erlaubt: S, F, D, P, Q (Kombinationen wie "S/F" möglich).`
+      );
+    }
+
+    const primareKlasse = klassenTeile[0];
+
+    // --- Prüfung 3: Fachliche Grundlage -------------------------------
+    if (isEmptyOrDash(grundlage)) {
+      errors.push(
+        `${zeilenInfo}: Keine fachliche Grundlage angegeben. Jede Anforderung benötigt eine Quelle (Norm, Datenblatt, Modellannahme, Architekturentscheidung).`
+      );
+    }
+
+    // --- Prüfung 4: Implementierungsreferenz -------------------------------
+    const implPaths = extractFilePaths(implementierung);
+    if (implPaths.length === 0 && !isEmptyOrDash(implementierung)) {
+      // Es steht etwas, aber kein erkennbarer Dateipfad - Warnung, kein Fehler
+      warnings.push(
+        `${zeilenInfo}: Kein erkennbarer Dateipfad in der Implementierungsreferenz: "${implementierung}".`
+      );
+    }
+    for (const implFile of implPaths) {
+      if (!fileExistsWithFallback(implFile)) {
+        errors.push(
+          `${zeilenInfo}: Implementierungsdatei nicht gefunden: "${implFile}" (aus "${implementierung}").`
+        );
+      }
+    }
+
+    // --- Prüfung 5: Testreferenz -------------------------------
+    const testPaths = extractFilePaths(test);
+    if (testPaths.length === 0 && !isEmptyOrDash(test)) {
+      warnings.push(`${zeilenInfo}: Kein erkennbarer Dateipfad in der Testreferenz: "${test}".`);
+    }
+    for (const testFile of testPaths) {
+      if (!fileExistsWithFallback(testFile)) {
+        errors.push(`${zeilenInfo}: Testdatei nicht gefunden: "${testFile}" (aus "${test}").`);
+      }
+    }
+
+    // --- Prüfung 6: Ergebnisstatus -------------------------------
+    const ergebnisStatus = extractErgebnisstatus(ergebnisRaw);
+    if (!VALID_ERGEBNISSE.has(ergebnisStatus)) {
+      errors.push(
+        `${zeilenInfo}: Ungültiger Ergebnisstatus "${ergebnisRaw}". Erlaubt: Erfüllt, Teilweise, Offen, Nicht zutreffend.`
+      );
+    }
+
+    // --- Prüfung 7: Release-Status (Warnung, nicht blockierend) ---------
+    if (isEmptyOrDash(release)) {
+      warnings.push(`${zeilenInfo}: Kein Release-Status angegeben. Empfohlen: Verweis auf Release/Gate.`);
+    }
+
+    // --- Prüfung 8+9: Klasse-S-Anforderungen benötigen Claim + Risk (M-4) --
+    if (primareKlasse === 'S') {
+      classSCount++;
+
+      // Claim prüfen
+      if (isEmptyOrDash(claim)) {
+        errors.push(
+          `${zeilenInfo}: Klasse-S-Anforderung hat keinen Safety-Case-Claim zugewiesen. Matrix Rule M-4 verlangt einen Claim für jede Klasse-S-Anforderung.`
+        );
+      } else {
+        const claimIds = claim.match(/CL-\d{3}/g) || [];
+        if (claimIds.length === 0) {
+          errors.push(`${zeilenInfo}: Keine gültige Claim-ID (CL-XXX) in der Claim-Spalte: "${claim}".`);
+        }
+        for (const cid of claimIds) {
+          if (!existingClaims.has(cid)) {
+            errors.push(`${zeilenInfo}: Verweist auf nicht existierenden Claim ${cid} im Safety Case.`);
+          }
+        }
+      }
+
+      // Risk prüfen
+      if (isEmptyOrDash(risk)) {
+        errors.push(
+          `${zeilenInfo}: Klasse-S-Anforderung hat keinen Risk-Register-Eintrag zugewiesen. Matrix Rule M-4 verlangt einen Risk-Register-Eintrag für jede Klasse-S-Anforderung.`
+        );
+      } else {
+        const riskIds = risk.match(/R-\d{3}/g) || [];
+        if (riskIds.length === 0) {
+          errors.push(`${zeilenInfo}: Keine gültige Risk-ID (R-XXX) in der Risk-Spalte: "${risk}".`);
+        }
+        for (const rid of riskIds) {
+          if (!existingRisks.has(rid)) {
+            errors.push(`${zeilenInfo}: Verweist auf nicht existierenden Risk-Register-Eintrag ${rid}.`);
+          }
+        }
+      }
+
+      // Prüfung: "Erfüllt" darf nicht ohne vollständigen Nachweis sein
+      if (ergebnisStatus === 'Erfüllt') {
+        if (isEmptyOrDash(claim) || isEmptyOrDash(risk)) {
+          errors.push(
+            `${zeilenInfo}: Ergebnis "Erfüllt" ohne vollständigen Claim/Risk-Nachweis. Ein unvollständiger Nachweis darf niemals als erfüllt gelten.`
+          );
+        }
+      }
     }
   }
 
-  // Prüfung 4: Referenzierter Risk-Eintrag muss im Risk Register existieren
-  const riskIds = risk.match(/R-\d{3}/g) || [];
-  for (const rid of riskIds) {
-    if (!existingRisks.has(rid)) {
-      errors.push(`FEHLER: ${reqId} verweist auf nicht existierenden Risk-Register-Eintrag ${rid}.`);
-    }
-  }
+  return { errors, warnings, classSCount, totalCount };
 }
 
-// --- Ergebnis --------------------------------------------------------------
+// --- CLI-Einstieg ----------------------------------------------------------
 
-if (errors.length > 0) {
+const matrixPath = process.argv[2] || DEFAULT_MATRIX_PATH;
+const safetyCasePath = process.argv[3] || DEFAULT_SAFETY_CASE_PATH;
+const riskRegisterPath = process.argv[4] || DEFAULT_RISK_REGISTER_PATH;
+
+const result = verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath);
+
+if (result.errors.length > 0) {
   console.error(`\n❌ REQUIREMENTS-MATRIX KONSISTENZCHECK FEHLGESCHLAGEN\n`);
-  console.error(`Geprüfte Klasse-S-Anforderungen: ${classSCount}\n`);
-  errors.forEach((e) => console.error(`  ${e}`));
-  console.error(`\n${errors.length} Fehler gefunden.`);
+  console.error(`Geprüfte Datei: ${matrixPath}`);
+  console.error(`Anforderungen insgesamt: ${result.totalCount}`);
+  console.error(`Klasse-S-Anforderungen: ${result.classSCount}\n`);
+  result.errors.forEach((e) => console.error(`  ${e}`));
+  if (result.warnings.length > 0) {
+    console.error(`\n⚠️  Warnungen (nicht blockierend):`);
+    result.warnings.forEach((w) => console.error(`  ${w}`));
+  }
+  console.error(`\n${result.errors.length} Fehler gefunden.`);
   process.exit(1);
 }
 
 console.log(`\n✅ REQUIREMENTS-MATRIX KONSISTENZCHECK BESTANDEN\n`);
-console.log(`Geprüfte Klasse-S-Anforderungen: ${classSCount}`);
+console.log(`Geprüfte Datei: ${matrixPath}`);
+console.log(`Anforderungen insgesamt: ${result.totalCount}`);
+console.log(`Klasse-S-Anforderungen: ${result.classSCount}`);
 console.log(`Alle Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge.\n`);
+if (result.warnings.length > 0) {
+  console.log(`⚠️  Warnungen (nicht blockierend):`);
+  result.warnings.forEach((w) => console.log(`  ${w}`));
+  console.log();
+}
 process.exit(0);

@@ -177,7 +177,7 @@ Die Roadmap ist in Phasen unterteilt. Jede Phase hat Abhängigkeiten, geschätzt
 | P1-11 | `docs/ENGINEERING-QUALITY-ROADMAP.md` erstellen (Abschlussbewertung + Roadmap)                                                                                                        | P1-1…P1-10                     | 3 PT    | Product Owner      | Roadmap mit Phasen, Abhängigkeiten, Aufwand, Abnahmekriterien                                             |
 | P1-12 | Architekturtests als Required Status Checks in Branch Protection eintragen (CI.md §4)                                                                                                 | Repo-Admin (`workflows:write`) | 1 PT    | DevOps             | `gh api` Protection gesetzt; Merge ohne grünes Gate nicht möglich                                         |
 
-**Gesamtaufwand Phase 1:** ca. 28 PT + Repo-Admin.  
+**Gesamtaufwand Phase 1:** ca. 30 PT + Repo-Admin.  
 **Abnahme Phase 1:** Alle 11 geforderten Dokumente existieren und sind konsistent; Branch Protection aktiv; alle Merge-Gates grün.
 
 ---
@@ -202,8 +202,8 @@ Die Roadmap ist in Phasen unterteilt. Jede Phase hat Abhängigkeiten, geschätzt
 | P2-3 | AC-Netzimpedanz-Annahme (0,8 Ω) messen oder als „nicht bewertbar“ kennzeichnen (R-008)                                            | P1-7           | 3 PT    | Safety Engineering      | Messwert vor Ort oder explizit `UNVERIFIABLE` im Meldungstext; `lib/acProtection.test.ts` ergänzt                     |
 | P2-4 | Clearance-Rest im `complex`-Plan (8 Paare unter 24 px) reduzieren oder als dokumentiert akzeptieren (R-012)                       | P2-1           | 4 PT    | QE                      | `routing:audit` zeigt keine Zunahme; Restrisiko im Risk Register dokumentiert                                         |
 | P2-5 | Mutation Testing für sicherheitskritische Module einführen (geplant)                                                              | P1-8           | 5 PT    | QE                      | Mutation-Score ≥ 80 % für sicherheitsrelevante Linien; im CI                                                          |
-| P2-6 | Tastatur-E2E für Canvas nachholen (M11-3 Rest, R-023)                                                                             | P1-14          | 3 PT    | QE / UX                 | `tests/e2e/planner-keyboard.spec.ts`: Mini-Plan baubar per Tastatur, alle grün                                        |
-| P2-7 | Security-Headers / CSP auf ausgelieferter Seite prüfen (R-024, ADR 0038)                                                          | P1-14          | 2 PT    | DevOps                  | Headers vorhanden; Prüfung dokumentiert                                                                               |
+| P2-6 | Tastatur-E2E für Canvas nachholen (M11-3 Rest, R-023)                                                                             | P1-10          | 3 PT    | QE / UX                 | `tests/e2e/planner-keyboard.spec.ts`: Mini-Plan baubar per Tastatur, alle grün                                        |
+| P2-7 | Security-Headers / CSP auf ausgelieferter Seite prüfen (R-024, ADR 0038)                                                          | P1-12          | 2 PT    | DevOps                  | Headers vorhanden; Prüfung dokumentiert                                                                               |
 | P2-8 | Datenqualitätsdokument für Komponenten (Hersteller, Modell, Datenblatt, Datenversion, Verifizierungsstatus) erstellen (Aufgabe 8) | P1-9           | 4 PT    | QE / Product Owner      | Dokument existiert; jedes Bauteil in der Registry hat Verifizierungsstatus                                            |
 
 **Gesamtaufwand Phase 2:** ca. 43 PT (2A: 9 PT, 2B: 34 PT).
