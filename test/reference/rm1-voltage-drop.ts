@@ -43,8 +43,17 @@
  *
  * Gültigkeitsbereich
  * ------------------
- * - Kupfer, Temperaturen 0 °C ≤ T < 200 °C (darüber verliert das lineare
- *   α-Modell seine Gültigkeit; das Produktivmodell wirft dort ebenfalls).
+ * - Kupfer, Temperaturen 0 °C ≤ T < 200 °C.
+ *
+ *   KORREKTUR (Audit 2026-11-05): Hier stand, „das Produktivmodell wirft dort
+ *   ebenfalls". Das ist **falsch** — gemessen: `copperResistivityAt(200 | 250 |
+ *   300)` liefert 0,02988 / 0,03332 / 0,03676 Ω·mm²/m ohne Fehler; nur unterhalb
+ *   des absoluten Nullpunkts wirft es. RM-1 ist an der oberen Grenze also
+ *   **strenger** als die Produktivseite. Das ist bewusst so (das lineare
+ *   α-Modell trägt oberhalb ~200 °C keine Aussage mehr), heißt aber: der
+ *   Differentialtest kann diesen Bereich nicht vergleichen, und er tut es auch
+ *   nicht (`fc.integer({min:0, max:69})`). Wer RM-1 für höhere Temperaturen
+ *   öffnet, muss die Physik begründen, nicht die Toleranz.
  * - Reine Leitung ohne Übergangswiderstände, Kontakte, Sicherungen.
  * - Ein Leiterpaar (Hin- und Rückweg gleicher Querschnitt). Unsymmetrische
  *   Querschnitte (z. B. N/PE) sind NICHT abgedeckt — dafür gibt es RM-4.
