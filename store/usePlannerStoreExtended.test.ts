@@ -674,9 +674,24 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   );
 
   // 2. Kanten-Logik der Anzeige (CableEdge-Errors)
+  // fuseOffset ist ein Nutzer-Feld, das AutoWire nicht setzt. Bei Kanten mit
+  // fuseSize aber ohne fuseOffset löst collectEdgeErrors den kritischen
+  // Befund 'fuse-offset-missing' aus (S-03, R-004). Die Auto-Wire-Tests
+  // testen die Verkabelungs-Logik, nicht die Nutzer-Eingabe von fuseOffset;
+  // deshalb wird hier ein zulässiger Default (0,1 m ≤ 20 cm) angewendet.
+  const edgesWithFuseOffset = edges.map((edge) => {
+    if (
+      edge.data?.fuseSize &&
+      edge.data?.fuseOffset === undefined &&
+      edge.data?.edgeDomain !== 'AC_230V'
+    ) {
+      return { ...edge, data: { ...edge.data, fuseOffset: 0.1 } };
+    }
+    return edge;
+  });
   const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];
-  for (const edge of edges) {
-    edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
+  for (const edge of edgesWithFuseOffset) {
+    edgeErrors.push(...getEdgeErrors(nodes, edgesWithFuseOffset, edge));
   }
   expect(edgeErrors).toEqual([]);
 }
@@ -1035,9 +1050,24 @@ function assertNoSafetyWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     result.current.filter((w) => w.category !== 'estimation' && !ALLOWED_DATA_GAP_RULES.has(w.ruleId ?? ''))
   ).toEqual([]);
 
+  // fuseOffset ist ein Nutzer-Feld, das AutoWire nicht setzt. Bei Kanten mit
+  // fuseSize aber ohne fuseOffset löst collectEdgeErrors den kritischen
+  // Befund 'fuse-offset-missing' aus (S-03, R-004). Die Auto-Wire-Tests
+  // testen die Verkabelungs-Logik, nicht die Nutzer-Eingabe von fuseOffset;
+  // deshalb wird hier ein zulässiger Default (0,1 m ≤ 20 cm) angewendet.
+  const edgesWithFuseOffset = edges.map((edge) => {
+    if (
+      edge.data?.fuseSize &&
+      edge.data?.fuseOffset === undefined &&
+      edge.data?.edgeDomain !== 'AC_230V'
+    ) {
+      return { ...edge, data: { ...edge.data, fuseOffset: 0.1 } };
+    }
+    return edge;
+  });
   const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];
-  for (const edge of edges) {
-    edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
+  for (const edge of edgesWithFuseOffset) {
+    edgeErrors.push(...getEdgeErrors(nodes, edgesWithFuseOffset, edge));
   }
   expect(edgeErrors).toEqual([]);
 }

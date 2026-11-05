@@ -8,27 +8,27 @@
 
 ## 1. Offene PRs im Repo
 
-| PR | Branch | Inhalt | Relevanz für #604 |
-|----|--------|--------|-------------------|
-| #604 | `arena/949821e6-camp` | Engineering & Quality Framework (docs-only, CI, Konsistenzcheck) | **Dieser PR** — Basis für alle anderen |
-| #605 | `arena/8b44e0c9-camp` | Verifikation + Tests: ELECTRICAL-VERIFICATION-STRATEGY.md (§12, §12.7 Abstimmung mit #604), ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md, test/reference/*, test/invariants/* | Deckt O-07/N-04 (Mutation Testing G4), CL-001/O-02 (E-1, E-2, K-2), CI-Gates G1, G3, G5, G7 ab |
-| #606 | `arena/3ad41177-camp` | Produktreife: PRODUCT-READINESS-AUDIT.md, PR-Body (Aud-Status) | Deckt O-08 (Visual-Gate Trennung), AUD-003 (R-001 Verweis) ab |
-| #598 | `cursor/obfuscate-client-chunks-60ec` | Build: javascript-obfuscator | Muss nach quality.yml-Änderungen rebasen; Perf-Gates neu prüfen |
-| #580 | `arena/79491226-camp` | Seitenaufbau/Inhalte | Keine direkte Überschneidung mit #604 |
-| #585–#591 | Abhängig | Dependabot-Updates | Erst NACH Feature-PRs mergen (Lockfile-Churn) |
+| PR        | Branch                                | Inhalt                                                                                                                                                                    | Relevanz für #604                                                                              |
+| --------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| #604      | `arena/949821e6-camp`                 | Engineering & Quality Framework (docs-only, CI, Konsistenzcheck)                                                                                                          | **Dieser PR** — Basis für alle anderen                                                         |
+| #605      | `arena/8b44e0c9-camp`                 | Verifikation + Tests: ELECTRICAL-VERIFICATION-STRATEGY.md (§12, §12.7 Abstimmung mit #604), ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md, test/reference/_, test/invariants/_ | Deckt O-07/N-04 (Mutation Testing G4), CL-001/O-02 (E-1, E-2, K-2), CI-Gates G1, G3, G5, G7 ab |
+| #606      | `arena/3ad41177-camp`                 | Produktreife: PRODUCT-READINESS-AUDIT.md, PR-Body (Aud-Status)                                                                                                            | Deckt O-08 (Visual-Gate Trennung), AUD-003 (R-001 Verweis) ab                                  |
+| #598      | `cursor/obfuscate-client-chunks-60ec` | Build: javascript-obfuscator                                                                                                                                              | Muss nach quality.yml-Änderungen rebasen; Perf-Gates neu prüfen                                |
+| #580      | `arena/79491226-camp`                 | Seitenaufbau/Inhalte                                                                                                                                                      | Keine direkte Überschneidung mit #604                                                          |
+| #585–#591 | Abhängig                              | Dependabot-Updates                                                                                                                                                        | Erst NACH Feature-PRs mergen (Lockfile-Churn)                                                  |
 
 ---
 
 ## 2. Empfohlene Merge-Reihenfolge
 
-| Reihenfolge | PR | Begründung |
-|-------------|-----|------------|
-| 1 | **#604** (dieser PR) | Basis: Dokumentation, CI, Konsistenzcheck, Safety Case, Risk Register, Requirements Matrix. Alle anderen PRs bauen darauf auf. |
-| 2 | **#605** | Verifikation + Tests. Baut auf #604 auf (Safety Case, Risk Register). G4 (Mutation Testing) folgt nach #605 als eigener PR. |
-| 3 | **#606** | Produktreife-Audit. Baut auf #604 + #605 auf (Visual-Gate, Baseline-Verfahren). |
-| 4 | **#598** | Build-Obfuskation. Muss nach #604 (quality.yml-Änderungen) rebasen und Perf-Gates neu prüfen. |
-| 5 | **#580** | Seitenaufbau. Keine direkte Überschneidung, kann parallel oder nach #604. |
-| 6 | **#585–#591** | Dependabot. Erst nach allen Feature-PRs, um Lockfile-Churn zu vermeiden. ai-SDK 7.x / @ai-sdk/react 4.x Major-Upgrades auf Breaking Changes prüfen (R-022, ADR 0021). |
+| Reihenfolge | PR                   | Begründung                                                                                                                                                            |
+| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1           | **#604** (dieser PR) | Basis: Dokumentation, CI, Konsistenzcheck, Safety Case, Risk Register, Requirements Matrix. Alle anderen PRs bauen darauf auf.                                        |
+| 2           | **#605**             | Verifikation + Tests. Baut auf #604 auf (Safety Case, Risk Register). G4 (Mutation Testing) folgt nach #605 als eigener PR.                                           |
+| 3           | **#606**             | Produktreife-Audit. Baut auf #604 + #605 auf (Visual-Gate, Baseline-Verfahren).                                                                                       |
+| 4           | **#598**             | Build-Obfuskation. Muss nach #604 (quality.yml-Änderungen) rebasen und Perf-Gates neu prüfen.                                                                         |
+| 5           | **#580**             | Seitenaufbau. Keine direkte Überschneidung, kann parallel oder nach #604.                                                                                             |
+| 6           | **#585–#591**        | Dependabot. Erst nach allen Feature-PRs, um Lockfile-Churn zu vermeiden. ai-SDK 7.x / @ai-sdk/react 4.x Major-Upgrades auf Breaking Changes prüfen (R-022, ADR 0021). |
 
 **Wichtigste Regel:** #604 zuerst, dann #605, dann #606. #598 braucht Rebase nach #604.
 
@@ -70,29 +70,29 @@
 
 ## 4. Zuordnung offener Punkte (O-01..O-09 / N-01..N-08)
 
-| ID | Titel | Erledigt durch | Nachweis |
-|----|-------|----------------|----------|
-| O-01 | R-004 20-cm-Regel (fehlender fuseOffset) | #604 (A-1, Code CableEdge.tsx) | Unit-Tests + Claim CAMP-REQ-002 |
-| O-02 | CL-001 I_B ≤ I_n ≤ I_z teilweise | #604 (A-2, Verifikation) + #605 (E-1, E-2, K-2) | Verweis auf #605-Invarianten |
-| O-03 | CAMP-REQ-002 kein Claim | #604 (Phase 2, nach A-1) | Claim CL-004 im Safety Case |
-| O-04a | CAMP-REQ-014 kein Risk-Eintrag | #604 (Phase 2) | Risk-Eintrag R-025 oder Status herabstufen |
-| O-04b | CAMP-REQ-023 kein Claim | #604 (Phase 2) + #605 (ROUTE-003) | Verweis auf REMEDIATION-PLAN |
-| O-05 | CI-Gates M-6..M-14 nicht implementiert | #604 (Phase 3) | quality.yml erweitert, Mapping M↔G in RELEASE-GATES.md |
-| O-06 | Branch Protection nicht aktiv | #604 (Phase 5, Dokumentation) | BRANCH-PROTECTION-SETUP.md (Admin-Setup in Phase 2) |
-| O-07 | Mutation Testing nicht im CI | #605 (G4, nach #605 als eigener PR) | ADR-Verknüpfung in RELEASE-GATES.md |
-| O-08 | Visual-Gate nicht blockierend | #604 (Phase 3) + #606 (Baseline-Verfahren) | Entscheidung: melden, nicht blockierend |
-| O-09 | test:coverage Timeout (Sandbox) | #604 (Phase 4, lokaler Lauf) | Lokale Ergebnisse im Abschlussbericht |
+| ID    | Titel                                    | Erledigt durch                                  | Nachweis                                               |
+| ----- | ---------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
+| O-01  | R-004 20-cm-Regel (fehlender fuseOffset) | #604 (A-1, Code CableEdge.tsx)                  | Unit-Tests + Claim CAMP-REQ-002                        |
+| O-02  | CL-001 I_B ≤ I_n ≤ I_z teilweise         | #604 (A-2, Verifikation) + #605 (E-1, E-2, K-2) | Verweis auf #605-Invarianten                           |
+| O-03  | CAMP-REQ-002 kein Claim                  | #604 (Phase 2, nach A-1)                        | Claim CL-004 im Safety Case                            |
+| O-04a | CAMP-REQ-014 kein Risk-Eintrag           | #604 (Phase 2)                                  | Risk-Eintrag R-025 oder Status herabstufen             |
+| O-04b | CAMP-REQ-023 kein Claim                  | #604 (Phase 2) + #605 (ROUTE-003)               | Verweis auf REMEDIATION-PLAN                           |
+| O-05  | CI-Gates M-6..M-14 nicht implementiert   | #604 (Phase 3)                                  | quality.yml erweitert, Mapping M↔G in RELEASE-GATES.md |
+| O-06  | Branch Protection nicht aktiv            | #604 (Phase 5, Dokumentation)                   | BRANCH-PROTECTION-SETUP.md (Admin-Setup in Phase 2)    |
+| O-07  | Mutation Testing nicht im CI             | #605 (G4, nach #605 als eigener PR)             | ADR-Verknüpfung in RELEASE-GATES.md                    |
+| O-08  | Visual-Gate nicht blockierend            | #604 (Phase 3) + #606 (Baseline-Verfahren)      | Entscheidung: melden, nicht blockierend                |
+| O-09  | test:coverage Timeout (Sandbox)          | #604 (Phase 4, lokaler Lauf)                    | Lokale Ergebnisse im Abschlussbericht                  |
 
-| ID | Titel | Erledigt durch | Nachweis |
-|----|-------|----------------|----------|
-| N-01 | Code-Änderung CableEdge.tsx (R-004) | #604 (A-1) | siehe O-01 |
-| N-02 | Branch Protection in GitHub | #604 (Phase 5, Admin-Rechte nötig) | BRANCH-PROTECTION-SETUP.md |
-| N-03 | Fehlende CI-Gates in quality.yml | #604 (Phase 3) | siehe O-05 |
-| N-04 | Mutation Testing einführen | #605 (G4, eigener PR nach #605) | siehe O-07 |
-| N-05 | Visual-Regression blockierend | #604 + #606 (Phase 2 nach UI-Freigabe) | siehe O-08 |
-| N-06 | Fahrzeug-Leitungskontext (R-001) | Phase 2 (Issue geöffnet) | Issue mit Label phase-2 |
-| N-07 | AC-Netzimpedanz messen (R-008) | Phase 2 (Issue geöffnet) | Issue mit Label phase-2 |
-| N-08 | Domänen-Trennregeln anbinden (R-019) | Phase 2 (Issue geöffnet) | Issue mit Label phase-2 |
+| ID   | Titel                                | Erledigt durch                         | Nachweis                   |
+| ---- | ------------------------------------ | -------------------------------------- | -------------------------- |
+| N-01 | Code-Änderung CableEdge.tsx (R-004)  | #604 (A-1)                             | siehe O-01                 |
+| N-02 | Branch Protection in GitHub          | #604 (Phase 5, Admin-Rechte nötig)     | BRANCH-PROTECTION-SETUP.md |
+| N-03 | Fehlende CI-Gates in quality.yml     | #604 (Phase 3)                         | siehe O-05                 |
+| N-04 | Mutation Testing einführen           | #605 (G4, eigener PR nach #605)        | siehe O-07                 |
+| N-05 | Visual-Regression blockierend        | #604 + #606 (Phase 2 nach UI-Freigabe) | siehe O-08                 |
+| N-06 | Fahrzeug-Leitungskontext (R-001)     | Phase 2 (Issue geöffnet)               | Issue mit Label phase-2    |
+| N-07 | AC-Netzimpedanz messen (R-008)       | Phase 2 (Issue geöffnet)               | Issue mit Label phase-2    |
+| N-08 | Domänen-Trennregeln anbinden (R-019) | Phase 2 (Issue geöffnet)               | Issue mit Label phase-2    |
 
 ---
 
@@ -100,15 +100,15 @@
 
 Aus den Aufgabenbeschreibungen der Parallel-PRs:
 
-| Datei | PR | Hinweis |
-|-------|-----|---------|
-| `docs/ELECTRICAL-VERIFICATION-STRATEGY.md` | #605 | Nur lesen, keine Änderungen |
-| `docs/ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md` | #605 | Nur lesen, keine Änderungen |
-| `test/reference/*` | #605 | Nur lesen |
-| `test/invariants/*` | #605 | Nur lesen (Snapshot-Aktualisierung erst nach R-004-Fix) |
-| `docs/PRODUCT-READINESS-AUDIT.md` | #606 | Nur lesen |
-| `BatteryBankSection` | #606 | Nicht anfassen |
-| `capturePlanImage` | #606 | Nicht anfassen |
+| Datei                                           | PR   | Hinweis                                                 |
+| ----------------------------------------------- | ---- | ------------------------------------------------------- |
+| `docs/ELECTRICAL-VERIFICATION-STRATEGY.md`      | #605 | Nur lesen, keine Änderungen                             |
+| `docs/ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md` | #605 | Nur lesen, keine Änderungen                             |
+| `test/reference/*`                              | #605 | Nur lesen                                               |
+| `test/invariants/*`                             | #605 | Nur lesen (Snapshot-Aktualisierung erst nach R-004-Fix) |
+| `docs/PRODUCT-READINESS-AUDIT.md`               | #606 | Nur lesen                                               |
+| `BatteryBankSection`                            | #606 | Nicht anfassen                                          |
+| `capturePlanImage`                              | #606 | Nicht anfassen                                          |
 
 **Konflikt-Regel:** Bei Konflikt mit bestehender Parallel-Arbeit → STOP und im Bericht als offene Frage ausweisen, statt eine Seite zu überschreiben.
 
