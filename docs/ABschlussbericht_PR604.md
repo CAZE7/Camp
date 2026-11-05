@@ -1,7 +1,7 @@
 # Abschlussbericht — PR #604 / Engineering & Quality Framework (Camp)
 
 **Branch:** `arena/949821e6-camp`  
-**Commit-SHA:** `f8c066a`  
+**Commit-SHA:** `22f9df7`  
 **PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN  
 **Stand:** 2026-11-05  
 **Bewertung:** MERGE-READY (siehe Abschnitt 8, Restrisiken dokumentiert)
@@ -149,7 +149,7 @@ Bestehende `fuse-offset`-Prüfung (> 0,2 m) bleibt unverändert.
 | `docs/AUDIT-ERGEBNISSE.md`                      | Vollständig neu geschrieben                                                                                                                                                                 |
 | `scripts/ci/verify-requirements-matrix.mjs`     | Neu: Automatisierter Konsistenzcheck für Requirements Matrix, Glob-Auflösung mit echten Dateitreffern, CLI-Guard via import.meta.url                                                        |
 | `scripts/ci/verify-requirements-matrix.test.ts` | Neu: 11 Unit-Tests für den Konsistenzcheck (alle bestanden)                                                                                                                                 |
-| `docs/ABschlussbericht_PR604.md`                | Aktualisiert auf SHA f8c066a, 21 Dateien, Status-Tabelle O-01..O-09 / N-01..N-08                                                                                                            |
+| `docs/ABschlussbericht_PR604.md`                | Aktualisiert auf SHA 22f9df7, 21 Dateien, Status-Tabelle O-01..O-09 / N-01..N-08                                                                                                            |
 | `docs/PR-MERGEPLAN.md`                          | Neu: Merge-Reihenfolge für alle 12 offenen PRs, Konfliktanalyse, Zuordnung O-/N-Punkte                                                                                                      |
 | `docs/ci/BRANCH-PROTECTION-SETUP.md`            | Neu: Checkliste Required Status Checks für alle Jobs, Dependabot-Strategie, Ausnahme-Regelung                                                                                               |
 | `components/edges/CableEdge.tsx`                | `fuse-offset-missing` als kritischer Befund (S-03), `EdgeErrorRule` erweitert                                                                                                               |
@@ -178,7 +178,7 @@ Bestehende `fuse-offset`-Prüfung (> 0,2 m) bleibt unverändert.
 | Store-Extended-Tests   | `npx vitest run store/usePlannerStoreExtended.test.ts`         | ✅ Grün    | 62/62 Tests bestanden                                                                                   |
 
 **Run-Links:** CI-Läufe wurden lokal im Sandbox ausgeführt (keine GitHub Actions-Runs für diesen Branch verfügbar).  
-**Commit-SHA:** `f8c066a`  
+**Commit-SHA:** `22f9df7`  
 **PR-URL:** https://github.com/CAZE7/Camp/pull/604
 
 ---
