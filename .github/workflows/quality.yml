@@ -128,9 +128,6 @@ jobs:
       - name: M-12 Persistenz & Migration
         run: npx vitest run store/slices/persistence.test.ts store/storage.test.ts
 
-      - name: M-14 Accessibility (axe a11y)
-        run: npx playwright test tests/e2e/a11y.spec.ts
-
       - name: Format-Check
         run: npm run format:check
 
@@ -170,6 +167,9 @@ jobs:
             echo "::error::Static Export unvollständig - ./out/index.html fehlt"
             exit 1
           }
+
+      - name: M-14 Accessibility (axe a11y)
+        run: npx playwright test tests/e2e/a11y.spec.ts
 
       - name: Artefaktgröße messen
         id: size
