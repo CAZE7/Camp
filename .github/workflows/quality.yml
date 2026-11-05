@@ -175,10 +175,12 @@ jobs:
 
   # ── Requirements-Matrix Konsistenzcheck ─────────────────────────────────────
   # Prueft die vollstaendige Traceability-Kette (Requirement -> Basis -> Implementierung -> Test -> Ergebnis -> Claim -> Risk)
-  # laut Matrix Rule M-4. Laeuft mit continue-on-error, weil offene Anforderungen
-  # (CAMP-REQ-002, CAMP-REQ-014, CAMP-REQ-023 u.a.) den Check erwartungsgemaess
-  # fehlschlagen lassen. Diese sind als echte offene Abnahmebedingungen im
-  # Abschlussbericht PR #604 dokumentiert und duerfen nicht durch erfasste Claims kaschiert werden.
+  # laut Matrix Rule M-4. UEBERGANGSLOESUNG mit continue-on-error: Offene
+  # Klasse-S-Anforderungen (CAMP-REQ-002, CAMP-REQ-014, CAMP-REQ-023) lassen den
+  # Check erwartungsgemaess fehlschlagen, bis die fehlenden Claims/Risiken in
+  # Phase 2 nachgeliefert werden. Der Check liefert den Befund, blockiert aber
+  # nicht den gesamten CI-Lauf, solange die offenen Punkte als dokumentierte
+  # Sicherheitsbedingungen im Abschlussbericht PR #604 verbleiben.
   requirements-matrix-check:
     name: Requirements-Matrix Konsistenzcheck
     runs-on: ubuntu-latest

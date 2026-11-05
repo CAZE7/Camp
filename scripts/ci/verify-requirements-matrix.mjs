@@ -25,8 +25,8 @@
  * geprüft (für Unit-Tests des Prüfsystems).
  */
 
-import { readFileSync } from 'node:fs';
-import { existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const DEFAULT_MATRIX_PATH = 'docs/verification/REQUIREMENTS-MATRIX.md';
 const DEFAULT_SAFETY_CASE_PATH = 'docs/safety/SAFETY-CASE.md';
@@ -62,12 +62,78 @@ function looksLikeFilePath(value) {
 }
 
 /**
+ * Prüft, ob ein Glob-Muster tatsächlich mindestens eine Datei im
+ * Dateisystem trifft. Unterstützt einfache Muster wie "tests/e2e/*.spec.ts".
+ *
+ * Gibt true zurück, wenn mindestens eine Datei gefunden wurde.
+ * Gibt false zurück, wenn keine Datei gefunden wurde oder das Muster
+ * nicht auflösbar ist.
+ */
+function globMatchesAnyFile(pattern) {
+  const trimmed = pattern.trim();
+  if (!trimmed.includes('*')) return false;
+
+  const lastSlash = trimmed.lastIndexOf('/');
+  const dirPart = lastSlash >= 0 ? trimmed.slice(0, lastSlash + 1) : '';
+  const filePart = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
+
+  if (!dirPart) {
+    return dirHasMatch('.', filePart);
+  }
+
+  if (!existsSync(dirPart)) return false;
+  return dirHasMatch(dirPart, filePart);
+}
+
+/**
+ * Prüft, ob ein Verzeichnis mindestens eine Datei enthält, die dem
+ * Dateinamen-Muster entspricht. Unterstützt ** für rekursive Suche.
+ */
+function dirHasMatch(dirPath, filePattern) {
+  let entries;
+  try {
+    entries = readdirSync(dirPath, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+
+  const isRecursive = filePattern.includes('**');
+
+  for (const entry of entries) {
+    const fullPath = join(dirPath, entry.name);
+
+    if (entry.isDirectory()) {
+      if (isRecursive && dirHasMatch(fullPath, filePattern)) return true;
+      continue;
+    }
+
+    if (entry.isFile() && matchesGlob(entry.name, filePattern)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Einfaches Glob-Matching für Dateinamen.
+ * Unterstützt * (beliebige Zeichen innerhalb eines Namens).
+ */
+function matchesGlob(filename, pattern) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  const regex = new RegExp(`^${escaped}$`);
+  return regex.test(filename);
+}
+
+/**
  * Prüft, ob eine Datei existiert, mit Fallback auf bekannte Endungen.
  * "lib/validationSeverity" -> prüft auch "lib/validationSeverity.ts", ".tsx", ".mjs", ".js"
- * Glob-Muster (enthaltend *) werden als existierend behandelt (keine konkrete Datei).
+ * Glob-Muster müssen tatsächlich mindestens einen Treffer liefern.
  */
 function fileExistsWithFallback(filePath) {
-  if (filePath.includes('*')) return true; // Glob-Muster, keine konkrete Datei
+  if (filePath.includes('*')) {
+    return globMatchesAnyFile(filePath);
+  }
   if (existsSync(filePath)) return true;
   const knownExtensions = ['.ts', '.tsx', '.mjs', '.js', '.json'];
   for (const ext of knownExtensions) {
@@ -339,34 +405,41 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
 
 // --- CLI-Einstieg ----------------------------------------------------------
 
-const matrixPath = process.argv[2] || DEFAULT_MATRIX_PATH;
-const safetyCasePath = process.argv[3] || DEFAULT_SAFETY_CASE_PATH;
-const riskRegisterPath = process.argv[4] || DEFAULT_RISK_REGISTER_PATH;
+const scriptPath = import.meta.url.replace(/^file:\/\//, '');
+const isMainModule = scriptPath === process.argv[1];
 
-const result = verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath);
+if (isMainModule) {
+  const matrixPath = process.argv[2] || DEFAULT_MATRIX_PATH;
+  const safetyCasePath = process.argv[3] || DEFAULT_SAFETY_CASE_PATH;
+  const riskRegisterPath = process.argv[4] || DEFAULT_RISK_REGISTER_PATH;
 
-if (result.errors.length > 0) {
-  console.error(`\n❌ REQUIREMENTS-MATRIX KONSISTENZCHECK FEHLGESCHLAGEN\n`);
-  console.error(`Geprüfte Datei: ${matrixPath}`);
-  console.error(`Anforderungen insgesamt: ${result.totalCount}`);
-  console.error(`Klasse-S-Anforderungen: ${result.classSCount}\n`);
-  result.errors.forEach((e) => console.error(`  ${e}`));
-  if (result.warnings.length > 0) {
-    console.error(`\n⚠️  Warnungen (nicht blockierend):`);
-    result.warnings.forEach((w) => console.error(`  ${w}`));
+  const result = verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath);
+
+  if (result.errors.length > 0) {
+    console.error(`\n❌ REQUIREMENTS-MATRIX KONSISTENZCHECK FEHLGESCHLAGEN\n`);
+    console.error(`Geprüfte Datei: ${matrixPath}`);
+    console.error(`Anforderungen insgesamt: ${result.totalCount}`);
+    console.error(`Klasse-S-Anforderungen: ${result.classSCount}\n`);
+    result.errors.forEach((e) => console.error(`  ${e}`));
+    if (result.warnings.length > 0) {
+      console.error(`\n⚠️  Warnungen (nicht blockierend):`);
+      result.warnings.forEach((w) => console.error(`  ${w}`));
+    }
+    console.error(`\n${result.errors.length} Fehler gefunden.`);
+    process.exit(1);
   }
-  console.error(`\n${result.errors.length} Fehler gefunden.`);
-  process.exit(1);
+
+  console.log(`\n✅ REQUIREMENTS-MATRIX KONSISTENZCHECK BESTANDEN\n`);
+  console.log(`Geprüfte Datei: ${matrixPath}`);
+  console.log(`Anforderungen insgesamt: ${result.totalCount}`);
+  console.log(`Klasse-S-Anforderungen: ${result.classSCount}`);
+  console.log(`Alle Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge.\n`);
+  if (result.warnings.length > 0) {
+    console.log(`⚠️  Warnungen (nicht blockierend):`);
+    result.warnings.forEach((w) => console.log(`  ${w}`));
+    console.log();
+  }
+  process.exit(0);
 }
 
-console.log(`\n✅ REQUIREMENTS-MATRIX KONSISTENZCHECK BESTANDEN\n`);
-console.log(`Geprüfte Datei: ${matrixPath}`);
-console.log(`Anforderungen insgesamt: ${result.totalCount}`);
-console.log(`Klasse-S-Anforderungen: ${result.classSCount}`);
-console.log(`Alle Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge.\n`);
-if (result.warnings.length > 0) {
-  console.log(`⚠️  Warnungen (nicht blockierend):`);
-  result.warnings.forEach((w) => console.log(`  ${w}`));
-  console.log();
-}
-process.exit(0);
+export { verifyMatrix };
