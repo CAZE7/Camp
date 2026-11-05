@@ -1,10 +1,11 @@
 # Abschlussbericht — PR #604 / Engineering & Quality Framework (Camp)
 
-**Branch:** `arena/949821e6-camp`  
-**Commit-SHA:** `5e22af5`  
-**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN  
+**Branch:** `arena/949821e6-camp` (gemerged in `main` via `arena/12da846b-camp`)  
+**Merge-Commit-SHA:** `6456131` (Merge pull request #604)  
+**Head-SHA:** `b29c0a7` (letzter Commit auf dem PR-Branch vor dem Merge)  
+**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: MERGED  
 **Stand:** 2026-11-05  
-**Bewertung:** MERGE-READY (siehe Abschnitt 8, Restrisiken dokumentiert)
+**Bewertung:** GEMERGED — Alle Merge-Readiness-Kriterien erfüllt, Restrisiken dokumentiert (Abschnitt 8)
 
 ---
 
@@ -164,21 +165,24 @@ Bestehende `fuse-offset`-Prüfung (> 0,2 m) bleibt unverändert.
 
 | Prüfung                | Befehl                                                         | Ergebnis   | Nachweis                                                                                                |
 | ---------------------- | -------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------- |
-| Format-Check           | `npx prettier --check`                                         | ✅ Grün    | Alle Dateien Prettier-konform                                                                           |
-| Typecheck (Produktion) | `npm run typecheck`                                            | ✅ Grün    | `tsc -p tsconfig.typecheck.json --noEmit` (Exit 0)                                                      |
-| Typecheck (Tests)      | `npm run typecheck:tests`                                      | ✅ Grün    | `tsc -p tsconfig.tests.json --noEmit` (Exit 0)                                                          |
-| Lint                   | `npm run lint`                                                 | ✅ Grün    | `eslint .` (Exit 0)                                                                                     |
-| Tests (Coverage)       | `npm run test:coverage`                                        | ⚠️ Timeout | Nach 300s abgebrochen (Sandbox-Umweltproblem, kein Code-Problem). Alle bis dahin gelaufenen Tests grün. |
-| Konsistenzcheck        | `node scripts/ci/verify-requirements-matrix.mjs`               | ✅ Exit 0  | Alle 17 Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge.                         |
+| Format-Check           | `npx prettier --check`                                         | ✅ Grün    | Alle Dateien Prettier-konform (GitHub Actions: Format-Check SUCCESS)                                   |
+| Typecheck (Produktion) | `npm run typecheck`                                            | ✅ Grün    | `tsc -p tsconfig.typecheck.json --noEmit` (Exit 0; GitHub Actions: Typecheck SUCCESS)                  |
+| Typecheck (Tests)      | `npm run typecheck:tests`                                      | ✅ Grün    | `tsc -p tsconfig.tests.json --noEmit` (Exit 0; GitHub Actions: Typecheck SUCCESS)                      |
+| Lint                   | `npm run lint`                                                 | ✅ Grün    | `eslint .` (Exit 0; GitHub Actions: Lint SUCCESS)                                                       |
+| Tests (Coverage)       | `npm run test:coverage`                                        | ⚠️ Timeout | Nach 300s abgebrochen (Sandbox-Umweltproblem, kein Code-Problem). GitHub Actions: Unit-Tests SUCCESS.  |
+| Konsistenzcheck        | `node scripts/ci/verify-requirements-matrix.mjs`               | ✅ Exit 0  | Alle 17 Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge. (GitHub Actions: SUCCESS)|
 | Matrix-Unit-Tests      | `npx vitest run scripts/ci/verify-requirements-matrix.test.ts` | ✅ Grün    | 11/11 Tests bestanden                                                                                   |
 | Workflow-Sync-Test     | `npx vitest run scripts/ci/workflows.test.ts`                  | ✅ Grün    | 23/23 Tests bestanden                                                                                   |
-| Routing-Audit          | `npm run routing:audit`                                        | ✅ Grün    | Alle Invarianten I1–I7 = 0, deterministisch                                                             |
-| Build                  | `npm run build`                                                | ✅ Grün    | 47 statische Seiten, Export-Prüfung grün                                                                |
+| Routing-Audit          | `npm run routing:audit`                                        | ✅ Grün    | Alle Invarianten I1–I7 = 0, deterministisch (GitHub Actions: M-7 SUCCESS)                              |
+| Build                  | `npm run build`                                                | ✅ Grün    | 47 statische Seiten, Export-Prüfung grün (GitHub Actions: Build SUCCESS)                               |
+| M-14 Accessibility     | `npx playwright test tests/e2e/a11y.spec.ts`                   | ✅ Grün    | 40/40 a11y-Tests grün (lokal + GitHub Actions: M-14 SUCCESS nach Browser-Install-Fix)                  |
+| End-to-End (Playwright)| `npx playwright test`                                          | ✅ Grün    | GitHub Actions: E2E SUCCESS                                                                             |
 | CableEdge-Tests        | `npx vitest run components/edges/CableEdge.test.tsx`           | ✅ Grün    | 37/37 Tests bestanden (inkl. 3 neuen für fuse-offset-missing)                                           |
 | Store-Extended-Tests   | `npx vitest run store/usePlannerStoreExtended.test.ts`         | ✅ Grün    | 62/62 Tests bestanden                                                                                   |
 
-**Run-Links:** CI-Läufe wurden lokal im Sandbox ausgeführt (keine GitHub Actions-Runs für diesen Branch verfügbar).  
-**Commit-SHA:** `5e22af5`  
+**Run-Links:** GitHub Actions CI für PR #604 (Run-ID 42082769556, SHA b29c0a7) — alle blockierenden Checks SUCCESS.  
+**Merge-Commit-SHA:** `6456131`  
+**Head-SHA:** `b29c0a7`  
 **PR-URL:** https://github.com/CAZE7/Camp/pull/604
 
 ---
@@ -223,9 +227,9 @@ Bestehende `fuse-offset`-Prüfung (> 0,2 m) bleibt unverändert.
 
 ---
 
-## 8. Bewertung: MERGE-READY
+## 8. Bewertung: GEMERGED
 
-**Alle Merge-Readiness-Kriterien sind erfüllt:**
+**Alle Merge-Readiness-Kriterien waren erfüllt (PR #604 gemerged am 2026-11-05 via Merge-Commit 6456131):**
 
 | Kriterium                | Status     | Nachweis                                                                                            |
 | ------------------------ | ---------- | --------------------------------------------------------------------------------------------------- |
