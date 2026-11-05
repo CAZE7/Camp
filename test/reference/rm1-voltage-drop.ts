@@ -67,11 +67,21 @@
  *
  * Abweichungstoleranz
  * -------------------
- * Gegenüber `lib/units.ts#voltageDrop` (κ = 58) exakt bei T = 20 °C
- * (relative Abweichung ≤ 1e-12, Gleitkomma). Gegenüber
- * `lib/verify/physics.ts#voltageDropVolts` exakt bei gleicher Temperatur.
- * Eine Abweichung > 1e-9 relativ bedeutet: eine der beiden Seiten hat die
- * Temperatur oder den Pfadfaktor falsch.
+ * Gegenüber `lib/verify/physics.ts#voltageDropVolts` **exakt** (≤ 1e-9 relativ)
+ * bei gleicher Temperatur: beide Seiten rechnen ρ(T) mit ρ₂₀ = 0,0175 und
+ * α₂₀ = 0,00393. Eine Abweichung > 1e-9 heißt hier: eine der beiden Seiten hat
+ * die Temperatur oder den Pfadfaktor falsch.
+ *
+ * Gegenüber `lib/units.ts#voltageDrop` **NICHT exakt**, sondern bis 1,48 %
+ * (Allowlist-Eintrag K-1): die Produktivfunktion bekommt κ als Parameter und
+ * wird im Repo mit κ = 58 aufgerufen, also ρ = 0,017241 statt 0,0175. Diese
+ * Differenz ist eine Konstantenrundung, keine Formelfrage — aber sie ist real
+ * und wird deshalb als Toleranz ausgewiesen statt als „exakt" behauptet.
+ *
+ * Konsequenz für die Aussagekraft: An der ΔU-Grenze (Befund K-2) reicht diese
+ * Differenz, um das Urteil zu kippen (Design 3,000 % vs. Engine 3,045 %). Der
+ * Differentialtest prüft deshalb zwei Dinge getrennt — die Engine-Seite exakt,
+ * die Design-Seite mit ausgewiesener Toleranz.
  */
 
 /** Kupfer-Widerstand bei 20 °C [Ω·mm²/m]. Materialwert, gerundet auf 4 Stellen. */

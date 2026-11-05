@@ -14,6 +14,10 @@
  * damit sie als CI-Gate taugt. Sie ersetzt keine fachliche Freigabe — sie
  * verhindert, dass eine Zahl sich unbemerkt ändert.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
+
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 
@@ -47,7 +51,13 @@ import {
 } from '../../lib/acProtection';
 import { peukertCapacityFactor } from '../../lib/peukert';
 import { sizeBattery } from '../../lib/batterySizing';
-import { solarDesignCurrentOf, solarFuseFloorOf, solarImpOf, solarIscOf } from '../../lib/solar';
+import {
+  solarColdVocOf,
+  solarDesignCurrentOf,
+  solarFuseFloorOf,
+  solarImpOf,
+  solarIscOf,
+} from '../../lib/solar';
 import type { Node } from '../../lib/domain/graph';
 
 import {
@@ -84,7 +94,7 @@ import {
   refMaxLoopImpedance,
   refProtectiveEarthCrossSection,
 } from './rm4-ac-protection';
-import { REF_DOD, REF_PEUKERT_K, refPeukertFactor, refSizeBattery } from './rm5-energy';
+import { REF_DOD, REF_PEUKERT_K, refColdVoc, refPeukertFactor, refSizeBattery } from './rm5-energy';
 
 /** Toleranz: Gleitkomma-Rauschen, keine fachliche Toleranz. */
 const REL_EPS = 1e-9;
@@ -130,6 +140,45 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     finding: 'K-3',
   },
 ];
+
+describe('G0 — Referenzmodelle sind frei von Produktivimporten', () => {
+  /**
+   * Bis zum Audit 2026-11-05 war die Unabhängigkeit der Modelle eine
+   * **Behauptung**: sie stimmte (null `import`-Zeilen), aber nichts hätte
+   * gemerkt, wenn morgen ein `import` dazukäme. Ein Referenzmodell, das die
+   * geprüfte Funktion aufruft, kann deren Fehler nicht finden — es würde
+   * mitwandern und wäre als Orakel wertlos.
+   *
+   * Der Test liest die Dateien und verbietet jeden Import. `vitest` selbst
+   * darf nicht in einem Modell stehen (das gehört in den Test), deshalb ist
+   * die Regel absolut und nicht als Allowlist formuliert.
+   */
+  it('keines der fünf Module importiert irgendetwas', () => {
+    // `import.meta.url` ist unter jsdom keine file-URL — der Projektpfad ist
+    // hier der belastbare Anker (Vitest startet im Repo-Wurzelverzeichnis).
+    const verzeichnis = join(cwd(), 'test', 'reference');
+    const module = [
+      'rm1-voltage-drop.ts',
+      'rm2-ampacity.ts',
+      'rm3-shortcircuit.ts',
+      'rm4-ac-protection.ts',
+      'rm5-energy.ts',
+    ];
+    for (const datei of module) {
+      const quelle = readFileSync(join(verzeichnis, datei), 'utf8');
+      const importe = quelle.match(/^\s*import\s.+$/gm) ?? [];
+      expect(importe, `${datei} muss produktionsfrei bleiben`).toEqual([]);
+      // Auch `require`/dynamische Importe wären ein Weg zurück in den Code.
+      expect(/\brequire\s*\(/.test(quelle), `${datei}: require()`).toBe(false);
+      expect(/\bimport\s*\(/.test(quelle), `${datei}: dynamischer import()`).toBe(false);
+    }
+  });
+
+  it('die Modelle stehen ausschließlich im Testbaum', () => {
+    const verzeichnis = join(cwd(), 'test', 'reference').replaceAll('\\', '/');
+    expect(verzeichnis).toContain('/test/reference');
+  });
+});
 
 describe('G0 — Allowlist ist wohlgeformt (kein Freibrief)', () => {
   it('jeder Eintrag nennt Grund, Ablaufdatum und Befund', () => {
@@ -630,6 +679,36 @@ describe('RM-4 — AC-Abschaltbedingung: Produktiv ↔ Referenz', () => {
     expect(production.limitation).toBe('missing-length');
   });
 
+  it('Wechselrichter-Quelle: das Produktivmodell verweigert das Schleifenmodell ausdrücklich', () => {
+    // RM-4 kennt nur das TN-Schleifenmodell. Ein Wechselrichter-Ausgang ist
+    // elektronisch strombegrenzt — dort gilt es NICHT. Das Produktivmodell
+    // sagt das (`inverter-limited`), RM-4 könnte es nicht sagen. Der Test
+    // hält fest, dass die Grenze auf der Produktivseite existiert und nicht
+    // stillschweigend in ein `ok` fällt.
+    const production = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
+      lengthM: 5,
+      crossSection: 2.5,
+      sourceKind: 'inverter',
+    });
+    expect(production.verdict).toBe('inverter-limited');
+    expect(production.iaA).toBeNull();
+    expect(production.zsEstimateOhm).toBeNull();
+
+    // Gegenprobe: derselbe Kabeldatensatz an einer Landstrom-Quelle wird
+    // bewertet — die Verweigerung ist quellenspezifisch, nicht datenspezifisch.
+    const onShore = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
+      lengthM: 5,
+      crossSection: 2.5,
+      sourceKind: 'shore',
+    });
+    expect(onShore.verdict).not.toBe('inverter-limited');
+    expect(onShore.zsEstimateOhm).toBeGreaterThan(0);
+  });
+
   it('Produktiv und RM-4 stimmen bei vollständigen Daten überein', () => {
     for (const length of [5, 20, 40, 60]) {
       for (const section of [1.5, 2.5, 4]) {
@@ -769,6 +848,47 @@ describe('RM-5 — Energie, Peukert, Solar: Produktiv ↔ Referenz', () => {
       12
     );
     expect(solarFuseFloorOf(panel) as unknown as number).toBeCloseTo((200 / 18) * 1.25 * 1.5625, 12);
+  });
+
+  it('kalte Leerlaufspannung stimmt exakt — auch nach der %/1/K-Normalisierung', () => {
+    // Die Produktivfunktion normalisiert zwei Schreibweisen desselben
+    // Koeffizienten (−0,35 %/K und −0,0035 1/K) auf denselben Bruch. RM-5
+    // kennt nur den Bruch; der Test belegt, dass beide Schreibweisen nach der
+    // Normalisierung dasselbe physikalische Ergebnis liefern.
+    const panelWith = (coefficient: unknown) =>
+      ({
+        id: 'pv',
+        type: 'solar',
+        position: { x: 0, y: 0 },
+        data: coefficient === undefined ? { voc: 22 } : { voc: 22, tempCoefficient: coefficient },
+      }) as unknown as Node;
+
+    const expected = refColdVoc({
+      vocStcV: 22,
+      tempCoeffPerKelvin: -0.0035,
+      designMinTemperatureC: -20,
+    });
+    expect(expected).toBeCloseTo(25.465, 9);
+
+    for (const coefficient of [-0.0035, -0.35, undefined, 0.2]) {
+      const production = solarColdVocOf(panelWith(coefficient)) as unknown as number | null;
+      expect(production, `TK = ${String(coefficient)}`).toBeCloseTo(expected, 9);
+    }
+  });
+
+  it('ohne Datenblatt-Voc liefert die Produktivfunktion null — RM-5 wirft nicht, sie braucht die Eingabe', () => {
+    const withoutVoc = {
+      id: 'pv2',
+      type: 'solar',
+      position: { x: 0, y: 0 },
+      data: {},
+    } as unknown as Node;
+    expect(solarColdVocOf(withoutVoc)).toBeNull();
+    // RM-5 bildet nur die Formel nach; die Entscheidung „kein Voc ⇒ keine
+    // Aussage" ist eine Produktivregel und hat hier kein Gegenstück.
+    expect(() =>
+      refColdVoc({ vocStcV: Number.NaN, tempCoeffPerKelvin: -0.0035, designMinTemperatureC: -20 })
+    ).not.toThrow();
   });
 
   it('ein Datenblatt-I_sc schlägt den 1,25-Fallback', () => {

@@ -800,7 +800,7 @@ nicht die ganze Datei.
 ```
 npm run test:safety       # test/reference/** + test/invariants/**; G1 + G3   ✅ vorhanden
 npm run test:invariants   # test/invariants/**; G3                           ✅ vorhanden
-npm run test:differential # Produktiv vs. RM-1…RM-5; G2                        ✅ vorhanden
+npm run test:differential # Produktiv vs. RM-1…RM-5; nur G0                   ⚠️ G2 NICHT scharf
 npm run test:trace        # Trace-Vollständigkeit (I-E-12) — heute Teil von test:invariants
 npm run mut:critical      # Stryker, kuratiertes Set; G4                       ⬜ offen
 npm run verify:snapshot   # Verdikt-/Hash-Snapshot; G5 — heute Test, kein Skript ⬜ offen
@@ -812,6 +812,18 @@ und braucht kein eigenes Skript: der Snapshot steht im Testfile, die Diff-Ausgab
 von Vitest ist aussagekräftiger als die eines eigenen Vergleichswerkzeugs.
 `test:trace` und `mut:critical` bleiben offen; ihre Inhalte sind in Kapitel 7.4
 bzw. 8.3 spezifiziert.
+
+**Wichtige Einschränkung zu G2 (Audit 2026-11-05).** Die `ALLOWLIST` in
+`differential.test.ts` ist heute **nicht verdrahtet**. Sie wird ausschließlich
+von `G0` gelesen, und `G0` prüft nur ihre Form (Grund, Ablaufdatum, Befund-ID)
+sowie das Ablaufdatum — **keine** der drei Produktivfunktionen aus dem
+Differentialvergleich konsultiert sie. Die Toleranzen stehen stattdessen als
+Literale im jeweiligen Test (`0.015` für K-1, `0.01` für R_fuse) bzw. sind für
+K-3 gar nicht als Toleranz formuliert.
+Damit ist G2 **nicht** implementiert: ein Abweichungswert lässt sich ändern,
+ohne dass ein Allowlist-Eintrag entsteht oder abläuft. Die Allowlist ist heute
+eine **Dokumentation mit Ablaufdatum**, kein Gate. Das ist in Kapitel 8.2 als
+„mittel" Aufwand geführt und bleibt offen (Kapitel 12.5, Folge-PR).
 
 ---
 
@@ -927,20 +939,25 @@ reproduzierbar durch `npm run test:safety`.
 
 ### 12.1 Was jetzt existiert
 
-| Datei                                             | Inhalt                                                                          | Tests  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------- | ------ |
-| `test/reference/rm1-voltage-drop.ts`              | ΔU nach IEC 60364-5-52, ρ(T) statt κ, eigene Konstanten                         | –      |
-| `test/reference/rm2-ampacity.ts`                  | Belastbarkeit + Sicherungskoordination, inklusive inklusiver Stufenkante        | –      |
-| `test/reference/rm3-shortcircuit.ts`              | Kurzschlusskette R_i → U_bank → R_Leitung → I_k                                 | –      |
-| `test/reference/rm4-ac-protection.ts`             | AC-Schutzkette (RCD, MCB, Auslösecharakteristik)                                | –      |
-| `test/reference/rm5-energy.ts`                    | Kapazität/Energie mit Peukert, DoD, Ladefenster                                 | –      |
-| `test/reference/differential.test.ts`             | G0-Allowlist-Gate + Vergleich Produktiv ↔ RM-1…RM-5 (fast-check, Seed 20261105) | **44** |
-| `test/invariants/electrical-invariants.test.ts`   | I-E-01 … I-E-12 als ausführbare Sätze                                           | **50** |
-| `test/invariants/verdict-snapshot.test.ts`        | G5: Verdikt + Zertifikat-Hash + Ereignis-Multimenge der sechs Referenzpläne     | **10** |
-| `test/invariants/determinism-metamorphic.test.ts` | M-1…M-6: Determinismus, Permutationsinvarianz, Monotonie, Skalierung            | **18** |
+| Datei                                             | Inhalt                                                                                             | Tests  |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------ |
+| `test/reference/rm1-voltage-drop.ts`              | ΔU nach IEC 60364-5-52, ρ(T) statt κ, eigene Konstanten                                            | –      |
+| `test/reference/rm2-ampacity.ts`                  | Belastbarkeit + Sicherungskoordination, inklusive inklusiver Stufenkante                           | –      |
+| `test/reference/rm3-shortcircuit.ts`              | Kurzschlusskette R_i → U_bank → R_Leitung → I_k                                                    | –      |
+| `test/reference/rm4-ac-protection.ts`             | AC-Schutzkette (RCD, MCB, Auslösecharakteristik)                                                   | –      |
+| `test/reference/rm5-energy.ts`                    | Kapazität/Energie mit Peukert, DoD, Ladefenster                                                    | –      |
+| `test/reference/differential.test.ts`             | G0 (Importfreiheit + Allowlist-Form) + Vergleich Produktiv ↔ RM-1…RM-5 (fast-check, Seed 20261105) | **48** |
+| `test/invariants/electrical-invariants.test.ts`   | I-E-01 … I-E-12 als ausführbare Sätze                                                              | **51** |
+| `test/invariants/verdict-snapshot.test.ts`        | G5: Verdikt + Zertifikat-Hash + Ereignis-Multimenge der sechs Referenzpläne                        | **10** |
+| `test/invariants/determinism-metamorphic.test.ts` | M-1…M-6: Determinismus, Permutationsinvarianz, Monotonie, Skalierung                               | **18** |
 
-Zusammen **122 Tests** in vier Dateien, Laufzeit unter 10 s, kein Produktivimport
-in den Referenzmodellen (der G0-Test erzwingt das per Allowlist).
+Zusammen **128 Tests** in vier Dateien, Laufzeit unter 10 s (davon 7 `it.fails`).
+
+**Kein Produktivimport in den Referenzmodellen** — das ist jetzt **erzwungen**,
+nicht nur gemessen: G0 liest die fünf Dateien und verbietet jeden `import`,
+`require()` und dynamischen `import()`. Der Nachweis, dass das Gate greift,
+wurde beim Audit geführt (ein testweise eingefügter Import in
+`rm4-ac-protection.ts` macht die Suite rot).
 
 ### 12.2 Rot und trotzdem sichtbar: die sieben `it.fails`
 
@@ -956,7 +973,7 @@ gelöscht — die Verletzung bleibt als Befund mit ID im Repo:
 | K-2b: die Engine muss AC-Leitungen auf ΔU prüfen      | K-2    | Punkt 5 (größer als gedacht) |
 | K-4: Designbudget muss die Kantenbedingungen achten   | K-4    | Punkt 4                      |
 | K-3: Bank-I_k muss reihenfolgeunabhängig sein         | K-3    | Punkt 6                      |
-| I-E-12: ΔU-Befund ohne Rechenweg                      | I-E-12 | Punkt 10                     |
+| I-E-12: ΔU-Befund ohne Rechenweg (jetzt **T-2**)      | T-2    | Punkt 10                     |
 
 **`it.fails` ist hier kein Freibrief.** Sobald eine Reparatur landet, meldet
 Vitest „Test passed unexpectedly“ — die Umstellung auf `it` ist dann Pflicht.
@@ -995,3 +1012,124 @@ mit Betrag, Domäne und Richtung“.
 - **Keine Aussage über Normkonformität der Anlage.** Die Referenzmodelle sind
   Modelle, keine Zertifizierung; jeder `UNVERIFIED`-Punkt aus Kapitel 11.1 gilt
   unverändert.
+
+---
+
+## 12.5 Unabhängiges Qualitätsaudit (2026-11-05)
+
+Dieses Kapitel ist das Ergebnis einer **fremden** Durchsicht der
+Referenzmodelle, Invarianten und Gates — nicht der Selbstauskunft des PRs.
+Es trennt ausdrücklich, was geprüft wurde, was dabei gefunden wurde und was
+weiterhin offen ist.
+
+### 12.5.1 Was das Audit bestätigt hat
+
+| Prüfung                                                      | Ergebnis                                                                                                                                                                      |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `it.fails` schlägt an, sobald die Verletzung behoben wird    | **belegt** (Kontrolltest: `expect(true).toBe(true)` unter `it.fails` ⇒ Suite rot)                                                                                             |
+| Die sieben `it.fails` scheitern aus dem dokumentierten Grund | **belegt für 6 von 7** (Assertion-Meldungen einzeln nachgelesen); der siebte war falsch formuliert, s. A-4                                                                    |
+| Tests laufen im regulären CI-Lauf mit                        | **belegt** — `vitest.config.ts` excludiert nur `tests/e2e/**`; `test/reference` und `test/invariants` sind Teil von `npm run test:coverage` im Job „Typecheck, Tests & Build" |
+| Kein Produktivimport in `rm1`…`rm5`                          | **belegt** (0 `import`-Zeilen)                                                                                                                                                |
+| Permutationsinvarianz der Engine                             | **belegt** über alle sechs Referenzpläne (M-2)                                                                                                                                |
+| Verdikt-Snapshot verdeckt keine Verschlechterung             | **belegt** — Hash + Ereignis-Multimenge, keine Textmeldungen                                                                                                                  |
+| Lighthouse-Befund ist nicht durch diesen PR verursacht       | **belegt** — der PR ändert ausschließlich `docs/` und `test/`; derselbe Job ist auf dem reinen Doku-PR #604 rot                                                               |
+
+### 12.5.2 Was das Audit korrigiert hat (in diesem PR behoben)
+
+| Befund          | Was falsch war                                                                                                                                                                                                                                                           | Korrektur                                                                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A-1** (Audit) | Kapitel 8.4 behauptete, G2 sei mit `test:differential` vorhanden. Die `ALLOWLIST` wird aber von keiner Differential-Assertion gelesen — nur von G0, und G0 prüft ihre Form.                                                                                              | Kapitel 8.4 sagt jetzt: nur G0 ist scharf, **G2 ist nicht implementiert**.                                                                                                               |
+| **A-2** (Audit) | RM-1 dokumentierte „exakt bei κ = 58". Die Abweichung ist bis 1,48 % gegenüber dem Designpfad — und das ist genau Befund K-1.                                                                                                                                            | Kopfkommentar trennt „exakt" (Engine/ρ(T)) von „bis 1,48 %" (Design/κ).                                                                                                                  |
+| **A-3** (Audit) | RM-3 behauptete, das Modell „prüfe" die Repräsentationsinvarianz. Ein Modul kann seine eigene Unabhängigkeit nicht belegen.                                                                                                                                              | Kommentar stellt klar: RM-3 **erzeugt** die Eigenschaft, geprüft wird sie in der Testhülle.                                                                                              |
+| **A-4** (Audit) | Der `it.fails` zu I-E-12 verlangte `details.izBreakdown` auf einem **Spannungsfall**-Ereignis. Das ist das falsche Feld: `izBreakdown` gehört zu AMP-001. Der Test wäre auch nach vollständiger Reparatur rot geblieben — er hätte eine Reparatur nie bestätigen können. | Test umformuliert auf die tatsächlich fehlenden Größen; als eigener Befund **T-2** geführt. Ein grüner Begleittest hält den Ist-Zustand fest (`details = { rootCauseId: 'OTHER-001' }`). |
+| **A-5** (Audit) | Kapitel 12.1 nannte für `verdict-snapshot` 10 und `determinism-metamorphic` 18 Tests. Tatsächlich sind es 5 bzw. 8 `it`-Blöcke, die über Schleifen zu 10 bzw. 18 **Ausführungen** werden.                                                                                | Zahl als „Tests je Datei" gekennzeichnet, Schleifenlogik benannt.                                                                                                                        |
+
+### 12.5.3 Was das Audit offen lässt (Folgearbeit, nicht dieser PR)
+
+| Lücke                                                               | Warum sie nicht hier behoben wird                                                                                                                             | Priorität |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **Allowlist ist nicht verdrahtet (G2)**                             | Erfordert Umbau der Differential-Assertions auf einen gemeinsamen Vergleichskern                                                                              | hoch      |
+| **RM-2-Toleranz 1e-12 relativ ist schärfer als die Produktivseite** | Die Produktivseite hat an der Stufenkante **kein** ε, RM-2 hat eines. Die Differenz ist Befund D-2 und darf nicht durch eine größere Toleranz „gelöst" werden | mittel    |
+| **`refColdVoc` wird von keinem Differentialtest aufgerufen**        | RM-5 deckt die Solar-Spannungskette nicht gegen Produktiv ab                                                                                                  | mittel    |
+| **Kein Differentialtest für `sourceKind: 'inverter'`**              | Der Pfad `inverter-limited` bleibt ungeprüft                                                                                                                  | mittel    |
+| **Ungenutztes `fc.property`-Argument in I-E-03**                    | Die Property prüft nichts Zufälliges (Argument `current` wird nur auf `> 0` geprüft); kosmetisch, aber irreführend                                            | niedrig   |
+
+### 12.5.4 Gesamturteil des Audits
+
+Die Suite misst, was sie zu messen behauptet — **mit den in 12.5.2 korrigierten
+Ausnahmen**. Sie ist **kein** Nachweis der Normkonformität, und ein grüner
+CI-Lauf belegt ausdrücklich **nicht** die Erfüllung der zwölf Invarianten:
+sieben davon sind heute verletzt und als `it.fails` sichtbar.
+
+Von den sieben Gates laufen **vier** (G0 als Formprüfung, G1, G3 als
+`it.fails`-Suite, G5). **G2, G4 und G6 sind nicht implementiert.**
+
+---
+
+## 12.6 Befund L-1: Lighthouse-Performance „/camper-elektrik/ladebooster/"
+
+**Symptom.** Der Job „Visuelles Gate (nicht blockierend)" ist rot:
+
+| Route                           | gemessen | Budget | Delta |
+| ------------------------------- | -------- | ------ | ----- |
+| `/camper-elektrik/ladebooster/` | 88       | 90     | −2    |
+| `/`                             | 99       | 85     | +14   |
+| `/impressum/`                   | 100      | 90     | +10   |
+
+**Einordnung: keine Regression aus diesem PR.**
+
+1. Der PR ändert ausschließlich `docs/ELECTRICAL-VERIFICATION-STRATEGY.md`,
+   `package.json` (drei Skripte) und `test/**`. Kein Byte unter `app/`,
+   `components/` oder `lib/` ist berührt (`git diff --name-only main...HEAD`).
+   Eine gemessene Performance kann sich dadurch nicht ändern.
+2. Derselbe Job ist auf dem reinen Doku-PR **#604** rot
+   (`job/127268592222`) — dort ohne jeden Test- oder Build-Anteil.
+3. Der Job ist per `continue-on-error: true` **nicht blockierend**; er war es
+   vor diesem PR genauso.
+
+**Damit ist es ein bestehendes Problem des Basis-Branches** (bzw. der
+Messumgebung), kein Befund dieses PRs.
+
+**Grenze der eigenen Prüfung (ehrlich benannt).** Eine eigene Lighthouse-
+Gegenmessung war in der Audit-Umgebung **nicht möglich**: Chromium ließ sich
+dort nicht installieren (`npx playwright install --with-deps chromium` bricht an
+fehlenden Systempaketen ab, `fonts-freefont-ttf` hat keinen
+Installationskandidaten). Der Befund stützt sich deshalb auf drei Indizien —
+Dateiliste, Vergleichsjobb auf #604 und `continue-on-error` — und **nicht** auf
+eine eigene Messung. Wer 88 gegen 90 belastbar einordnen will, braucht die
+Messung auf einem Runner mit Browser.
+
+**Was hier ausdrücklich NICHT getan wird:** das Budget von 90 auf 85 senken.
+Das wäre das Verhalten, das diese ganze Strategie verhindern soll — eine
+Schwelle so lange verschieben, bis der Messwert darunterpasst. Ein
+Lab-Performance-Wert von 88 gegenüber 90 ist ohne Laufzeitvarianz-Analyse keine
+belastbare Regressionsaussage; die Streuung von Lighthouse-Läufen in
+GitHub-Actions-Runnern liegt typischerweise in derselben Größenordnung.
+
+**Folgeauftrag (Priorität mittel, nicht Teil dieses PRs):** den Job auf einem
+ruhigen Runner oder mit mehreren Messungen (Median aus 3 Läufen) betreiben und
+erst dann entscheiden, ob 88 einen echten Rückgang darstellt. Zuständig ist der
+Verantwortliche der Seite `/camper-elektrik/ladebooster/`, nicht die
+Elektrik-Verifikation.
+
+---
+
+## 12.7 Abstimmung mit PR #604 (Engineering- und Safety-Framework)
+
+PR #604 beschreibt das übergeordnete Rahmenwerk. Damit dessen Aussagen und die
+Befunde aus #605 nicht auseinanderlaufen, hier die Liste der Punkte, die #604
+**übernehmen** muss — jeweils mit dem Hinweis, dass der Punkt in #605
+**nicht gelöst**, sondern nur **quantifiziert und als Test festgehalten** ist:
+
+| Thema aus #604                                | Stand in #605                                                                                                                                                                                           | Was #604 sagen muss                                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Sicherungskoordination über alle Produktpfade | `FUSE_MAP ≤ 0,7 · I_z,Basis` ist belegt (I-E-03 grün). **Nicht** belegt: `maxFuseForConditions` mit Hersteller-I_z (Befund T-1) und die Koordination über alle vier Schichten (I-E-09 rot, Befund K-4). | „Koordination ist für die Tabellenreihe belegt, **nicht** für herstellerbezogene Pfade."        |
+| Unbekannte Grenzwerte / fehlende Eingaben     | Befund E-2 (`feasible: true` ohne Grenze) und E-1 (stilles Verwerfen in `constraints.ts`) sind **offen**, beide als `it.fails`.                                                                         | „Nicht bewertbar" ist im Feasibility-Gate heute **nicht** von „in Ordnung" unterscheidbar.      |
+| AC-Spannungsfall                              | Befund K-2 (Anzeige prüft 3 %, Dimensionierung rechnet AC 2 %) und K-2b (Engine prüft AC-**gar nicht**) sind **offen**.                                                                                 | AC-ΔU ist weder geprüft noch konsistent. Nicht als „abgedeckt" führen.                          |
+| Batteriebank-Kurzschlussstrom                 | Befund K-3 ist **offen**: 6.826,7 A vs. 6.400,0 A je nach Knotenreihenfolge, berührt `AMP-004` (`CRITICAL_SAFETY`).                                                                                     | Reihenfolgeabhängigkeit nennen; `AMP-004` ist bis zur Reparatur nicht belastbar.                |
+| Designbudget vs. elektrische Prüfung          | Befund K-4 ist **offen**: `cableCanCarry: true` bei 48,3 A, während die Engine mit 34,5 A rechnet und `VIOLATION` meldet.                                                                               | Zwei Aussagen zur selben Leitung; die UI zeigt beide.                                           |
+| Calculation Trace                             | Befund T-2 ist **offen**: `VDR-001` trägt `details: { rootCauseId }` und sonst nichts. Vollständigkeit ist **nicht** erreicht.                                                                          | Trace ist ein **Ziel**, kein Ist-Zustand.                                                       |
+| Offene Modellgrenzen der 230-V-Prüfung        | Einleiterig, keine Netzform, kein Rückspeiseschutz (`NET-003`, `docs/AC-230V-MODELLGRENZEN.md`). Unverändert.                                                                                           | Grenzen bleiben; #605 belegt nur, dass sie **benannt** sind, nicht dass sie geschlossen wurden. |
+
+**Nicht zu übernehmen aus #605:** die Aussage, es gäbe „sieben CI-Gates". Es
+sind vier implementiert, drei spezifiziert (Kapitel 12.5.4).

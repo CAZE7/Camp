@@ -206,17 +206,18 @@ describe('I-E-03 — die Sicherung schützt die Leitung, in jeder Schicht', () =
   });
 
   it('die Sicherungsauswahl ist monoton im Querschnitt', () => {
-    fc.assert(
-      fc.property(fc.double({ min: 0.1, max: 200, noNaN: true }), (current) => {
-        for (let index = 1; index < VDE_SIZES.length; index += 1) {
-          const smaller = VDE_SIZES[index - 1]!;
-          const larger = VDE_SIZES[index]!;
-          expect(FUSE_MAP[larger]!, `${larger} mm²`).toBeGreaterThanOrEqual(FUSE_MAP[smaller]!);
-        }
-        expect(current).toBeGreaterThan(0);
-      }),
-      { numRuns: 50, seed: 20261105 }
-    );
+    // KORREKTUR (Audit 2026-11-05): Diese Prüfung hing an einer Property mit
+    // einem `current`-Argument, das nirgends einging — sie lief 50-mal mit
+    // demselben Ergebnis und war damit eine verkleidete Konstante. Die
+    // Monotonie ist eine Aussage über die Tabelle, keine über Zufallszahlen;
+    // sie steht jetzt als einfache Schleife, die auch tatsächlich scheitern
+    // kann, wenn eine Stufe aus der Reihe fällt.
+    for (let index = 1; index < VDE_SIZES.length; index += 1) {
+      const smaller = VDE_SIZES[index - 1]!;
+      const larger = VDE_SIZES[index]!;
+      expect(larger, 'Normreihe muss aufsteigend sein').toBeGreaterThan(smaller);
+      expect(FUSE_MAP[larger]!, `${larger} mm²`).toBeGreaterThanOrEqual(FUSE_MAP[smaller]!);
+    }
   });
 
   it('keine Normsicherung liegt über 172 A · 0,7 — die Modellgrenze gilt auch für Sicherungen', () => {
@@ -882,7 +883,26 @@ describe('I-E-12 — jeder Befund trägt Einheit, Gleichung und Herkunft', () =>
     expect(violation!.unit).toBe('A');
   });
 
-  it.fails('LÜCKE: der Spannungsfall-Befund trägt keinen Rechenweg (κ/ρ, Länge, Querschnitt)', () => {
+  /**
+   * BEFUND T-2 (offen) — der Spannungsfall-Befund trägt keinen Rechenweg.
+   *
+   * KORREKTUR AN DIESEM TEST (Audit 2026-11-05): Die erste Fassung verlangte
+   * `details.izBreakdown` auf einem **VDR**-Ereignis. Das war der falsche
+   * Fehler: `izBreakdown` beschreibt die Iz-Korrektur (f₁·f₂·f₃·0,7) einer
+   * Belastbarkeitsprüfung und gehört fachlich zu AMP-001, nicht zum
+   * Spannungsfall. Der Test wäre auch nach einer vollständigen VDR-Reparatur
+   * rot geblieben — er hätte also eine Reparatur nie bestätigen können.
+   *
+   * Was tatsächlich fehlt (gemessen): `VDR-001` trägt heute `details:
+   * { rootCauseId: 'OTHER-001' }` und sonst nichts. Für ein ΔU-Urteil fehlen
+   * die Größen, die das Urteil tragen: Betriebsstrom I_b, Länge L,
+   * Querschnitt A, der angesetzte spezifische Widerstand ρ (bzw. κ) und die
+   * Leitetemperatur — dazu die Ladungsklasse, aus der das Budget stammt.
+   *
+   * Die Forderung ist deshalb an das `CalculationTrace`-Schema aus §7.2 des
+   * Strategiedokuments gebunden, nicht an ein Iz-Feld.
+   */
+  it('BEFUND T-2, festgehalten: der VDR-Befund trägt heute nur eine Ursachen-ID', () => {
     const report = verifyPlan({
       nodes: [
         node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4' }),
@@ -901,8 +921,35 @@ describe('I-E-12 — jeder Befund trägt Einheit, Gleichung und Herkunft', () =>
       options: { profile: 'PRACTICE', context: 'VEHICLE' },
     });
     const vdr = report.events.find((event) => event.ruleId.startsWith('VDR'));
-    expect(vdr).toBeDefined();
-    expect(vdr!.details?.assumptions).toBeDefined();
-    expect(vdr!.details?.izBreakdown).toBeDefined();
+    expect(vdr, 'VDR-Ereignis muss existieren, sonst prüft der Test nichts').toBeDefined();
+    // Der Befund ist ein echter Verstoß (20 m / 1,5 mm² bei 600 W) …
+    expect(vdr!.kind).toBe('VIOLATION');
+    // … aber der Rechenweg besteht heute nur aus einer Verweis-ID.
+    expect(vdr!.details).toEqual({ rootCauseId: 'OTHER-001' });
+    expect(vdr!.details?.assumptions).toBeUndefined();
+  });
+
+  it.fails('BEFUND T-2: der VDR-Befund muss seine tragenden Größen ausweisen', () => {
+    const report = verifyPlan({
+      nodes: [
+        node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4' }),
+        node('load', 'consumer', { watts: 600 }),
+      ],
+      edges: [
+        {
+          id: 'e1',
+          source: 'bat',
+          target: 'load',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { length: 20, crossSection: 1.5 },
+        },
+      ] as never,
+      options: { profile: 'PRACTICE', context: 'VEHICLE' },
+    });
+    const vdr = report.events.find((event) => event.ruleId.startsWith('VDR'))!;
+    // Forderung nach §7.2 (CalculationTrace): Eingaben mit Herkunft.
+    expect(vdr.details?.assumptions).toBeDefined();
+    expect(vdr.calculatedValue).toBeGreaterThan(3);
   });
 });

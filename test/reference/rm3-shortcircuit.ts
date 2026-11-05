@@ -10,10 +10,20 @@
  *   - Kurzschlussstrom an den Polklemmen und am Sicherungseinbauort,
  *   - Vergleich mit dem Abschaltvermögen des Schutzorgans.
  *
- * **Zusätzlich prüft dieses Modell eine Eigenschaft, die die Produktivfunktion
- * heute verletzt: Repräsentationsinvarianz.** Der Kurzschlussstrom einer Bank
- * darf von der Reihenfolge der Batterieknoten nicht abhängen. Genau das ist
- * Befund K-3 (I-E-11) — hier wird er reproduzierbar.
+ * **Zusätzlich macht dieses Modell eine Eigenschaft sichtbar, die die
+ * Produktivfunktion heute verletzt: Repräsentationsinvarianz.** Der
+ * Kurzschlussstrom einer Bank darf von der Reihenfolge der Batterieknoten
+ * nicht abhängen.
+ *
+ * KORREKTUR AN DIESEM KOMMENTAR (Audit 2026-11-05): Hier stand, dieses Modell
+ * „prüfe" die Invarianz. Das ist nicht wahr und war irreführend. RM-3 stellt
+ * die Eigenschaft nur **her** (Summation der Leitwerte, einheitliche
+ * Nennspannung) — ein Modul kann seine eigene Unabhängigkeit nicht belegen.
+ * Geprüft wird sie ausschließlich im Test
+ * (`test/invariants/electrical-invariants.test.ts`, Befund K-3), indem
+ * dieselbe Bank in beiden Reihenfolgen durch die **Produktivfunktion**
+ * geschickt wird. Befund K-3 (I-E-11) wird damit reproduzierbar, aber von der
+ * Testhülle, nicht von diesem Modul.
  *
  * Mathematische Definition
  * ------------------------
@@ -31,7 +41,8 @@
  * ------------------
  * - Alle Blöcke einer Bank haben **dieselbe** Nennspannung. Eine Bank aus
  *   12,8 V-LiFePO4 und 12,0 V-AGM parallel ist elektrisch keine Bank, sondern
- *   ein Ausgleichsstrom-Kreis; für sie gibt es hier bewusst KEIN Ergebnis.
+ *   ein Ausgleichsstrom-Kreis; für sie gibt es hier bewusst KEIN Ergebnis
+ *   (`refBankVoltage` liefert `null`, die I_k-Funktionen ebenfalls).
  * - Temperatur 20 °C (die Produktivwerte sind ebenfalls 20-°C-Anker).
  * - Reine Parallelschaltung, keine Kabel zwischen den Blöcken.
  *
