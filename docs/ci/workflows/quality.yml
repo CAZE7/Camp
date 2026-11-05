@@ -110,11 +110,11 @@ jobs:
       - name: M-6 Architekturtests (Rule A, Regeln E–J)
         run: npx vitest run scripts/architecture/libBoundary.test.ts scripts/routing/architecture.test.ts
 
-      - name: M-7 Routing-Invarianten & Audit (I1–I3 = 0, Ratchet, Determinismus)
-        run: npm run routing:audit && npx vitest run lib/routing/invariants.test.ts scripts/routing/finalValidation.test.ts
+      - name: 'M-7 Routing-Invarianten & Audit (I1–I3 = 0, Ratchet, Determinismus)'
+        run: 'npm run routing:audit && npx vitest run lib/routing/invariants.test.ts scripts/routing/finalValidation.test.ts'
 
-      - name: M-8 Elektrik: Golden Master + Property-Based (G1–G7)
-        run: npm run test:goldenmaster && npx vitest run lib/vde-properties.test.ts
+      - name: 'M-8 Elektrik: Golden Master + Property-Based (G1–G7)'
+        run: 'npm run test:goldenmaster && npx vitest run lib/vde-properties.test.ts'
 
       - name: M-9 Routing-Regression (15 Szenarien, byte-identisch)
         run: npm run test:regression
@@ -195,7 +195,6 @@ jobs:
           name: static-export
           path: ./out
           retention-days: 7
-
 
   # ── Requirements-Matrix Konsistenzcheck ─────────────────────────────────────
   # Prueft die vollstaendige Traceability-Kette (Requirement -> Basis -> Implementierung -> Test -> Ergebnis -> Claim -> Risk)
