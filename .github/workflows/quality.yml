@@ -107,6 +107,30 @@ jobs:
         # auf die Base gemergt worden, weil nur typecheck/test geprüft wurden.
         run: npm run lint
 
+      - name: M-6 Architekturtests (Rule A, Regeln E–J)
+        run: npx vitest run scripts/architecture/libBoundary.test.ts scripts/routing/architecture.test.ts
+
+      - name: M-7 Routing-Invarianten & Audit (I1–I3 = 0, Ratchet, Determinismus)
+        run: npm run routing:audit && npx vitest run lib/routing/invariants.test.ts scripts/routing/finalValidation.test.ts
+
+      - name: M-8 Elektrik: Golden Master + Property-Based (G1–G7)
+        run: npm run test:goldenmaster && npx vitest run lib/vde-properties.test.ts
+
+      - name: M-9 Routing-Regression (15 Szenarien, byte-identisch)
+        run: npm run test:regression
+
+      - name: M-10 Komponenten- & Datenvalidierung
+        run: npx vitest run lib/nodeSchema.test.ts lib/edgeSchema.test.ts components/registry/componentRegistry.test.tsx components/nodes/types.test.ts
+
+      - name: M-11 Warnsystem (collectEdgeErrors, useLiveValidation)
+        run: npx vitest run components/edges/CableEdge.test.tsx components/edges/utils/voltageDrop.test.ts components/planner/hooks/useLiveValidation.test.ts
+
+      - name: M-12 Persistenz & Migration
+        run: npx vitest run store/slices/persistence.test.ts store/storage.test.ts
+
+      - name: M-14 Accessibility (axe a11y)
+        run: npx playwright test tests/e2e/a11y.spec.ts
+
       - name: Format-Check
         run: npm run format:check
 
@@ -175,17 +199,14 @@ jobs:
 
   # ── Requirements-Matrix Konsistenzcheck ─────────────────────────────────────
   # Prueft die vollstaendige Traceability-Kette (Requirement -> Basis -> Implementierung -> Test -> Ergebnis -> Claim -> Risk)
-  # laut Matrix Rule M-4. UEBERGANGSLOESUNG mit continue-on-error: Offene
-  # Klasse-S-Anforderungen (CAMP-REQ-002, CAMP-REQ-014, CAMP-REQ-023) lassen den
-  # Check erwartungsgemaess fehlschlagen, bis die fehlenden Claims/Risiken in
-  # Phase 2 nachgeliefert werden. Der Check liefert den Befund, blockiert aber
-  # nicht den gesamten CI-Lauf, solange die offenen Punkte als dokumentierte
-  # Sicherheitsbedingungen im Abschlussbericht PR #604 verbleiben.
+  # laut Matrix Rule M-4. Alle Klasse-S-Anforderungen haben jetzt gültige Claims
+  # und Risk-Register-Einträge (siehe Abschlussbericht PR #604, Phase 2). Der
+  # Check ist blockierend (kein continue-on-error): bei fehlenden Verknüpfungen
+  # schlägt der Job fehl und blockiert den CI-Lauf.
   requirements-matrix-check:
     name: Requirements-Matrix Konsistenzcheck
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     permissions:
       contents: read
     steps:

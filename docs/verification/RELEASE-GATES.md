@@ -47,6 +47,38 @@ Ein Pull Request darf nur gemergt werden, wenn **alle** folgenden Gates grün si
 
 ---
 
+## 2.1 Mapping Merge-Gates (M-x, PR #604) ↔ Verifikations-Gates (G-x, PR #605)
+
+Die beiden Gate-Systeme sind abgestimmt. PR #605 bringt konzeptionell G1, G3, G5, G7 mit;
+G2, G4, G6 sind explizit offen und werden mit der #605-Remediation nachgeliefert.
+
+| M-Gate (#604)                             | G-Gate (#605)         | Status    | Anmerkung                                                            |
+| ----------------------------------------- | --------------------- | --------- | -------------------------------------------------------------------- |
+| M-1 Build                                 | —                     | umgesetzt | `npm run build` in quality.yml                                       |
+| M-2 Type Safety                           | —                     | umgesetzt | `typecheck` + `typecheck:tests` in quality.yml                       |
+| M-3 Lint                                  | —                     | umgesetzt | `npm run lint` in quality.yml                                        |
+| M-4 Format                                | —                     | umgesetzt | `npm run format:check` in quality.yml                                |
+| M-5 Unit + Integration Tests mit Coverage | —                     | umgesetzt | `npm run test:coverage` in quality.yml                               |
+| M-6 Architekturtests                      | —                     | umgesetzt | `libBoundary.test.ts`, `routing/architecture.test.ts` in quality.yml |
+| M-7 Routing-Invarianten & Audit           | —                     | umgesetzt | `routing:audit`, `invariants.test.ts` in quality.yml                 |
+| M-8 Elektrik (Golden Master, Property)    | —                     | umgesetzt | `test:goldenmaster`, `vde-properties.test.ts` in quality.yml         |
+| M-9 Routing-Regression                    | —                     | umgesetzt | `test:regression` in quality.yml                                     |
+| M-10 Komponenten & Datenvalidierung       | —                     | umgesetzt | vitest Run für Schema/Registry/Nodes in quality.yml                  |
+| M-11 Warnsystem                           | —                     | umgesetzt | `CableEdge.test.tsx`, `useLiveValidation.test.ts` in quality.yml     |
+| M-12 Persistenz & Migration               | —                     | umgesetzt | `persistence.test.ts`, `storage.test.ts` in quality.yml              |
+| M-13 Security                             | —                     | umgesetzt | `ci:verify-lockfile-gate` in quality.yml                             |
+| M-14 Accessibility                        | G1                    | umgesetzt | `a11y.spec.ts` in quality.yml; G1 (PR #605) konzeptionell abgestimmt |
+| M-15 E2E (blockierende Specs)             | G3                    | umgesetzt | `e2e` Job; G3 (PR #605) konzeptionell abgestimmt                     |
+| —                                         | G2                    | offen     | Mit PR #605-Remediation geplant                                      |
+| —                                         | G4 (Mutation Testing) | offen     | Mit PR #605-Remediation geplant (eigener ADR, eigener PR nach #605)  |
+| —                                         | G5                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
+| —                                         | G6                    | offen     | Mit PR #605-Remediation geplant                                      |
+| —                                         | G7                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
+
+**Hinweis:** G2, G4, G6 werden nicht in `quality.yml` implementiert, solange PR #605 sie nicht konzeptionell abgeschlossen hat. Nach Merge von #605 folgen sie als eigener PR.
+
+---
+
 ## 3. Release-Gates (öffentlicher Release / Deploy auf Default-Branch)
 
 Ein Release darf nur freigegeben werden, wenn zusätzlich zu M-1–M-15:
