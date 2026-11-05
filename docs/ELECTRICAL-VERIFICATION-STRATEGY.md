@@ -486,25 +486,83 @@ Soll-Zustand.
 
 ### 4.12 Zusammenfassung der Befunde
 
-| ID  | Kern in einem Satz                                                                         | Betroffene Invariante | Schwere (fachlich)                              |
-| --- | ------------------------------------------------------------------------------------------ | --------------------- | ----------------------------------------------- |
-| A-1 | Standardprofil prüft 21 statt 30 Regeln und **nie** das ΔU-Budget                          | I-E-10                | mittel — betrifft externe Aufrufer              |
-| A-2 | `acCurrentA` (Verbrauch) überstimmt `rating` (Grenze)                                      | I-E-05 (verwandt)     | mittel                                          |
-| K-1 | Zwei Kupfer-Modelle: κ = 58 (Design) vs. ρ(T) (Engine) — im Grenzfall gegenteiliges Urteil | I-E-09                | **hoch**                                        |
-| K-2 | Drei ΔU-Grenzen; AC wird auf 2 % dimensioniert, aber auf 3 % geprüft                       | I-E-04                | **hoch**                                        |
-| K-3 | Bank-Kurzschlussstrom hängt von der Knotenreihenfolge ab (6.826,7 vs. 6.400,0 A)           | I-E-11                | **hoch** (berührt `AMP-004`, `CRITICAL_SAFETY`) |
-| K-4 | Designbudget sagt „Kabel trägt“, die Engine sagt `AMP-001` VIOLATION — für dasselbe Kabel  | I-E-09                | **hoch**                                        |
-| E-1 | `constraints.ts` verwirft ungültige Grenzwerte still                                       | Regel M               | mittel                                          |
-| E-2 | „Nicht bewertbar“ liefert `feasible: true` und passiert das Gate                           | I-E-02, I-E-05        | **hoch**                                        |
-| T-1 | `maxFuseForConditions` mit Hersteller-I_z liefert 160 A und einen falschen `plannerFactor` | I-E-03 (Rand)         | mittel                                          |
-| M-1 | Modellrand ist scharf, aber nur als Flag — Querschnitte > 70 mm² bleiben zulässig          | –                     | offene Freigabefrage                            |
-| D-1 | Zwei der sechs Referenzpläne liegen jenseits des Modellrands und sind trotzdem Referenz    | –                     | Dokumentationsfehler                            |
+| ID  | Kern in einem Satz                                                                         | Betroffene Invariante | Schwere (fachlich)                                 |
+| --- | ------------------------------------------------------------------------------------------ | --------------------- | -------------------------------------------------- |
+| A-1 | Standardprofil prüft 21 statt 30 Regeln und **nie** das ΔU-Budget                          | I-E-10                | mittel — betrifft externe Aufrufer                 |
+| A-2 | `acCurrentA` (Verbrauch) überstimmt `rating` (Grenze)                                      | I-E-05 (verwandt)     | mittel                                             |
+| K-1 | Zwei Kupfer-Modelle: κ = 58 (Design) vs. ρ(T) (Engine) — im Grenzfall gegenteiliges Urteil | I-E-09                | **hoch**                                           |
+| K-2 | Drei ΔU-Grenzen; AC wird auf 2 % dimensioniert, aber auf 3 % geprüft                       | I-E-04                | **hoch**                                           |
+| K-3 | Bank-Kurzschlussstrom hängt von der Knotenreihenfolge ab (6.826,7 vs. 6.400,0 A)           | I-E-11                | **hoch** (berührt `AMP-004`, `CRITICAL_SAFETY`)    |
+| K-4 | Designbudget sagt „Kabel trägt“, die Engine sagt `AMP-001` VIOLATION — für dasselbe Kabel  | I-E-09                | **hoch**                                           |
+| E-1 | `constraints.ts` verwirft ungültige Grenzwerte still                                       | Regel M               | mittel                                             |
+| E-2 | „Nicht bewertbar“ liefert `feasible: true` und passiert das Gate                           | I-E-02, I-E-05        | **hoch**                                           |
+| T-1 | `maxFuseForConditions` mit Hersteller-I_z liefert 160 A und einen falschen `plannerFactor` | I-E-03 (Rand)         | mittel                                             |
+| M-1 | Modellrand ist scharf, aber nur als Flag — Querschnitte > 70 mm² bleiben zulässig          | –                     | offene Freigabefrage                               |
+| D-1 | Zwei der sechs Referenzpläne liegen jenseits des Modellrands und sind trotzdem Referenz    | –                     | Dokumentationsfehler                               |
+| D-2 | `16,1 A` und `0,7 · 23 A` sind dieselbe Zahl, ergeben aber 4,0 vs. 2,5 mm²                 | I-E-11                | mittel (konservativ, aber repräsentationsabhängig) |
+| D-3 | Der Bank-I_k weicht zwischen Modelldefinition und Produktivfunktion um 0,33 % ab (κ vs. ρ) | –                     | kein Fehler — Toleranz belegt                      |
 
 **Wichtig für die Lesart:** Keiner dieser Befunde ist ein Rechenfehler im Sinne
 von „falsche Formel“. Es sind **Verknüpfungsfehler** zwischen vorhandenen,
 jeweils für sich verteidigten Wahrheiten. Genau deshalb ist die Antwort nicht
 „mehr Tests“, sondern ein Differentialmodell (Kapitel 5) und Invarianten, die
 die Verknüpfung erzwingen (Kapitel 6).
+
+### 4.13 Befund D-2: eine Normstufe hängt an der Divisionsreihenfolge
+
+`thermalCrossSectionFor` prüft `I · (1/0,7) ≥ Tabellenwert`. Für das Literal
+`16,1` ergibt das `23,000000000000004 > 23` ⇒ **4,0 mm²**. Für den rechnerisch
+identischen Wert `0,7 · 23 = 16,099999999999998` ergibt es
+`22,999999999999996 ≤ 23` ⇒ **2,5 mm²**.
+
+```js
+23 * 0.7; // 16.099999999999998  ≠ 16.1
+16.1 *
+  (
+    1 / 0.7
+  ) // 23.000000000000004  > 23   ⇒ 4,0 mm²
+  (0.7 * 23) *
+  (1 / 0.7); // 22.999999999999996  ≤ 23   ⇒ 2,5 mm²
+```
+
+Die **fachlich richtige** Antwort für 16,1 A ist 2,5 mm² (23 A ≥ 16,1/0,7). Die
+Abweichung ist die **konservative** Richtung (mehr Kupfer), also kein
+Sicherheitsfehler — aber das Ergebnis hängt davon ab, _wie_ die Zahl entstanden
+ist, nicht nur davon, _was_ sie ist. Das ist derselbe Verstoß gegen die
+Repräsentationsinvarianz wie Befund K-3, nur eine Ebene tiefer: nicht die
+Reihenfolge der Objekte, sondern die der Gleitkommaoperationen entscheidet.
+
+Konsequenz für die Strategie: der Vergleich muss an der Kante **inklusiv mit
+Toleranz** erfolgen (`≥ value − ε·max(1,value)`), nicht mit `≥`. Das
+Referenzmodell RM-2 macht das seit dem zweiten Lauf (ε = 1e-12 relativ); die
+Produktivfunktion **nicht**. Ein Fix dort ist ein Einzeiler, ändert aber
+Ausgaben für Bestandspläne — deshalb als Befund geführt, nicht umgesetzt.
+
+Der Test `BEFUND D-2 — dieselbe mathematische Grenze liefert je nach Herkunft
+zwei Stufen` hält beide Ergebnisse fest. Er repariert nichts; er macht eine
+spätere Reparatur als bewusste Änderung sichtbar.
+
+### 4.14 Befund D-3: die κ-Rundung ist quantifiziert, nicht behauptet
+
+Befund K-1 (Kapitel 4.2) sagt „zwei Kupfer-Modelle“. Die Referenzsuite macht
+daraus eine Zahl mit Toleranz:
+
+| Größe                                         | Produktiv (κ = 58) | Referenz (ρ₂₀ = 0,0175) | Abweichung  |
+| --------------------------------------------- | ------------------ | ----------------------- | ----------- |
+| Spezifischer Widerstand                       | 0,017241 Ω·mm²/m   | 0,0175 Ω·mm²/m          | **1,478 %** |
+| I_k an der Sicherung (0,2 m / 16 mm², 12,8 V) | 6.628,57 A         | 6.606,45 A              | **0,33 %**  |
+| I_k an den Polklemmen (R_Leitung = 0)         | exakt gleich       | exakt gleich            | 0 %         |
+
+Die Zusage im Differentialtest lautet 1 % für `R_fuse` und **exakt** für die
+Polklemmen. Das ist wichtig für die Lesart von K-1: die Abweichung ist eine
+**Konstantenrundung**, kein Rechenfehler. Sie wird an der Stelle sichtbar, an
+der der Leitungswiderstand neben dem Innenwiderstand nicht mehr verschwindet —
+und dort beträgt sie ein Drittel Prozent. Der Befund bleibt trotzdem „hoch“,
+weil κ an der **ΔU-Grenze** (Befund K-2) das Urteil kippt, nicht weil der
+Kurzschlussstrom falsch wäre.
+
+Der Allowlist-Eintrag für K-1 (Ablauf 2027-06-30) ist mit genau diesen Zahlen
+begründet und nicht mit „Rundung, unkritisch“.
 
 ## 5. Unabhängige Referenzmodelle und fachlich geprüfte Referenzfälle
 
@@ -740,16 +798,20 @@ nicht die ganze Datei.
 ### 8.4 Neue Skripte (Namen, noch nicht angelegt)
 
 ```
-npm run test:safety       # test/reference/**, G1
-npm run test:invariants   # lib/verify/invariants/*.test.ts, G3
-npm run test:differential # Produktiv vs. RM-1…RM-5, G2
-npm run test:trace        # Trace-Vollständigkeit über alle Referenzpläne, I-E-12
-npm run mut:critical      # Stryker, kuratiertes Set, G4
-npm run verify:snapshot   # Verdikt-/Hash-Snapshot capture + compare, G5
+npm run test:safety       # test/reference/** + test/invariants/**; G1 + G3   ✅ vorhanden
+npm run test:invariants   # test/invariants/**; G3                           ✅ vorhanden
+npm run test:differential # Produktiv vs. RM-1…RM-5; G2                        ✅ vorhanden
+npm run test:trace        # Trace-Vollständigkeit (I-E-12) — heute Teil von test:invariants
+npm run mut:critical      # Stryker, kuratiertes Set; G4                       ⬜ offen
+npm run verify:snapshot   # Verdikt-/Hash-Snapshot; G5 — heute Test, kein Skript ⬜ offen
 ```
 
-Keine dieser Zeilen existiert heute. Sie sind der **Umsetzungsteil** dieses
-Konzepts und brauchen einen eigenen PR mit `safety-review`-Label.
+`test:safety`, `test:invariants` und `test:differential` sind seit diesem PR
+gesetzt (`package.json`). G5 läuft als Test (`test/invariants/verdict-snapshot.test.ts`)
+und braucht kein eigenes Skript: der Snapshot steht im Testfile, die Diff-Ausgabe
+von Vitest ist aussagekräftiger als die eines eigenen Vergleichswerkzeugs.
+`test:trace` und `mut:critical` bleiben offen; ihre Inhalte sind in Kapitel 7.4
+bzw. 8.3 spezifiziert.
 
 ---
 
@@ -841,8 +903,11 @@ Berechnung, die eine Modellgrenze berührt, muss sie im Bericht nennen.
 6. Calculation Trace ist als Struktur definiert und in Lücken priorisiert
    (Kapitel 7).
 7. CI-Gates sind benannt, mit Abbruchbedingung und Stufenplan (Kapitel 8).
-8. Keine Datei außer dieser wurde angelegt oder geändert; keine Formel wurde
-   verändert.
+8. ~~Keine Datei außer dieser wurde angelegt oder geändert; keine Formel wurde
+   verändert.~~ **Überholt durch den Umsetzungs-PR:** angelegt wurden
+   `test/reference/*` (5 Modelle + Differentialtest), `test/invariants/*`
+   (3 Suiten) und drei `package.json`-Skripte. Weiterhin gilt: **keine Formel,
+   keine Tabelle, kein Grenzwert wurde verändert** (Kapitel 12).
 
 ### 11.4 Nächster Schritt nach Freigabe
 
@@ -851,3 +916,82 @@ RM-2/RM-4, Trace-Vollständigkeitstest). Diese drei Maßnahmen ändern **kein**
 Produktionsverhalten, erzeugen aber die erste unabhängige Belegschicht und
 machen jede spätere Formeländerung sofort sichtbar. Danach die Befunde K-2 bis
 K-4 und E-1/E-2 als eigene, einzeln prüfbare PRs mit `safety-review`-Label.
+
+---
+
+## 12. Umsetzungsstand (Stand: 2026-11-05)
+
+Dieses Kapitel ist der **Nachweisteil**: es sagt, was von Kapitel 8 und 9
+tatsächlich existiert, was gemessen wurde und was rot ist. Alles darunter ist
+reproduzierbar durch `npm run test:safety`.
+
+### 12.1 Was jetzt existiert
+
+| Datei                                             | Inhalt                                                                          | Tests  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | ------ |
+| `test/reference/rm1-voltage-drop.ts`              | ΔU nach IEC 60364-5-52, ρ(T) statt κ, eigene Konstanten                         | –      |
+| `test/reference/rm2-ampacity.ts`                  | Belastbarkeit + Sicherungskoordination, inklusive inklusiver Stufenkante        | –      |
+| `test/reference/rm3-shortcircuit.ts`              | Kurzschlusskette R_i → U_bank → R_Leitung → I_k                                 | –      |
+| `test/reference/rm4-ac-protection.ts`             | AC-Schutzkette (RCD, MCB, Auslösecharakteristik)                                | –      |
+| `test/reference/rm5-energy.ts`                    | Kapazität/Energie mit Peukert, DoD, Ladefenster                                 | –      |
+| `test/reference/differential.test.ts`             | G0-Allowlist-Gate + Vergleich Produktiv ↔ RM-1…RM-5 (fast-check, Seed 20261105) | **44** |
+| `test/invariants/electrical-invariants.test.ts`   | I-E-01 … I-E-12 als ausführbare Sätze                                           | **50** |
+| `test/invariants/verdict-snapshot.test.ts`        | G5: Verdikt + Zertifikat-Hash + Ereignis-Multimenge der sechs Referenzpläne     | **10** |
+| `test/invariants/determinism-metamorphic.test.ts` | M-1…M-6: Determinismus, Permutationsinvarianz, Monotonie, Skalierung            | **18** |
+
+Zusammen **122 Tests** in vier Dateien, Laufzeit unter 10 s, kein Produktivimport
+in den Referenzmodellen (der G0-Test erzwingt das per Allowlist).
+
+### 12.2 Rot und trotzdem sichtbar: die sieben `it.fails`
+
+Sieben Invariantenprüfungen sind heute **bekannt verletzt** und laufen als
+`it.fails` (Stufe S1 aus Kapitel 8.3). Kein Test wird abgeschwächt, keiner
+gelöscht — die Verletzung bleibt als Befund mit ID im Repo:
+
+| Test                                                  | Befund | Reparatur                    |
+| ----------------------------------------------------- | ------ | ---------------------------- |
+| E-2: ohne Grenze darf `feasible` nicht true sein      | E-2    | Kapitel 9, Punkt 7           |
+| E-1: nicht-numerischer Grenzwert muss gemeldet werden | E-1    | Punkt 8                      |
+| K-2: AC muss mit 2 % geprüft werden                   | K-2    | Punkt 5                      |
+| K-2b: die Engine muss AC-Leitungen auf ΔU prüfen      | K-2    | Punkt 5 (größer als gedacht) |
+| K-4: Designbudget muss die Kantenbedingungen achten   | K-4    | Punkt 4                      |
+| K-3: Bank-I_k muss reihenfolgeunabhängig sein         | K-3    | Punkt 6                      |
+| I-E-12: ΔU-Befund ohne Rechenweg                      | I-E-12 | Punkt 10                     |
+
+**`it.fails` ist hier kein Freibrief.** Sobald eine Reparatur landet, meldet
+Vitest „Test passed unexpectedly“ — die Umstellung auf `it` ist dann Pflicht.
+Damit kann eine Verbesserung nicht stillschweigend passieren und ein Rückfall
+nicht unbemerkt bleiben.
+
+### 12.3 Was der erste Differentiallauf gefunden hat
+
+Der Lauf über die fünf Referenzmodelle förderte vier echte Befunde und zwei
+Fehler in **meinen** Referenzmodellen zutage (Befund D-2, Kapitel 4.13, ist der
+interessanteste, weil er zuerst wie ein Produktivfehler aussah und sich als
+Gleitkomma-Frage auf beiden Seiten entpuppte):
+
+| Beobachtung                                           | Einordnung                                            |
+| ----------------------------------------------------- | ----------------------------------------------------- |
+| `κ = 58` ist nicht `1/0,0175`                         | Konstantenrundung, kein Fehler → Befund K-1, mit Zahl |
+| `f₁ > 1` bei Kälte                                    | eigene Fehlannahme, Invariante ist `I_z ≤ I_z,Basis`  |
+| `evaluateAcEdgeProtection` kennt `ok-with-assumption` | Produktiv **genauer** als RM-4 — kein Befund          |
+| `R_fuse` weicht 0,33 % ab                             | Toleranz 1 %, begründet (Kapitel 4.14)                |
+| 16,1 A ⇒ 4,0 vs. 2,5 mm²                              | Befund D-2 (Kapitel 4.13)                             |
+
+Das ist der eigentliche Ertrag: nicht „die Produktion ist falsch“, sondern
+„drei Stellen, an denen zwei unabhängige Rechnungen **auseinanderlaufen**, jede
+mit Betrag, Domäne und Richtung“.
+
+### 12.4 Was dieser PR ausdrücklich nicht getan hat
+
+- **Keine Formel, keine Tabelle, kein Grenzwert geändert.** Alle Befunde sind
+  beschrieben, keiner ist behoben. Änderungen an `lib/electrical.ts` u. a.
+  brauchen Freigabe (`AGENTS.md` §6, Gate G7).
+- **Keine CI-Verdrahtung.** Die Skripte existieren und laufen lokal; ein
+  Workflow-Job, der sie blockierend ausführt, braucht `safety-review` und ist
+  ein eigener PR.
+- **Kein Mutation-Gate (G4).** Das kuratierte Set ist spezifiziert, nicht
+  gebaut.
+- **Keine Aussage über Normkonformität der Anlage.** Die Referenzmodelle sind
+  Modelle, keine Zertifizierung; jeder `UNVERIFIED`-Punkt aus Kapitel 11.1 gilt
+  unverändert.
