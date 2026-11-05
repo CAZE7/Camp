@@ -1208,3 +1208,47 @@ stillschweigend einen falschen Rat bekommen. Das Prüfsiegel zeigt den Satz
 Der Ratgeber behebt **nichts**: er ändert kein Verdikt und keine Zahl. Er macht
 den nächsten Schritt sichtbar — die Behebung der sieben Verletzungen bleibt
 Sache der Folgeaufträge aus `ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md`.
+
+## 12.9 Lighthouse L-1 — nachgemessen statt vermutet
+
+Befund L-1 lautete: der Job „Visuelles Gate" ist rot, Ursache unklar, weil die
+Lighthouse-Details aus den CI-Logs nicht belegbar waren (0-Byte-Logs).
+Gemessen wurde jetzt anders: **Build-Vergleich** statt Log-Interpretation.
+
+Vorgehen: `next build` auf `7d8a464` (Basis) und auf `48dd1d0` (PR) in zwei
+sauberen Worktrees, dann die gzip-Bytes aller Chunks und Stylesheets, die die
+drei Budget-Routen tatsächlich referenzieren.
+
+| Route                           | Basis     | PR        | Delta                 |
+| ------------------------------- | --------- | --------- | --------------------- |
+| `/camper-elektrik/ladebooster/` | 226,1 KiB | 226,1 KiB | **±0,0 KiB (0,00 %)** |
+| `/`                             | 220,2 KiB | 220,2 KiB | **±0,0 KiB (0,00 %)** |
+| `/impressum/`                   | 219,2 KiB | 219,2 KiB | **±0,0 KiB (0,00 %)** |
+
+Der Grund ist strukturell und nachprüfbar: der neue Code liegt in
+`components/planner/utils/verificationActions.ts` und wird ausschließlich von
+`PlannerDashboard` geladen. In keinem der drei gemessenen Routen-Bundles findet
+sich sein Markup-String — die Routen laden den Planer nicht.
+
+Damit ist L-1 auf den PR bezogen **widerlegt**: dieser Zweig verändert die
+Lighthouse-Eingangsgrößen nicht. Die drei Jobs des Visuellen Gates zeigen:
+
+| Lauf        | Pixel-Baselines | Lighthouse  | Commit    |
+| ----------- | --------------- | ----------- | --------- |
+| 42059246028 | success         | **success** | `28d6ce4` |
+| 42097595906 | success         | failure     | `49b3496` |
+| 42104892376 | success         | failure     | `48dd1d0` |
+
+Derselbe Job mit demselben Budget-Code war im ersten Lauf grün. Das ist der
+Befund: **das Lighthouse-Gate ist instabil, nicht der PR.** Es bleibt beim
+Befund aus §12.6 — Lab-Werte auf geteilten Runnern schwanken, und der Job ist
+per `continue-on-error: true` ausdrücklich nicht blockierend. Eine Änderung am
+Budget wäre genau das, was hier nicht getan werden darf (L-1): Schwellen
+weichmachen, bis es grün ist. Deshalb: unverändert.
+
+**Was fehlt, um das sauber zu schließen:** ein Lighthouse-Lauf mit echtem
+Chromium in einer Umgebung, die Systembibliotheken nachinstallieren darf. In
+dieser Umgebung scheitert jeder Chromium-Start an `libnspr4.so`; der
+zugehörige Beleg ist der `127.0.0.1`-Server plus `spawn('npx lighthouse …')`,
+der mit Exit 1 abbricht. Die Unit-Tests der Budgetlogik
+(`scripts/ci/lighthouseGate.test.ts`) bleiben davon unberührt und sind grün.
