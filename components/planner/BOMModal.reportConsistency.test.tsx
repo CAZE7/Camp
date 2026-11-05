@@ -340,3 +340,51 @@ describe('Druckbericht — Fenster und Nutzeraktivierung', () => {
     expect(closeSpy).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Langsames Rendering / große Pläne.
+ *
+ * Die Nutzeraktivierung ist nach wenigen Sekunden abgelaufen. Entscheidend
+ * ist deshalb nicht, WIE LANGE die Aufnahme dauert, sondern dass das Fenster
+ * schon offen ist, bevor sie beginnt. Der Test hält die Aufnahme kontrolliert an und
+ * prüft genau diese Reihenfolge — ohne echte Wartezeit.
+ */
+describe('Druckbericht — langsame Aufnahme', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    openMock.mockReturnValue(true);
+    windowMock.mockReturnValue(fakeWindow);
+    act(() => {
+      usePlannerStore.getState().setViewMode('electric');
+      usePlannerStore.getState().setWaterNodes([]);
+      usePlannerStore.getState().setWaterEdges([]);
+    });
+    seedPlan();
+  });
+
+  it('Fenster ist offen, bevor die Aufnahme beginnt — auch wenn sie lange dauert', async () => {
+    let finish: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    let windowOpenBeforeCapture = false;
+    captureMock.mockImplementation(async () => {
+      windowOpenBeforeCapture = windowMock.mock.calls.length === 1;
+      await gate; // beliebig lang — hier kontrolliert freigegeben
+      return capturingFromStore();
+    });
+
+    render(<BOMModal />);
+    openBom();
+    await clickPrint();
+
+    // Die Aufnahme hängt, das Fenster ist bereits da.
+    await waitFor(() => expect(captureMock).toHaveBeenCalled());
+    expect(windowOpenBeforeCapture).toBe(true);
+    expect(openMock).not.toHaveBeenCalled();
+
+    finish!();
+    await waitFor(() => expect(openMock).toHaveBeenCalledTimes(1));
+    expect(closeSpy).not.toHaveBeenCalled();
+  });
+});
