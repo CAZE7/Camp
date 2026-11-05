@@ -115,6 +115,23 @@ interface AllowlistEntry {
   expires: string;
   /** Befund-ID im Strategie-Dokument. */
   finding: string;
+  /**
+   * Zulässige **relative** Abweichung für genau diesen Vergleich.
+   *
+   * Das ist der Unterschied zwischen einer dokumentierten Abweichung und einem
+   * Gate: Bis zum Audit standen die Zahlen als freie Literale im Test
+   * (`0.015`, `0.01`). Jetzt kommt jede Toleranz aus dieser Liste, und der
+   * Vergleich **findet seinen Eintrag selbst**. Eine Toleranz ohne Eintrag gibt
+   * es nicht mehr.
+   */
+  tolerance: number;
+  /**
+   * Nur `true`, wenn die Abweichung **nachweislich in beide Richtungen** durch
+   * die Dokumentation gedeckt ist (z. B. „beide Werte sind zulässige
+   * Schreibweisen derselben Konstante"). Bleibt `false`, prüft der Test
+   * zusätzlich die **Richtung** — siehe G2.
+   */
+  symmetric: boolean;
 }
 
 const ALLOWLIST: readonly AllowlistEntry[] = [
@@ -124,6 +141,23 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
       'κ = 58 S·m/mm² ⇒ ρ = 0,017241 Ω·mm²/m; RM-1 rechnet mit dem gerundeten Materialwert 0,0175. Der Unterschied (0,15 %) ist ein Rundungsunterschied der Materialkonstante, kein Rechenfehler. Die temperaturabhängige Engine-Seite nutzt 0,0175 und stimmt mit RM-1 exakt.',
     expires: '2027-06-30',
     finding: 'K-1',
+    // κ = 58 ⇒ 0,017241 gegen ρ₂₀ = 0,0175: Faktor 1,01478. Die Toleranz ist
+    // auf 1,5 % gesetzt — gerade genug für die Konstantenrundung, zu eng für
+    // jede echte Formelabweichung.
+    tolerance: 0.015,
+    // NICHT symmetrisch: κ = 58 rechnet den Spannungsfall KLEINER als der
+    // Materialwert. Die Richtung ist Teil des Befunds (κ ist hier optimistisch),
+    // und G2 prüft sie mit.
+    symmetric: false,
+  },
+  {
+    path: 'lib/shortCircuit.ts#cableLoopResistanceOhm ↔ test/reference/rm3-shortcircuit.ts#REF_RHO_CU',
+    reason:
+      'Dieselbe Wurzel wie der Materialeintrag: der Kurzschlussstrang rechnet den Leitungswiderstand mit κ = 58 (ρ = 1/58), RM-3 mit ρ = 0,0175. Bei 0,2 m / 16 mm² sind das 6.628,57 A gegen 6.606,45 A = 0,33 %. Die 1 %-Toleranz deckt den Rundungsfall mit Reserve und bleibt weit unter jeder Messgenauigkeit. Die Richtung ist umgekehrt zum Spannungsfall (ρ steht im Nenner): der Produktivwert ist größer.',
+    expires: '2027-06-30',
+    finding: 'K-1',
+    tolerance: 0.01,
+    symmetric: false,
   },
   {
     path: 'lib/autoWire/designBudget.ts#cableLimit ↔ lib/verify/ampacity.ts#AMP-001',
@@ -131,6 +165,12 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
       'Befund K-4 (offen, Freigabe ausstehend): Das Designbudget rechnet I_z = 0,7 · Tabelle und ignoriert die Verlegebedingungen der Kante. RM-2 bildet BEIDE Pfade nach; die Abweichung ist damit quantifiziert und nicht mehr still.',
     expires: '2026-12-31',
     finding: 'K-4',
+    // Die Abweichung ist keine Zahl, sondern ein anderes Bezugsmodell
+    // (Tabellenpauschale gegen kantenspezifische I_z). Sie wird nicht als
+    // Toleranz verglichen, sondern als Verhaltensunterschied festgehalten —
+    // deshalb 0 und `symmetric: false`; der eigene Test unten zeigt sie.
+    tolerance: 0,
+    symmetric: false,
   },
   {
     path: 'lib/shortCircuit.ts#bankVoltage ↔ test/reference/rm3-shortcircuit.ts#refBankVoltage',
@@ -138,8 +178,138 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
       'Befund K-3 (offen, Freigabe ausstehend): bankVoltage nimmt den ersten Block. RM-3 liefert null bei uneinheitlicher Nennspannung. Beide Verhalten sind hier festgehalten, damit die Reparatur messbar bleibt.',
     expires: '2026-12-31',
     finding: 'K-3',
+    // Kein Toleranzfall: die beiden Modelle liefern strukturell verschiedene
+    // Ergebnisse (Zahl gegen null). Festgehalten in I-E-11, nicht hier.
+    tolerance: 0,
+    symmetric: false,
   },
 ];
+
+/**
+ * G2 — der eigentliche Differentialvergleich mit Allowlist-Bindung.
+ *
+ * Vor dem Audit war G2 **nicht implementiert**: die Toleranzen standen als
+ * freie Literale im Test (`0.015` an einer Stelle, `0.01` an einer anderen),
+ * die `ALLOWLIST` wurde nur auf ihre Form geprüft. Wer eine Toleranz von 1,5 %
+ * auf 50 % aufgeweitet hätte, hätte keinen Eintrag und kein Ablaufdatum
+ * gebraucht.
+ *
+ * Jetzt gilt: **jede** zulässige Abweichung kommt aus einem Eintrag, und der
+ * Vergleich holt sich seinen Eintrag über den Pfad. Fehlt der Eintrag, ist die
+ * Toleranz 0 — also exakt. Das ist die sichere Voreinstellung: eine neue
+ * Abweichung fällt auf, sie wird nicht stillschweigend erlaubt.
+ */
+function allowlistFor(path: string): AllowlistEntry | undefined {
+  return ALLOWLIST.find((entry) => entry.path === path);
+}
+
+/** Toleranz eines Pfads — 0, wenn es keinen Eintrag gibt. */
+function toleranceFor(path: string): number {
+  return allowlistFor(path)?.tolerance ?? 0;
+}
+
+const K1_KAPPA_PATH =
+  'lib/materials.ts#COPPER_CONDUCTIVITY_MS_PER_MM2 ↔ test/reference/rm1-voltage-drop.ts#REF_RHO_CU_20';
+
+/**
+ * Vergleicht Produktiv- und Referenzwert gegen die Allowlist-Toleranz.
+ *
+ * @param direction Pflicht bei nicht-symmetrischen Einträgen: `'production-lower'`
+ *   heißt, der Produktivwert MUSS kleiner sein (so ist K-1 dokumentiert).
+ *   Stimmt die Richtung nicht, ist das ein Befund — auch wenn der Betrag passt.
+ */
+function expectWithinAllowlist(actual: number, expected: number, path: string, label: string): void {
+  const entry = allowlistFor(path);
+  const tolerance = entry?.tolerance ?? 0;
+  const deviation = Math.abs(actual - expected) / Math.max(1, Math.abs(expected));
+
+  expect(
+    deviation,
+    `${label}: Abweichung ${(deviation * 100).toFixed(3)} % > Toleranz ${(tolerance * 100).toFixed(3)} %${entry ? '' : ' (kein Allowlist-Eintrag ⇒ exakt erwartet)'}`
+  ).toBeLessThanOrEqual(tolerance + 1e-15);
+
+  if (entry && !entry.symmetric) {
+    // Die dokumentierte Richtung: κ = 58 rechnet den Spannungsfall kleiner.
+    expect(
+      actual,
+      `${label}: Richtung — der Produktivwert muss kleiner sein (Befund ${entry.finding})`
+    ).toBeLessThanOrEqual(expected);
+  }
+}
+
+describe('G2 — jede Abweichung hat einen Allowlist-Eintrag mit Toleranz und Ablaufdatum', () => {
+  it('die Toleranzen sind endlich, positiv-beschränkt und nicht schleichend', () => {
+    for (const entry of ALLOWLIST) {
+      expect(Number.isFinite(entry.tolerance), entry.path).toBe(true);
+      expect(entry.tolerance, `${entry.path}: Toleranz muss ≥ 0 sein`).toBeGreaterThanOrEqual(0);
+      // Obergrenze: mehr als 5 % wäre keine Rundungs- oder Modellfrage mehr,
+      // sondern ein anderer Wert. Wer sie braucht, braucht keinen Test mehr.
+      expect(entry.tolerance, `${entry.path}: Toleranz über 5 % ist kein Rundungsfall`).toBeLessThanOrEqual(
+        0.05
+      );
+      expect(typeof entry.symmetric, `${entry.path}: symmetric fehlt`).toBe('boolean');
+    }
+  });
+
+  it('der κ-Vergleich holt seine Toleranz wirklich aus der Liste', () => {
+    // Gegenprobe zum Literal: derselbe Pfad liefert dieselbe Zahl wie der
+    // Eintrag — und ein unbekannter Pfad liefert 0 (exakt).
+    expect(toleranceFor(K1_KAPPA_PATH)).toBe(0.015);
+    expect(toleranceFor('irgendein/pfad/ohne/eintrag')).toBe(0);
+  });
+
+  it('der κ-Vergleich bleibt innerhalb der Allowlist und in der dokumentierten Richtung', () => {
+    // 20 A, 10 m, 2,5 mm², 12,8 V — ein realistischer Mittelfall.
+    const production = productionVoltageDrop(
+      20 as never,
+      10 as never,
+      2.5 as never,
+      REF_CONDUCTIVITY_DESIGN as never
+    ) as unknown as number;
+    const reference = refVoltageDrop({
+      currentA: 20,
+      lengthM: 10,
+      crossSectionMm2: 2.5,
+      nominalVoltageV: 12.8,
+      temperatureC: 20,
+      pathFactor: 2,
+    }).dropV;
+    expectWithinAllowlist(production, reference, K1_KAPPA_PATH, 'ΔU 20 A / 10 m / 2,5 mm²');
+  });
+
+  it('ohne Eintrag wird exakt verglichen — auch wenn die Abweichung klein ist', () => {
+    // Derselbe Vergleich, aber über einen Pfad ohne Eintrag: 1 % Abweichung
+    // ist dann schon zu viel. Das ist die sichere Voreinstellung.
+    const production = productionVoltageDrop(
+      20 as never,
+      10 as never,
+      2.5 as never,
+      REF_CONDUCTIVITY_DESIGN as never
+    ) as unknown as number;
+    const reference = refVoltageDrop({
+      currentA: 20,
+      lengthM: 10,
+      crossSectionMm2: 2.5,
+      nominalVoltageV: 12.8,
+      temperatureC: 20,
+      pathFactor: 2,
+    }).dropV;
+    expect(() =>
+      expectWithinAllowlist(production, reference, 'lib/units.ts#voltageDrop ↔ RM-1', 'ohne Eintrag')
+    ).toThrow(/kein Allowlist-Eintrag/);
+  });
+
+  it('jeder Befund-Eintrag ist im Strategiedokument wiederzufinden', () => {
+    // Verhindert eine Allowlist, die auf erfundene Befund-IDs zeigt.
+    const strategie = readFileSync(join(cwd(), 'docs', 'ELECTRICAL-VERIFICATION-STRATEGY.md'), 'utf8');
+    for (const entry of ALLOWLIST) {
+      expect(
+        strategie.includes(entry.finding),
+        `Befund ${entry.finding} steht nicht im Strategiedokument`
+      ).toBe(true);
+    }
+  });
+});
 
 describe('G0 — Referenzmodelle sind frei von Produktivimporten', () => {
   /**
@@ -244,8 +414,9 @@ describe('RM-1 — Spannungsfall: Produktiv ↔ Referenz', () => {
             pathFactor: 2,
           }).dropV;
           // Der Produktivwert nutzt κ = 58 (ρ = 0,017241), RM-1 den gerundeten
-          // Materialwert 0,0175 — Differenz ≤ 1,5 % (Allowlist-Eintrag K-1).
-          expect(closeTo(production, reference, 0.015)).toBe(true);
+          // Materialwert 0,0175. Toleranz und Richtung kommen aus der Allowlist
+          // (Eintrag K-1) — nicht mehr aus einem Literal an dieser Stelle.
+          expectWithinAllowlist(production, reference, K1_KAPPA_PATH, `${current} A / ${length} m`);
         }
       ),
       { numRuns: 300, seed: 20261105 }
@@ -560,7 +731,18 @@ describe('RM-3 — Kurzschlussstrom: Produktiv ↔ Referenz', () => {
     const refs = [refBlock('a', { ...block, capacity: 200 })];
     const production = shortCircuitAtFuseA(nodes, 0.2, 16, 12.8)!;
     const reference = refShortCircuitAtFuse(refs, 0.2, 16, 12.8)!;
-    expect(Math.abs(production - reference) / reference).toBeLessThan(0.01);
+    // Dieselbe Wurzel (κ gegen ρ), andere Größe: der Strom statt der Spannung.
+    // Weil ρ hier im Nenner steht, ist die Richtung umgekehrt — der
+    // Produktivwert ist GRÖSSER. Die 1 %-Toleranz steht in der Allowlist
+    // (derselbe Befund K-1, eigener Pfad, eigene Begründung).
+    const path = 'lib/shortCircuit.ts#cableLoopResistanceOhm ↔ test/reference/rm3-shortcircuit.ts#REF_RHO_CU';
+    const entry = allowlistFor(path);
+    expect(entry, 'R_fuse braucht einen eigenen Allowlist-Eintrag').toBeDefined();
+    expect(entry!.finding).toBe('K-1');
+    expect(entry!.tolerance).toBe(0.01);
+    expect(Math.abs(production - reference) / reference).toBeLessThanOrEqual(entry!.tolerance);
+    // Richtung: der Produktivpfad ist leitfähiger ⇒ kleinerer R_Leitung ⇒ größerer I_k.
+    expect(production).toBeGreaterThan(reference);
   });
 
   it('ohne Leitungswiderstand (Polklemmen) stimmen beide exakt', () => {

@@ -798,12 +798,12 @@ nicht die ganze Datei.
 ### 8.4 Neue Skripte (Namen, noch nicht angelegt)
 
 ```
-npm run test:safety       # test/reference/** + test/invariants/**; G1 + G3   ✅ vorhanden
-npm run test:invariants   # test/invariants/**; G3                           ✅ vorhanden
-npm run test:differential # Produktiv vs. RM-1…RM-5; nur G0                   ⚠️ G2 NICHT scharf
-npm run test:trace        # Trace-Vollständigkeit (I-E-12) — heute Teil von test:invariants
-npm run mut:critical      # Stryker, kuratiertes Set; G4                       ⬜ offen
-npm run verify:snapshot   # Verdikt-/Hash-Snapshot; G5 — heute Test, kein Skript ⬜ offen
+npm run test:safety       # test/reference/** + test/invariants/**; G1 + G3 + G4…G6  ✅
+npm run test:invariants   # test/invariants/**; G3…G6                              ✅
+npm run test:differential # Produktiv vs. RM-1…RM-5; G0 + G2                       ✅ beide scharf
+npm run test:gates        # nur G6 (stilles PASS) + G4 (kritische Mutanten)         ✅
+npm run test:trace        # Trace-Vollständigkeit (I-E-12) — Teil von test:invariants
+npm run verify:snapshot   # Verdikt-/Hash-Snapshot; G5 — Test, kein eigenes Skript   ✅ als Test
 ```
 
 `test:safety`, `test:invariants` und `test:differential` sind seit diesem PR
@@ -813,17 +813,27 @@ von Vitest ist aussagekräftiger als die eines eigenen Vergleichswerkzeugs.
 `test:trace` und `mut:critical` bleiben offen; ihre Inhalte sind in Kapitel 7.4
 bzw. 8.3 spezifiziert.
 
-**Wichtige Einschränkung zu G2 (Audit 2026-11-05).** Die `ALLOWLIST` in
-`differential.test.ts` ist heute **nicht verdrahtet**. Sie wird ausschließlich
-von `G0` gelesen, und `G0` prüft nur ihre Form (Grund, Ablaufdatum, Befund-ID)
-sowie das Ablaufdatum — **keine** der drei Produktivfunktionen aus dem
-Differentialvergleich konsultiert sie. Die Toleranzen stehen stattdessen als
-Literale im jeweiligen Test (`0.015` für K-1, `0.01` für R_fuse) bzw. sind für
-K-3 gar nicht als Toleranz formuliert.
-Damit ist G2 **nicht** implementiert: ein Abweichungswert lässt sich ändern,
-ohne dass ein Allowlist-Eintrag entsteht oder abläuft. Die Allowlist ist heute
-eine **Dokumentation mit Ablaufdatum**, kein Gate. Das ist in Kapitel 8.2 als
-„mittel" Aufwand geführt und bleibt offen (Kapitel 12.5, Folge-PR).
+**G2 ist verdrahtet (Stand nach dem Audit-Nachtrag).** Die `ALLOWLIST` in
+`differential.test.ts` trägt jetzt je Eintrag eine **maschinenlesbare
+Toleranz** und eine **Richtungsangabe**; der Vergleich holt sich seinen Eintrag
+über den Pfad (`expectWithinAllowlist`). Es gibt keine freien Toleranz-Literale
+mehr in den Differentialtests — nachprüfbar per `grep`.
+
+Drei Eigenschaften machen daraus ein Gate statt einer Dokumentation:
+
+1. **Fehlender Eintrag ⇒ Toleranz 0.** Eine neue Abweichung wird nicht
+   stillschweigend erlaubt, sondern fällt als exakte Erwartung auf.
+2. **Richtung wird geprüft.** Für K-1 ist dokumentiert, dass κ = 58 den
+   Spannungsfall _kleiner_ rechnet. Ein Vorzeichenwechsel bei gleichem Betrag
+   wäre ein neuer Befund — und schlägt fehl (`symmetric: false`).
+3. **Plausibilitätsobergrenze.** Keine Toleranz über 5 %; darüber ist es keine
+   Rundungs- oder Modellfrage mehr. Zusätzlich muss jede `finding`-ID im
+   Strategiedokument vorkommen, damit die Allowlist nicht auf erfundene
+   Befunde zeigt.
+
+Was G2 **nicht** leistet: Es erkennt keine Abweichung, für die es gar keinen
+Vergleich gibt. K-4 und K-3 sind als Verhaltensunterschiede festgehalten
+(`tolerance: 0`), nicht als Zahlenvergleich — dort prüfen I-E-09 bzw. I-E-11.
 
 ---
 
@@ -1062,8 +1072,22 @@ Ausnahmen**. Sie ist **kein** Nachweis der Normkonformität, und ein grüner
 CI-Lauf belegt ausdrücklich **nicht** die Erfüllung der zwölf Invarianten:
 sieben davon sind heute verletzt und als `it.fails` sichtbar.
 
-Von den sieben Gates laufen **vier** (G0 als Formprüfung, G1, G3 als
-`it.fails`-Suite, G5). **G2, G4 und G6 sind nicht implementiert.**
+Von den sieben Gates laufen **alle sieben** in der PR-Stufe:
+
+| Gate                                   | Umsetzung                                         | Blockierend?  |
+| -------------------------------------- | ------------------------------------------------- | ------------- |
+| G0 Importfreiheit + Allowlist-Form     | `differential.test.ts`, liest die Modelldateien   | ja            |
+| G1 Referenztests                       | `test/reference/rm1…rm5`                          | ja            |
+| G2 Differential mit Allowlist-Toleranz | `expectWithinAllowlist`, Richtungsprüfung         | ja            |
+| G3 Invarianten                         | `electrical-invariants.test.ts`, 7× `it.fails`    | ja (S1-Stufe) |
+| G4 kritische Mutanten                  | `mutation-critical.test.ts`, 6 Klassen von Hand   | ja            |
+| G5 Verdikt-Snapshot                    | `verdict-snapshot.test.ts`                        | ja            |
+| G6 kein stilles PASS                   | `silent-pass-gate.test.ts`, 18 Plan×Profil-Zeilen | ja            |
+
+**Was weiterhin fehlt:** ein echter Stryker-Lauf als Nachtjob (G4 ist hier eine
+kuratierte Handliste kritischer Mutanten, kein Framework-Lauf), und G7
+(`safety-review`-Label + Ruleset) — das ist eine Repo-Admin-Aufgabe, keine
+Codeänderung.
 
 ---
 
@@ -1134,3 +1158,53 @@ Befunde aus #605 nicht auseinanderlaufen, hier die Liste der Punkte, die #604
 
 **Nicht zu übernehmen aus #605:** die Aussage, es gäbe „sieben CI-Gates". Es
 sind vier implementiert, drei spezifiziert (Kapitel 12.5.4).
+
+## 12.8 G4/G6/G7 und der Handlungs-Ratgeber — Umsetzung
+
+**G6 — kein stilles PASS (`test/invariants/silent-pass-gate.test.ts`, 21 Tests).**
+Der Test friert je Plan × Profil die Zahl der _offenen_ Befunde
+(`VIOLATION` + `UNVERIFIABLE`) als Untergrenze ein. Wird ein Befund still zu
+`PASS`, sinkt die Zahl und das Gate bricht ab. Die eingefrorenen Werte sind
+gemessen, nicht gesetzt:
+
+| Plan     | NORM_CORE | CAMP_MODEL | PRACTICE |
+| -------- | --------- | ---------- | -------- |
+| simple   | 9         | 11         | 11       |
+| camper   | 1         | 1          | 1        |
+| solar    | 7         | 9          | 9        |
+| inverter | 12        | 14         | 14       |
+| acdc     | 22        | 26         | 28       |
+| complex  | 4         | 4          | 4        |
+
+Die Zahlen sind das genaue Gegenteil eines Erfolgsberichts: sie zeigen, wie
+weit entfernt jeder Plan von `COMPLIANT` ist. Genau deshalb taugen sie als
+Wächter — ein sinkender Wert ist erklärungspflichtig.
+
+**G4 — kritische Mutanten (`test/invariants/mutation-critical.test.ts`, 9 Tests).**
+Kein Stryker: nicht im Manifest, als PR-Gate zu teuer (790 s für 781 Mutanten).
+Stattdessen sechs Klassen kritischer Mutanten von Hand, gegen die echten
+Funktionen: Grenzvergleich gerichtet (`≤`/`<`), Kälte-Klemme, „strengster
+Faktor gewinnt", Sicherungsstufe exakt, Grenzwert-Vorprüfung, „keine Grenze"
+≠ „Grenze 0". Ein überlebender Mutant wäre ein Testmangel, kein Produktfehler —
+der Test benennt beide Fälle.
+
+**G7 — Aufteilung der Stufen.** `quality.yml` fährt G1/G2/G3/G5 im
+Coverage-Schritt mit und hat einen eigenen, benannten Schritt
+„Sicherheitsgates (G4, G6)" (`npm run test:gates`), damit ein Fehlschlag im PR
+sofort zuzuordnen ist. `docs/ci/workflows/quality.yml` ist gespiegelt
+(`scripts/ci/workflows.test.ts` prüft die 1:1-Übereinstimmung).
+
+**Ratgeber (`components/planner/utils/verificationActions.ts`).** Der Befund
+„elf Mal nicht bewertbar, null Verstöße" war keine Auskunft, sondern eine
+Sackgasse. Der Ratgeber ordnet jedem Ereignis eine Handlung zu — aus dem
+Ereignis selbst, ohne eigene Regel-Logik: `fix-violation` → `fill-input` →
+`datasheet` → `model-limit` → `unknown`. Die letzte Kategorie ist die
+wichtigste: eine Modellgrenze ist **nicht** durch Eingaben auflösbar und steht
+deshalb unten. Fehlt eine Regel in der Tabelle, meldet der Befund
+`kind: 'unknown'` — eine neue Regel soll sichtbar unversorgt sein, nicht
+stillschweigend einen falschen Rat bekommen. Das Prüfsiegel zeigt den Satz
+(`nextStep`), wenn er übergeben wird.
+
+Der Ratgeber behebt **nichts**: er ändert kein Verdikt und keine Zahl. Er macht
+den nächsten Schritt sichtbar — die Behebung der sieben Verletzungen bleibt
+Sache der Folgeaufträge aus `ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md`.

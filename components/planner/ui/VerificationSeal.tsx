@@ -19,6 +19,16 @@ import type { VerificationSummary } from '../utils/verificationWarnings';
  */
 interface VerificationSealProps {
   summary: VerificationSummary;
+  /**
+   * Ein Satz, was als Nächstes zu tun ist (`nextStepSummary`).
+   *
+   * Warum als Prop und nicht hier berechnet: Das Siegel soll nichts nachrechnen
+   * (ARCH-Regel D). Der Text entsteht aus dem Bericht, den auch die
+   * Warn-Zentrale benutzt — eine zweite Herleitung wäre eine zweite Wahrheit.
+   * Fehlt der Text, bleibt das Siegel wie bisher; er ist eine Ergänzung, kein
+   * Pflichtfeld, damit bestehende Aufrufer nicht brechen.
+   */
+  nextStep?: string;
 }
 
 const TONE: Record<
@@ -62,7 +72,7 @@ function Stat({ value, label, hint }: { value: number; label: string; hint: stri
   );
 }
 
-export function VerificationSeal({ summary }: VerificationSealProps) {
+export function VerificationSeal({ summary, nextStep }: VerificationSealProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const tone = TONE[summary.tone];
@@ -161,6 +171,14 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
             </button>
           </div>
           <p className="planner-sheet-header px-3 pt-2 font-semibold text-foreground">{summary.headline}</p>
+          {nextStep && (
+            <p
+              className="planner-sheet-header px-3 pb-1 text-muted-foreground"
+              data-testid="verification-next-step"
+            >
+              {nextStep}
+            </p>
+          )}
 
           <div
             data-testid="verification-sheet-body"
