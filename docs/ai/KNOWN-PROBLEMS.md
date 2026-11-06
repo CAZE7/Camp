@@ -1,6 +1,16 @@
 # KNOWN-PROBLEMS
 
 Nur **echte, im Code nachweisbare** Probleme. Keine Wunschliste, keine allgemeinen TODOs.
+
+> **2026-11-06 — sieben elektrische Befunde geschlossen.** Mit ausdrücklicher
+> Freigabe für Produktivformeln und Grenzwerte sind K-2, K-2b, K-3, K-4, E-1,
+> E-2, T-2 und D-2 behoben. Keine Normtabelle, keine Regel-ID und kein
+> Schwellenwert wurde „passend gemacht". Wirkung und Nachweise:
+> `docs/ELECTRICAL-VERIFICATION-STRATEGY.md` §12.10, Auftragsstatus:
+> `docs/ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md`. Die Testsuite hat **keinen**
+> `expected fail` mehr. `AC-230V-001` (Modellgrenze) und `PERF-001` bleiben
+> unverändert offen — sie sind keine dieser Befunde.
+
 Historische Einträge behalten ihren datierten Prüfstand; PERF-001, ROUTE-003 und ROUTE-010
 wurden am 2026-10-05 mit aktuellen Messungen nachgeprüft; **ROUTE-010 ist am 2026-10-06
 geschlossen** (ADR 0036, `p11-zwangskreuzung` 0/0/0).

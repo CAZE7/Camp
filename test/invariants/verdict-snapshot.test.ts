@@ -84,7 +84,7 @@ const SNAPSHOT: Readonly<Record<string, PlanSnapshot>> = {
   },
   inverter: {
     verdict: 'NON_COMPLIANT',
-    certificateHash: 'c55c742e951a5237',
+    certificateHash: '82141d5d89046898',
     decisionRatio: 0.7619047619047619,
     coverage: { passed: 14, failed: 2, unprovable: 5, notApplicable: 9 },
     eventCounts: {
@@ -100,7 +100,7 @@ const SNAPSHOT: Readonly<Record<string, PlanSnapshot>> = {
   },
   acdc: {
     verdict: 'NON_COMPLIANT',
-    certificateHash: '221922fd925cde3c',
+    certificateHash: '7f3001b64331764b',
     decisionRatio: 0.6666666666666666,
     coverage: { passed: 12, failed: 4, unprovable: 8, notApplicable: 6 },
     eventCounts: {
@@ -121,7 +121,7 @@ const SNAPSHOT: Readonly<Record<string, PlanSnapshot>> = {
   },
   complex: {
     verdict: 'INCOMPLETE',
-    certificateHash: '207995c6a9c07de5',
+    certificateHash: 'cbe7d4a32ae21200',
     decisionRatio: 0.92,
     coverage: { passed: 23, failed: 0, unprovable: 2, notApplicable: 5 },
     eventCounts: {

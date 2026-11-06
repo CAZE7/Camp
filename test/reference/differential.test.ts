@@ -563,8 +563,8 @@ describe('RM-2 — Belastbarkeit und Sicherungskoordination', () => {
     expect(calculateCableIz({ crossSectionMm2: 2.5, ambientC: 0 }).ambientFactor).toBeGreaterThan(1);
   });
 
-  it('BEFUND D-2 — dieselbe mathematische Grenze liefert je nach Herkunft zwei Stufen', () => {
-    // DIE BEOBACHTUNG (reproduzierbar, ohne Produktivänderung festgehalten):
+  it('BEFUND D-2 — die Stufe hängt nicht mehr davon ab, WIE die Zahl entstanden ist', () => {
+    // DIE BEOBACHTUNG (bis 2026-11-06):
     //
     //   16,1 A  und  0,7 · 23 A  sind in exakter Dezimalarithmetik DIESELBE
     //   Zahl (16,1 = 0,7 · 23). Als Gleitkommazahl sind sie es nicht:
@@ -573,26 +573,28 @@ describe('RM-2 — Belastbarkeit und Sicherungskoordination', () => {
     //     aus dem Literal 16,1        ⇒ 23,000000000000004 > 23 ⇒ 4,0 mm²
     //     aus der Rechnung 0,7·23     ⇒ 22,999999999999996 ≤ 23 ⇒ 2,5 mm²
     //
-    // Folge: ein Nutzer, der „16,1 A" einträgt, bekommt 4 mm² statt 2,5 mm² —
-    // eine Normstufe mehr Kupfer. Die Richtung ist KONSERVATIV (mehr Querschnitt
-    // als nötig), also kein Sicherheitsfehler, aber eine Repräsentations-
-    // abhängigkeit der Dimensionierung: das Ergebnis hängt davon ab, WIE die
-    // Zahl entstanden ist, nicht nur davon, WAS sie ist (vgl. I-E-11).
-    //
-    // Dieser Test repariert nichts. Er hält den Zustand fest, damit eine
-    // spätere Reparatur (z. B. Rundung auf 1e-9 vor dem Stufenvergleich)
-    // als bewusste Änderung sichtbar wird.
+    // Die Reparatur vergleicht mit einem ABSOLUTEN ε von 1e-9 A. Die
+    // Gleitkomma-Ränder selbst bleiben sichtbar (erste zwei Zeilen), das
+    // Ergebnis der Stufensuche ist jetzt aber dasselbe.
     expect(0.7 * 23).not.toBe(16.1);
     expect(16.1 * (1 / 0.7)).toBeGreaterThan(23);
-    expect(0.7 * 23 * (1 / 0.7)).toBeLessThanOrEqual(23);
 
-    expect(thermalCrossSectionFor(16.1)).toEqual({ status: 'within-model', crossSectionMm2: 4 });
+    expect(thermalCrossSectionFor(16.1)).toEqual({ status: 'within-model', crossSectionMm2: 2.5 });
     expect(thermalCrossSectionFor(0.7 * 23)).toEqual({
       status: 'within-model',
       crossSectionMm2: 2.5,
     });
-    // Die mathematisch richtige Antwort für 16,1 A ist 2,5 mm² (23 A ≥ 16,1/0,7).
     expect(refThermalCrossSection(16.1)).toEqual({ status: 'within-model', crossSectionMm2: 2.5 });
+  });
+
+  it('BEFUND D-2 — das ε verschiebt keine echte Grenze', () => {
+    // Gegenprobe gegen ein zu großzügiges ε: knapp ÜBER der Stufe muss weiter
+    // die nächste Stufe gewählt werden, und die Modellgrenze darf nicht
+    // mitwachsen.
+    expect(thermalCrossSectionFor(16.1001)).toEqual({ status: 'within-model', crossSectionMm2: 4 });
+    expect(thermalCrossSectionFor(16.11)).toEqual({ status: 'within-model', crossSectionMm2: 4 });
+    // 120,4 A ist die letzte Stufe (0,7 · 172 = 120,4); darüber ist der Rand.
+    expect(thermalCrossSectionFor(120.400000001).status).toBe('outside-model');
   });
 
   it('exakt tragende Kante: 11,55 A wählt 1,5 mm² (beide Seiten)', () => {

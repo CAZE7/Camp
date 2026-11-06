@@ -44,6 +44,7 @@ import {
 import { resolveComponentConstraints } from '../electricalGraph/constraints';
 import { computeCableCurrents } from '../electricalGraph/currentFlow';
 import { designAmpacity } from '../electrical';
+import { cableSizingFor, type CableConditionFields } from '../cableConditions';
 import { amps, type Amps, type Volts } from '../units';
 import type { Node } from '../domain/graph';
 import { MAX_CROSS_SECTION, type CableEdge } from './primitives';
@@ -158,10 +159,33 @@ export function evaluateDesignBudget(
   }
   const requiredCurrent = amps(required);
 
-  const crossSections = plusEdges
-    .map((edge) => finitePositive(edge.data?.crossSection))
-    .filter((value): value is number => value !== undefined);
-  const cableLimits = crossSections.map((cs) => designAmpacity(cs)).filter((value) => value > 0);
+  // BEFUND K-4 (Behebung 2026-11-06): Die Kabelgrenze kommt aus DERSELBEN
+  // I_z wie der Prüfbericht. Vorher stand hier `designAmpacity(cs)` — die
+  // Tabellenpauschale 0,7 · Tabelle, ohne die Verlegebedingungen der Kante.
+  // Bei 60 °C und 16 mm² ergab das 48,3 A im Budget und 34,5 A in AMP-001:
+  // die UI zeigte „Kabel trägt", der Prüfbericht dieselbe Leitung als
+  // Verletzung. 40 % Abweichung bei einem Wert, den beide „I_z" nennen.
+  //
+  // `cableSizingFor` ist die Fassade, die AutoWire schon für die
+  // Dimensionierung nutzt; sie fällt für Kanten ohne Bedingungsfelder
+  // byte-gleich auf `designAmpacity` zurück (`isReference`).
+  const invalidConditionEdges: string[] = [];
+  const cableLimits = plusEdges
+    .map((edge) => {
+      const crossSection = finitePositive(edge.data?.crossSection);
+      if (crossSection === undefined) return undefined;
+      const sizing = cableSizingFor((edge.data ?? {}) as CableConditionFields);
+      // Ungültige Bedingungen (z. B. „60 °C" als Text): Das Budget übernimmt
+      // den Wert NICHT still — die Leitung gilt dann als nicht bewertbar und
+      // taucht in `notAssessable` auf. Dieselbe Entscheidung wie die Engine
+      // (`cableConditionsFor` ⇒ `kind: 'invalid'` ⇒ UNVERIFIABLE).
+      if (!sizing.valid) {
+        invalidConditionEdges.push(edge.id);
+        return undefined;
+      }
+      return sizing.iz(crossSection);
+    })
+    .filter((value): value is number => value !== undefined && value > 0);
   const cableLimit = minOf(cableLimits);
   const fuseLimit = minOf(
     plusEdges
@@ -200,6 +224,10 @@ export function evaluateDesignBudget(
 
   const notAssessable: string[] = [];
   if (!modeled) notAssessable.push('Für die Batterie-Plus-Leitungen liegt kein Strommodell vor.');
+  if (invalidConditionEdges.length > 0)
+    notAssessable.push(
+      `Verlegebedingungen ungültig (${invalidConditionEdges.join(', ')}) — die Kabeltragfähigkeit ist nicht bewertbar, bis die Werte stimmen.`
+    );
   if (bmsLimit === undefined)
     notAssessable.push(
       'Am Akku ist kein BMS-Dauerentladestrom eingetragen — die Lieferfähigkeit der Batterie ist nicht bewertbar.'
@@ -299,7 +327,21 @@ export function addDesignBudgetConflicts(
     );
   }
 
-  if (!verdict.feasibility.feasible) {
+  if (!verdict.feasibility.assessable) {
+    // BEFUND E-2: „nicht bewertbar" ist kein Freigabeschein. Vorher lief die
+    // Last hier in den `else`-Zweig und erzeugte gar keinen Eintrag — bei
+    // fehlender BMS-, Kabel- und Sicherungsgrenze stand die Auslegung damit
+    // ohne jeden Hinweis da. Jetzt gibt es einen benannten Eintrag mit dem
+    // nächsten Schritt; `assessment` ist `not-assessable`, nicht `ok`.
+    collector.add({
+      kind: 'load-exceeds-limit',
+      severity: 'warning',
+      ruleId: DESIGN_BUDGET_RULES.otherLimit,
+      message: `${basis}${parts}. Es ist keine Belastbarkeitsgrenze hinterlegt — die Lieferfähigkeit ist NICHT bewertet. Trage den Dauerentladestrom des BMS, die Sicherungsgröße oder den Leiterquerschnitt ein, damit die Auslegung prüfbar wird.`,
+      edgeIds: verdict.edgeIds,
+      nodeIds,
+    });
+  } else if (!verdict.feasibility.feasible) {
     const limitedByBms = verdict.feasibility.limitedBy === 'bms';
     const limitingName = limitedByBms
       ? CURRENT_LIMIT_LABEL.bms

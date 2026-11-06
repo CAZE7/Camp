@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../CableEdge';
-import { assessCableSelection, getEdgeDomain } from '../../../lib/electrical';
+import { assessCableSelection, getEdgeDomain, voltageDropLimitPercent } from '../../../lib/electrical';
 import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../../lib/vde-standards';
 import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
 import { solarDropBasisVoltageOf, solarPanelEndOf } from '../../../lib/solar';
@@ -174,5 +174,10 @@ export function hasVoltageDropError(
   const pathPct = sysVoltage > 0 ? (cumulativeDropVolts / sysVoltage) * 100 : 0;
   const totalDropPercentage = ownPct + pathPct;
 
-  return { totalDropPercentage, hasDropError: totalDropPercentage > 3 };
+  // BEFUND K-2 (Behebung 2026-11-06): Die Grenze kam hier als Literal 3 und
+  // in `calculateCrossSection` als 4,6 V (2 % von 230 V) — dieselbe Leitung
+  // wurde also mit zwei Maßstäben gemessen. Jetzt gilt für AC dieselbe Grenze,
+  // mit der dimensioniert wird; DC bleibt bei 3 % (byte-gleich).
+  const limit = voltageDropLimitPercent(input.isAC ? 'AC_230V' : 'DC_12V');
+  return { totalDropPercentage, hasDropError: totalDropPercentage > limit };
 }

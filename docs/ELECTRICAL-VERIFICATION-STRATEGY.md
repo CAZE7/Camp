@@ -639,26 +639,34 @@ Prosa. Jede hat: ID, Aussage, Geltungsbereich, Prüfmethode, heutigen Status
 | ID     | Invariante                                                                                                                                                                                            | Prüfmethode                                                                                                       | Status heute                                                                                                            |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | I-E-01 | **Keine Freigabe bei unzulässigen Eingaben.** Jede Funktion, die einen Sicherheitsbefund liefert, wirft bei unzulässiger Eingabe `RangeError` — sie liefert nie einen Default.                        | Property-Test über ungültige Wertebereiche (NaN, ±∞, negativ, String) je Sicherheitsfunktion                      | `HOLDS` ungetestet (punktuell belegt: `resolveCableConditions`, `ambientTemperatureFactor`, `conductorResistanceOhm`)   |
-| I-E-02 | **Fehlende Eingabe ⇒ nie PASS.** Fehlt ein für die Entscheidung nötiger Wert, lautet das Ergebnis `UNPROVABLE`/`incomplete`, nie `PASS`/`satisfied`.                                                  | Metamorphik + direkte Fälle; Gate über alle Regeln (`UNVERIFIABLE`-Zählung)                                       | `HOLDS` belegt für `AMP-001` (Minimalplan), **`VIOLATED`** in `evaluateLoadFeasibility` (Befund E-2)                    |
+| I-E-02 | **Fehlende Eingabe ⇒ nie PASS.** Fehlt ein für die Entscheidung nötiger Wert, lautet das Ergebnis `UNPROVABLE`/`incomplete`, nie `PASS`/`satisfied`.                                                  | Metamorphik + direkte Fälle; Gate über alle Regeln (`UNVERIFIABLE`-Zählung)                                       | `HOLDS` — belegt für `AMP-001` **und** `evaluateLoadFeasibility` (E-2 behoben)                                          |
 | I-E-03 | **Sicherung nie über Leitungsschutz.** `I_n ≤ I_z` für jede ausgegebene Sicherung, in **jeder** Schicht (AutoWire, Engine, Anzeige).                                                                  | Property über alle Normquerschnitte + Differential gegen RM-2                                                     | `HOLDS` belegt (G1, `FUSE_MAP ≤ 0,7·I_z,Basis`) — aber **nicht** in `maxFuseForConditions` (Befund T-1, Hersteller-I_z) |
-| I-E-04 | **Ein ΔU-Grenzwert je Domäne.** DC und AC dürfen nicht in derselben Konstante geprüft werden, wenn sie verschieden dimensioniert werden.                                                              | Unit-Test auf `hasVoltageDropError(isAC)` + Referenztest RM-1                                                     | **`VIOLATED`** (Befund K-2)                                                                                             |
-| I-E-05 | **BMS-Grenze nie ignorieren.** Ist eine BMS-Grenze bekannt, ist sie Teil des Minimums; ist sie unbekannt, ist das Ergebnis „nicht bewertbar“ und darf nicht als „in Ordnung“ erscheinen.              | Property über Budget-Kombinationen; Consumer-Audit (jeder `feasible`-Leser)                                       | **`VIOLATED`** (Befund E-2)                                                                                             |
+| I-E-04 | **Ein ΔU-Grenzwert je Domäne.** DC und AC dürfen nicht in derselben Konstante geprüft werden, wenn sie verschieden dimensioniert werden.                                                              | Unit-Test auf `hasVoltageDropError(isAC)` + Referenztest RM-1                                                     | `HOLDS` — **K-2 behoben**: eine Quelle je Domäne (`voltageDropLimitPercent`)                                            |
+| I-E-05 | **BMS-Grenze nie ignorieren.** Ist eine BMS-Grenze bekannt, ist sie Teil des Minimums; ist sie unbekannt, ist das Ergebnis „nicht bewertbar“ und darf nicht als „in Ordnung“ erscheinen.              | Property über Budget-Kombinationen; Consumer-Audit (jeder `feasible`-Leser)                                       | `HOLDS` — **E-2 behoben**: `feasible: false` + `assessable: false` bei unbekannter Grenze                               |
 | I-E-06 | **Korrekturfaktoren in zulässigen Grenzen.** `0 < f₁ ≤ 1` (kein Kältebonus), `f₂ ∈ Tabelle`, `0 < f₃ ≤ 1`, `min(0,7, f₁·f₂·f₃)` — keine Kombination darf I_z erhöhen.                                 | Property über (ϑ, n, f₃)-Raster gegen `I_z,Basis`                                                                 | `HOLDS` belegt (Guards + `min`)                                                                                         |
 | I-E-07 | **Fehlende Daten nie durch günstige Defaults ersetzen.** Kein `?? 0`, `?? {…}`, `                                                                                                                     |                                                                                                                   | ` auf sicherheitskritischen Feldern.                                                                                    | Statischer Test (AST-Grep über `lib/electrical*.ts`, `lib/verify/*`, `lib/autoWire/*`) + Property-Tests | `HOLDS` teilweise (`safety-no-silent-fallback.test.ts` deckt die historischen fünf Fälle; **kein** statischer Test) |
 | I-E-08 | **UNVERIFIABLE nie als COMPLIANT.** Verdikt-Reihenfolge: `FAIL` > `UNPROVABLE` > `PASS`; ein leeres Regel-Set ergibt nie `COMPLIANT`.                                                                 | Unit-Test `verdictOf` + leerer Plan                                                                               | `HOLDS` belegt (leerer Plan ⇒ `INCOMPLETE`, `decisionRatio 0`)                                                          |
-| I-E-09 | **Konsistenz Engine / AutoWire / Warnsystem / Bericht.** Für jede Kante gilt: `I_b`, `I_z`, `ΔU` und das Urteil sind in allen vier Schichten gleich oder die Abweichung ist als Modellgrenze benannt. | Differential-Test über die sechs Referenzpläne: Engine-Events vs. AutoWire-Verdikt vs. `verificationWarning`-Text | **`VIOLATED`** (Befund K-4: `cableCanCarry: true` vs. `AMP-001` FAIL)                                                   |
+| I-E-09 | **Konsistenz Engine / AutoWire / Warnsystem / Bericht.** Für jede Kante gilt: `I_b`, `I_z`, `ΔU` und das Urteil sind in allen vier Schichten gleich oder die Abweichung ist als Modellgrenze benannt. | Differential-Test über die sechs Referenzpläne: Engine-Events vs. AutoWire-Verdikt vs. `verificationWarning`-Text | `HOLDS` — **K-4 behoben**: Budget und Engine nutzen dieselbe I_z (`cableSizingFor`)                                     |
 | I-E-10 | **Ein Verdikt ist nur mit Profil gültig.** Bericht und Anzeige nennen Profil und Kontext; ein Verdikt ohne Profil darf nicht als Prüfaussage exportiert werden.                                       | Schema-Test auf `VerificationReport.certificate` + Export-Audit                                                   | `HOLDS` strukturell (Zertifikat trägt Profil) — **nicht erzwungen** (Befund A-1)                                        |
-| I-E-11 | **Repräsentationsinvarianz.** Knoten-/Kantenreihenfolge und Objektidentität dürfen kein Urteil ändern.                                                                                                | Property: Permutation der Eingabe ⇒ gleicher `certificateHash` und gleiche Eventliste (Menge)                     | `HOLDS` für die Engine insgesamt (belegt: acdc), **`VIOLATED`** für Bank-I_k (Befund K-3)                               |
-| I-E-12 | **Kein Verdikt ohne Trace.** Jedes `FAIL`/`UNPROVABLE` trägt Eingaben, Formel, Quelle, Einheit und Rechenweg.                                                                                         | Schema-Test über alle Events aller Referenzpläne                                                                  | `HOLDS` teilweise (`details.izBreakdown`, `contributors` vorhanden; **Lücken** bei VDR/PWR)                             |
+| I-E-11 | **Repräsentationsinvarianz.** Knoten-/Kantenreihenfolge und Objektidentität dürfen kein Urteil ändern.                                                                                                | Property: Permutation der Eingabe ⇒ gleicher `certificateHash` und gleiche Eventliste (Menge)                     | `HOLDS` — **K-3 behoben**: gemischtspannige Bank ⇒ `null`, nicht „erster Block"                                         |
+| I-E-12 | **Kein Verdikt ohne Trace.** Jedes `FAIL`/`UNPROVABLE` trägt Eingaben, Formel, Quelle, Einheit und Rechenweg.                                                                                         | Schema-Test über alle Events aller Referenzpläne                                                                  | `HOLDS` teilweise — **T-2 behoben** (`voltageDropTrace` bei VDR-001/002); Lücke bleibt bei PWR-001                      |
 
 ### 6.2 Was eine Invariante hier leisten muss
 
 Eine Invariante ist nur brauchbar, wenn sie **fehlschlagen kann**. Formulierungen
 wie „die Berechnung ist korrekt“ sind wertlos. Jede Invariante in 6.1 ist
-deshalb an eine **konkrete, ausführbare Prüfung** gebunden, und fünf von ihnen
-(`I-E-02`, `I-E-04`, `I-E-05`, `I-E-09`, `I-E-11`) sind heute **rot**. Das ist
-das Ergebnis dieser Bestandsaufnahme: nicht „alles gut“, sondern „fünf Stellen,
-an denen das Modell seine eigene Zusage bricht, jede mit einer Zahl“.
+deshalb an eine **konkrete, ausführbare Prüfung** gebunden.
+
+**Status nach dem Reparaturdurchgang 2026-11-06:** Die sieben Befunde
+(K-2, K-2b, K-3, K-4, E-1, E-2, T-2, D-2) sind behoben; jedes `it.fails` in
+`test/invariants/electrical-invariants.test.ts` ist ein `it`, die Suite hat
+**keinen** `expected fail` mehr. I-E-03 bleibt an einer Stelle offen
+(`maxFuseForConditions` mit Hersteller-I_z, Befund T-1) — das ist kein
+Rückfall der Reparatur, sondern ein eigener, unveränderter Befund.
+
+Was die Reparaturen **nicht** geändert haben: die Golden-Master-Pläne erreichen
+weiterhin kein `COMPLIANT`. Das liegt nicht an einem Defekt, sondern an ihren
+Daten (s. §12.10).
 
 ---
 
@@ -1254,3 +1262,92 @@ dieser Umgebung scheitert jeder Chromium-Start an `libnspr4.so`; der
 zugehörige Beleg ist der `127.0.0.1`-Server plus `spawn('npx lighthouse …')`,
 der mit Exit 1 abbricht. Die Unit-Tests der Budgetlogik
 (`scripts/ci/lighthouseGate.test.ts`) bleiben davon unberührt und sind grün.
+
+## 12.10 Die sieben Befunde sind behoben — mit Freigabe
+
+Am 2026-11-06 lag die ausdrückliche Freigabe vor, Produktivformeln und
+Grenzwerte zu ändern. Damit war der Weg frei für genau das, was §9 und
+`ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md` als „braucht `@CAZE7`" geführt
+hatten. Jede Änderung ist unten mit Datei, Regel und Wirkung benannt; keine
+davon hat eine Normtabelle, eine Regel-ID oder einen Schwellenwert „passend
+gemacht".
+
+| Befund   | Datei                                                        | Änderung                                                                                                                       | Wirkung                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **K-3**  | `lib/shortCircuit.ts`                                        | `bankVoltage` liefert `null`, wenn die Haus-Blöcke keine einheitliche Nennspannung haben (Toleranz 10 mV nur gegen Gleitkomma) | Gemischtspannige Bank ⇒ kein I_k, statt „erster Block gewinnt". `AMP-004` (`CRITICAL_SAFETY`) ist damit reihenfolgeunabhängig                                                        |
+| **K-4**  | `lib/autoWire/designBudget.ts`                               | Kabelgrenze über `cableSizingFor(edge.data)` statt `designAmpacity(cs)`; ungültige Bedingungen ⇒ Leitung nicht bewertbar       | Budget und Engine nennen dieselbe I_z (bei 60 °C, 16 mm²: 34,5 A statt 48,3 A)                                                                                                       |
+| **E-2**  | `lib/electricalGraph/currentBudget.ts`                       | `LoadFeasibility.assessable`; bei unbekannter Grenze `feasible: false`                                                         | „Nicht bewertbar" ist keine Freigabe mehr. Bewusst **zwei Felder** statt `feasible: 'unknown'`: `if (verdict.feasible)` ist bei einem String truthy — der Fehler wäre nur verschoben |
+| **K-2**  | `lib/electrical.ts`, `components/edges/utils/voltageDrop.ts` | `voltageDropLimitPercent(domain)` und `voltageDropBudgetVolts(domain)` als EINE Quelle; Anzeige prüft je Domäne                | AC 2 % (4,6 V von 230 V), DC 3 % (0,36 V von 12 V) — vorher prüfte die Anzeige für beide 3 %                                                                                         |
+| **K-2b** | `lib/verify/powerPath.ts`, `lib/verify/physics.ts`           | `VDR-001` prüft auch `carrier === 'ac'`; `voltageDropBudgetPercent(loadClass, carrier)`                                        | Eine 230-V-Leitung mit 4,5 % Fall erzeugt jetzt einen Befund (vorher: null)                                                                                                          |
+| **E-1**  | `lib/electricalGraph/constraints.ts`                         | `rejectedInputs` mit Grund (`non-numeric` / `non-positive` / `non-finite`)                                                     | `'50 A'` und `0` sind nicht mehr von „keine Grenze" ununterscheidbar. Es wird **nichts** geparst — nur der Grund mitgeschrieben                                                      |
+| **T-2**  | `lib/verify/types.ts`, `lib/verify/powerPath.ts`             | `details.voltageDropTrace` bei VDR-001 und VDR-002                                                                             | Rechenweg mit I_b, L, A, k, ρ, Leitetemperatur, ΔU und U_n — das Urteil ist nachprüfbar                                                                                              |
+| **D-2**  | `lib/electrical.ts`                                          | absolutes ε von 1e-9 A im Stufenvergleich (`thermalCrossSectionFor`)                                                           | `16,1 A` und `0,7 · 23 A` liefern beide 2,5 mm². Absolut, nicht relativ: ein relatives ε hätte die Modellgrenze selbst verschoben (120,4000001 A wäre „innerhalb")                   |
+
+### Zwei Fehler, die dabei entstanden und behoben wurden
+
+1. **`calculateCrossSection` mit 230 V für DC.** Beim Umbau auf die eine
+   Grenzquelle wurde `AC_NOMINAL_VOLTAGE` ungeprüft für beide Domänen
+   verwendet — DC hätte 3 % von 230 V = 6,9 V bekommen statt 0,36 V, also
+   dreimal so viel Kupferspielraum. Aufgefallen ist es nur, weil ein
+   bestehender Test (`Querschnittsumkehrung`, 20 A/10 m ⇒ 25 mm²) rot wurde.
+   Jetzt: `voltageDropBudgetVolts(domain)` mit je eigener Bezugsspannung.
+2. **Relatives ε bei D-2.** Die erste Fassung skalierte die Toleranz mit dem
+   Strom und verschob damit die Modellgrenze: `thermalCrossSectionFor(120.400000001)`
+   galt als „innerhalb". Der bestehende Test hat es gefangen; jetzt absolut.
+
+Beide Fälle sind der Grund, warum die Differential- und Grenzwerttests aus
+Kapitel 5/6 vor dem Umbau existierten.
+
+### Was der Reparaturdurchgang am Verdikt geändert hat — und was nicht
+
+Die G6-Messung (`silent-pass-gate.test.ts`) ist **unverändert**: 1 (camper) bis
+28 (acdc) offene Befunde je Plan × Profil. Das ist kein Widerspruch, sondern
+folgerichtig — die Reparaturen betreffen Fälle, die die sechs Referenzpläne
+nicht auslösen (keine gemischtspannige Bank, keine ungültigen Grenzwerte, keine
+gemischten ΔU-Grenzen).
+
+Geändert haben sich zwei Dinge:
+
+- **`AMP-005` im `acdc`-Plan** erzeugt jetzt zusätzlich Befunde, weil
+  `VDR-001` die AC-Leitung prüft und die Kaskade dadurch vollständiger
+  bewertet wird. Die Ereigniszählungen des Verdikt-Snapshots sind deshalb
+  gleich geblieben, die **Zertifikat-Hashes** haben sich für `inverter`,
+  `acdc` und `complex` geändert (Regelfolge/Abdeckung). Nachgezogen in
+  `verdict-snapshot.test.ts`, mit Begründung im Commit.
+- **`COMPLIANT` ist nachweisbar erreichbar** — siehe unten.
+
+## 12.11 Das Kernversprechen: `COMPLIANT` ist einlösbar
+
+Der schwerste Befund des Audits war nicht eine der sieben Verletzungen, sondern
+die Messung: **kein Plan erreichte `COMPLIANT`**. Ein Prüfwerkzeug, das nie
+„bestanden" sagen kann, ist ein Warnhinweis-Generator.
+
+Die Messung war richtig, die Schlussfolgerung nicht. Zwei Fragen waren
+vermischt:
+
+**1. Ist der grüne Pfad erreichbar?** Ja. `healthyDcPlan()` (Batterie →
+Sicherungskasten 20 A → Kühlbox 100 W, 4 h) ergibt in **allen drei Profilen**
+`COMPLIANT` mit `decisionRatio 1` und null offenen Befunden. Festgehalten in
+`test/invariants/reachable-compliant.test.ts`, inklusive Gegenprobe: derselbe
+Plan mit 1,5 mm² auf der Lastleitung kippt sofort. Die Engine ist nicht defekt.
+
+**2. Warum erreichen die Golden-Master-Pläne ihn nicht?** Weil sie fachlich
+nicht bestehen können. Der beste (`camper`) scheitert an **genau einem**
+Befund:
+
+```
+AMP-005-selectivity UNVERIFIABLE
+Kabel Plus-Schiene → Sicherungskasten: Selektivität nicht entscheidbar
+(Sicherung 10 A (ato) vorgelagert / Sicherung 10 A (classT) nachgelagert)
+```
+
+Das ist **korrekt**: die Heuristik 1,6:1 ist erst ab 16 A belegt, und 10 A → 10 A
+ist keine selektive Kaskade. `INCOMPLETE` ist dafür die richtige Antwort. Der
+Weg zu `COMPLIANT` führt über Gerätedaten (`preArcingI2tA2s` /
+`clearingI2tA2s`) oder eine geänderte Kaskade — nicht über eine Änderung der
+Engine.
+
+**Was daraus folgt:** Die verbleibende Arbeit an den Referenzplänen ist
+Planarbeit, nicht Code. Die Pläne sind eingefrorene Fixtures; sie auf einen
+grünen Fall zurechtzuschneiden, um ein besseres Verdikt zu bekommen, wäre das
+Gegenteil von Verifikation.

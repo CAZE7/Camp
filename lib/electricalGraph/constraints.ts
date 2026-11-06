@@ -54,6 +54,18 @@ export interface ComponentConstraints {
   continuousPower?: Watts;
   /** Domänen, in denen das Bauteil überhaupt betrieben werden darf. */
   allowedDomains?: readonly HandleDomainValue[];
+  /**
+   * Verworfene Grenz-Eingaben (BEFUND E-1, Behebung 2026-11-06).
+   *
+   * Vorher verschwand `bmsContinuousDischarge: '50 A'` spurlos: das Feld fehlte
+   * im Ergebnis, und „Wert unbrauchbar" war von „keine Grenze hinterlegt"
+   * nicht zu unterscheiden. Ein Tippfehler sah damit aus wie eine bewusste
+   * Lücke — und landete in der E-2-Falle (falsches Grün).
+   *
+   * Es wird NICHTS geparst: `'50 A'` bleibt verworfen. Nur der Grund wird
+   * mitgeschrieben, damit die UI ihn nennen kann.
+   */
+  rejectedInputs?: readonly RejectedConstraintInput[];
   /** Schutzorgan, das die Quellseite verlangt. */
   requiredProtection?: RequiredProtection;
   /** Vom Datenblatt empfohlener Sicherungsnennstrom (A). */
@@ -141,23 +153,78 @@ export const COMPONENT_CONSTRAINT_DEFAULTS: Readonly<
   roofSolar: { allowedDomains: ['Solar'], requiredProtection: 'fuse' },
 };
 
+/** Grund, aus dem eine Grenz-Eingabe nicht übernommen wurde. */
+export type RejectedConstraintReason =
+  /** Feld fehlt oder ist `null`/`undefined` — keine Eingabe, kein Befund. */
+  | 'absent'
+  /** Keine Zahl und kein reiner Zahl-String (z. B. „50 A", „viel"). */
+  | 'non-numeric'
+  /** Zahl, aber ≤ 0 — eine Grenze von 0 A ist ein Datenfehler. */
+  | 'non-positive'
+  /** Zahl, aber ∞/NaN. */
+  | 'non-finite';
+
+export interface RejectedConstraintInput {
+  /** Feldname in `node.data` (z. B. `bmsContinuousDischarge`). */
+  key: string;
+  /** Zielgrenze im Constraint-Objekt. */
+  target: NumericTarget;
+  reason: RejectedConstraintReason;
+  /** Der Wert, wie er im Plan stand — als String, damit er anzeigbar ist. */
+  raw: string;
+}
+
+/**
+ * Warum ein Wert verworfen wurde — `'absent'` für „gar keine Eingabe".
+ *
+ * Die Unterscheidung ist der ganze Punkt: `undefined` ist keine Eingabe und
+ * braucht keine Meldung; `'50 A'` ist eine Eingabe, die nicht verwendbar ist,
+ * und muss gemeldet werden.
+ */
+function rejectionReasonOf(raw: unknown): RejectedConstraintReason {
+  if (raw === undefined || raw === null || raw === '') return 'absent';
+  const numeric =
+    typeof raw === 'number'
+      ? raw
+      : typeof raw === 'string' && /^[+-]?[\d.,\s]+$/.test(raw.trim())
+        ? Number(raw.replace(/\./g, '').replace(',', '.').replace(/\s/g, ''))
+        : null;
+  if (numeric === null || Number.isNaN(numeric)) return 'non-numeric';
+  if (!Number.isFinite(numeric)) return 'non-finite';
+  return numeric > 0 ? 'absent' : 'non-positive';
+}
+
 /** Parser je Zielgrenze — Volt, Ampere oder Watt. */
-function assignNumeric(out: ComponentConstraints, target: NumericTarget, raw: unknown): void {
+function assignNumeric(out: ComponentConstraints, target: NumericTarget, raw: unknown, key: string): void {
+  const record = (reason: RejectedConstraintReason): void => {
+    if (reason === 'absent') return;
+    const entry: RejectedConstraintInput = {
+      key,
+      target,
+      reason,
+      raw: typeof raw === 'string' ? raw : String(raw),
+    };
+    out.rejectedInputs = [...(out.rejectedInputs ?? []), entry];
+  };
+
   switch (target) {
     case 'minVoltage':
     case 'maxVoltage': {
       const value = parseQuantity(raw, volts);
       if (value !== null && value > 0) out[target] = value;
+      else record(rejectionReasonOf(raw));
       return;
     }
     case 'continuousPower': {
       const value = parseQuantity(raw, watts);
       if (value !== null && value > 0) out.continuousPower = value;
+      else record(rejectionReasonOf(raw));
       return;
     }
     default: {
       const value = parseQuantity(raw, amps);
       if (value !== null && value > 0) out[target] = value;
+      else record(rejectionReasonOf(raw));
     }
   }
 }
@@ -182,7 +249,7 @@ export function resolveComponentConstraints(node: ConstraintNode): ComponentCons
   if (!data) return out;
 
   for (const spec of CONSTRAINT_FIELD_MAP[type] ?? []) {
-    assignNumeric(out, spec.target, data[spec.key]);
+    assignNumeric(out, spec.target, data[spec.key], spec.key);
   }
 
   // Die Nennspannung bestimmt die Bordnetzebene des Bauteils. Sie ist KEINE

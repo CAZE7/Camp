@@ -1,14 +1,41 @@
 # Implementierungsaufträge: Reparatur der sieben Invariantenverletzungen
 
-Stand: 2026-11-05 · Erzeugt aus dem Audit von PR #605
-Umsetzung: **nicht in #605** — jede Position ist ein eigener PR mit
-`safety-review`-Label (`AGENTS.md` §6, Gate G7).
+Stand: 2026-11-05 · **abgeschlossen 2026-11-06** · Erzeugt aus dem Audit von PR #605
 
-> **Warum diese Datei existiert.** PR #605 belegt sieben Verletzungen mit
-> reproduzierbaren Eingaben, ändert aber bewusst **keine** Formel, Tabelle oder
-> Grenzwert. Damit die Befunde nicht in der Testsuite verrotten, steht hier für
-> jeden Befund, was genau zu ändern ist, was danach grün sein muss und was
-> brechen darf. Reihenfolge nach Risiko pro Aufwand.
+> ## Status: alle acht Aufträge umgesetzt
+>
+> Am 2026-11-06 lag die ausdrückliche Freigabe vor, Produktivformeln und
+> Grenzwerte zu ändern. Damit waren die Aufträge A-1 bis A-8 ausführbar und
+> sind in `arena/8b44e0c9-camp` umgesetzt. **Jeder `it.fails` in
+> `test/invariants/electrical-invariants.test.ts` ist ein `it`** — die Suite
+> hat keinen `expected fail` mehr.
+>
+> | Auftrag | Befund                                        | Status                                             |
+> | ------- | --------------------------------------------- | -------------------------------------------------- |
+> | A-1     | K-3 Bank-I_k reihenfolgeabhängig              | **behoben** (`bankVoltage` ⇒ `null`)               |
+> | A-2     | K-4 Designbudget ignoriert Verlegebedingungen | **behoben** (`cableSizingFor`)                     |
+> | A-3     | E-2 „nicht bewertbar" passiert das Gate       | **behoben** (`assessable`)                         |
+> | A-4     | K-2 / K-2b AC-Spannungsfall                   | **behoben** (eine Grenzquelle, VDR prüft AC)       |
+> | A-5     | E-1 ungültige Grenzwerte verschwinden still   | **behoben** (`rejectedInputs`)                     |
+> | A-6     | T-2 kein Rechenweg im ΔU-Befund               | **behoben** (`voltageDropTrace`)                   |
+> | A-7     | D-2 fehlendes ε an der Normstufenkante        | **behoben** (absolutes ε 1e-9 A)                   |
+> | A-8     | G2/G4/G6 als Gates                            | **behoben** (alle drei gebaut, s. Strategie §12.8) |
+>
+> Die Wirkung jeder Änderung, die dabei entstandenen und behobenen Fehler und
+> die Frage, warum die Golden-Master-Pläne trotzdem kein `COMPLIANT` erreichen,
+> stehen in `ELECTRICAL-VERIFICATION-STRATEGY.md` §12.10 und §12.11.
+>
+> Der Text unten bleibt als **Auftragsbeschreibung** stehen — er dokumentiert,
+> was zu tun war und welche Abnahmebedingungen galten. Er ist ab hier
+> Nachweis, keine offene Arbeit.
+
+## Ausgangslage (2026-11-05)
+
+PR #605 belegte sieben Verletzungen mit reproduzierbaren Eingaben und änderte
+bewusst **keine** Formel, Tabelle oder Grenzwert. Damit die Befunde nicht in
+der Testsuite verrotten, stand hier für jeden Befund, was genau zu ändern ist,
+was danach grün sein muss und was brechen darf. Reihenfolge nach Risiko pro
+Aufwand.
 
 ## Gemeinsame Abnahmebedingungen für **alle** Aufträge
 

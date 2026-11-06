@@ -36,8 +36,10 @@ import {
   ambientTemperatureFactor,
   calculateCableIz,
   evaluateCableProtection,
+  calculateCrossSection,
   groupFactor,
   thermalCrossSectionFor,
+  voltageDropLimitPercent,
 } from '../../lib/electrical';
 import { resolveCableConditions, cableSizingFor } from '../../lib/cableConditions';
 import { computeCurrentBudget, evaluateLoadFeasibility } from '../../lib/electricalGraph/currentBudget';
@@ -159,25 +161,45 @@ describe('I-E-02 — fehlende Eingabe darf kein positives Ergebnis erzeugen', ()
    * (`designBudget.ts:302`, `useLiveValidation.ts:796`). „Nicht bewertbar“
    * passiert damit das Gate.
    *
-   * Der Test ist `it.fails`, weil die Reparatur Produktivverhalten ändert
-   * (dreiwertiges Ergebnis) und eine Freigabe braucht. Er ist trotzdem scharf:
-   * sobald `feasible` false wird, schlägt `it.fails` fehl und erzwingt die
-   * Umstellung auf `it`.
+   * Der Test war `it.fails`, bis die Freigabe für Produktivverhalten vorlag
+   * (2026-11-06). Die Reparatur macht das Ergebnis zweifeldrig statt
+   * dreiwertig: `feasible: false` plus `assessable: false`. Grund für zwei
+   * Felder statt `feasible: 'unknown'`: `if (verdict.feasible)` ist bei
+   * `'unknown'` truthy — genau der Fehler, den der Befund beschreibt. Ein
+   * String hätte ihn nur verschoben.
    */
-  it.fails('BEFUND E-2: ohne jede Grenze darf `feasible` nicht true sein', () => {
+  it('BEFUND E-2: ohne jede Grenze ist `feasible` false und `assessable` false', () => {
     const budget = computeCurrentBudget({});
     const verdict = evaluateLoadFeasibility(amps(140), budget, 'Wechselrichter');
     expect(budget.limitedBy).toBe('unknown');
     expect(verdict.feasible).toBe(false);
+    expect(verdict.assessable).toBe(false);
+    // Die Meldung bleibt ehrlich „nicht bewertbar" — sie ist kein Fehlalarm.
+    expect(verdict.severity).toBe('warning');
+    expect(verdict.message).toMatch(/nicht bewertbar/);
   });
 
-  it('BEFUND E-2, festgehalten: heute ist `feasible` true und nur die Severity warnt', () => {
-    const verdict = evaluateLoadFeasibility(amps(140), computeCurrentBudget({}), 'Wechselrichter');
-    expect(verdict.feasible).toBe(true);
-    expect(verdict.severity).toBe('warning');
-    expect(verdict.limitedBy).toBe('unknown');
-    // Konsumenten prüfen genau dieses Feld — der Befund ist damit ein
-    // Verknüpfungs-, kein Rechenfehler.
+  it('BEFUND E-2: bewertbare Urteile tragen `assessable: true`', () => {
+    // Gegenprobe gegen eine Reparatur, die einfach überall `assessable: false`
+    // setzt: mit bekannter Grenze muss das Feld true sein — in allen drei
+    // Ausgängen (ok, knapp, überschritten).
+    const ample = evaluateLoadFeasibility(amps(10), computeCurrentBudget({ bms: amps(100) }), 'Kühlschrank');
+    const tight = evaluateLoadFeasibility(amps(95), computeCurrentBudget({ bms: amps(100) }), 'Last');
+    const over = evaluateLoadFeasibility(
+      amps(140),
+      computeCurrentBudget({ bms: amps(100) }),
+      'Wechselrichter'
+    );
+    for (const [name, verdict] of [
+      ['ok', ample],
+      ['knapp', tight],
+      ['überschritten', over],
+    ] as const) {
+      expect(verdict.assessable, name).toBe(true);
+    }
+    expect(ample.feasible).toBe(true);
+    expect(tight.feasible).toBe(true);
+    expect(over.feasible).toBe(false);
   });
 });
 
@@ -233,15 +255,12 @@ describe('I-E-03 — die Sicherung schützt die Leitung, in jeder Schicht', () =
 // ============================================================================
 
 describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinstimmen', () => {
-  it('AC wird auf 2 % dimensioniert — die Anzeige prüft aber 3 %', () => {
-    // Dimensionierung: `calculateCrossSection(…, 'AC_230V')` rechnet mit 4,6 V
-    // = 2 % von 230 V (lib/electrical.ts:383).
-    const designLimitAcVolts = 4.6;
-    expect((designLimitAcVolts / 230) * 100).toBeCloseTo(2, 9);
+  it('BEFUND K-2, behoben: Anzeige und Dimensionierung nutzen dieselbe AC-Grenze', () => {
+    // Dimensionierung: `calculateCrossSection(…, 'AC_230V')` rechnet mit 2 %.
+    expect(voltageDropLimitPercent('AC_230V')).toBe(2);
+    expect(voltageDropLimitPercent('DC_12V')).toBe(3);
 
-    // Anzeige: `hasVoltageDropError` prüft hart > 3 % für AC UND DC.
-    // Ein Fall bei 2,5 % ist damit nach Dimensionierung zu dünn, nach Anzeige
-    // aber grün. Das ist die Verletzung.
+    // Anzeige: derselbe Fall (2,5 %) feuert jetzt.
     const between = hasVoltageDropError({
       isAC: true,
       I: 20,
@@ -252,7 +271,19 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
     });
     expect(between.totalDropPercentage).toBeGreaterThan(2);
     expect(between.totalDropPercentage).toBeLessThan(3);
-    expect(between.hasDropError).toBe(false); // ≠ Dimensionierungsgrenze
+    expect(between.hasDropError).toBe(true);
+  });
+
+  it('BEFUND K-2: die Dimensionierung bleibt bei 2 % AC und 3 % DC', () => {
+    // Die Empfehlung für AC rechnet mit ΔU = 4,6 V (2 % von 230 V). Eine
+    // Leitung, die exakt auf dieser Grenze liegt, darf keine Stufe größer
+    // werden. 5 A, 20 m, 1,5 mm² ⇒ ΔU = 2·5·20/(58·1,5) = 2,299 V = 1,0 %.
+    // Erst ab 10 A wird die 2-%-Grenze zum treibenden Kriterium.
+    const acOnLimit = (2 * 10 * 20) / (58 * 1.5); // 4,598 V
+    expect((acOnLimit / 230) * 100).toBeLessThan(2);
+    // Bei 10 A/20 m/1,5 mm² ist ΔU = 2,30 V (1,0 %) — beide Domänen sind
+    // zufrieden, der Querschnitt bleibt bei der Normuntergrenze.
+    expect(calculateCrossSection(10, 20, undefined, 'AC_230V')).toBe(1.5);
   });
 
   it('der dokumentierte Grenzfall: Design 3,000 % grün vs. Engine 3,643 % rot', () => {
@@ -278,9 +309,8 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
     expect(enginePercent).toBeGreaterThan(3.6);
   });
 
-  it('BEFUND K-2, festgehalten: die Anzeige kennt keine AC-Grenze', () => {
-    // Derselbe Strom/Querschnitt, nur die Domäne wechselt: der Grenzwert
-    // bleibt 3 %, obwohl die Dimensionierung für AC 2 % ansetzt.
+  it('DC bleibt bei 3 % — die AC-Reparatur hat den Gleichstrom nicht verschärft', () => {
+    // Derselbe Fall, nur die Domäne wechselt: DC muss weiter 3 % vertragen.
     const asDc = hasVoltageDropError({
       isAC: false,
       I: 3,
@@ -297,11 +327,37 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
       sysVoltage: 230,
       cumulativeDropVolts: 0,
     });
-    expect(asAc.hasDropError).toBe(asDc.hasDropError);
+    // Der Prozentsatz ist domänenunabhängig derselbe (gleiche Formel) …
     expect(asAc.totalDropPercentage).toBe(asDc.totalDropPercentage);
+    expect(asDc.totalDropPercentage).toBeLessThan(2);
+    // … und unter 2 % feuert keine der beiden Grenzen.
+    expect(asDc.hasDropError).toBe(false);
+    expect(asAc.hasDropError).toBe(false);
+
+    // Der Unterschied liegt im Band zwischen 2 % und 3 %. Gemessen:
+    // 25 A, 10 m, 1,5 mm², 230 V ⇒ 2·25·10/(58·1,5) = 5,747 V ⇒ 2,499 %.
+    const betweenDc = hasVoltageDropError({
+      isAC: false,
+      I: 25,
+      length: 10,
+      crossSection: 1.5,
+      sysVoltage: 230,
+      cumulativeDropVolts: 0,
+    });
+    const betweenAc = hasVoltageDropError({
+      isAC: true,
+      I: 25,
+      length: 10,
+      crossSection: 1.5,
+      sysVoltage: 230,
+      cumulativeDropVolts: 0,
+    });
+    expect(betweenDc.totalDropPercentage).toBeCloseTo(2.5, 2);
+    expect(betweenDc.hasDropError, 'DC-Grenze 3 %: 2,5 % ist zulässig').toBe(false);
+    expect(betweenAc.hasDropError, 'AC-Grenze 2 %: 2,5 % ist ein Verstoß').toBe(true);
   });
 
-  it.fails('BEFUND K-2: AC muss mit der eigenen Grenze (2 %) geprüft werden', () => {
+  it('BEFUND K-2: AC wird mit der eigenen Grenze (2 %) geprüft', () => {
     const result = hasVoltageDropError({
       isAC: true,
       I: 20,
@@ -310,8 +366,19 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
       sysVoltage: 230,
       cumulativeDropVolts: 0,
     });
-    // 2,5 % liegt über der AC-Dimensionierungsgrenze von 2 % ⇒ muss feuern.
+    // 2,5 % liegt über der AC-Dimensionierungsgrenze von 2 % ⇒ feuert.
     expect(result.hasDropError).toBe(true);
+    // Knapp darunter nicht — die Grenze ist scharf, nicht pauschal.
+    const ok = hasVoltageDropError({
+      isAC: true,
+      I: 16,
+      length: 20,
+      crossSection: 2.5,
+      sysVoltage: 230,
+      cumulativeDropVolts: 0,
+    });
+    expect(ok.totalDropPercentage).toBeLessThan(2);
+    expect(ok.hasDropError).toBe(false);
   });
 
   /**
@@ -321,7 +388,7 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
    * Eine 230-V-Leitung mit 5 % Spannungsfall erzeugt damit **keinen** Befund —
    * obwohl die Anzeige sie rot markiert.
    */
-  it.fails('BEFUND K-2b: die Engine muss AC-Leitungen auf Spannungsfall prüfen', () => {
+  it('BEFUND K-2b: die Engine prüft AC-Leitungen auf Spannungsfall', () => {
     const report = verifyPlan({
       nodes: [
         node('inv', 'inverter', { continuousPower: 2000, watts: 2000 }),
@@ -343,7 +410,7 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
     expect(vdr.length).toBeGreaterThan(0);
   });
 
-  it('BEFUND K-2b, festgehalten: die Engine sieht nur DC und Solar', () => {
+  it('BEFUND K-2b: AC-Befund trägt Budget und Rechenweg', () => {
     const report = verifyPlan({
       nodes: [
         node('inv', 'inverter', { continuousPower: 2000, watts: 2000 }),
@@ -362,8 +429,15 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
       options: { profile: 'PRACTICE', context: 'VEHICLE' },
     });
     const vdr = report.events.filter((event) => event.ruleId.startsWith('VDR'));
-    expect(vdr.length).toBe(0);
-    // Die Anzeige bewertet dieselbe Leitung dagegen mit 3 %:
+    // BEFUND K-2b (BEHOBEN 2026-11-06): vorher war diese Zahl 0 — eine
+    // 230-V-Leitung mit 4,5 % Spannungsfall erzeugte keinen Befund.
+    expect(vdr.length).toBeGreaterThan(0);
+    // Das Budget ist das AC-Budget (2 %), nicht die DC-Planungsgrenze (3 %).
+    expect(vdr[0]!.allowedLimit).toBe(2);
+    expect(vdr[0]!.unit).toBe('%');
+    // Und der Rechenweg steht dabei (BEFUND T-2 gilt auch hier).
+    expect(vdr[0]!.details?.voltageDropTrace?.nominalV).toBeCloseTo(230, 6);
+    // Die Anzeige bewertet dieselbe Leitung mit derselben Grenze.
     const display = hasVoltageDropError({
       isAC: true,
       I: 6.5,
@@ -372,7 +446,8 @@ describe('I-E-04 — Dimensionierung und Prüfung müssen pro Domäne übereinst
       sysVoltage: 230,
       cumulativeDropVolts: 0,
     });
-    expect(display.totalDropPercentage).toBeGreaterThan(0);
+    expect(display.totalDropPercentage).toBeGreaterThan(2);
+    expect(display.hasDropError).toBe(true);
   });
 });
 
@@ -418,13 +493,38 @@ describe('I-E-05 — eine bekannte Grenze ist bindend, eine unbekannte ist ein B
     expect(componentCurrentLimit(asNumber) as unknown as number).toBe(50);
   });
 
-  it.fails('BEFUND E-1: ein nicht-numerischer Grenzwert muss gemeldet werden', () => {
-    // Es gibt heute keine Stelle, die den verworfenen Wert meldet. Dieser Test
-    // verlangt sie — sobald sie existiert, wird er grün.
+  it('BEFUND E-1: ein nicht-numerischer Grenzwert wird gemeldet', () => {
+    // BEFUND E-1 (BEHOBEN 2026-11-06): `'50 A'` verschwand spurlos. Jetzt steht
+    // der Grund im Ergebnis — ohne dass der Wert geparst wird („50 A" bleibt
+    // verworfen; ein Parser würde raten, was gemeint ist).
     const constraints = resolveComponentConstraints(
       node('bat', 'battery', { bmsContinuousDischarge: '50 A' })
     );
     expect(JSON.stringify(constraints)).toContain('bmsContinuousDischarge');
+    expect(constraints.rejectedInputs).toEqual([
+      { key: 'bmsContinuousDischarge', target: 'maxDischargeCurrent', reason: 'non-numeric', raw: '50 A' },
+    ]);
+    // Die Grenze bleibt verworfen — Melden heißt nicht Übernehmen.
+    expect(constraints.maxDischargeCurrent).toBeUndefined();
+  });
+
+  it('BEFUND E-1: „keine Eingabe" ist kein Befund, „0" und „-10" sind einer', () => {
+    // Der Unterschied ist der ganze Punkt: ein leeres Feld ist eine Lücke,
+    // eine Null ist ein Datenfehler. Beide führen zu „keine Grenze", aber nur
+    // die zweite darf gemeldet werden.
+    const empty = resolveComponentConstraints(node('bat', 'battery', {}));
+    expect(empty.rejectedInputs).toBeUndefined();
+
+    const zero = resolveComponentConstraints(node('bat', 'battery', { bmsContinuousDischarge: 0 }));
+    expect(zero.rejectedInputs?.[0]?.reason).toBe('non-positive');
+
+    const negative = resolveComponentConstraints(node('bat', 'battery', { bmsContinuousDischarge: -10 }));
+    expect(negative.rejectedInputs?.[0]?.reason).toBe('non-positive');
+
+    // Ein gültiger Wert erzeugt keinen Eintrag.
+    const valid = resolveComponentConstraints(node('bat', 'battery', { bmsContinuousDischarge: 50 }));
+    expect(valid.rejectedInputs).toBeUndefined();
+    expect(valid.maxDischargeCurrent as unknown as number).toBe(50);
   });
 });
 
@@ -598,17 +698,19 @@ describe('I-E-09 — dieselbe Kante muss überall dasselbe Urteil tragen', () =>
     });
     const violation = report.events.find((event) => event.ruleId === 'AMP-001-ib-in-iz');
 
-    // Heute: Budget sagt „trägt", Engine sagt „Verletzung".
-    expect(budget.cableCanCarry).toBe(true);
+    // BEFUND K-4 (BEHOBEN 2026-11-06): vorher sagte das Budget „trägt"
+    // (48,3 A Tabellenpauschale) und die Engine „Verletzung" (34,5 A).
+    // Jetzt rechnen beide mit derselben kantenspezifischen I_z.
+    expect(budget.cableCanCarry).toBe(false);
     expect(violation?.kind).toBe('VIOLATION');
-    // Die Engine rechnet mit der kantenspezifischen I_z (34,5 A bei 60 °C),
-    // das Budget mit der Tabellenpauschale (48,3 A).
     const iz60 = calculateCableIz({ crossSectionMm2: 16, ambientC: 60 });
     expect(iz60.correctedIz).toBeCloseTo(34.5, 1);
-    expect(budget.cableLimit as unknown as number).toBeCloseTo(48.3, 1);
+    expect(budget.cableLimit as unknown as number).toBeCloseTo(34.5, 1);
+    // Und die Aussage ist jetzt dieselbe wie im Prüfbericht: 43,75 A > 34,5 A.
+    expect(budget.requiredCurrent as unknown as number).toBeGreaterThan(34.5);
   });
 
-  it.fails('BEFUND K-4: das Designbudget muss die Verlegebedingungen der Kante achten', () => {
+  it('BEFUND K-4: das Designbudget achtet die Verlegebedingungen der Kante', () => {
     const nodes = [
       node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4', bmsContinuousDischarge: 200 }),
       node('load', 'consumer', { watts: 560 }),
@@ -625,6 +727,31 @@ describe('I-E-09 — dieselbe Kante muss überall dasselbe Urteil tragen', () =>
     ];
     const budget = evaluateDesignBudget(nodes, edges as never, 12.8 as never);
     expect(budget.cableCanCarry).toBe(false);
+  });
+
+  it('BEFUND K-4: ungültige Verlegebedingungen machen das Budget nicht bewertbar', () => {
+    // Die Engine meldet für dieselbe Leitung UNVERIFIABLE (Regel M: keine
+    // stille Annahme). Das Budget darf die Leitung dann NICHT still mit der
+    // Referenz-I_z weiterrechnen — sonst entsteht genau der Widerspruch, den
+    // K-4 beschreibt, nur an einer anderen Stelle.
+    const nodes = [
+      node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4', bmsContinuousDischarge: 200 }),
+      node('load', 'consumer', { watts: 400 }),
+    ];
+    const edges = [
+      {
+        id: 'e1',
+        source: 'bat',
+        target: 'load',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, crossSection: 16, fuseSize: 40, ambientC: 'sehr heiß' },
+      },
+    ];
+    const budget = evaluateDesignBudget(nodes, edges as never, 12.8 as never);
+    expect(budget.cableLimit).toBeUndefined();
+    expect(budget.cableCanCarry).toBeUndefined();
+    expect(budget.notAssessable.join(' ')).toMatch(/Verlegebedingungen ungültig/);
   });
 
   it('bei Referenzbedingungen (30 °C) stimmen Budget und Engine in der I_z-Aussage überein', () => {
@@ -735,12 +862,17 @@ describe('I-E-11 — derselbe Plan ergibt dasselbe Urteil, egal wie er sortiert 
   const blockB = { capacity: 100, chemistry: 'AGM', nominalVoltage: 12.0 };
 
   /**
-   * BEFUND K-3 (offen): `bankVoltage` nimmt den ERSTEN Block. Bei einer Bank
-   * aus 12,8-V- und 12,0-V-Blöcken hängt der Kurzschlussstrom damit von der
-   * Knotenreihenfolge ab — und `AMP-004` (Abschaltvermögen,
+   * BEFUND K-3 (BEHOBEN 2026-11-06): `bankVoltage` nahm den ERSTEN Block. Bei
+   * einer Bank aus 12,8-V- und 12,0-V-Blöcken hing der Kurzschlussstrom damit
+   * von der Knotenreihenfolge ab — und `AMP-004` (Abschaltvermögen,
    * `CRITICAL_SAFETY`) hängt daran.
+   *
+   * Die Reparatur macht daraus „nicht bewertbar" (`null`) statt „irgendeine
+   * Zahl": eine gemischtspannige Bank ist keine Parallelbank, ein Mittelwert
+   * wäre erfunden. Der Test hält den neuen Zustand fest — beide Reihenfolgen
+   * ergeben `null`.
    */
-  it('BEFUND K-3, festgehalten: der Bank-I_k hängt von der Reihenfolge ab', () => {
+  it('BEFUND K-3, behoben: eine gemischtspannige Bank ist nicht bewertbar', () => {
     const lifepoFirst = bankShortCircuitCurrentA([
       node('a', 'battery', blockA),
       node('b', 'battery', blockB),
@@ -749,7 +881,8 @@ describe('I-E-11 — derselbe Plan ergibt dasselbe Urteil, egal wie er sortiert 
       node('b', 'battery', blockB),
       node('a', 'battery', blockA),
     ] as never);
-    expect(lifepoFirst).not.toBe(agmFirst);
+    expect(lifepoFirst).toBeNull();
+    expect(agmFirst).toBeNull();
     // Der Ersatzwiderstand ist dagegen korrekt symmetrisch:
     expect(
       bankEquivalentRiMilliOhm([node('a', 'battery', blockA), node('b', 'battery', blockB)] as never)
@@ -759,16 +892,29 @@ describe('I-E-11 — derselbe Plan ergibt dasselbe Urteil, egal wie er sortiert 
     );
   });
 
-  it.fails('BEFUND K-3: der Bank-I_k muss reihenfolgeunabhängig sein', () => {
-    const first = bankShortCircuitCurrentA([
-      node('a', 'battery', blockA),
-      node('b', 'battery', blockB),
-    ] as never);
-    const second = bankShortCircuitCurrentA([
-      node('b', 'battery', blockB),
-      node('a', 'battery', blockA),
-    ] as never);
-    expect(first).toBe(second);
+  it('BEFUND K-3: der Bank-I_k ist reihenfolgeunabhängig', () => {
+    // Über ALLE Permutationen, nicht nur zwei Stellungen: eine Reparatur, die
+    // zufällig symmetrisch aussieht, aber den ersten Block bevorzugt, fällt hier
+    // auf.
+    const blocks = [blockA, blockB, { ...blockA, capacity: 180 }];
+    const ids = ['a', 'b', 'c'];
+    const permutations = <T>(input: T[]): T[][] =>
+      input.length <= 1
+        ? [input]
+        : input.flatMap((item, index) =>
+            permutations([...input.slice(0, index), ...input.slice(index + 1)]).map((rest) => [item, ...rest])
+          );
+    for (const order of permutations([0, 1, 2])) {
+      const nodes = order.map((index) => node(ids[index]!, 'battery', blocks[index]!));
+      expect(bankShortCircuitCurrentA(nodes as never), `Reihenfolge ${order.join('')}`).toBeNull();
+    }
+    // Gegenprobe: die gleichspannige Bank liefert weiter eine Zahl.
+    expect(
+      bankShortCircuitCurrentA([
+        node('a', 'battery', blockA),
+        node('b', 'battery', { ...blockA, capacity: 200 }),
+      ] as never)
+    ).toBeGreaterThan(0);
   });
 
   it('bei gleichspanniger Bank ist der I_k reihenfolgeunabhängig (Normalfall)', () => {
@@ -902,7 +1048,7 @@ describe('I-E-12 — jeder Befund trägt Einheit, Gleichung und Herkunft', () =>
    * Die Forderung ist deshalb an das `CalculationTrace`-Schema aus §7.2 des
    * Strategiedokuments gebunden, nicht an ein Iz-Feld.
    */
-  it('BEFUND T-2, festgehalten: der VDR-Befund trägt heute nur eine Ursachen-ID', () => {
+  it('BEFUND T-2, behoben: der VDR-Befund trägt den Rechenweg', () => {
     const report = verifyPlan({
       nodes: [
         node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4' }),
@@ -922,14 +1068,32 @@ describe('I-E-12 — jeder Befund trägt Einheit, Gleichung und Herkunft', () =>
     });
     const vdr = report.events.find((event) => event.ruleId.startsWith('VDR'));
     expect(vdr, 'VDR-Ereignis muss existieren, sonst prüft der Test nichts').toBeDefined();
-    // Der Befund ist ein echter Verstoß (20 m / 1,5 mm² bei 600 W) …
+    // Der Befund ist ein echter Verstoß (20 m / 1,5 mm² bei 600 W).
     expect(vdr!.kind).toBe('VIOLATION');
-    // … aber der Rechenweg besteht heute nur aus einer Verweis-ID.
-    expect(vdr!.details).toEqual({ rootCauseId: 'OTHER-001' });
-    expect(vdr!.details?.assumptions).toBeUndefined();
+    // BEFUND T-2 (BEHOBEN 2026-11-06): Der Rechenweg steht im Ereignis — die
+    // Größen, die das Urteil tragen, jeweils mit dem eingesetzten Wert.
+    const trace = vdr!.details?.voltageDropTrace;
+    expect(trace).toBeDefined();
+    expect(trace!.lengthM).toBe(20);
+    expect(trace!.crossSectionMm2).toBe(1.5);
+    expect(trace!.currentPathFactor).toBe(2);
+    expect(trace!.nominalV).toBeCloseTo(12.8, 6);
+    // Der Strom folgt aus der Last und der SYSTEMspannung (12 V, nicht der
+    // Kabel-Nennspannung 12,8 V): 600 W / 12 V = 50 A. Der Unterschied ist
+    // genau der Grund, warum der Rechenweg im Ereignis stehen muss — ohne ihn
+    // wäre nicht erkennbar, welche Bezugsgröße die Engine angesetzt hat.
+    expect(trace!.currentA).toBeCloseTo(50, 6);
+    // ρ ist die Leitertemperatur-Abhängigkeit — nachrechenbar, nicht geraten.
+    expect(trace!.conductorTemperatureC).toBe(70);
+    expect(trace!.resistivityOhmMm2PerM).toBeCloseTo(0.02093875, 8);
+    // ΔU aus dem Rechenweg stimmt mit dem ausgewiesenen Prozentsatz überein.
+    expect(trace!.dropV).toBeCloseTo((trace!.currentA * 2 * 20 * trace!.resistivityOhmMm2PerM) / 1.5, 6);
+    expect((trace!.dropV / trace!.nominalV) * 100).toBeCloseTo(vdr!.calculatedValue!, 6);
+    // Die Ursachen-ID bleibt daneben erhalten (Einordnung, nicht Ersatz).
+    expect(vdr!.details?.rootCauseId).toBe('OTHER-001');
   });
 
-  it.fails('BEFUND T-2: der VDR-Befund muss seine tragenden Größen ausweisen', () => {
+  it('BEFUND T-2: der VDR-Befund weist seine tragenden Größen aus', () => {
     const report = verifyPlan({
       nodes: [
         node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4' }),
@@ -948,8 +1112,37 @@ describe('I-E-12 — jeder Befund trägt Einheit, Gleichung und Herkunft', () =>
       options: { profile: 'PRACTICE', context: 'VEHICLE' },
     });
     const vdr = report.events.find((event) => event.ruleId.startsWith('VDR'))!;
-    // Forderung nach §7.2 (CalculationTrace): Eingaben mit Herkunft.
-    expect(vdr.details?.assumptions).toBeDefined();
+    // Forderung nach §7.2 (CalculationTrace): die Eingaben des Urteils.
+    expect(vdr.details?.voltageDropTrace).toBeDefined();
     expect(vdr.calculatedValue).toBeGreaterThan(3);
+  });
+
+  it('BEFUND T-2: der Pfadbefund trägt ebenfalls einen Rechenweg', () => {
+    // VDR-002 summiert über mehrere Leitungen — dort ist der Rechenweg noch
+    // wichtiger, weil der Wert nicht an einer einzelnen Kante ablesbar ist.
+    const report = verifyPlan({
+      nodes: [
+        node('bat', 'battery', { capacity: 100, chemistry: 'LiFePO4' }),
+        node('load', 'consumer', { watts: 600 }),
+      ],
+      edges: [
+        {
+          id: 'e1',
+          source: 'bat',
+          target: 'load',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { length: 20, crossSection: 1.5 },
+        },
+      ] as never,
+      options: { profile: 'PRACTICE', context: 'VEHICLE' },
+    });
+    const path = report.events.find((event) => event.ruleId === 'VDR-002-voltage-drop-path');
+    expect(path).toBeDefined();
+    const trace = path!.details?.voltageDropTrace;
+    expect(trace?.lengthM).toBe(20);
+    expect(trace?.crossSectionMm2).toBe(1.5);
+    expect(trace?.conductorTemperatureC).toBeGreaterThan(0);
+    expect(trace!.resistivityOhmMm2PerM).toBeGreaterThan(0);
   });
 });
