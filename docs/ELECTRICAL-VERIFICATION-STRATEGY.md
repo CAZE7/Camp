@@ -454,13 +454,36 @@ wird zur Grenze; es gewinnt schlicht der größere Wert. Für ein **Limit** ist
 das die falsche Richtung: eine Grenze darf nicht durch einen Mess-/Nennwert
 ersetzt werden.
 
-### 4.9 Befund T-1: `maxFuseForConditions` liefert inkonsistente Trace-Daten
+### 4.9 Befund T-1: `maxFuseForConditions` lieferte inkonsistente Werte — **behoben 2026-11-06**
 
-`70 mm² / 172 A` Hersteller-I_z ⇒ `maxFuseForConditions` 160 A,
+**Befund:** `70 mm² / 172 A` Hersteller-I_z ⇒ `maxFuseForConditions` 160 A,
 `selectFuseForConditions(150, 70)` = 160 A, während der Referenzpfad 100 A
-liefert. Das zurückgegebene Objekt behält außerdem `plannerFactor: 0.7`,
+liefert. Das zurückgegebene Objekt behielt außerdem `plannerFactor: 0.7`,
 obwohl `correctedIz` die **unveränderte Herstellerangabe** ist. Die Erklärung
-im Trace ist damit falsch, obwohl der Wert stimmt.
+im Trace war damit falsch, obwohl der Wert stimmte.
+
+**Ursache (zwei Stellen, `lib/cableConditions.ts`):**
+
+1. Der Hersteller-Zweig des Traces setzte `plannerFactor: DERATE_FACTOR` (0,7),
+   obwohl `correctedIz` in diesem Zweig **gerade nicht** abgewertet wird — die
+   Herstellerangabe ersetzt I_z. Der Faktor beschrieb eine Rechnung, die nicht
+   stattfand. Jetzt `plannerFactor: 1`; Zusicherung im Test:
+   `baseIz · plannerFactor == correctedIz`.
+2. `maxFuseForConditions` begrenzte nur auf `rating ≤ I_z`, nicht auf die
+   Norm-Sicherungszuordnung. Bei 172 A I_z ist 160 A formal zulässig, aber
+   `FUSE_MAP[70 mm²] = 100 A` ist die Stufe, für die die Koordination belegt
+   ist. Jetzt `Math.min(byAmpacity, tableLimit)`.
+
+**Fachliche Begründung:** Die Herstellerangabe ist die genauere I_z und ersetzt
+sie für die Eignungsfrage — sie hebt aber die **Norm-Sicherungszuordnung**
+(`FUSE_MAP`) nicht auf. Eine Sicherung oberhalb der Zuordnung ist nur mit
+Herstellernachweis zulässig, nicht per Tabellenwert.
+
+**Wirkung:** 172 A / 70 mm² ⇒ 100 A statt 160 A (`selectFuseForConditions(150, 70)`
+= 100 A, `isFuseFeasibleForConditions(150, 70)` = `false`); 95 A / 2,5 mm² ⇒
+16 A statt 80 A. Herstellerpfade werden damit **konservativer**, nicht
+großzügiger. Die Tabellenreihe ist unverändert (Golden-Master-neutral: kein
+Referenzplan führt eine Hersteller-I_z).
 
 ### 4.10 Befund M-1: Modellrand ist scharf, aber nur als Flag
 
@@ -486,21 +509,21 @@ Soll-Zustand.
 
 ### 4.12 Zusammenfassung der Befunde
 
-| ID  | Kern in einem Satz                                                                         | Betroffene Invariante | Schwere (fachlich)                                 |
-| --- | ------------------------------------------------------------------------------------------ | --------------------- | -------------------------------------------------- |
-| A-1 | Standardprofil prüft 21 statt 30 Regeln und **nie** das ΔU-Budget                          | I-E-10                | mittel — betrifft externe Aufrufer                 |
-| A-2 | `acCurrentA` (Verbrauch) überstimmt `rating` (Grenze)                                      | I-E-05 (verwandt)     | mittel                                             |
-| K-1 | Zwei Kupfer-Modelle: κ = 58 (Design) vs. ρ(T) (Engine) — im Grenzfall gegenteiliges Urteil | I-E-09                | **hoch**                                           |
-| K-2 | Drei ΔU-Grenzen; AC wird auf 2 % dimensioniert, aber auf 3 % geprüft                       | I-E-04                | **hoch**                                           |
-| K-3 | Bank-Kurzschlussstrom hängt von der Knotenreihenfolge ab (6.826,7 vs. 6.400,0 A)           | I-E-11                | **hoch** (berührt `AMP-004`, `CRITICAL_SAFETY`)    |
-| K-4 | Designbudget sagt „Kabel trägt“, die Engine sagt `AMP-001` VIOLATION — für dasselbe Kabel  | I-E-09                | **hoch**                                           |
-| E-1 | `constraints.ts` verwirft ungültige Grenzwerte still                                       | Regel M               | mittel                                             |
-| E-2 | „Nicht bewertbar“ liefert `feasible: true` und passiert das Gate                           | I-E-02, I-E-05        | **hoch**                                           |
-| T-1 | `maxFuseForConditions` mit Hersteller-I_z liefert 160 A und einen falschen `plannerFactor` | I-E-03 (Rand)         | mittel                                             |
-| M-1 | Modellrand ist scharf, aber nur als Flag — Querschnitte > 70 mm² bleiben zulässig          | –                     | offene Freigabefrage                               |
-| D-1 | Zwei der sechs Referenzpläne liegen jenseits des Modellrands und sind trotzdem Referenz    | –                     | Dokumentationsfehler                               |
-| D-2 | `16,1 A` und `0,7 · 23 A` sind dieselbe Zahl, ergeben aber 4,0 vs. 2,5 mm²                 | I-E-11                | mittel (konservativ, aber repräsentationsabhängig) |
-| D-3 | Der Bank-I_k weicht zwischen Modelldefinition und Produktivfunktion um 0,33 % ab (κ vs. ρ) | –                     | kein Fehler — Toleranz belegt                      |
+| ID  | Kern in einem Satz                                                                          | Betroffene Invariante | Schwere (fachlich)                                 |
+| --- | ------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------- |
+| A-1 | Standardprofil prüft 21 statt 30 Regeln und **nie** das ΔU-Budget                           | I-E-10                | mittel — betrifft externe Aufrufer                 |
+| A-2 | `acCurrentA` (Verbrauch) überstimmt `rating` (Grenze)                                       | I-E-05 (verwandt)     | mittel                                             |
+| K-1 | Zwei Kupfer-Modelle: κ = 58 (Design) vs. ρ(T) (Engine) — im Grenzfall gegenteiliges Urteil  | I-E-09                | **hoch**                                           |
+| K-2 | Drei ΔU-Grenzen; AC wird auf 2 % dimensioniert, aber auf 3 % geprüft                        | I-E-04                | **hoch**                                           |
+| K-3 | Bank-Kurzschlussstrom hängt von der Knotenreihenfolge ab (6.826,7 vs. 6.400,0 A)            | I-E-11                | **hoch** (berührt `AMP-004`, `CRITICAL_SAFETY`)    |
+| K-4 | Designbudget sagt „Kabel trägt“, die Engine sagt `AMP-001` VIOLATION — für dasselbe Kabel   | I-E-09                | **hoch**                                           |
+| E-1 | `constraints.ts` verwirft ungültige Grenzwerte still                                        | Regel M               | mittel                                             |
+| E-2 | „Nicht bewertbar“ liefert `feasible: true` und passiert das Gate                            | I-E-02, I-E-05        | **hoch**                                           |
+| T-1 | `maxFuseForConditions` mit Hersteller-I_z lieferte 160 A und einen falschen `plannerFactor` | I-E-03 (Rand)         | mittel — **behoben 2026-11-06** (§4.9)             |
+| M-1 | Modellrand ist scharf, aber nur als Flag — Querschnitte > 70 mm² bleiben zulässig           | –                     | offene Freigabefrage                               |
+| D-1 | Zwei der sechs Referenzpläne liegen jenseits des Modellrands und sind trotzdem Referenz     | –                     | Dokumentationsfehler                               |
+| D-2 | `16,1 A` und `0,7 · 23 A` sind dieselbe Zahl, ergeben aber 4,0 vs. 2,5 mm²                  | I-E-11                | mittel (konservativ, aber repräsentationsabhängig) |
+| D-3 | Der Bank-I_k weicht zwischen Modelldefinition und Produktivfunktion um 0,33 % ab (κ vs. ρ)  | –                     | kein Fehler — Toleranz belegt                      |
 
 **Wichtig für die Lesart:** Keiner dieser Befunde ist ein Rechenfehler im Sinne
 von „falsche Formel“. Es sind **Verknüpfungsfehler** zwischen vorhandenen,
@@ -636,20 +659,20 @@ Prosa. Jede hat: ID, Aussage, Geltungsbereich, Prüfmethode, heutigen Status
 
 ### 6.1 Kerninvarianten (Freigabe)
 
-| ID     | Invariante                                                                                                                                                                                            | Prüfmethode                                                                                                       | Status heute                                                                                                            |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| I-E-01 | **Keine Freigabe bei unzulässigen Eingaben.** Jede Funktion, die einen Sicherheitsbefund liefert, wirft bei unzulässiger Eingabe `RangeError` — sie liefert nie einen Default.                        | Property-Test über ungültige Wertebereiche (NaN, ±∞, negativ, String) je Sicherheitsfunktion                      | `HOLDS` ungetestet (punktuell belegt: `resolveCableConditions`, `ambientTemperatureFactor`, `conductorResistanceOhm`)   |
-| I-E-02 | **Fehlende Eingabe ⇒ nie PASS.** Fehlt ein für die Entscheidung nötiger Wert, lautet das Ergebnis `UNPROVABLE`/`incomplete`, nie `PASS`/`satisfied`.                                                  | Metamorphik + direkte Fälle; Gate über alle Regeln (`UNVERIFIABLE`-Zählung)                                       | `HOLDS` — belegt für `AMP-001` **und** `evaluateLoadFeasibility` (E-2 behoben)                                          |
-| I-E-03 | **Sicherung nie über Leitungsschutz.** `I_n ≤ I_z` für jede ausgegebene Sicherung, in **jeder** Schicht (AutoWire, Engine, Anzeige).                                                                  | Property über alle Normquerschnitte + Differential gegen RM-2                                                     | `HOLDS` belegt (G1, `FUSE_MAP ≤ 0,7·I_z,Basis`) — aber **nicht** in `maxFuseForConditions` (Befund T-1, Hersteller-I_z) |
-| I-E-04 | **Ein ΔU-Grenzwert je Domäne.** DC und AC dürfen nicht in derselben Konstante geprüft werden, wenn sie verschieden dimensioniert werden.                                                              | Unit-Test auf `hasVoltageDropError(isAC)` + Referenztest RM-1                                                     | `HOLDS` — **K-2 behoben**: eine Quelle je Domäne (`voltageDropLimitPercent`)                                            |
-| I-E-05 | **BMS-Grenze nie ignorieren.** Ist eine BMS-Grenze bekannt, ist sie Teil des Minimums; ist sie unbekannt, ist das Ergebnis „nicht bewertbar“ und darf nicht als „in Ordnung“ erscheinen.              | Property über Budget-Kombinationen; Consumer-Audit (jeder `feasible`-Leser)                                       | `HOLDS` — **E-2 behoben**: `feasible: false` + `assessable: false` bei unbekannter Grenze                               |
-| I-E-06 | **Korrekturfaktoren in zulässigen Grenzen.** `0 < f₁ ≤ 1` (kein Kältebonus), `f₂ ∈ Tabelle`, `0 < f₃ ≤ 1`, `min(0,7, f₁·f₂·f₃)` — keine Kombination darf I_z erhöhen.                                 | Property über (ϑ, n, f₃)-Raster gegen `I_z,Basis`                                                                 | `HOLDS` belegt (Guards + `min`)                                                                                         |
-| I-E-07 | **Fehlende Daten nie durch günstige Defaults ersetzen.** Kein `?? 0`, `?? {…}`, `                                                                                                                     |                                                                                                                   | ` auf sicherheitskritischen Feldern.                                                                                    | Statischer Test (AST-Grep über `lib/electrical*.ts`, `lib/verify/*`, `lib/autoWire/*`) + Property-Tests | `HOLDS` teilweise (`safety-no-silent-fallback.test.ts` deckt die historischen fünf Fälle; **kein** statischer Test) |
-| I-E-08 | **UNVERIFIABLE nie als COMPLIANT.** Verdikt-Reihenfolge: `FAIL` > `UNPROVABLE` > `PASS`; ein leeres Regel-Set ergibt nie `COMPLIANT`.                                                                 | Unit-Test `verdictOf` + leerer Plan                                                                               | `HOLDS` belegt (leerer Plan ⇒ `INCOMPLETE`, `decisionRatio 0`)                                                          |
-| I-E-09 | **Konsistenz Engine / AutoWire / Warnsystem / Bericht.** Für jede Kante gilt: `I_b`, `I_z`, `ΔU` und das Urteil sind in allen vier Schichten gleich oder die Abweichung ist als Modellgrenze benannt. | Differential-Test über die sechs Referenzpläne: Engine-Events vs. AutoWire-Verdikt vs. `verificationWarning`-Text | `HOLDS` — **K-4 behoben**: Budget und Engine nutzen dieselbe I_z (`cableSizingFor`)                                     |
-| I-E-10 | **Ein Verdikt ist nur mit Profil gültig.** Bericht und Anzeige nennen Profil und Kontext; ein Verdikt ohne Profil darf nicht als Prüfaussage exportiert werden.                                       | Schema-Test auf `VerificationReport.certificate` + Export-Audit                                                   | `HOLDS` strukturell (Zertifikat trägt Profil) — **nicht erzwungen** (Befund A-1)                                        |
-| I-E-11 | **Repräsentationsinvarianz.** Knoten-/Kantenreihenfolge und Objektidentität dürfen kein Urteil ändern.                                                                                                | Property: Permutation der Eingabe ⇒ gleicher `certificateHash` und gleiche Eventliste (Menge)                     | `HOLDS` — **K-3 behoben**: gemischtspannige Bank ⇒ `null`, nicht „erster Block"                                         |
-| I-E-12 | **Kein Verdikt ohne Trace.** Jedes `FAIL`/`UNPROVABLE` trägt Eingaben, Formel, Quelle, Einheit und Rechenweg.                                                                                         | Schema-Test über alle Events aller Referenzpläne                                                                  | `HOLDS` teilweise — **T-2 behoben** (`voltageDropTrace` bei VDR-001/002); Lücke bleibt bei PWR-001                      |
+| ID     | Invariante                                                                                                                                                                                            | Prüfmethode                                                                                                       | Status heute                                                                                                               |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| I-E-01 | **Keine Freigabe bei unzulässigen Eingaben.** Jede Funktion, die einen Sicherheitsbefund liefert, wirft bei unzulässiger Eingabe `RangeError` — sie liefert nie einen Default.                        | Property-Test über ungültige Wertebereiche (NaN, ±∞, negativ, String) je Sicherheitsfunktion                      | `HOLDS` ungetestet (punktuell belegt: `resolveCableConditions`, `ambientTemperatureFactor`, `conductorResistanceOhm`)      |
+| I-E-02 | **Fehlende Eingabe ⇒ nie PASS.** Fehlt ein für die Entscheidung nötiger Wert, lautet das Ergebnis `UNPROVABLE`/`incomplete`, nie `PASS`/`satisfied`.                                                  | Metamorphik + direkte Fälle; Gate über alle Regeln (`UNVERIFIABLE`-Zählung)                                       | `HOLDS` — belegt für `AMP-001` **und** `evaluateLoadFeasibility` (E-2 behoben)                                             |
+| I-E-03 | **Sicherung nie über Leitungsschutz.** `I_n ≤ I_z` für jede ausgegebene Sicherung, in **jeder** Schicht (AutoWire, Engine, Anzeige).                                                                  | Property über alle Normquerschnitte + Differential gegen RM-2                                                     | `HOLDS` belegt (G1, `FUSE_MAP ≤ 0,7·I_z,Basis`) — **auch** in `maxFuseForConditions` (T-1 behoben: Klemmen auf `FUSE_MAP`) |
+| I-E-04 | **Ein ΔU-Grenzwert je Domäne.** DC und AC dürfen nicht in derselben Konstante geprüft werden, wenn sie verschieden dimensioniert werden.                                                              | Unit-Test auf `hasVoltageDropError(isAC)` + Referenztest RM-1                                                     | `HOLDS` — **K-2 behoben**: eine Quelle je Domäne (`voltageDropLimitPercent`)                                               |
+| I-E-05 | **BMS-Grenze nie ignorieren.** Ist eine BMS-Grenze bekannt, ist sie Teil des Minimums; ist sie unbekannt, ist das Ergebnis „nicht bewertbar“ und darf nicht als „in Ordnung“ erscheinen.              | Property über Budget-Kombinationen; Consumer-Audit (jeder `feasible`-Leser)                                       | `HOLDS` — **E-2 behoben**: `feasible: false` + `assessable: false` bei unbekannter Grenze                                  |
+| I-E-06 | **Korrekturfaktoren in zulässigen Grenzen.** `0 < f₁ ≤ 1` (kein Kältebonus), `f₂ ∈ Tabelle`, `0 < f₃ ≤ 1`, `min(0,7, f₁·f₂·f₃)` — keine Kombination darf I_z erhöhen.                                 | Property über (ϑ, n, f₃)-Raster gegen `I_z,Basis`                                                                 | `HOLDS` belegt (Guards + `min`)                                                                                            |
+| I-E-07 | **Fehlende Daten nie durch günstige Defaults ersetzen.** Kein `?? 0`, `?? {…}`, `                                                                                                                     |                                                                                                                   | ` auf sicherheitskritischen Feldern.                                                                                       | Statischer Test (AST-Grep über `lib/electrical*.ts`, `lib/verify/*`, `lib/autoWire/*`) + Property-Tests | `HOLDS` teilweise (`safety-no-silent-fallback.test.ts` deckt die historischen fünf Fälle; **kein** statischer Test) |
+| I-E-08 | **UNVERIFIABLE nie als COMPLIANT.** Verdikt-Reihenfolge: `FAIL` > `UNPROVABLE` > `PASS`; ein leeres Regel-Set ergibt nie `COMPLIANT`.                                                                 | Unit-Test `verdictOf` + leerer Plan                                                                               | `HOLDS` belegt (leerer Plan ⇒ `INCOMPLETE`, `decisionRatio 0`)                                                             |
+| I-E-09 | **Konsistenz Engine / AutoWire / Warnsystem / Bericht.** Für jede Kante gilt: `I_b`, `I_z`, `ΔU` und das Urteil sind in allen vier Schichten gleich oder die Abweichung ist als Modellgrenze benannt. | Differential-Test über die sechs Referenzpläne: Engine-Events vs. AutoWire-Verdikt vs. `verificationWarning`-Text | `HOLDS` — **K-4 behoben**: Budget und Engine nutzen dieselbe I_z (`cableSizingFor`)                                        |
+| I-E-10 | **Ein Verdikt ist nur mit Profil gültig.** Bericht und Anzeige nennen Profil und Kontext; ein Verdikt ohne Profil darf nicht als Prüfaussage exportiert werden.                                       | Schema-Test auf `VerificationReport.certificate` + Export-Audit                                                   | `HOLDS` strukturell (Zertifikat trägt Profil) — **nicht erzwungen** (Befund A-1)                                           |
+| I-E-11 | **Repräsentationsinvarianz.** Knoten-/Kantenreihenfolge und Objektidentität dürfen kein Urteil ändern.                                                                                                | Property: Permutation der Eingabe ⇒ gleicher `certificateHash` und gleiche Eventliste (Menge)                     | `HOLDS` — **K-3 behoben**: gemischtspannige Bank ⇒ `null`, nicht „erster Block"                                            |
+| I-E-12 | **Kein Verdikt ohne Trace.** Jedes `FAIL`/`UNPROVABLE` trägt Eingaben, Formel, Quelle, Einheit und Rechenweg.                                                                                         | Schema-Test über alle Events aller Referenzpläne                                                                  | `HOLDS` teilweise — **T-2 behoben** (`voltageDropTrace` bei VDR-001/002); Lücke bleibt bei PWR-001                         |
 
 ### 6.2 Was eine Invariante hier leisten muss
 
@@ -660,9 +683,11 @@ deshalb an eine **konkrete, ausführbare Prüfung** gebunden.
 **Status nach dem Reparaturdurchgang 2026-11-06:** Die sieben Befunde
 (K-2, K-2b, K-3, K-4, E-1, E-2, T-2, D-2) sind behoben; jedes `it.fails` in
 `test/invariants/electrical-invariants.test.ts` ist ein `it`, die Suite hat
-**keinen** `expected fail` mehr. I-E-03 bleibt an einer Stelle offen
-(`maxFuseForConditions` mit Hersteller-I_z, Befund T-1) — das ist kein
-Rückfall der Reparatur, sondern ein eigener, unveränderter Befund.
+**keinen** `expected fail` mehr. Der zuvor offen gebliebene Rand von I-E-03
+(`maxFuseForConditions` mit Hersteller-I_z, Befund T-1) ist im zweiten
+Durchgang ebenfalls geschlossen (§4.9): die ausgegebene Sicherung ist jetzt
+zusätzlich auf `FUSE_MAP` geklemmt, der Trace nennt für den Herstellerzweig
+`plannerFactor: 1`.
 
 Was die Reparaturen **nicht** geändert haben: die Golden-Master-Pläne erreichen
 weiterhin kein `COMPLIANT`. Das liegt nicht an einem Defekt, sondern an ihren
@@ -1154,15 +1179,15 @@ Befunde aus #605 nicht auseinanderlaufen, hier die Liste der Punkte, die #604
 **übernehmen** muss — jeweils mit dem Hinweis, dass der Punkt in #605
 **nicht gelöst**, sondern nur **quantifiziert und als Test festgehalten** ist:
 
-| Thema aus #604                                | Stand in #605                                                                                                                                                                                           | Was #604 sagen muss                                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Sicherungskoordination über alle Produktpfade | `FUSE_MAP ≤ 0,7 · I_z,Basis` ist belegt (I-E-03 grün). **Nicht** belegt: `maxFuseForConditions` mit Hersteller-I_z (Befund T-1) und die Koordination über alle vier Schichten (I-E-09 rot, Befund K-4). | „Koordination ist für die Tabellenreihe belegt, **nicht** für herstellerbezogene Pfade."        |
-| Unbekannte Grenzwerte / fehlende Eingaben     | Befund E-2 (`feasible: true` ohne Grenze) und E-1 (stilles Verwerfen in `constraints.ts`) sind **offen**, beide als `it.fails`.                                                                         | „Nicht bewertbar" ist im Feasibility-Gate heute **nicht** von „in Ordnung" unterscheidbar.      |
-| AC-Spannungsfall                              | Befund K-2 (Anzeige prüft 3 %, Dimensionierung rechnet AC 2 %) und K-2b (Engine prüft AC-**gar nicht**) sind **offen**.                                                                                 | AC-ΔU ist weder geprüft noch konsistent. Nicht als „abgedeckt" führen.                          |
-| Batteriebank-Kurzschlussstrom                 | Befund K-3 ist **offen**: 6.826,7 A vs. 6.400,0 A je nach Knotenreihenfolge, berührt `AMP-004` (`CRITICAL_SAFETY`).                                                                                     | Reihenfolgeabhängigkeit nennen; `AMP-004` ist bis zur Reparatur nicht belastbar.                |
-| Designbudget vs. elektrische Prüfung          | Befund K-4 ist **offen**: `cableCanCarry: true` bei 48,3 A, während die Engine mit 34,5 A rechnet und `VIOLATION` meldet.                                                                               | Zwei Aussagen zur selben Leitung; die UI zeigt beide.                                           |
-| Calculation Trace                             | Befund T-2 ist **offen**: `VDR-001` trägt `details: { rootCauseId }` und sonst nichts. Vollständigkeit ist **nicht** erreicht.                                                                          | Trace ist ein **Ziel**, kein Ist-Zustand.                                                       |
-| Offene Modellgrenzen der 230-V-Prüfung        | Einleiterig, keine Netzform, kein Rückspeiseschutz (`NET-003`, `docs/AC-230V-MODELLGRENZEN.md`). Unverändert.                                                                                           | Grenzen bleiben; #605 belegt nur, dass sie **benannt** sind, nicht dass sie geschlossen wurden. |
+| Thema aus #604                                | Stand in #605                                                                                                                                                                                                                                    | Was #604 sagen muss                                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Sicherungskoordination über alle Produktpfade | `FUSE_MAP ≤ 0,7 · I_z,Basis` ist belegt (I-E-03 grün), **einschließlich** `maxFuseForConditions` mit Hersteller-I_z (T-1 behoben: Klemmen auf `FUSE_MAP`). **Nicht** belegt: die Koordination über alle vier Schichten (I-E-09 rot, Befund K-4). | „Die Koordination ist für die Tabellenreihe und für herstellerbezogene Pfade belegt, **nicht** über alle Schichten." |
+| Unbekannte Grenzwerte / fehlende Eingaben     | Befund E-2 (`feasible: true` ohne Grenze) und E-1 (stilles Verwerfen in `constraints.ts`) sind **offen**, beide als `it.fails`.                                                                                                                  | „Nicht bewertbar" ist im Feasibility-Gate heute **nicht** von „in Ordnung" unterscheidbar.                           |
+| AC-Spannungsfall                              | Befund K-2 (Anzeige prüft 3 %, Dimensionierung rechnet AC 2 %) und K-2b (Engine prüft AC-**gar nicht**) sind **offen**.                                                                                                                          | AC-ΔU ist weder geprüft noch konsistent. Nicht als „abgedeckt" führen.                                               |
+| Batteriebank-Kurzschlussstrom                 | Befund K-3 ist **offen**: 6.826,7 A vs. 6.400,0 A je nach Knotenreihenfolge, berührt `AMP-004` (`CRITICAL_SAFETY`).                                                                                                                              | Reihenfolgeabhängigkeit nennen; `AMP-004` ist bis zur Reparatur nicht belastbar.                                     |
+| Designbudget vs. elektrische Prüfung          | Befund K-4 ist **offen**: `cableCanCarry: true` bei 48,3 A, während die Engine mit 34,5 A rechnet und `VIOLATION` meldet.                                                                                                                        | Zwei Aussagen zur selben Leitung; die UI zeigt beide.                                                                |
+| Calculation Trace                             | Befund T-2 ist **offen**: `VDR-001` trägt `details: { rootCauseId }` und sonst nichts. Vollständigkeit ist **nicht** erreicht.                                                                                                                   | Trace ist ein **Ziel**, kein Ist-Zustand.                                                                            |
+| Offene Modellgrenzen der 230-V-Prüfung        | Einleiterig, keine Netzform, kein Rückspeiseschutz (`NET-003`, `docs/AC-230V-MODELLGRENZEN.md`). Unverändert.                                                                                                                                    | Grenzen bleiben; #605 belegt nur, dass sie **benannt** sind, nicht dass sie geschlossen wurden.                      |
 
 **Nicht zu übernehmen aus #605:** die Aussage, es gäbe „sieben CI-Gates". Es
 sind vier implementiert, drei spezifiziert (Kapitel 12.5.4).

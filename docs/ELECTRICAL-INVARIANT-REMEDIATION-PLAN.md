@@ -10,16 +10,17 @@ Stand: 2026-11-05 · **abgeschlossen 2026-11-06** · Erzeugt aus dem Audit von P
 > `test/invariants/electrical-invariants.test.ts` ist ein `it`** — die Suite
 > hat keinen `expected fail` mehr.
 >
-> | Auftrag | Befund                                        | Status                                             |
-> | ------- | --------------------------------------------- | -------------------------------------------------- |
-> | A-1     | K-3 Bank-I_k reihenfolgeabhängig              | **behoben** (`bankVoltage` ⇒ `null`)               |
-> | A-2     | K-4 Designbudget ignoriert Verlegebedingungen | **behoben** (`cableSizingFor`)                     |
-> | A-3     | E-2 „nicht bewertbar" passiert das Gate       | **behoben** (`assessable`)                         |
-> | A-4     | K-2 / K-2b AC-Spannungsfall                   | **behoben** (eine Grenzquelle, VDR prüft AC)       |
-> | A-5     | E-1 ungültige Grenzwerte verschwinden still   | **behoben** (`rejectedInputs`)                     |
-> | A-6     | T-2 kein Rechenweg im ΔU-Befund               | **behoben** (`voltageDropTrace`)                   |
-> | A-7     | D-2 fehlendes ε an der Normstufenkante        | **behoben** (absolutes ε 1e-9 A)                   |
-> | A-8     | G2/G4/G6 als Gates                            | **behoben** (alle drei gebaut, s. Strategie §12.8) |
+> | Auftrag | Befund                                          | Status                                             |
+> | ------- | ----------------------------------------------- | -------------------------------------------------- |
+> | A-1     | K-3 Bank-I_k reihenfolgeabhängig                | **behoben** (`bankVoltage` ⇒ `null`)               |
+> | A-2     | K-4 Designbudget ignoriert Verlegebedingungen   | **behoben** (`cableSizingFor`)                     |
+> | A-3     | E-2 „nicht bewertbar" passiert das Gate         | **behoben** (`assessable`)                         |
+> | A-4     | K-2 / K-2b AC-Spannungsfall                     | **behoben** (eine Grenzquelle, VDR prüft AC)       |
+> | A-5     | E-1 ungültige Grenzwerte verschwinden still     | **behoben** (`rejectedInputs`)                     |
+> | A-6     | T-2 kein Rechenweg im ΔU-Befund                 | **behoben** (`voltageDropTrace`)                   |
+> | A-7     | D-2 fehlendes ε an der Normstufenkante          | **behoben** (absolutes ε 1e-9 A)                   |
+> | A-8     | G2/G4/G6 als Gates                              | **behoben** (alle drei gebaut, s. Strategie §12.8) |
+> | A-9     | T-1 Hersteller-I_z über der Sicherungszuordnung | **behoben** (Klemmen auf `FUSE_MAP`, §4.9)         |
 >
 > Die Wirkung jeder Änderung, die dabei entstandenen und behobenen Fehler und
 > die Frage, warum die Golden-Master-Pläne trotzdem kein `COMPLIANT` erreichen,

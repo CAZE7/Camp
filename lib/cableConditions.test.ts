@@ -6,6 +6,7 @@ import {
   CABLE_INSTALLATION_CONDITIONS,
   cableIzFor,
   cableSizingFor,
+  isFuseFeasibleForConditions,
   isReferenceConditions,
   maxFuseForConditions,
   resolveCableConditions,
@@ -71,14 +72,45 @@ describe('Verlegebedingungen verändern Querschnitt, I_z und Sicherung', () => {
     expect(cableIzFor(10, conditions).correctedIz).toBeCloseTo(designAmpacity(10), 6);
   });
 
-  it('Herstellerangabe übersteuert die Tabelle und ist als solche markiert', () => {
+  it('Herstellerangabe übersteuert die I_z — die Sicherungszuordnung aber nicht', () => {
+    // BEFUND T-1 (Behebung 2026-11-06): Die Herstellerangabe ersetzt die I_z
+    // für die EIGNUNGSFRAGE („trägt die Leitung 150 A?"). Sie hebt aber die
+    // Norm-Sicherungszuordnung nicht auf: 2,5 mm² führt laut Tabelle 16 A,
+    // und eine 95-A-Angabe macht daraus keine 80-A-Sicherung.
+    // Vorher lieferte diese Zeile 80 A — die Schutzkoordination widersprach
+    // damit der Referenzseite (FUSE_MAP[2.5] = 16).
     const conditions = resolveCableConditions({
       installationCondition: 'datasheet',
       manufacturerIzA: 95,
     });
     expect(conditions.assessment).toBe('manufacturer-data');
     expect(cableIzFor(2.5, conditions).correctedIz).toBe(95);
-    expect(maxFuseForConditions(2.5, conditions)).toBe(80);
+    expect(maxFuseForConditions(2.5, conditions)).toBe(16);
+  });
+
+  it('BEFUND T-1: der Trace nennt keinen Planerfaktor, den es nicht gibt', () => {
+    // `correctedIz` ist hier die unveränderte Herstellerangabe. Ein
+    // ausgewiesener `plannerFactor: 0,7` behauptete eine Abwertung, die
+    // nicht stattgefunden hat — wer den Trace nachrechnete, kam auf eine
+    // andere Zahl als die ausgewiesene.
+    const conditions = resolveCableConditions({ manufacturerIzA: 172 });
+    const trace = cableIzFor(70, conditions);
+    expect(trace.correctedIz).toBe(172);
+    expect(trace.plannerFactor).toBe(1);
+    // Die Aneinanderreihung im Trace ergibt jetzt das ausgewiesene Ergebnis.
+    expect(trace.baseIz * trace.plannerFactor).toBe(trace.correctedIz);
+  });
+
+  it('BEFUND T-1: auch eine hohe Hersteller-I_z hebt FUSE_MAP nicht auf', () => {
+    // Der Fall aus dem Befund: 172 A Herstellerangabe auf 70 mm² ergaben
+    // 160 A Sicherung, während der Referenzpfad für dieselbe Leitung 100 A
+    // vorsieht.
+    const conditions = resolveCableConditions({ manufacturerIzA: 172 });
+    expect(maxFuseForConditions(70, conditions)).toBe(100);
+    expect(maxFuseForConditions(70, resolveCableConditions())).toBe(100);
+    // Und die Auswahl bleibt konsistent mit der Grenze.
+    expect(selectFuseForConditions(150, 70, conditions)).toBe(100);
+    expect(isFuseFeasibleForConditions(150, 70, conditions)).toBe(false);
   });
 
   it('eigene Werte überschreiben das Preset, nie umgekehrt', () => {
