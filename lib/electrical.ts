@@ -333,7 +333,22 @@ export function thermalCrossSectionFor(currentA: number): AmpacityModelBoundary 
     throw new RangeError(`thermalCrossSectionFor: Strom muss endlich und ≥ 0 sein (erhielt ${currentA})`);
   }
   const requiredAmpacity = currentA * (1 / DERATE_FACTOR);
-  const size = VDE_SIZES.find((s) => (VDE_AMPACITY[s] ?? 0) >= requiredAmpacity);
+  // BEFUND D-2 (Behebung 2026-11-06): Der Stufenvergleich verträgt ein
+  // Gleitkomma-ε. `16,1 · (1/0,7)` ergibt 23,000000000000004 und übersprang
+  // damit die 23-A-Stufe — obwohl 16,1 A mathematisch exakt 0,7 · 23 A ist.
+  // Folge: eine Normstufe mehr Kupfer, abhängig davon, WIE die Zahl entstanden
+  // ist (Literal gegen Produkt), nicht davon, was sie ist.
+  //
+  // Das ε ist relativ und liegt bei 1e-9: weit unter jeder fachlichen
+  // Auflösung (Ströme werden in der Anzeige auf 0,1 A gerundet), aber weit
+  // über dem Gleitkommafehler dieser Rechnung (~4e-16). Es verschiebt keine
+  // echte Grenze — die nächste Stufe liegt 39 % höher (23 → 32 A).
+  // Das ε ist ABSOLUT (1e-9 A), nicht relativ: ein relatives ε wüchse mit dem
+  // Strom und verschöbe die Modellgrenze selbst (120,4 A → 120,4000001 A wäre
+  // sonst „innerhalb"). 1e-9 A liegt weit über dem Gleitkommafehler (~1e-14 A)
+  // und weit unter jeder fachlichen Auflösung.
+  const AMPACITY_TOLERANCE_A = 1e-9;
+  const size = VDE_SIZES.find((s) => (VDE_AMPACITY[s] ?? 0) + AMPACITY_TOLERANCE_A >= requiredAmpacity);
   if (size === undefined) {
     return {
       status: 'outside-model',
@@ -358,6 +373,38 @@ export const lookupThermalCrossSection = (I: number): number => {
   return boundary.status === 'within-model' ? boundary.crossSectionMm2 : MAX_MODELED_CROSS_SECTION_MM2;
 };
 
+/** Netzspannung der AC-Domäne — dieselbe Zahl wie `AC_SYSTEM_VOLTAGE`. */
+const AC_NOMINAL_VOLTAGE = 230;
+/** Nennspannung der DC-Domäne, auf die sich die 3 % beziehen (0,36 V). */
+const DC_NOMINAL_VOLTAGE = 12;
+
+/**
+ * Absolutes Spannungsfall-Budget in Volt je Domäne — die eine Zahl, mit der
+ * dimensioniert wird.
+ *
+ * DC: 3 % von 12 V = 0,36 V. AC: 2 % von 230 V = 4,6 V. Die Bezugsspannung
+ * gehört zur Domäne: 3 % von 230 V wären 6,9 V und damit dreimal so viel
+ * Kupferspielraum wie vorgesehen.
+ */
+export function voltageDropBudgetVolts(domain: 'DC_12V' | 'AC_230V'): number {
+  const nominal = domain === 'AC_230V' ? AC_NOMINAL_VOLTAGE : DC_NOMINAL_VOLTAGE;
+  return (nominal * voltageDropLimitPercent(domain)) / 100;
+}
+
+/**
+ * Zulässiger Spannungsfall in % je Domäne — EINE Quelle für Dimensionierung
+ * (`calculateCrossSection`) und Anzeige (`hasVoltageDropError`).
+ *
+ * DC 3 %, AC 2 %. Beide Werte sind dokumentierte Planungsannahmen des Modells,
+ * KEINE Normklauseln (die 0298-4 enthält Belastbarkeiten, keine ΔU-Grenzen,
+ * AUDIT ELE-010). Die 2 % für AC standen vorher als `4.6` V direkt in der
+ * Dimensionierung und fehlten in der Anzeige — eine Leitung konnte damit nach
+ * Dimensionierung zu dünn und in der Anzeige grün sein (BEFUND K-2).
+ */
+export function voltageDropLimitPercent(domain: 'DC_12V' | 'AC_230V'): number {
+  return domain === 'AC_230V' ? 2 : VOLTAGE_DROP_PCT_PLAN_LIMIT;
+}
+
 /**
  * EMPFEHLUNG: der kleinste Normquerschnitt, der Spannungsfall-Budget und
  * Thermik für Strom `I` über `length` erfüllt — bzw. der gespeicherte
@@ -380,8 +427,12 @@ export const calculateCrossSection = (
   //   Gleichstromkreise (KEINE Zitatgröße aus DIN VDE 0298-4; die 0298-4 enthält
   //   Belastbarkeiten, keine Spannungsfall-Grenzwerte. Grenzwert-Herkunft ist
   //   Praxis-/Faustregel, z. B. 0100-520-umfeld 3 % Licht / 5 % Sonstiges).
-  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% konservativer Planungswert)
-  const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
+  // AC 230V: 2 % von 230 V = 4,6 V (konservativer Planungswert).
+  // BEFUND K-2 (2026-11-06): Die Grenze war ein Literal an dieser Stelle, und
+  // `hasVoltageDropError` prüfte dieselbe Leitung gegen 3 %. Damit hat die
+  // Anzeige breitere Leitungen akzeptiert, als die Dimensionierung verlangt.
+  // Jetzt gibt es EINE Quelle: `voltageDropLimitPercent(domain)`.
+  const maxAllowedVoltageDrop = voltageDropBudgetVolts(electricalDomain);
   const dropArea = (I * (length * 2)) / (COPPER_CONDUCTIVITY_MS_PER_MM2 * maxAllowedVoltageDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit.

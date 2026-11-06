@@ -793,7 +793,13 @@ export function useLiveValidation(
       // den Nennbetrieb eines Bauteils: Ein 30-A-Laderegler, der 30 A liefert,
       // tut genau das, wofür er gekauft wurde — eine Warnung darüber wäre
       // Lärm und würde echte Befunde zudecken.
-      if (verdict.feasible) continue;
+      // BEFUND E-2: `feasible` allein genügt nicht mehr als Freigabe. Bei
+      // unbekannter Grenze ist `feasible` jetzt `false` — wer nur darauf
+      // schaut, würde aber „nicht bewertet" als „Bauteil überlastet" melden.
+      // Das ist die falsche Richtung. Hier ist die Grenze immer bekannt
+      // (`component: limit`), also gilt: nicht bewertbar ⇒ kein Befund;
+      // bewertbar und überschritten ⇒ Befund.
+      if (!verdict.assessable || verdict.feasible) continue;
       warnings.push({
         id: `component-limit-${node.id}`,
         category: 'safety',

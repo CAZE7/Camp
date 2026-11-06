@@ -177,10 +177,36 @@ export function bankEquivalentRiMilliOhm(batteries: readonly Node[]): number | n
   return conductance > 0 ? 1 / conductance : null;
 }
 
-/** Systemspannung der Bank fürs Ik-Modell (erster Block oder Systemdefault). */
-function bankVoltage(batteries: readonly Node[], systemVoltage: number = DEFAULT_SYSTEM_VOLTAGE): number {
+/**
+ * Systemspannung der Bank fürs Ik-Modell — `null`, wenn die Haus-Bank keine
+ * EINHEITLICHE Nennspannung hat (BEFUND K-3, Reparatur 2026-11-06).
+ *
+ * Vorher nahm diese Funktion `house[0]`. Damit hing der Bank-Kurzschlussstrom
+ * von der Knotenreihenfolge ab: eine Bank aus 12,8-V- und 12,0-V-Blöcken
+ * lieferte 6 826,67 A oder 6 400,00 A, je nachdem, welcher Block zuerst stand —
+ * und `AMP-004` (Abschaltvermögen, `CRITICAL_SAFETY`) hängt daran. Ein Urteil,
+ * das sich durch Umsortieren der Bauteile ändert, ist kein Urteil.
+ *
+ * Warum `null` und kein Mittelwert: eine gemischtspannige Bank ist fachlich
+ * keine Parallelbank. Ein Mittelwert wäre eine erfundene Zahl; `null` heißt
+ * „nicht bewertbar", und genau das muss der Aufrufer melden.
+ *
+ * Die Toleranz (10 mV) fängt nur die Gleitkommarepräsentation derselben
+ * Nennspannung ab — sie ist keine fachliche Bandbreite. Fehlt `nominalVoltage`
+ * bei einzelnen Blöcken, greift der Systemdefault (12,8 V): ein nicht
+ * deklarierter Block ist nicht „gemischt", sondern undeklariert, und dafür
+ * bleibt das bisherige Verhalten erhalten (Golden-Master-neutral).
+ */
+function bankVoltage(
+  batteries: readonly Node[],
+  systemVoltage: number = DEFAULT_SYSTEM_VOLTAGE
+): number | null {
   const house = batteries.filter((b) => dataOf(b)?.role !== 'starter');
-  return house.length > 0 ? nominalVoltageOf(house[0]) : systemVoltage;
+  if (house.length === 0) return systemVoltage;
+  const voltages = house.map(nominalVoltageOf);
+  const reference = voltages[0]!;
+  const uniform = voltages.every((voltage) => Math.abs(voltage - reference) <= 0.01);
+  return uniform ? reference : null;
 }
 
 /**
@@ -193,7 +219,10 @@ export function bankShortCircuitCurrentA(
 ): number | null {
   const ri = bankEquivalentRiMilliOhm(batteries);
   if (ri === null) return null;
-  return bankVoltage(batteries, systemVoltage) / (ri / 1000);
+  const voltage = bankVoltage(batteries, systemVoltage);
+  // Gemischtspannige Bank: kein I_k. Nicht raten, nicht mitteln.
+  if (voltage === null) return null;
+  return voltage / (ri / 1000);
 }
 
 /** Leitungswiderstand (Ω) des Leitungspaars Batteriepol → Sicherung (Hin+Rück). */
@@ -222,7 +251,9 @@ export function shortCircuitAtFuseA(
       ? crossSectionMm2
       : 16;
   const rTotal = ri / 1000 + cableLoopResistanceOhm(length, cs);
-  return bankVoltage(batteries, systemVoltage) / rTotal;
+  const voltage = bankVoltage(batteries, systemVoltage);
+  if (voltage === null) return null;
+  return voltage / rTotal;
 }
 
 /**

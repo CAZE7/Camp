@@ -142,7 +142,20 @@ jobs:
       - name: Unit- und Komponententests (mit Coverage-Gate für lib/**)
         # Testlauf inkl. Coverage: unterschreitet der Engine-Kern (lib/**)
         # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
+        # INKLUSIVE test/reference/** und test/invariants/** — die laufen
+        # automatisch mit (vitest.config.ts schließt nur tests/e2e/** aus).
         run: npm run test:coverage
+
+      # G1/G2/G3/G5 laufen im Schritt oben mit. Die zwei Sicherheitsgates mit
+      # eigener Logik stehen hier als eigener, benannter Schritt, damit ein
+      # Fehlschlag im PR sofort zuzuordnen ist:
+      #   G6 — kein stilles UNVERIFIABLE → PASS (Plan × Profil, Offene-Befunde-
+      #        Untergrenze; ein verschwundener Befund bricht ab)
+      #   G4 — sechs Klassen kritischer Mutanten von Hand (Grenzvergleiche,
+      #        Sicherheitsklemmen, Fehlerfall→Erfolgsfall). Kein Stryker-Lauf:
+      #        Stryker ist nicht im Manifest und als PR-Gate zu teuer.
+      - name: Sicherheitsgates (G4 kritische Mutanten, G6 kein stilles PASS)
+        run: npm run test:gates
 
       - name: Perf-Gate Kanten-Routing (WP-11 / #400)
         # Harter Budget-Check: Median ≤ 16 ms Main-Thread pro Frame am
