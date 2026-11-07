@@ -56,9 +56,7 @@ test.describe('Responsives Layout', () => {
     expect(box!.width).toBeGreaterThanOrEqual(minimum);
   });
 
-  test('M3.5: Tablet erreicht Verlauf und Auto-Wire ohne die geführte Primäraktion zu verdrängen', async ({
-    page,
-  }) => {
+  test('M3.5: Tablet erreicht Verlauf und Auto-Wire direkt in der Leiste', async ({ page }) => {
     await openPlanner(page);
     const width = page.viewportSize()?.width ?? 0;
     test.skip(width !== 768, 'Gilt exakt für das Tablet-Projekt.');
@@ -66,10 +64,11 @@ test.describe('Responsives Layout', () => {
     for (const id of ['toolbar-undo', 'toolbar-redo', 'action-more']) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
-    // Im geführten Modus konkurriert Auto-Wire nicht mit dem nächsten Schritt.
-    // Das Telefonsymbol bleibt im DOM (unter 480 px sichtbar), ist auf dem
-    // Tablet aber ausgeblendet. Erreichbar bleibt die Aktion über das Menü.
-    await expect(page.getByTestId('action-autowire')).toBeHidden();
+    // Nutzer-Entscheidung 2026-11-06: Hier stand `toBeHidden()` — der Knopf war
+    // per `.cad-autowire-phone` ausgeblendet und nur über die Schrittleiste
+    // erreichbar. Genau das war der gemeldete Defekt. Die Leiste ist entfallen,
+    // der Knopf steht jetzt direkt in der Leiste; das Menü bleibt zweiter Weg.
+    await expect(page.getByTestId('action-autowire')).toBeVisible();
     await page.getByTestId('action-more').click();
     await expect(page.getByTestId('action-autowire-menu')).toBeVisible();
     await expectNoHorizontalOverflow(page);

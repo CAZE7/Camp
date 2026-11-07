@@ -102,19 +102,24 @@ CAMP
 - **Tests:** `components/planner/PlannerDashboard.test.tsx`, `components/planner/ExpertPanel.test.tsx`,
   `components/planner/hooks/useDashboardMetrics.test.ts`, `components/planner/ui/RoutingStatusBadge.test.tsx`.
 
-### 1.5 Geführter Planungsmodus (UX-Reset 2026-09)
+### 1.5 Geführter Planungsmodus (entfernt 2026-11-06)
 
-- **Purpose:** Beantwortet „Was soll ich als Nächstes tun?" — fünf Schritte
-  (`Anlage → Kern → Verbinden → Prüfen → Ergebnis`), je Schritt eine Primäraktion,
-  dazu EIN Planstatus. `guidedMode` (Default `true`, persistiert) schaltet zwischen
-  geführt und freiem Editor.
-- **Files:** `components/planner/utils/guidedSteps.ts` (reine, kumulative Ableitung —
-  keine elektrische Rechnung, Rule D), `components/planner/ui/GuidedPlanRail.tsx`,
-  `guidedMode`/`setGuidedMode` in `store/slices/uiSlice.ts`.
-- **Depends On:** `components/planner/hooks/useLiveValidation.ts` (Hinweise),
-  `store/slices/persistence.ts` (`partialize` + `migratePlannerPersisted`).
-- **Called By:** `components/planner/PlannerDashboard.tsx`; `planner-open-catalog`
-  wird von `components/PlannerInner.tsx` gehört (Katalog-Tab/Spalte + Fokus Suche).
+- **Status:** Die Schrittleiste (`Anlage → Kern → Verbinden → Prüfen → Ergebnis`)
+  ist auf Nutzerwunsch ersatzlos entfernt: „Der Automatisch-verbinden-Button ist
+  weg und ich brauche dieses Planen/Prüfen-Ding nicht." Ursache war
+  `.cad-autowire-phone { display:none }` — im geführten Modus war der Knopf auf
+  Desktop unsichtbar und die Leiste der einzige Zugang. Beide Änderungen gehören
+  zusammen: Leiste weg, Knopf in jeder Breite direkt in der Werkzeugleiste.
+- **Files:** `components/planner/utils/guidedSteps.ts` bleibt (reine, kumulative
+  Ableitung, keine elektrische Rechnung, Rule D) — `autoWireFeedbackFor` wird von
+  `usePlannerActions` gebraucht, `evaluateGuidedSteps` bleibt getestet.
+  `guidedMode`/`setGuidedMode` bleiben in `store/slices/uiSlice.ts`, steuern aber
+  keine Oberfläche mehr (Default `false`).
+- **Depends On:** `store/slices/persistence.ts` (`partialize` +
+  `migratePlannerPersisted`) liest und schreibt `guidedMode` weiter — deshalb
+  darf das Feld nicht entfernt werden (DO-NOT-TOUCH).
+- **Called By:** `components/planner/hooks/usePlannerActions.ts`
+  (`autoWireFeedbackFor`). Die Oberfläche ruft die Schritt-Ableitung nicht mehr auf.
 - **Detailgrad (RECHERCHE C1):** `detailLevel` (`overview`/`detail`, persistiert,
   Default `detail`) ist ein Schalter in den Ansichtsoptionen — bewusst **nicht**
   zoomgesteuert, denn `M8-1` hat zoom-automatische Knotenstufen entfernt. Die

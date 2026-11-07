@@ -3939,3 +3939,87 @@ gar kein Auswahlfeld gerendert, sondern eine Reset-Karte.
 
 **Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
 Routing-Garantien oder Golden Fixtures. `planFingerprintHash` unverändert.
+
+## UI-2026-11-06 — Auto-Verbinden wieder sichtbar, Schrittleiste entfernt
+
+**Nutzerwortlaut:** „Der automatisch verbinden Button ist weg und ich brauche
+dieses planen,prüfen etc. Button nicht." Rückfrage entschied: Schrittleiste
+**ganz entfernen** (nicht nur standardmäßig aus) und den Knopf ab ~520 px mit
+**vollem Namen** beschriften.
+
+### Ursache (belegt, nicht vermutet)
+
+Der Knopf war nicht entfernt, sondern per CSS unsichtbar:
+`.cad-autowire-phone { display: none }` in `app/globals.css`, mit
+`display: inline-flex` erst unter 480 px. Im geführten Modus (Default `true`,
+persistiert) hing der Knopf an dieser Klasse und war auf Desktop im DOM, aber
+nicht zu sehen. Die Schrittleiste war dort der **einzige** Zugang.
+
+Zweiter Teil des Befunds: Die Beschriftung lautete 520–1979 px
+„Vorschlag prüfen" — der Name „Automatisch verbinden" stand erst ab 1980 px.
+Der Knopf war also auch dort, wo er sichtbar war, nicht unter seinem Namen zu
+finden.
+
+**Beide Änderungen gehören zusammen:** Nur die Leiste zu entfernen hätte die
+Funktion auf Desktop ganz gekostet.
+
+### Umsetzung
+
+- `PlannerToolbar.tsx`: `guidedMode`-Prop und der geführte Zweig entfallen; eine
+  Leiste, `AutoWireButton` immer gerendert. Beschriftung: „Auto" (<520 px),
+  „Automatisch verbinden" (ab 520 px), „Automatisch verbinden · Vorschau"
+  (ab 1980 px).
+- `GuidedPlanRail.tsx` + Test gelöscht, ebenso `GuidedMode.integration.test.tsx`.
+  Die `.cad-rail`-Regeln in `globals.css` hatten danach kein Element mehr und
+  sind mit entfernt (2,5 KB).
+- `usePlannerActions.ts`: Menügruppe „Planungshilfe" und `action-guided-toggle`
+  entfernt — sie schalteten eine nicht mehr existente Leiste.
+- `guidedMode` bleibt im Store (Default jetzt `false`), steuert aber keine
+  Oberfläche mehr. **Grund:** `store/slices/persistence.ts` (DO-NOT-TOUCH) liest
+  und schreibt es beim Migrieren gespeicherter Pläne; Entfernen bräche die
+  Persistenz. `guidedSteps.ts` bleibt, weil `autoWireFeedbackFor` gebraucht wird.
+
+### Zwei Folgefehler des Umbaus, selbst gefunden und behoben
+
+1. **Eingefrorene Chip-Reihe überdeckte die Moduszeile.** `guidedMode` hatte
+   `CanvasDisplayOptions` dauerhaft kompakt gehalten und damit einen
+   Geometriefehler kaschiert. Nach dem Entfernen maß ich im Browser: Moduszeile
+   endet bei `Breite/2 + 277`, Chip-Reihe beginnt bei `Breite − 713` — Abstand
+   `Breite/2 − 990`, also **−270 px bei 1440**, **−30 px bei 1920**, erst
+   **+34 px bei 2048**. Die Kompakt-Schwelle steht jetzt auf 2048 px und folgt
+   der gemessenen Geometrie statt einem Modus-Flag.
+2. **Sichtbarer Text und zugänglicher Name liefen auseinander.** Nach der
+   Umbenennung sagte Sprachsteuerung „Automatisch verbinden", der `aria-label`
+   blieb „Auto-verbinden: Vorschlag prüfen" (WCAG 2.5.3, „Label in Name").
+   axe findet das **nicht**: `label-content-name-mismatch` ist als experimentell
+   standardmäßig abgeschaltet (`enabled: false`) — ein grüner axe-Lauf war hier
+   kein Nachweis. Der Name enthält jetzt alle drei Beschriftungsstufen.
+
+### Tests und Gegenproben
+
+- `tests/e2e/autowire-reachable.spec.ts` — 8 Fälle (4 Viewports × 2), darunter
+  der Nutzerzustand **gespeichertes `guidedMode: true`**. Geprüft wird
+  `toBeVisible` im echten Browser, nicht `toBeInTheDocument`: der Defekt stand
+  in einer Medienabfrage, jsdom rechnet keine Stylesheets und war grün, während
+  der Nutzer keinen Knopf sah.
+  **Gegenprobe:** Klasse + CSS-Regel des Originaldefekts wieder eingebaut →
+  Desktop fällt in beiden Fällen durch, mobile-375 bleibt grün. Genau das
+  gemeldete Bild. Nach Zurückholen: 8/8.
+- `PlannerToolbar.test.tsx` — jede sichtbare Beschriftung muss im zugänglichen
+  Namen enthalten sein. **Gegenprobe:** alter `aria-label` → 2 failed.
+- Abwesenheit der Leiste wird über ihre ehemalige Marke
+  (`<nav aria-label="Planungsablauf">`) geprüft, nicht über ein gelöschtes
+  `data-testid` — der Selektorvertrag verlangt zu Recht, dass jede in
+  `tests/e2e` benutzte Kennung gerendert wird. **Leerlaufprobe:** Marke testweise
+  ins DOM gesetzt → der Locator greift, die Assertion ist nicht nichtssagend.
+- Die Trassen-Assertion des gelöschten Compact-Tests wurde in den verbleibenden
+  Popover-Test übernommen; der Pfad lebt über die Breite weiter.
+
+**Gates:** `npm run check` EXIT 0 (313 Dateien, 4121 Tests). Visuelles Gate
+**76/76** — auch nach dem Entfernen der toten CSS-Regeln, damit ist der Abbau
+pixelneutral. Build 42 Seiten. Responsive/Handy-Geometrie 67 passed.
+
+**Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
+Routing-Garantien oder Golden Fixtures. Keine neuen Skips, keine abgeschwächten
+Assertions. Nur Chromium geprüft; die 2048-px-Schwelle ist an den gemessenen
+Breiten 1440/1920/2048 nachgewiesen, nicht auf Realgeräten.

@@ -188,19 +188,6 @@ for (const viewport of [
         expect(phoneBox.y).toBeGreaterThanOrEqual(toolbarBox.y - 1);
         expect(phoneBox.y + phoneBox.height).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height + 1);
         expect(toolbarBox.height).toBeLessThanOrEqual(56);
-        const rail = page.getByTestId('guided-rail');
-        if (await rail.isVisible()) {
-          const railBox = await boxOf(rail);
-          expect(railBox.y - toolbarBox.y).toBeLessThanOrEqual(toolbarBox.height + 4);
-          const primary = page.getByTestId('guided-primary-action');
-          if (await primary.isVisible()) {
-            const primaryBg = await primary.evaluate((element) => getComputedStyle(element).backgroundColor);
-            const menuBg = await phone.evaluate((element) => getComputedStyle(element).backgroundColor);
-            expect(primaryBg).not.toBe('rgba(0, 0, 0, 0)');
-            expect(menuBg).toBe('rgba(0, 0, 0, 0)');
-            expect(primaryBg).not.toBe(menuBg);
-          }
-        }
       } else {
         for (const id of ['ansicht', 'hilfe']) {
           const item = page.getByTestId(`menubar-${id}`);
@@ -524,8 +511,8 @@ for (const viewport of [
       expect(labelLines).toBeLessThanOrEqual(2.2);
       await page.keyboard.press('Escape');
 
-      await openMenubar(page, 'ansicht');
-      await page.getByRole('menuitem', { name: /Expertenmodus/ }).click();
+      // 2026-11-06: Der Menüeintrag „Expertenmodus" ist mit der Schrittleiste
+      // entfallen. Auto-Wire steht jetzt ohne Umschalten direkt in der Leiste.
       const autoBtn = page.getByTestId('action-autowire');
       await expect(autoBtn).toBeVisible();
       expect(boxesOverlap(await boxOf(autoBtn), await boxOf(page.getByTestId('action-more')))).toBe(false);
@@ -693,7 +680,6 @@ async function expectNoticeClearsControls(page: Page): Promise<void> {
     'planner-mode-caption',
     'canvas-display-options',
     'planner-toolbar',
-    'guided-rail',
     'phone-menu',
   ]) {
     const control = page.getByTestId(id);

@@ -217,20 +217,27 @@ describe('usePlannerStore', () => {
     });
   });
 
-  describe('Guided Mode', () => {
-    it('ist standardmäßig aktiv und lässt sich in den Expertenmodus schalten', () => {
+  describe('guidedMode (nur noch Persistenz-Feld)', () => {
+    /**
+     * Nutzer-Entscheidung 2026-11-06: Die Schrittleiste ist entfallen. Das Feld
+     * bleibt, weil `store/slices/persistence.ts` (DO-NOT-TOUCH) es beim
+     * Migrieren gespeicherter Pläne liest und schreibt. Es steuert keine
+     * Oberfläche mehr — der Default ist `false`, damit Altbestand ohne Angabe
+     * nicht wie ein aktiver Modus aussieht.
+     */
+    it('ist standardmäßig aus und bleibt für gespeicherte Pläne setzbar', () => {
       const { result } = renderHook(() => usePlannerStore());
-      expect(result.current.guidedMode).toBe(true);
-
-      act(() => {
-        result.current.setGuidedMode(false);
-      });
       expect(result.current.guidedMode).toBe(false);
 
       act(() => {
         result.current.setGuidedMode(true);
       });
       expect(result.current.guidedMode).toBe(true);
+
+      act(() => {
+        result.current.setGuidedMode(false);
+      });
+      expect(result.current.guidedMode).toBe(false);
     });
   });
 

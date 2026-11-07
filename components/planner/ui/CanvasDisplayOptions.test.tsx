@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CanvasDisplayOptions } from './CanvasDisplayOptions';
-import { usePlannerStore } from '../../../store/usePlannerStore';
 
 const props = () => ({
   activeDomains: new Set(['DC_12V', 'AC_230V', 'Solar'] as const),
@@ -21,8 +20,7 @@ afterEach(() => {
 
 describe('CanvasDisplayOptions', () => {
   it('keeps all display switches directly reachable on a wide canvas', () => {
-    // Expertenmodus: Auf breitem Canvas bleibt die Chip-Reihe direkt sichtbar.
-    usePlannerStore.setState({ guidedMode: false });
+    // Auf breitem Canvas bleibt die Chip-Reihe direkt sichtbar.
     const handlers = props();
     render(<CanvasDisplayOptions {...handlers} />);
 
@@ -38,7 +36,7 @@ describe('CanvasDisplayOptions', () => {
     // Methoden-Referenz; spyOn ersetzt dieselbe Methode nachvollziehbar und
     // stellt sie am Ende selbst zurück.
     const matchMediaStub = (query: string) => ({
-      matches: query === '(max-width: 1279px)',
+      matches: query === '(max-width: 2047.98px)',
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -57,6 +55,15 @@ describe('CanvasDisplayOptions', () => {
 
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    // Die Schalter hinter dem Auslöser müssen wirklich verdrahtet sein. Diese
+    // Trassen-Assertion stand bis 2026-11-06 in einem Test, der den compact-
+    // Pfad über `guidedMode` erzwang. Das Flag steuert keine Oberfläche mehr;
+    // der Pfad selbst lebt über die Breite weiter und behält seine Prüfung.
+    fireEvent.click(screen.getByRole('button', { name: 'Trassen' }));
+    expect(handlers.onToggleTrunkMode).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('button', { name: '12V' }));
     expect(handlers.onToggleDomain).toHaveBeenCalledWith('DC_12V');
 
@@ -81,26 +88,6 @@ describe('CanvasDisplayOptions', () => {
     fireEvent.click(screen.getByTestId('detail-level-overview'));
     expect(handlers.onSelectDetailLevel).toHaveBeenCalledWith('overview');
   });
-
-  /**
-   * UX-Reset 2026-09: Im geführten Modus sind Domänen/Trassen/Hauptstromkreis
-   * Expertenwerkzeuge — sie liegen hinter dem „Ansicht"-Auslöser, auch auf
-   * einem breiten Canvas.
-   */
-  it('legt die technischen Filter im geführten Modus hinter den Ansicht-Auslöser', () => {
-    usePlannerStore.setState({ guidedMode: true });
-    const handlers = props();
-    render(<CanvasDisplayOptions {...handlers} />);
-
-    const trigger = screen.getByTestId('canvas-display-options');
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
-
-    fireEvent.click(trigger);
-    expect(screen.getByRole('button', { name: '12V' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Trassen' }));
-    expect(handlers.onToggleTrunkMode).toHaveBeenCalledTimes(1);
-  });
 });
 
 /**
@@ -112,7 +99,7 @@ describe('CanvasDisplayOptions · Popover schließt nach Auswahl (B-22)', () => 
     const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation(
       (query: string) =>
         ({
-          matches: query === '(max-width: 1279px)',
+          matches: query === '(max-width: 2047.98px)',
           media: query,
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),

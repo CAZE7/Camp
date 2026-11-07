@@ -73,9 +73,9 @@ eine 1 px dickere Linie, keinen Farbwechsel.
 | Ghost              | 44 px | 4 px   | kein Rahmen, Text `--text-med`, Hover `--surface-hover` |
 | Aktiv (Umschalter) | 44 px | 4 px   | 1 px `--oxide`, 12 % Akzent-Tönung                      |
 
-- Höchstens **ein** Primärknopf pro Ansicht. In der geführten Planer-Ansicht
-  ist das die Schrittaktion (`GuidedPlanRail`), im Expertenmodus „Vorschlag
-  prüfen“ (`PlannerToolbar`) — beide schließen sich gegenseitig aus.
+- Höchstens **ein** Primärknopf pro Ansicht. Im Planer ist das „Automatisch
+  verbinden“ (`PlannerToolbar`). Bis 2026-11-06 war es in der geführten Ansicht
+  die Schrittaktion der Schrittleiste; die Leiste ist entfallen.
 - Hinweise und Prüfstatus sind **keine** Primärknöpfe. „12 Hinweise“ ist ein
   Ghost-Knopf: Zahl in `--text-high`, Symbol in der Statusfarbe.
 - Schließen in Dialogen ist sekundär, nie schwarz.

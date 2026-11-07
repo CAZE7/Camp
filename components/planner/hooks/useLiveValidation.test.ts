@@ -878,7 +878,7 @@ describe('Autark-Vorlage — großer Standardplan', () => {
 /**
  * P0 / V2-BMS-002: Ein kritischer BMS-Konflikt aus dem AutoWire-Report muss
  * nach dem Anwenden AUCH im Live-Report als kritische Warnung erscheinen.
- * Erst damit greift das Freigabe-Gate (guidedSteps/GuidedPlanRail) und der
+ * Erst damit greift das Freigabe-Gate (guidedSteps) und der
  * Plan kann nicht als „geeignet" freigegeben werden.
  */
 describe('BMS-Designbudget im Live-Report (P0)', () => {

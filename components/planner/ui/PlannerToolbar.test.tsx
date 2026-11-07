@@ -25,7 +25,6 @@ const baseProps: PlannerToolbarProps = {
   viewMode: 'electric',
   onSelectViewMode: vi.fn(),
   focusMode: false,
-  guidedMode: true,
   onToggleFocusMode: vi.fn(),
   overflow: [],
   openMenu: null,
@@ -89,15 +88,17 @@ describe('Vorlagenmenü der Werkzeugleiste', () => {
 /**
  * Nutzer-Rückmeldung 2026-10-26: „Die obere Leiste ist unübersichtlich — es
  * gibt Knöpfe, die doppelt sind, wie Optimieren und dieser andere
- * Automatik-Knopf.“ Im Expertenmodus standen drei Aktionen nebeneinander, die
- * den Plan von selbst verändern („Vorschlag prüfen“, das Ordnen-Symbol ab
- * 1024 px, „Kabel optimieren“ im Statusfeld). Diese Suite hält fest, dass die
- * Leiste genau EINE Automatikaktion anbietet und die nachgelagerten Schritte
- * nur noch im Menü liegen.
+ * Automatik-Knopf.“ Es standen drei Aktionen nebeneinander, die den Plan von
+ * selbst verändern. Diese Suite hält fest, dass die Leiste genau EINE
+ * Automatikaktion anbietet und die nachgelagerten Schritte nur im Menü liegen.
+ *
+ * Ergänzung 2026-11-06: Die Schrittleiste ist entfallen. Der Automatik-Knopf
+ * steht damit in JEDER Breite direkt in der Leiste und trägt seinen Namen
+ * („Automatisch verbinden") statt nur „Vorschlag prüfen".
  */
 describe('Werkzeugleiste — genau eine Automatikaktion', () => {
-  it('zeigt im Expertenmodus nur „Vorschlag prüfen“ als Automatikaktion', () => {
-    renderToolbar({ guidedMode: false });
+  it('zeigt genau eine Automatikaktion, sprechend beschriftet', () => {
+    renderToolbar();
 
     const toolbar = screen.getByTestId('planner-toolbar');
     expect(within(toolbar).getByTestId('action-autowire')).toBeInTheDocument();
@@ -107,6 +108,43 @@ describe('Werkzeugleiste — genau eine Automatikaktion', () => {
     ).not.toBeInTheDocument();
     expect(within(toolbar).queryByRole('button', { name: 'Kabel optimieren' })).not.toBeInTheDocument();
     // Die Primäraktion bleibt sprechend beschriftet (kein nacktes Symbol).
-    expect(within(toolbar).getByTestId('action-autowire')).toHaveTextContent('Vorschlag prüfen');
+    expect(within(toolbar).getByTestId('action-autowire')).toHaveTextContent('Automatisch verbinden');
+  });
+
+  /**
+   * WCAG 2.5.3 („Label in Name"): Der zugängliche Name muss den sichtbaren
+   * Text enthalten — sonst sagt ein Sprachsteuerungs-Nutzer „Automatisch
+   * verbinden" und der Knopf reagiert nicht.
+   *
+   * Beim Umbenennen 2026-11-06 lief genau das auseinander: sichtbar wurde
+   * „Automatisch verbinden", der `aria-label` blieb „Auto-verbinden: Vorschlag
+   * prüfen". axe findet das nicht, weil die Regel `label-content-name-mismatch`
+   * als experimentell standardmäßig abgeschaltet ist. Deshalb hier von Hand.
+   *
+   * Im jsdom ist keine Medienabfrage aktiv, also stehen alle Beschriftungs-
+   * Stufen im DOM — geprüft wird jede einzelne gegen den Namen.
+   */
+  it('hält jede sichtbare Beschriftung im zugänglichen Namen (WCAG 2.5.3)', () => {
+    renderToolbar();
+
+    const button = screen.getByTestId('action-autowire');
+    const name = button.getAttribute('aria-label') ?? '';
+    const labels = Array.from(button.querySelectorAll('span')).map((span) => span.textContent ?? '');
+
+    expect(name).not.toBe('');
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      expect(label).not.toBe('');
+      expect(name).toContain(label);
+    }
+  });
+
+  it('nennt auch im Wasserplan die sichtbare Aktion und den Grund der Sperre', () => {
+    renderToolbar({ viewMode: 'water' });
+
+    const button = screen.getByTestId('action-autowire');
+    const name = button.getAttribute('aria-label') ?? '';
+    expect(name).toContain('Automatisch verbinden');
+    expect(name).toContain('nur im Elektrikplan verfügbar');
   });
 });
