@@ -361,7 +361,12 @@ export function cableIzFor(crossSectionMm2: number, conditions: ResolvedCableCon
     return {
       baseIz: base,
       ...fakeFactors,
-      plannerFactor: DERATE_FACTOR,
+      // BEFUND T-1 (Behebung 2026-11-06): Hier stand `DERATE_FACTOR` (0,7).
+      // `correctedIz` ist aber die UNVERÄNDERTE Herstellerangabe — es wurde
+      // nichts abgewertet. Wer den Trace liest, rechnete 0,7 · baseIz nach und
+      // bekam eine andere Zahl als die ausgewiesene: der Wert stimmte, die
+      // Erklärung war falsch. 1 heißt „kein Planerfaktor angewendet".
+      plannerFactor: 1,
       correctedIz: iz,
       source: 'physics-correction',
       confidence: 'computed',
@@ -423,12 +428,32 @@ export function thermalCrossSectionForConditions(
   };
 }
 
-/** Größte Norm-Sicherung ≤ I_z des Querschnitts unter den Bedingungen. */
+/**
+ * Größte zulässige Norm-Sicherung für einen Querschnitt unter den Bedingungen.
+ *
+ * **Die Grenze ist immer I_z, nie die Herstellerangabe.**
+ *
+ * BEFUND T-1 (Behebung 2026-11-06): Hier stand ohne diese Regel
+ * `rating ≤ iz`. Mit einer Hersteller-I_z von 172 A auf 70 mm² ergab das
+ * **160 A** — obwohl dieselbe Leitung auf dem Referenzpfad nur 100 A trägt
+ * (`FUSE_MAP[70] = 100`). Das ist ein Widerspruch in der Schutzkoordination,
+ * nicht nur im Trace: 160 A schützen ein Kabel, das die Tabelle nur bis
+ * 0,7 · 172 = 120,4 A führt, nicht mehr.
+ *
+ * Eine Herstellerangabe darf die I_z für die **Eignungsfrage** ersetzen (trägt
+ * die Leitung den Strom?) — sie hebt aber die Norm-Sicherungszuordnung nicht
+ * auf. Die Sicherung bleibt deshalb zusätzlich auf `FUSE_MAP` begrenzt.
+ *
+ * `1e-9` ist dasselbe absolute ε wie in `thermalCrossSectionFor`: gegen
+ * Gleitkommaränder, nicht gegen eine fachliche Bandbreite.
+ */
 export function maxFuseForConditions(crossSectionMm2: number, conditions: ResolvedCableConditions): number {
-  if (isReferenceConditions(conditions))
-    return FUSE_MAP[crossSectionMm2] ?? calculateMaxFuse(crossSectionMm2);
+  const tableLimit = FUSE_MAP[crossSectionMm2];
+  if (isReferenceConditions(conditions)) return tableLimit ?? calculateMaxFuse(crossSectionMm2);
   const iz = cableIzFor(crossSectionMm2, conditions).correctedIz;
-  return [...STANDARD_FUSE_SIZES].reverse().find((rating) => rating <= iz + 1e-9) ?? MIN_STANDARD_FUSE;
+  const byAmpacity =
+    [...STANDARD_FUSE_SIZES].reverse().find((rating) => rating <= iz + 1e-9) ?? MIN_STANDARD_FUSE;
+  return tableLimit === undefined ? byAmpacity : Math.min(byAmpacity, tableLimit);
 }
 
 /** Kleinste Norm-Sicherung ≥ Betriebsstrom, aber nie über I_z. */

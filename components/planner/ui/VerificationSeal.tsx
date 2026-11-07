@@ -19,6 +19,16 @@ import type { VerificationSummary } from '../utils/verificationWarnings';
  */
 interface VerificationSealProps {
   summary: VerificationSummary;
+  /**
+   * Ein Satz, was als Nächstes zu tun ist (`nextStepSummary`).
+   *
+   * Warum als Prop und nicht hier berechnet: Das Siegel soll nichts nachrechnen
+   * (ARCH-Regel D). Der Text entsteht aus dem Bericht, den auch die
+   * Warn-Zentrale benutzt — eine zweite Herleitung wäre eine zweite Wahrheit.
+   * Fehlt der Text, bleibt das Siegel wie bisher; er ist eine Ergänzung, kein
+   * Pflichtfeld, damit bestehende Aufrufer nicht brechen.
+   */
+  nextStep?: string;
 }
 
 const TONE: Record<
@@ -62,7 +72,7 @@ function Stat({ value, label, hint }: { value: number; label: string; hint: stri
   );
 }
 
-export function VerificationSeal({ summary }: VerificationSealProps) {
+export function VerificationSeal({ summary, nextStep }: VerificationSealProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const tone = TONE[summary.tone];
@@ -259,6 +269,20 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
                 </p>
               )}
             </details>
+            {/* Der nächste Schritt steht am ENDE des Fließtexts, nicht am
+              klebenden Kopf: `planner-sheet-header` ist auf schmalen Viewports
+              `position: sticky` und gehört der Überschrift; ein zweites sticky
+              Element verschöbe den Text beim Scrollen. Inhaltlich gehört die
+              Handlungsaufforderung ohnehin hinter die Begründung. */}
+            {nextStep && (
+              <p
+                className="mt-2 rounded border border-rule-strong px-2 py-1.5 leading-relaxed text-foreground"
+                data-testid="verification-next-step"
+              >
+                <strong className="font-semibold">Nächster Schritt: </strong>
+                {nextStep}
+              </p>
+            )}
             <p className="mt-1 leading-relaxed text-muted-foreground">
               Das Siegel bewertet nur, was die Engine prüfen konnte. Die behebbaren Befunde stehen in den
               Prüfhinweisen. Planungshilfe — ersetzt keine Prüfung oder Abnahme durch eine Elektrofachkraft.

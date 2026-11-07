@@ -113,6 +113,7 @@ export type EdgeErrorRule =
   | 'fuse-below-minimum'
   | 'main-fuse-distance'
   | 'fuse-offset'
+  | 'fuse-offset-missing'
   | 'current-undetermined'
   /** Kein Tabellenwert für diesen Strom (Auftrag Phase 5) — Datenlücke, kein Verstoß. */
   | 'ampacity-outside-model';
@@ -370,26 +371,33 @@ export const collectEdgeErrors = (input: {
       });
     }
     // AUDIT ELE-004: Eine vorhandene fuseSize darf die Lage der Sicherung
-    // nicht „wegzaubern": Sitzt die Sicherung (fuseOffset in Metern ab
+    // nicht „wegzaubern“: Sitzt die Sicherung (fuseOffset in Metern ab
     // Batteriepol) weiter als die Grenze entfernt, bleibt die Anfangsstrecke
-    // ungeschützt. Fehlt fuseOffset, gilt wie bisher der alte Vertrag
-    // (Sicherung am Pol) — kein Bruch bestehender Pläne.
-    if (
-      edgeDomain !== 'AC_230V' &&
-      batteryAtEnd &&
-      data?.fuseSize &&
-      data.fuseOffset !== undefined &&
-      data.fuseOffset > FUSE_MAX_UNPROTECTED_LENGTH_M
-    ) {
-      errors.push({
-        ruleId: 'fuse-offset',
-        severity: 'critical',
-        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1).replace('.', ',')}m vom Batteriepol (max ${String(FUSE_MAX_UNPROTECTED_LENGTH_M).replace('.', ',')}m)!`,
-        measuredValue: data.fuseOffset,
-        expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
-        unit: 'm',
-        source: FUSE_MAX_UNPROTECTED_SOURCE,
-      });
+    // ungeschützt. Fehlt fuseOffset bei gesetzter fuseSize, ist das laut
+    // S-03 ein kritischer Befund („Fehlen ist ein kritischer Befund“),
+    // weil die 20-cm-Regel nicht prüfbar ist.
+    if (edgeDomain !== 'AC_230V' && batteryAtEnd && data?.fuseSize) {
+      if (data.fuseOffset === undefined) {
+        errors.push({
+          ruleId: 'fuse-offset-missing',
+          severity: 'critical',
+          message: 'Sicherungsabstand zum Pol fehlt — 20-cm-Regel nicht prüfbar (fuseOffset fehlt)!',
+          measuredValue: undefined,
+          expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
+          unit: 'm',
+          source: FUSE_MAX_UNPROTECTED_SOURCE,
+        });
+      } else if (data.fuseOffset > FUSE_MAX_UNPROTECTED_LENGTH_M) {
+        errors.push({
+          ruleId: 'fuse-offset',
+          severity: 'critical',
+          message: `Sicherung sitzt ${data.fuseOffset.toFixed(1).replace('.', ',')}m vom Batteriepol (max ${String(FUSE_MAX_UNPROTECTED_LENGTH_M).replace('.', ',')}m)!`,
+          measuredValue: data.fuseOffset,
+          expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
+          unit: 'm',
+          source: FUSE_MAX_UNPROTECTED_SOURCE,
+        });
+      }
     }
   }
 

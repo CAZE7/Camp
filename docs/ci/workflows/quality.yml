@@ -107,6 +107,27 @@ jobs:
         # auf die Base gemergt worden, weil nur typecheck/test geprüft wurden.
         run: npm run lint
 
+      - name: M-6 Architekturtests (Rule A, Regeln E–J)
+        run: npx vitest run scripts/architecture/libBoundary.test.ts scripts/routing/architecture.test.ts
+
+      - name: 'M-7 Routing-Invarianten & Audit (I1–I3 = 0, Ratchet, Determinismus)'
+        run: 'npm run routing:audit && npx vitest run lib/routing/invariants.test.ts scripts/routing/finalValidation.test.ts'
+
+      - name: 'M-8 Elektrik: Golden Master + Property-Based (G1–G7)'
+        run: 'npm run test:goldenmaster && npx vitest run lib/vde-properties.test.ts'
+
+      - name: M-9 Routing-Regression (15 Szenarien, byte-identisch)
+        run: npm run test:regression
+
+      - name: M-10 Komponenten- & Datenvalidierung
+        run: npx vitest run lib/nodeSchema.test.ts lib/edgeSchema.test.ts components/registry/componentRegistry.test.tsx components/nodes/types.test.ts
+
+      - name: M-11 Warnsystem (collectEdgeErrors, useLiveValidation)
+        run: npx vitest run components/edges/CableEdge.test.tsx components/edges/utils/voltageDrop.test.ts components/planner/hooks/useLiveValidation.test.ts
+
+      - name: M-12 Persistenz & Migration
+        run: npx vitest run store/slices/persistence.test.ts store/storage.test.ts
+
       - name: Format-Check
         run: npm run format:check
 
@@ -121,7 +142,20 @@ jobs:
       - name: Unit- und Komponententests (mit Coverage-Gate für lib/**)
         # Testlauf inkl. Coverage: unterschreitet der Engine-Kern (lib/**)
         # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
+        # INKLUSIVE test/reference/** und test/invariants/** — die laufen
+        # automatisch mit (vitest.config.ts schließt nur tests/e2e/** aus).
         run: npm run test:coverage
+
+      # G1/G2/G3/G5 laufen im Schritt oben mit. Die zwei Sicherheitsgates mit
+      # eigener Logik stehen hier als eigener, benannter Schritt, damit ein
+      # Fehlschlag im PR sofort zuzuordnen ist:
+      #   G6 — kein stilles UNVERIFIABLE → PASS (Plan × Profil, Offene-Befunde-
+      #        Untergrenze; ein verschwundener Befund bricht ab)
+      #   G4 — sechs Klassen kritischer Mutanten von Hand (Grenzvergleiche,
+      #        Sicherheitsklemmen, Fehlerfall→Erfolgsfall). Kein Stryker-Lauf:
+      #        Stryker ist nicht im Manifest und als PR-Gate zu teuer.
+      - name: Sicherheitsgates (G4 kritische Mutanten, G6 kein stilles PASS)
+        run: npm run test:gates
 
       - name: Perf-Gate Kanten-Routing (WP-11 / #400)
         # Harter Budget-Check: Median ≤ 16 ms Main-Thread pro Frame am
@@ -147,6 +181,14 @@ jobs:
             exit 1
           }
 
+      - name: Playwright-Browser installieren
+        # Nur Chromium: die Suite prüft Anwendungsverhalten, keine
+        # Browser-Unterschiede. Das hält die Laufzeit des Gates niedrig.
+        run: npx playwright install --with-deps chromium
+
+      - name: M-14 Accessibility (axe a11y)
+        run: npx playwright test tests/e2e/a11y.spec.ts
+
       - name: Artefaktgröße messen
         id: size
         run: |
@@ -171,6 +213,36 @@ jobs:
           name: static-export
           path: ./out
           retention-days: 7
+
+  # ── Requirements-Matrix Konsistenzcheck ─────────────────────────────────────
+  # Prueft die vollstaendige Traceability-Kette (Requirement -> Basis -> Implementierung -> Test -> Ergebnis -> Claim -> Risk)
+  # laut Matrix Rule M-4. Alle Klasse-S-Anforderungen haben jetzt gültige Claims
+  # und Risk-Register-Einträge (siehe Abschlussbericht PR #604, Phase 2). Der
+  # Check ist blockierend (kein continue-on-error): bei fehlenden Verknüpfungen
+  # schlägt der Job fehl und blockiert den CI-Lauf.
+  requirements-matrix-check:
+    name: Requirements-Matrix Konsistenzcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproduzierbar)
+        run: npm ci
+
+      - name: Requirements-Matrix Konsistenzcheck
+        run: node scripts/ci/verify-requirements-matrix.mjs
 
   # ── End-to-End gegen den gebauten Static Export ─────────────────────────────
   e2e:

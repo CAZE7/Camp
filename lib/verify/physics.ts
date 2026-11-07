@@ -42,7 +42,7 @@
  */
 
 import { COPPER_RESISTIVITY_OHM_MM2_PER_M, COPPER_TEMPERATURE_COEFFICIENT_PER_K } from '../materials';
-import { calculateCableIz } from '../electrical';
+import { calculateCableIz, voltageDropLimitPercent } from '../electrical';
 import {
   VOLTAGE_DROP_PCT_CRITICAL,
   VOLTAGE_DROP_PCT_PLAN_LIMIT,
@@ -166,7 +166,12 @@ export function voltageDropPercent(dropV: number, nominalVoltageV: number): numb
  * Modells** (die DIN VDE 0298-4 enthält keine Spannungsfall-Grenzwerte;
  * AUDIT ELE-010) — sie stehen deshalb als `MODEL_ASSUMPTION` in der Matrix.
  */
-export function voltageDropBudgetPercent(loadClass: LoadClass): number {
+export function voltageDropBudgetPercent(loadClass: LoadClass, carrier?: 'dc' | 'solar' | 'ac'): number {
+  // BEFUND K-2b (Behebung 2026-11-06): Für AC gilt dieselbe Grenze, mit der
+  // dimensioniert wird (2 %, `voltageDropLimitPercent('AC_230V')`). Ohne
+  // Träger bleibt das bisherige DC-Budget — kein stiller Domänenwechsel für
+  // bestehende Aufrufer.
+  if (carrier === 'ac') return voltageDropLimitPercent('AC_230V');
   switch (loadClass) {
     case 'charging':
     case 'sensitive':

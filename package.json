@@ -24,6 +24,9 @@
     "routing:lane-probe": "tsx scripts/routing/laneProbe.ts",
     "goldenmaster:capture": "tsx scripts/goldenmaster/capture.ts",
     "test:goldenmaster": "vitest run scripts/goldenmaster/goldenMaster.test.ts",
+    "test:differential": "vitest run test/reference/differential.test.ts",
+    "test:invariants": "vitest run test/invariants/",
+    "test:safety": "vitest run test/reference/ test/invariants/",
     "test:gpu": "ROUTING_GPU=1 tsx scripts/routing/gpuEdtParity.ts",
     "regression:capture": "tsx scripts/regression/capture.ts",
     "test:regression": "vitest run scripts/regression/regression.test.ts",
@@ -42,7 +45,8 @@
     "format:check": "prettier --check .",
     "audit:dead-code": "knip --no-progress",
     "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
-    "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts"
+    "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts",
+    "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts"
   },
   "engines": {
     "node": ">=22.0.0"

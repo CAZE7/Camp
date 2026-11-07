@@ -108,3 +108,22 @@ describe('VerificationSeal', () => {
     expect(button.className).toContain('border-warn-critical');
   });
 });
+
+describe('VerificationSeal — nächster Schritt', () => {
+  it('zeigt den Handlungssatz im Bericht, wenn er übergeben wird', () => {
+    render(
+      <VerificationSeal
+        summary={summaryFor(islandPlan())}
+        nextStep="3 Angabe(n) fehlen oder sind zu korrigieren. Erster Schritt: Länge eintragen."
+      />
+    );
+    fireEvent.click(screen.getByTestId('verification-seal-toggle'));
+    expect(screen.getByTestId('verification-next-step')).toHaveTextContent('Erster Schritt');
+  });
+
+  it('ohne Handlungssatz bleibt das Siegel unverändert (kein leerer Platzhalter)', () => {
+    render(<VerificationSeal summary={summaryFor(healthyDcPlan())} />);
+    fireEvent.click(screen.getByTestId('verification-seal-toggle'));
+    expect(screen.queryByTestId('verification-next-step')).toBeNull();
+  });
+});

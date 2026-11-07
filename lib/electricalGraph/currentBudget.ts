@@ -92,8 +92,28 @@ export function computeCurrentBudget(input: CurrentLimits): CurrentBudget {
 
 /** Bewertung einer konkreten Last gegen das Budget. */
 export type LoadFeasibility = {
-  /** `false` = die Anlage kann diese Last in dieser Konfiguration nicht liefern. */
+  /**
+   * `false` = die Anlage kann diese Last in dieser Konfiguration nicht liefern.
+   *
+   * BEFUND E-2 (Behebung 2026-11-06): Bei unbekannter Grenze ist das Feld
+   * jetzt `false`, nicht `true`. Vorher passierte „nicht bewertbar" das Gate:
+   * ein Plan ohne BMS-, Bauteil- und Sicherungsgrenze galt als versorgbar —
+   * die stärkste Form eines falschen Grüns. Wer `feasible` als Freigabe liest,
+   * bekommt jetzt keine, ohne dass sich an der Meldung etwas ändert.
+   *
+   * Für den Fall, dass ein Aufrufer „nicht bewertbar" von „geht nicht"
+   * unterscheiden MUSS, ist `assessable` da.
+   */
   feasible: boolean;
+  /**
+   * `false` = es lag überhaupt keine Grenze vor; das Urteil stammt aus der
+   * Abwesenheit von Daten, nicht aus einer Rechnung.
+   *
+   * Absichtlich NICHT dreiwertig über `feasible`: `feasible: 'unknown'` wäre
+   * ein Typbruch an jeder bestehenden Lesestelle (`if (verdict.feasible)` ist
+   * bei `'unknown'` truthy — genau der Fehler, den E-2 beschreibt).
+   */
+  assessable: boolean;
   severity: 'ok' | 'warning' | 'critical';
   requiredCurrent: Amps;
   allowedCurrent?: Amps;
@@ -128,8 +148,10 @@ export function evaluateLoadFeasibility(
   const rounded = Math.round(requiredCurrent);
 
   if (allowed === undefined) {
+    // Kein `ok`, kein `true`: ohne Grenze gibt es keine Freigabe.
     return {
-      feasible: true,
+      feasible: false,
+      assessable: false,
       severity: 'warning',
       requiredCurrent,
       limitedBy: 'unknown',
@@ -143,6 +165,7 @@ export function evaluateLoadFeasibility(
   if (requiredCurrent > allowed) {
     return {
       feasible: false,
+      assessable: true,
       severity: 'critical',
       requiredCurrent,
       allowedCurrent: allowed,
@@ -154,6 +177,7 @@ export function evaluateLoadFeasibility(
   if (requiredCurrent > amps(allowed * LOAD_HEADROOM_FRACTION)) {
     return {
       feasible: true,
+      assessable: true,
       severity: 'warning',
       requiredCurrent,
       allowedCurrent: allowed,
@@ -164,6 +188,7 @@ export function evaluateLoadFeasibility(
 
   return {
     feasible: true,
+    assessable: true,
     severity: 'ok',
     requiredCurrent,
     allowedCurrent: allowed,

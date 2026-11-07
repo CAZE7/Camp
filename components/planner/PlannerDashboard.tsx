@@ -14,6 +14,7 @@ import { SaveIndicator } from './ui/SaveIndicator';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
 import { verificationSummary } from './utils/verificationWarnings';
+import { nextStepSummary } from './utils/verificationActions';
 import {
   createPlannerError,
   plannerErrorCodeFromRuleId,
@@ -118,6 +119,7 @@ export function PlannerDashboard() {
   // beide Anzeigen lesen dasselbe Ergebnis (gleicher Hash, gleiche Abdeckung).
   const verificationReport = useVerificationReport(nodes, edges);
   const verification = useMemo(() => verificationSummary(verificationReport), [verificationReport]);
+  const nextStep = useMemo(() => nextStepSummary(verificationReport), [verificationReport]);
   // V2-CONFLICT-001: Der Auto-Wire-Bericht ist Teil derselben Liste — offene
   // Entscheidungen und Regelkonflikte stehen dort, wo der Nutzer Befunde sucht.
   const autoWireReport = usePlannerStore((state) => state.autoWireReport);
@@ -353,7 +355,7 @@ export function PlannerDashboard() {
             <SaveIndicator revision={planRevision} />
             {viewMode === 'electric' && nodes.length > 0 && (
               <span className="inline-flex" data-testid="verification-seal-mobile-access">
-                <VerificationSeal summary={verification} />
+                <VerificationSeal summary={verification} nextStep={nextStep} />
               </span>
             )}
             <WarningCenter warnings={warnings} onFix={handleFix} includeRouting={viewMode === 'electric'} />

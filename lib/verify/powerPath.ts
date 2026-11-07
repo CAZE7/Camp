@@ -25,6 +25,7 @@ import { auditEvent, checkOrNotApplicable, passedCheck } from './events';
 import { behaviorOf, labelOfNode } from './graph';
 import { normalizeBatteryChemistry, usableCapacityWithPeukertAh, peukertExponentOf } from '../peukert';
 import {
+  copperResistivityAt,
   voltageDropBudgetPercent,
   voltageDropPercent,
   voltageDropVolts,
@@ -71,10 +72,25 @@ function remedyForDrop(
   return `${parts.join(' ODER ')}.`;
 }
 
-function dropOfCable(
-  context: PassContext,
-  cable: CableModel
-): { dropV: number; percent: number; nominalV: number } | null {
+interface DropTrace {
+  dropV: number;
+  percent: number;
+  nominalV: number;
+  /** Die Größen, die das Urteil tragen (BEFUND T-2). */
+  trace: {
+    currentA: number;
+    lengthM: number;
+    crossSectionMm2: number;
+    currentPathFactor: 1 | 2;
+    resistivityOhmMm2PerM: number;
+    conductorTemperatureC: number;
+    dropV: number;
+    nominalV: number;
+    lengthIsAssumption: boolean;
+  };
+}
+
+function dropOfCable(context: PassContext, cable: CableModel): DropTrace | null {
   if (
     cable.lengthM === null ||
     cable.crossSectionMm2 === null ||
@@ -97,7 +113,25 @@ function dropOfCable(
     temperatureC: context.options.voltageDropTemperatureC,
     currentPathFactor: 2,
   });
-  return { dropV, percent: voltageDropPercent(dropV, nominalV), nominalV };
+  const temperatureC = context.options.voltageDropTemperatureC;
+  return {
+    dropV,
+    percent: voltageDropPercent(dropV, nominalV),
+    nominalV,
+    // BEFUND T-2: der Rechenweg wird mitgeliefert, nicht rekonstruierbar
+    // versteckt. Jede Zahl ist die, die oben tatsächlich eingesetzt wurde.
+    trace: {
+      currentA: cable.currentA,
+      lengthM: cable.lengthM,
+      crossSectionMm2: cable.crossSectionMm2,
+      currentPathFactor: 2,
+      resistivityOhmMm2PerM: copperResistivityAt(temperatureC),
+      conductorTemperatureC: temperatureC,
+      dropV,
+      nominalV,
+      lengthIsAssumption: cable.lengthIsAssumption === true,
+    },
+  };
 }
 
 /** Erste fehlende Größe einer Leitung als Klartext (für UNPROVABLE-Meldungen). */
@@ -117,17 +151,23 @@ export function checkVoltageDropEdge(context: PassContext): CheckResult {
   const ruleId = 'VDR-001-voltage-drop-edge' as const;
   const events: AuditEvent[] = [];
   let evaluated = 0;
-  const dcLoadCables = sortedCables(context.graph).filter(
+  // BEFUND K-2b (Behebung 2026-11-06): AC-Leitungen wurden hier gar nicht
+  // geprüft — `VDR-001` filterte auf `dc`/`solar`. Eine 230-V-Leitung mit 5 %
+  // Spannungsfall erzeugte damit keinen Befund, obwohl die Anzeige sie rot
+  // markierte. Jetzt laufen beide Träger durch dieselbe Prüfung; das Budget
+  // kommt aus der Lastklasse (DC 1/3 %, AC 2 % über `voltageDropBudgetPercent`
+  // je Domäne).
+  const loadCables = sortedCables(context.graph).filter(
     (cable) =>
-      (cable.carrier === 'dc' || cable.carrier === 'solar') &&
+      (cable.carrier === 'dc' || cable.carrier === 'solar' || cable.carrier === 'ac') &&
       behaviorOf(context.graph, cable.to.nodeId).kind === 'LOAD'
   );
-  if (dcLoadCables.length === 0) {
-    // Ohne DC-Verbraucher gibt es kein DC-Spannungsfallbudget zu prüfen.
+  if (loadCables.length === 0) {
+    // Ohne Verbraucher gibt es kein Spannungsfallbudget zu prüfen.
     return passedCheck(ruleId, 0);
   }
 
-  for (const cable of dcLoadCables) {
+  for (const cable of loadCables) {
     const entity = { kind: 'edge' as const, id: cable.edgeId };
     const label = `${labelOfNode(context.graph, cable.from.nodeId)} → ${labelOfNode(context.graph, cable.to.nodeId)}`;
     const drop = dropOfCable(context, cable);
@@ -147,7 +187,7 @@ export function checkVoltageDropEdge(context: PassContext): CheckResult {
 
     evaluated += 1;
     const loadClass = loadClassAt(context.graph, cable.to.nodeId);
-    const budget = voltageDropBudgetPercent(loadClass);
+    const budget = voltageDropBudgetPercent(loadClass, cable.carrier === 'water' ? undefined : cable.carrier);
     if (drop.percent > budget + 1e-9) {
       events.push(
         auditEvent({
@@ -157,6 +197,7 @@ export function checkVoltageDropEdge(context: PassContext): CheckResult {
           calculatedValue: drop.percent,
           allowedLimit: budget,
           unit: '%',
+          details: { voltageDropTrace: drop.trace },
           message: `Leitung ${label}: ΔU = ${drop.percent.toFixed(2)} % (${drop.dropV.toFixed(2)} V von ${drop.nominalV} V) überschreitet das Budget ${budget} % der Lastklasse „${loadClass}“${cable.lengthIsAssumption ? ' — die Länge ist eine Planungsannahme' : ''}.`,
           autoFixRemedy: remedyForDrop(
             drop.percent,
@@ -332,6 +373,32 @@ export function checkVoltageDropPath(context: PassContext): CheckResult {
             .sort((a, b) => b.dropPercent - a.dropPercent)
             .map((step) => step.cable.edgeId)
             .join(', ')}) ODER Leitungsweg verkürzen ODER Last reduzieren.`,
+          // BEFUND T-2: Der Pfadwert ist die Summe der Einzelbeiträge; der
+          // Rechenweg je Kante steht daneben, damit die Summe nachprüfbar ist.
+          details: {
+            voltageDropTrace: {
+              // Der Pfadwert ist eine Summe; die Einzelwerte stehen daneben,
+              // damit die Summe nachvollziehbar bleibt (Betriebsstrom,
+              // Leitungslänge) bzw. der engste Querschnitt als Engstelle
+              // benannt ist. `nominalV` ist die Bezugsspannung des
+              // Verbrauchers; ΔU ergibt sich aus Prozent × U_n.
+              currentA: best.steps.reduce((sum, step) => sum + (step.cable.currentA ?? 0), 0),
+              lengthM: best.steps.reduce((sum, step) => sum + (step.cable.lengthM ?? 0), 0),
+              crossSectionMm2: best.steps.reduce(
+                (min, step) => Math.min(min, step.cable.crossSectionMm2 ?? Number.POSITIVE_INFINITY),
+                Number.POSITIVE_INFINITY
+              ),
+              currentPathFactor: 2,
+              resistivityOhmMm2PerM: copperResistivityAt(context.options.voltageDropTemperatureC),
+              conductorTemperatureC: context.options.voltageDropTemperatureC,
+              dropV:
+                (best.totalPercent *
+                  nominalVoltageOfCable(best.steps[0]!.cable, context.graph.systemVoltageV)) /
+                100,
+              nominalV: nominalVoltageOfCable(best.steps[0]!.cable, context.graph.systemVoltageV),
+              lengthIsAssumption: best.steps.some((step) => step.cable.lengthIsAssumption === true),
+            },
+          },
           counterexample: path,
         })
       );

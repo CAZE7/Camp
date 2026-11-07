@@ -548,6 +548,34 @@ export interface AuditEventDetails {
   }[];
   /** Explizite Annahmen des Strommodells (z. B. Parallel-Aufteilung). */
   assumptions?: readonly string[];
+  /**
+   * Rechenweg des Spannungsfalls (BEFUND T-2, Behebung 2026-11-06).
+   *
+   * Vorher trug ein VDR-Ereignis nur `rootCauseId: 'OTHER-001'` — das Urteil
+   * war damit für Dritte nicht nachprüfbar, und die κ/ρ-Diskrepanz (K-1)
+   * blieb unerklärbar. Hier stehen die Größen, die das Urteil tragen, jeweils
+   * mit dem Wert, der tatsächlich eingesetzt wurde.
+   */
+  voltageDropTrace?: {
+    /** Betriebsstrom I_b in A. */
+    currentA: number;
+    /** Einfache Leitungslänge L in m (der Rechenweg nimmt Hin+Rück). */
+    lengthM: number;
+    /** Querschnitt A in mm². */
+    crossSectionMm2: number;
+    /** Strompfad-Faktor k (2 = Hin+Rück). */
+    currentPathFactor: 1 | 2;
+    /** Angesetzter spezifischer Widerstand ρ in Ω·mm²/m. */
+    resistivityOhmMm2PerM: number;
+    /** Leitetemperatur, auf die ρ bezogen ist, in °C. */
+    conductorTemperatureC: number;
+    /** Ergebnis ΔU in V. */
+    dropV: number;
+    /** Bezugsspannung U_n in V, gegen die der Prozentsatz gebildet wird. */
+    nominalV: number;
+    /** Ist die Länge eine Planungsannahme (keine Nutzereingabe)? */
+    lengthIsAssumption: boolean;
+  };
   /** Aufschlüsselung der Iz-Korrektur (Auftrag §7). */
   izBreakdown?: {
     baseIz: number;
