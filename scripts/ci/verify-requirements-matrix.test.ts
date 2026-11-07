@@ -232,9 +232,7 @@ describe('verify-requirements-matrix.mjs', () => {
     );
     // Safety Case behandelt, Register sagt Offen → nur Warnung, kein harter Fehler
     // (ein behandeltes Risiko kann als offenes Restrisiko akzeptiert sein)
-    expect(
-      errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')
-    ).toEqual([]);
+    expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toEqual([]);
   });
 
   it('akzeptiertes Restrisiko im Safety Case bleibt als solches erkennbar', () => {
@@ -244,9 +242,7 @@ describe('verify-requirements-matrix.mjs', () => {
       `${FIXTURES_DIR}/risk-register-accepted-restrisiko.md`
     );
     expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toEqual([]);
-    expect(
-      warningsContaining(result, 'Akzeptiert als Restrisiko')
-    ).toEqual([]);
+    expect(warningsContaining(result, 'Akzeptiert als Restrisiko')).toEqual([]);
   });
 
   it('akzeptiertes Restrisiko gegen technisch behandeltes Risiko wird als Widerspruch erkannt', () => {
@@ -257,9 +253,7 @@ describe('verify-requirements-matrix.mjs', () => {
     );
     // Safety Case: Risiko als akzeptiertes Restrisiko offen annotiert
     // Risk Register: als Behandelt → Widerspruch (akzeptiert ≠ technisch behandelt)
-    expect(
-      errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')
-    ).toHaveLength(1);
+    expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toHaveLength(1);
   });
 
   it('fehlende offizielle Registry-Einträge werden nicht aus Fließtext angenommen', () => {

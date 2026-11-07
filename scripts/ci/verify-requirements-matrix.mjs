@@ -426,11 +426,7 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   }
 
   // --- Risk Register einlesen (nur Tabellen) ---------------------------------
-  const riskRegisterTable = readTableWithHeaders(
-    riskRegisterPath,
-    ['ID', 'Status'],
-    'Risk Register'
-  );
+  const riskRegisterTable = readTableWithHeaders(riskRegisterPath, ['ID', 'Status'], 'Risk Register');
   if (riskRegisterTable.error) {
     warnings.push(`Risk-Register-Tabelle nicht lesbar: ${riskRegisterTable.error}`);
   } else {
@@ -452,8 +448,18 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   );
 
   // Doppelte Claim- und Risk-IDs in den offiziellen Tabellen erkennen
-  const duplicateClaims = findDuplicateIds(safetyCaseTable.rows, safetyCaseTable.headerIndex, 'Claim', /CL-\d{3}/g);
-  const duplicateRisks = findDuplicateIds(riskRegisterTable.rows, riskRegisterTable.headerIndex, 'ID', /R-\d{3}/g);
+  const duplicateClaims = findDuplicateIds(
+    safetyCaseTable.rows,
+    safetyCaseTable.headerIndex,
+    'Claim',
+    /CL-\d{3}/g
+  );
+  const duplicateRisks = findDuplicateIds(
+    riskRegisterTable.rows,
+    riskRegisterTable.headerIndex,
+    'ID',
+    /R-\d{3}/g
+  );
   for (const dup of duplicateClaims) {
     errors.push(`Safety Case: doppelter Claim ${dup} mehrfach in der Tabelle eingetragen.`);
   }
@@ -542,7 +548,9 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
     // Prüfung 4: Implementierungsreferenz
     const implPaths = extractFilePaths(implementierung);
     if (implPaths.length === 0 && !isEmptyOrDash(implementierung)) {
-      warnings.push(`${zeilenInfo}: Kein erkennbarer Dateipfad in der Implementierungsreferenz: "${implementierung}".`);
+      warnings.push(
+        `${zeilenInfo}: Kein erkennbarer Dateipfad in der Implementierungsreferenz: "${implementierung}".`
+      );
     }
     for (const implFile of implPaths) {
       if (!fileExistsWithFallback(implFile)) {
@@ -638,10 +646,7 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
       errors.push(
         `Widerspruch Safety Case ↔ Risk Register: Claim ${claimId} (Ergebnis "${ergebnis}") führt ${riskId} im Restrisiko als "offen" an ("${restrisiko}"), das Risk Register führt ${riskId} als "${status}". Entweder Restrisiko-Anmerkung im Safety Case oder Risk-Register-Status korrigieren (Requirements-Matrix-Regel M-8).`
       );
-    } else if (
-      restrisikoTyp === 'akzeptiert' &&
-      /^(Behandelt|geschlossen)/i.test(status)
-    ) {
+    } else if (restrisikoTyp === 'akzeptiert' && /^(Behandelt|geschlossen)/i.test(status)) {
       // Als Restrisiko akzeptiert, aber Register sagt technisch behandelt → Widerspruch
       errors.push(
         `Widerspruch Safety Case ↔ Risk Register: Claim ${claimId} (Ergebnis "${ergebnis}") führt ${riskId} im Restrisiko als "Akzeptiert als Restrisiko" an ("${restrisiko}"), das Risk Register führt ${riskId} als "${status}". "Akzeptiert als Restrisiko" ist nicht dasselbe wie "Behandelt" (Requirements-Matrix-Regel M-8).`
