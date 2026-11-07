@@ -112,9 +112,15 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   setTrunkMode: (enabled) => set({ trunkMode: enabled }),
   backboneGrouping: true,
   setBackboneGrouping: (enabled) => set({ backboneGrouping: enabled }),
-  // Geführter Modus ist der Standard: Er beantwortet „Was kommt als Nächstes?“.
-  // Der Expertenmodus bleibt über den Toolbar-Umschalter erreichbar.
-  guidedMode: true,
+  // Nutzer-Entscheidung 2026-11-06: Die Schrittleiste („Anlage · Kern ·
+  // Verbinden · Prüfen · Ergebnis") ist entfallen. `guidedMode` steuert
+  // deshalb keine Oberfläche mehr.
+  //
+  // Das Feld bleibt absichtlich bestehen: `store/slices/persistence.ts`
+  // (DO-NOT-TOUCH) liest und schreibt es beim Migrieren gespeicherter Pläne.
+  // Ein Entfernen würde die Persistenz brechen. Der Default ist `false`,
+  // damit ein Altbestand ohne Angabe nicht wie ein aktiver Modus aussieht.
+  guidedMode: false,
   setGuidedMode: (enabled) => set({ guidedMode: enabled }),
   // Default ist die volle Karte: Niemand verliert beim ersten Öffnen Werte,
   // die er vorher gesehen hat. „Übersichtlich" ist ein bewusster Klick.

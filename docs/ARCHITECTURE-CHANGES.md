@@ -3712,3 +3712,357 @@ davon unberührt und protokollarisch offen.
 **Offen:** Der CI-Lauf auf dem neuen Head steht aus; E2E/Pixel-Baselines können
 lokal weiterhin nicht ausgeführt werden (kein Browser-Binary im Sandbox).
 §24-UI-DoD bleibt offen; es wird kein „E2E grün“ behauptet.
+
+---
+
+## LEDGER 2026-11-05 (AUD) — Produktreife-Umsetzung AUD-001…019
+
+**Anlass:** `docs/PRODUCT-READINESS-AUDIT.md` (20 Befunde, vom Nutzer zur
+Umsetzung freigegeben). Leitfrage: Kann ein normaler Camper-Besitzer seine
+Elektroinstallation vollständig, verständlich und zuverlässig planen, prüfen
+und dokumentieren? Dieser Eintrag zieht die Ledger-Pflicht für die gesamte
+Runde nach; die Commits waren bis dahin nur mit Teil-Gates gefahren.
+
+**Hinweis zur Historie:** Die Runde entstand mit einem Commit je Befund in
+einer Sandbox-Sitzung, die später neu aufgesetzt wurde. Die Dateiänderungen
+blieben vollständig erhalten, die damalige Git-Historie nicht. Die unten
+genannten Kurz-Hashes bezeichnen die ursprünglichen Commits und sind in der
+Historie dieses Branches nicht auflösbar; sie dokumentieren Zuordnung und
+Reihenfolge. Die Gates wurden auf dem zusammengeführten Stand erneut gefahren.
+
+**Gelesene Vorgaben vor Code (§23):** `AGENTS.md`, `agent.md`,
+`docs/ai/ARCHITECTURE-RULES.md`, `CHANGE-WORKFLOW.md` §20–23,
+`ELECTRICAL-CONTEXT.md`, `AUTOWIRE-CONTEXT.md`, `VALIDATION-CONTEXT.md`,
+`TESTING-CONTEXT.md`, `DOMAIN-CONTEXT.md`, `ROUTING-CONTEXT.md`,
+`CODE-MAP.md`, `KNOWN-PROBLEMS.md`.
+
+### Verhalten je Befund
+
+**AUD-001 (`c347321`) — Batteriebank über die UI erklärbar.** Neue
+`components/inspector/BatteryBankSection.tsx`: Topologie-Select
+(`single`/`parallel`), Bank-Name mit `datalist` aus bestehenden Bänken,
+Kennwerte aus `deriveBatteryBanks`. Schreibt `bankTopology`/`bankId`, setzt bei
+`parallel` die Reihen-/Parallelzähler auf `undefined`, bei `single` löscht es
+`bankId`. `ambiguous-topology` wird in `useLiveValidation` nicht mehr
+herausgefiltert (`BANK-AMBIGUOUS-TOPOLOGY`), `AUTO-BANK-001` nennt den UI-Weg
+statt Rohfelder. **Grenze bewusst:** `series`/`series-parallel` sind nicht
+wählbar; eine importierte Serien-Deklaration zeigt eine Reset-Karte.
+Geschlossene Kette belegt: 2×100 Ah ohne Erklärung ⇒ zweite Batterie hat
+0 Kanten; nach Erklärung ⇒ verdrahtet, Bank 200 Ah.
+
+**AUD-005 (`b889a20`) — Semantik, keine Rechnungsänderung.** `concurrentDevices`
+steuert ausschließlich die Überlast-Prüfung. `buildAcIslandWatts` summiert per
+BFS über `AC_230V`-Kanten **alle** `consumer230v`; Kabel und Schutz gelten für
+die volle Insel. Überschrift „Gleichzeitige Nutzung (Überlast-Prüfung)",
+Klartext-Absatz, Readout, Badge-Text und Dashboard-Hinweis korrigiert.
+**Auslegung unverändert konservativ** — Wächter
+`lib/electricalGraph/currentFlow.concurrency.test.ts` pinnt 196,08 A
+(2000 W / 12,0 V / 0,85) für alle drei Auswahlzustände.
+
+**AUD-004 (`6d09681`) — Schaltplan im Druckbericht.**
+`capturePlanImage({watermark?})` als gemeinsamer Renderer; das
+Foren-Wasserzeichen erscheint nur im geteilten PNG, nicht im Übergabedokument.
+Bericht bettet den Plan auf eigener Seite (`.plan-sheet{break-before:page}`),
+unbeschnitten, vor der Stückliste. Fehlende Aufnahme wird benannt, nicht still
+weggelassen; Data-URL escaped. `BOMModal.printReport` async mit Planstand-Wächter
+über `certificate.planFingerprintHash` vs. `snapshot.assessment.planFingerprintHash`
+— kein Dokument aus zwei Planständen.
+
+**AUD-002a (`1052b20`) — Modellgrenze in der Produktkommunikation.**
+`AC_230V_PRODUCT_SCOPE_NOTE` in `lib/verify/acScope.ts` als **eine** Kurzform für
+Surfaces außerhalb des Berichts. Startseite zeigt sie an der Leistungszusage,
+Onboarding kontextuell nur bei gewähltem „Landstrom". **Keine** neue Leiter-,
+Netzform-, Umschalt- oder Rückspeiselogik (Variante b bleibt Fachprojekt).
+Drift-Tests prüfen Wortlaut-Identität.
+
+**AUD-010 (`38c7c90`) — Doku-Drift Stromquelle.** Eine Stromquelle ist
+`getCableCurrents` (DC **und** AC), Ergebnis
+`.byEdgeId.get(id).operatingCurrent`, `null` = Datenlücke.
+`ELECTRICAL-CONTEXT.md` und `AGENTS.md` §4 umgestellt, alte Namen als
+„Veraltet" markiert, §8-Verbotsliste auf den echten Stand (offen nur PWA +
+Multi-Plan). Neuer Wächter in `scripts/ci/docsIntegrity.test.ts` prüft Doku
+**und** die fünf Produktiv-Konsumenten. `lib/vde-standards.ts` bewusst nicht
+angefasst (DO-NOT-TOUCH).
+
+**AUD-019 (`85dd15a`) — keine geliehene Prüfaussage im Wassermodus.** Die
+Statusleiste zeigte „Keine Fehler" aus **Elektrik**-Warnungen — eine positive
+Sicherheitsaussage über einen ungeprüften Bereich. Jetzt „Wasser: keine
+Prüfung" mit Erläuterung; der Wasser-Leerzustand nennt Druck, Durchfluss und
+Querschnitte als selbst auszulegen. Kein neues Wasser-Fachmodell.
+
+**AUD-011 (`5406863`) — Serienbank kritisch melden.** `deriveBatteryBanks`
+liefert für `series` eine Bankspannung, `getSystemVoltage` nimmt die
+Vorrangbatterie und `shortCircuit` schätzt rein parallel — ein importierter
+Serien-Plan bekäme 24 V in der Anzeige und 12,8 V in der Auslegung. Die
+Rechenkette bleibt unangetastet (DO-NOT-TOUCH + Fachprüfung); stattdessen
+`BANK-SERIES-UNSUPPORTED` (kritisch) mit konkretem Ausweg. Regel M: kein
+stiller Fallback.
+
+**AUD-016/018 (`2728318`) — Pixel-Gate gefahren, eigener Fehler behoben.**
+Erstlauf 102 grün / 6 Fehler (Startseite, 375/768/touch). Zuordnung geprüft
+statt vermutet: `app/page.tsx` auf `7d8a464`, Neubau, gleiche Tests → 8 passed.
+Die Fehler stammten aus AUD-002a. Eigentlicher Befund war UX: Der Grenzhinweis
+stand vor den Buttons und schob den Haupt-CTA auf 375 px aus dem ersten
+Bildschirm. Hinweis hinter die Buttons verschoben; Geometrie-Regressionstest
+in `responsive.spec.ts` (Gegenprobe: alte Platzierung fällt durch).
+Baselines **begründet** aktualisiert: Höhendifferenz 241 px = Hinweisblock
+221 px + 20 px `margin-top`, also vollständig additiv erklärt; nur die
+6 Startseiten-Baselines, Desktop byte-identisch. Ergebnis 108 passed / 0 failed.
+Lighthouse: Startseite-Budget 85 → **90** (lag unter der eigenen M11-5-Zusage),
+gemessen Perf 98/99/99. CLS bewusst nicht angezogen — Ursache (Font-Shift) ist
+nicht behoben.
+
+### Als Fehlbefund zurückgenommen (nicht erneut geöffnet)
+
+- **AUD-007** Tastatur-Abnahme: `tests/e2e/planner-keyboard.spec.ts` baut den
+  Mini-Plan vollständig per Tastatur; der `test.skip` gilt nur
+  Nicht-Desktop-Projekten. Beleg `--project=desktop-1440` → 1 passed.
+  **M11-3 in `AGENTS.md` §9 gestrichen.**
+- **AUD-015** AC-Messwert-Eingang: `prospectiveIkA`-Feld,
+  `prospectiveIkSource: 'declared' | 'assumed'` und der Klartext
+  „angegeben/gemessen … nicht gegen eine Netzimpedanz-Annahme" existieren und
+  sind getestet. Keine Umsetzung nötig.
+
+### Grenzen — unverändert und ausdrücklich nicht zugesagt
+
+`lib/electrical.ts`, `lib/vde-standards.ts`, `lib/shortCircuit.ts`,
+`lib/acProtection.ts`, Routing-Garantien und Golden-Fixtures wurden **nicht**
+verändert. Kein elektrischer Grenzwert, kein Normwert, keine Zusicherung
+geändert. AUD-003 (FLRY/ISO-6722-Tabelle) bleibt offen, weil eine zitiergeprüfte
+externe Quelle fehlt. AUD-002b, AUD-006, AUD-008/009, AUD-012/013/014 und
+AUD-017 bleiben offen; Gründe stehen in §9.3 des Audits.
+
+### Gates
+
+`npm run check` **exit 0** (Lint, Format, beide Typechecks, Coverage-Schwellen);
+`routing:audit` I1–I7 = 0 auf 6 Plänen; Golden-Master **13/13**; Regression
+**68/68**; Build 47 Seiten; visueller Satz **108 passed / 0 failed**;
+E2E-Smoke (planner-flow, planner-keyboard, a11y, touch) **72 passed /
+28 skipped / 0 failed**; Lighthouse-Gate grün.
+
+**Nachtrag Endstand (nach AUD-003-Kennzeichnung, `f7dd352`):**
+`npm run check` erneut **exit 0** mit **313 Dateien / 4117 passed / 1 skipped**
+(Ausgangsstand 311/4076). Die **vollständige E2E-Suite** wurde auf diesem Head
+gefahren: **509 passed / 259 skipped / 0 failed** (30,8 min). Der visuelle Satz
+ist vollständig grün (108), `rendered-contrast` + `routing-stability` isoliert
+nachgeprüft (52). Lighthouse hält alle Budgets (Perf 98/99/99).
+
+AUD-003 wurde im **Kennzeichnungszweig** geschlossen: Inspektor, Prüfbericht und
+AMP-001 nennen jetzt ausdrücklich, dass die Belastbarkeitstabelle aus der
+Hausinstallation (DIN VDE 0298-4) stammt und keine geprüfte Fahrzeugleitungs-
+Tabelle nach ISO 6722 / FLRY ist. **Kein Zahlenwert geändert.** Der Datenzweig
+bleibt offen.
+
+**Weiterhin ungeprüft:** Realgeräte/iOS Safari/Firefox (nur Chromium verfügbar)
+und der GitHub-Actions-Lauf auf diesem Head — die Gates oben sind lokal gefahren.
+
+---
+
+## LEDGER 2026-11-05 (AUD-FOLLOWUP) — Konsistenz des Druckberichts
+
+**Anlass:** Gezielte Nachprüfung des PR #606 vor dem Merge. Vier Befunde wurden
+reproduziert, nicht vermutet. Für jeden wurde zuerst ein fehlschlagender Test
+geschrieben und danach der Fix gesetzt; anschließend Gegenprobe durch
+temporäres Entschärfen des Fix.
+
+### Befund 1 — Race Condition zwischen Vorprüfung und Bildaufnahme (kritisch)
+
+`printReport` prüfte den Planstand, dann folgten `await import()`,
+`await capturePlanImage()` (darin zwei weitere Importe, ein Frame, `toPng`).
+Danach wurde **nicht erneut geprüft**. Eine Planänderung in diesem Fenster
+erzeugte ein Dokument mit Bild aus dem neuen und Stückliste/Prüfbericht aus dem
+alten Stand.
+
+**Fix:** Nachprüfung nach der Aufnahme. Zusätzlich meldet `capturePlanImage`
+die Identität, die es beim Store-Lesezugriff gesehen hat; auch sie muss zum
+Snapshot passen. Bei Abweichung wird das Druckfenster geschlossen, kein
+Dokument erzeugt und der Grund genannt.
+
+### Befund 2 — Fingerprint deckt die Darstellung nicht ab (kritisch)
+
+`planFingerprintHash` hasht die **Prüfeingabe** und lässt `position` bewusst
+weg (die Lage ändert kein elektrisches Ergebnis — das ist richtig). Für das
+Bild ist die Lage aber genau das, was sich ändert. Ebenso wenig erfasst er
+`viewMode` oder das Wasser-Gewerk.
+
+**Fix:** Neue, getrennte `planCaptureIdentity`
+(`components/planner/utils/planCaptureIdentity.ts`) über Lage, Größe, Daten,
+Kanten und **beide** Gewerke plus Ansichtsmodus. `planFingerprintHash` bleibt
+unverändert — seine Semantik ist korrekt, und eine Änderung hätte das
+Prüfzertifikat für rein kosmetische Verschiebungen verändert. Beide Prüfungen
+werden kombiniert. `selected` ist bewusst ausgeschlossen (Auswahl ist keine
+Plandaten-Änderung); stattdessen löst `capturePlanImage` die Auswahl jetzt für
+beide Gewerke auf, damit das Bild reproduzierbar ist.
+
+### Befund 3 — Wassermodus: Bild und Prüfung verschiedene Gewerke (kritisch)
+
+`capturePlanImage` wählt nach `viewMode` (Wasser ⇒ `waterNodes`),
+`verificationReportFor(nodes, edges)` prüft **immer** die Elektrik, `buildBom`
+mischt beide. Im Wassermodus entstand ein Dokument mit Wasser-Schaltplan neben
+Elektrik-Prüfbericht — ohne Kennzeichnung, Alt-Text hart auf
+„Elektroinstallation". Zusätzlich waren Wasseränderungen für den
+Elektrik-Fingerprint unsichtbar.
+
+**Fix:** `planViewMode` wandert in den Bericht. Überschrift, Alt-Text und ein
+ausdrücklicher Hinweis nennen das Gewerk; im Wassermodus steht dort, dass der
+Prüfbericht ausschließlich die Elektrik bewertet und die Wasserinstallation
+nicht geprüft ist. Keine neue Fachlogik.
+
+### Befund 4 — Druckfenster verliert die Nutzeraktivierung
+
+`window.open` lief erst **nach** allen `await`s. Browser binden es an eine
+laufende Nutzeraktivierung; bei großen Plänen ist sie abgelaufen und das
+Fenster wird kommentarlos blockiert.
+
+**Fix:** `openPrintReportWindow()` öffnet synchron im Klick und zeigt einen
+Platzhalter; `openPrintReport(html, win)` füllt es später. Bei Abbruch wird es
+geschlossen. Ein blockiertes Fenster wird vor der Aufnahme erkannt und gemeldet.
+
+### Nicht bestätigt — Batteriebank-Kette
+
+Die sechs geforderten Bedienfälle wurden geprüft (einzeln, zwei parallel,
+getrennte Bänke, nachträgliche Änderung, parallel→einzeln, importierte Serie).
+**Kein Defekt:** Oberfläche, `deriveBatteryBanks` und AutoWire stimmen überein.
+Zwei zunächst rot gesehene Erwartungen waren falsche Testannahmen: der
+Platzhalter „noch nicht erklärt" ist Absicht, und im Serien-Fall wird bewusst
+gar kein Auswahlfeld gerendert, sondern eine Reset-Karte.
+
+### Tests und Gegenproben
+
+- `BOMModal.reportConsistency.test.tsx` — 10 Fälle. Vier davon fielen vor dem
+  Fix; nach temporärem Entschärfen der Nachprüfung fallen sie wieder.
+- `BatteryBankSection.workflow.test.tsx` — 6 Fälle, alle grün, kein Fix nötig.
+- `tests/e2e/print-report.spec.ts` — 2 Browserfälle: Fenster geht auf, Bild ist
+  wirklich dekodiert (`naturalWidth > 0`), kein Überlauf; Planänderung nach dem
+  Öffnen verweigert das Dokument. **Gegenprobe:** mit beiden Prüfungen
+  entschärft fällt der Browserfall durch.
+
+**Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
+Routing-Garantien oder Golden Fixtures. `planFingerprintHash` unverändert.
+
+## UI-2026-11-06 — Auto-Verbinden wieder sichtbar, Schrittleiste entfernt
+
+**Nutzerwortlaut:** „Der automatisch verbinden Button ist weg und ich brauche
+dieses planen,prüfen etc. Button nicht." Rückfrage entschied: Schrittleiste
+**ganz entfernen** (nicht nur standardmäßig aus) und den Knopf ab ~520 px mit
+**vollem Namen** beschriften.
+
+### Ursache (belegt, nicht vermutet)
+
+Der Knopf war nicht entfernt, sondern per CSS unsichtbar:
+`.cad-autowire-phone { display: none }` in `app/globals.css`, mit
+`display: inline-flex` erst unter 480 px. Im geführten Modus (Default `true`,
+persistiert) hing der Knopf an dieser Klasse und war auf Desktop im DOM, aber
+nicht zu sehen. Die Schrittleiste war dort der **einzige** Zugang.
+
+Zweiter Teil des Befunds: Die Beschriftung lautete 520–1979 px
+„Vorschlag prüfen" — der Name „Automatisch verbinden" stand erst ab 1980 px.
+Der Knopf war also auch dort, wo er sichtbar war, nicht unter seinem Namen zu
+finden.
+
+**Beide Änderungen gehören zusammen:** Nur die Leiste zu entfernen hätte die
+Funktion auf Desktop ganz gekostet.
+
+### Umsetzung
+
+- `PlannerToolbar.tsx`: `guidedMode`-Prop und der geführte Zweig entfallen; eine
+  Leiste, `AutoWireButton` immer gerendert. Beschriftung: „Auto" (<520 px),
+  „Automatisch verbinden" (ab 520 px), „Automatisch verbinden · Vorschau"
+  (ab 1980 px).
+- `GuidedPlanRail.tsx` + Test gelöscht, ebenso `GuidedMode.integration.test.tsx`.
+  Die `.cad-rail`-Regeln in `globals.css` hatten danach kein Element mehr und
+  sind mit entfernt (2,5 KB).
+- `usePlannerActions.ts`: Menügruppe „Planungshilfe" und `action-guided-toggle`
+  entfernt — sie schalteten eine nicht mehr existente Leiste.
+- `guidedMode` bleibt im Store (Default jetzt `false`), steuert aber keine
+  Oberfläche mehr. **Grund:** `store/slices/persistence.ts` (DO-NOT-TOUCH) liest
+  und schreibt es beim Migrieren gespeicherter Pläne; Entfernen bräche die
+  Persistenz. `guidedSteps.ts` bleibt, weil `autoWireFeedbackFor` gebraucht wird.
+
+### Zwei Folgefehler des Umbaus, selbst gefunden und behoben
+
+1. **Eingefrorene Chip-Reihe überdeckte die Moduszeile.** `guidedMode` hatte
+   `CanvasDisplayOptions` dauerhaft kompakt gehalten und damit einen
+   Geometriefehler kaschiert. Nach dem Entfernen maß ich im Browser: Moduszeile
+   endet bei `Breite/2 + 277`, Chip-Reihe beginnt bei `Breite − 713` — Abstand
+   `Breite/2 − 990`, also **−270 px bei 1440**, **−30 px bei 1920**, erst
+   **+34 px bei 2048**. Die Kompakt-Schwelle steht jetzt auf 2048 px und folgt
+   der gemessenen Geometrie statt einem Modus-Flag.
+2. **Sichtbarer Text und zugänglicher Name liefen auseinander.** Nach der
+   Umbenennung sagte Sprachsteuerung „Automatisch verbinden", der `aria-label`
+   blieb „Auto-verbinden: Vorschlag prüfen" (WCAG 2.5.3, „Label in Name").
+   axe findet das **nicht**: `label-content-name-mismatch` ist als experimentell
+   standardmäßig abgeschaltet (`enabled: false`) — ein grüner axe-Lauf war hier
+   kein Nachweis. Der Name enthält jetzt alle drei Beschriftungsstufen.
+
+### Tests und Gegenproben
+
+- `tests/e2e/autowire-reachable.spec.ts` — 8 Fälle (4 Viewports × 2), darunter
+  der Nutzerzustand **gespeichertes `guidedMode: true`**. Geprüft wird
+  `toBeVisible` im echten Browser, nicht `toBeInTheDocument`: der Defekt stand
+  in einer Medienabfrage, jsdom rechnet keine Stylesheets und war grün, während
+  der Nutzer keinen Knopf sah.
+  **Gegenprobe:** Klasse + CSS-Regel des Originaldefekts wieder eingebaut →
+  Desktop fällt in beiden Fällen durch, mobile-375 bleibt grün. Genau das
+  gemeldete Bild. Nach Zurückholen: 8/8.
+- `PlannerToolbar.test.tsx` — jede sichtbare Beschriftung muss im zugänglichen
+  Namen enthalten sein. **Gegenprobe:** alter `aria-label` → 2 failed.
+- Abwesenheit der Leiste wird über ihre ehemalige Marke
+  (`<nav aria-label="Planungsablauf">`) geprüft, nicht über ein gelöschtes
+  `data-testid` — der Selektorvertrag verlangt zu Recht, dass jede in
+  `tests/e2e` benutzte Kennung gerendert wird. **Leerlaufprobe:** Marke testweise
+  ins DOM gesetzt → der Locator greift, die Assertion ist nicht nichtssagend.
+- Die Trassen-Assertion des gelöschten Compact-Tests wurde in den verbleibenden
+  Popover-Test übernommen; der Pfad lebt über die Breite weiter.
+
+### Dritter Folgefehler: Werkzeugleiste wurde unklickbar
+
+Beim Screenshot des erreichten Zustands fiel auf, dass „Stückliste" zu
+„Stücklis" abgeschnitten wirkte. Ein Treffertest (`elementFromPoint` an der
+rechten Knopfkante) bestätigte es: bei 1440 px lag die rechte Hälfte unter dem
+Bereichs-Umschalter.
+
+Gemessen (rechte Kante der Ausgabe-Gruppe 862 px mit Text, linker Rand des
+Umschalters = Breite − 676 px bis 1535 px, danach − 759 px):
+
+| Breite | Abstand Gruppe ↔ Umschalter |
+| ------ | --------------------------- |
+| 1280   | −258 px                     |
+| 1440   | −98 px                      |
+| 1620   | −1 px                       |
+| 1640   | +19 px                      |
+
+**Attribution:** Der Fehler ist **nicht neu** — mit dem alten Label
+„Vorschlag prüfen" lag der Abstand bei 1440 px bereits bei −58 px (gegen-
+gemessen). Der längere Name hat ihn auf −98 px verbreitert und damit für jeden
+sichtbar gemacht. Die bestehenden Überlappungswächter (`controls-overlap`,
+`ui-audit-overlaps`, 15/15 grün) sahen ihn nicht, weil sie feste Paarungen
+prüfen, nicht jede Kante.
+
+**Fix:** Ausgabe-Gruppe als Symbole ab 1440 px (rechte Kante 700 px, bei 1440
+bleiben 64 px Luft), mit Text erst ab 1640 px. Beschriftung bleibt im
+`aria-label` und als Tooltip; unter 1440 px liegt sie wie bisher im `⋯`-Menü.
+
+**Gegenprobe:** Neuer Treffertest über vier Breiten. Mit dem alten CSS fallen
+1280 **und** 1440 durch („Stückliste verdeckt von viewmode-electric"), mit dem
+Fix sind alle vier grün. Wichtig: Der Test braucht einen **belegten** Plan —
+im leeren Plan sind die Statuschips schmaler und die Überlappung tritt bei
+1440 px nicht auf. Der erste Gegenlauf war deshalb wirkungslos und wurde
+korrigiert.
+
+**Gates:** `npm run check` EXIT 0 (313 Dateien, 4121 Tests). Visuelles Gate
+**76/76** — auch nach dem Entfernen der toten CSS-Regeln und nach der neuen
+Schwelle, damit ist der Abbau pixelneutral. Build 42 Seiten.
+Responsive/Handy-Geometrie 67 passed, Überlappungswächter 15/15.
+
+**Lighthouse:** Der nicht blockierende CI-Schritt „Lighthouse-Budget" fiel auf
+dem ersten Push durch. Lokal halten alle Budgets (`perf:lighthouse` EXIT 0,
+dreimal stabil: `/` Perf 91, LCP 1209 ms). **Gegenmessung mit der CSS vor
+diesem Auftrag: Perf 90, identische CLS 0.194** — die Knappheit am 90er-Budget
+ist also vorbestehend und nicht Folge dieser Änderung; der Abbau hat sie leicht
+verbessert. Das Budget wurde **nicht** abgesenkt.
+
+**Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
+Routing-Garantien oder Golden Fixtures. Keine neuen Skips, keine abgeschwächten
+Assertions. Nur Chromium geprüft; die 2048-px-Schwelle ist an den gemessenen
+Breiten 1440/1920/2048 nachgewiesen, nicht auf Realgeräten.

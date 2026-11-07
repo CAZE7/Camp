@@ -6,7 +6,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
 import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions';
 import { PlannerMenubar, PlannerPhoneMenu } from './ui/PlannerMenubar';
@@ -14,7 +13,6 @@ import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
-import { GuidedPlanRail } from './ui/GuidedPlanRail';
 import { verificationSummary } from './utils/verificationWarnings';
 import { nextStepSummary } from './utils/verificationActions';
 import {
@@ -96,8 +94,6 @@ export function PlannerDashboard() {
     canUndo,
     canRedo,
     clearPlan,
-    guidedMode,
-    setGuidedMode,
     focusMode,
     setFocusMode,
   } = usePlannerStore(
@@ -114,8 +110,6 @@ export function PlannerDashboard() {
       canUndo: state.canUndo,
       canRedo: state.canRedo,
       clearPlan: state.clearPlan,
-      guidedMode: state.guidedMode,
-      setGuidedMode: state.setGuidedMode,
       focusMode: state.focusMode,
       setFocusMode: state.setFocusMode,
     }))
@@ -206,7 +200,11 @@ export function PlannerDashboard() {
             title: 'Wechselrichter überlastet',
             focusId: node.id,
             focusType: 'node',
-            message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät.`,
+            // AUD-005: Diese Prüfung betrifft die Dauerleistung des Geräts.
+            // Kabel und Schutzorgane werden unabhängig davon für die volle
+            // angeschlossene Insel-Last ausgelegt — der Hinweis sagt das, damit
+            // Karte, Warn-Zentrale und Kabelauslegung nicht zweierlei erzählen.
+            message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät. Hinweis: Kabel und Sicherung werden für alle angeschlossenen 230-V-Verbraucher dieser Insel ausgelegt, nicht nur für die Auswahl.`,
           });
       });
     // Leerrohr-Füllgrad wird hier NICHT zweitgeprüft: Die Regel AMP-006 der
@@ -270,7 +268,6 @@ export function PlannerDashboard() {
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
-  const hasOnboarded = useAppStore((state) => state.hasOnboarded);
   const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
   const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
   const planNodeCount = viewMode === 'water' ? waterNodes.length : nodes.length;
@@ -315,7 +312,6 @@ export function PlannerDashboard() {
         viewMode={viewMode}
         onSelectViewMode={setViewMode}
         focusMode={focusMode}
-        guidedMode={guidedMode}
         onToggleFocusMode={() => setFocusMode(!focusMode)}
         overflow={actions.overflow}
         openMenu={openMenu}
@@ -366,26 +362,6 @@ export function PlannerDashboard() {
           </>
         }
       />
-
-      {/* Geführter Modus (Standard): EIN nächster Schritt statt Werkzeugkasten.
-          Der Wasserplan hat eigene Regeln — die Schrittleiste gilt nur für die
-          Elektrik, dort bleibt der freie Editor ohne Leiste. */}
-      {/* Nachtest N2: Während der Einführung (Schritt 1) zeigte die Leiste
-          dahinter schon „Schritt 5“ — zwei Führungen gleichzeitig. Die
-          Leiste erscheint erst, wenn der Wizard geschlossen ist. */}
-      {guidedMode && viewMode === 'electric' && hasOnboarded && (
-        <GuidedPlanRail
-          nodes={nodes}
-          edges={edges}
-          warnings={warnings}
-          verdict={verificationReport.verdict}
-          onOpenCatalog={actions.openCatalog}
-          onAutoWire={actions.runAutoWire}
-          onOpenWarnings={actions.openWarnings}
-          onOpenBom={actions.openBom}
-          onSwitchToExpertMode={() => setGuidedMode(false)}
-        />
-      )}
 
       {feedback && (
         <div

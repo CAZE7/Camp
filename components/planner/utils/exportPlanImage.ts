@@ -113,56 +113,148 @@ export async function exportPlanImage(): Promise<ExportResult> {
   }
 }
 
+/** Ergebnis einer Plan-Aufnahme ohne Download (AUD-004: Bericht bettet es ein). */
+export type PlanCapture = {
+  dataUrl: string;
+  width: number;
+  height: number;
+  /**
+   * Welches Gewerk das Bild zeigt. Der Bericht muss das benennen: Die
+   * Verifikation prüft immer die Elektrik, das Bild folgt dem Ansichtsmodus.
+   */
+  viewMode: 'electric' | 'water';
+  /**
+   * Identität der Darstellung zum Zeitpunkt des Store-Lesezugriffs. Der
+   * Aufrufer vergleicht sie mit dem Stand vor und nach der Aufnahme — nur so
+   * ist das Fenster zwischen Vorprüfung und fertigem Bild geschlossen.
+   */
+  identity: string;
+};
+
+/**
+ * Nimmt die Zeichenfläche als PNG-Data-URL auf — OHNE Wasserzeichen.
+ *
+ * AUD-004: Der Druckbericht braucht denselben Schaltplan wie der Bild-Export.
+ * Statt eine zweite Renderstrecke zu bauen, nutzen beide diese Funktion. Das
+ * Foren-Wasserzeichen gehört nur in den geteilten Bild-Export, nicht in ein
+ * Übergabedokument an eine Werkstatt.
+ *
+ * Die Auswahl wird vor dem Rendern aufgelöst (QA B-17) — sonst hinge das Bild
+ * davon ab, was der Nutzer gerade angeklickt hat, und wäre nicht reproduzierbar.
+ * Das gilt für beide Gewerke, nicht nur für die Elektrik.
+ */
+export async function capturePlanImage(options?: { watermark?: boolean }): Promise<PlanCapture> {
+  const { toPng } = await import('html-to-image');
+  const { usePlannerStore } = await import('../../../store/usePlannerStore');
+  const { planCaptureIdentity } = await import('./planCaptureIdentity');
+  const state = usePlannerStore.getState();
+  const viewMode = state.viewMode === 'water' ? 'water' : 'electric';
+  const identity = planCaptureIdentity(state);
+  const nodes: Node[] =
+    viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
+
+  const selectedNodeIds = state.nodes.filter((n) => n.selected).map((n) => n.id);
+  const selectedEdgeIds = state.edges.filter((e) => e.selected).map((e) => e.id);
+  const selectedWaterNodeIds = state.waterNodes.filter((n) => n.selected).map((n) => n.id);
+  const selectedWaterEdgeIds = state.waterEdges.filter((e) => e.selected).map((e) => e.id);
+  const hadSelection =
+    selectedNodeIds.length +
+      selectedEdgeIds.length +
+      selectedWaterNodeIds.length +
+      selectedWaterEdgeIds.length >
+    0;
+
+  if (hadSelection) {
+    usePlannerStore.setState((s) => ({
+      nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      edges: s.edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      waterNodes: s.waterNodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      waterEdges: s.waterEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      selectedNodes: [],
+      selectedEdges: [],
+    }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }
+
+  try {
+    const image = await renderToDataUrl(toPng, nodes, options?.watermark ?? false);
+    return { ...image, viewMode, identity };
+  } finally {
+    if (hadSelection) {
+      usePlannerStore.setState((s) => ({
+        nodes: s.nodes.map((n) => (selectedNodeIds.includes(n.id) ? { ...n, selected: true } : n)),
+        edges: s.edges.map((e) => (selectedEdgeIds.includes(e.id) ? { ...e, selected: true } : e)),
+        waterNodes: s.waterNodes.map((n) =>
+          selectedWaterNodeIds.includes(n.id) ? { ...n, selected: true } : n
+        ),
+        waterEdges: s.waterEdges.map((e) =>
+          selectedWaterEdgeIds.includes(e.id) ? { ...e, selected: true } : e
+        ),
+        selectedNodes: s.nodes.filter((n) => selectedNodeIds.includes(n.id)),
+        selectedEdges: s.edges.filter((e) => selectedEdgeIds.includes(e.id)),
+      }));
+    }
+  }
+}
+
+/** Reine Bildausgabe — ohne Planstand-Zuordnung. Die ergänzt der Aufrufer. */
+type RenderedImage = { dataUrl: string; width: number; height: number };
+
+async function renderToDataUrl(
+  toPng: typeof import('html-to-image').toPng,
+  nodes: Node[],
+  watermark: boolean
+): Promise<RenderedImage> {
+  const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement | null;
+  if (!reactFlowWrapper) throw new Error('Planfläche nicht gefunden');
+  const styles = getComputedStyle(document.documentElement);
+  const paper =
+    styles.getPropertyValue('--surface-canvas').trim() || styles.getPropertyValue('--paper').trim();
+  const viewport = reactFlowWrapper.querySelector<HTMLElement>('.react-flow__viewport');
+  const bounds =
+    nodes.length > 0
+      ? getNodesBounds(nodes)
+      : { x: 0, y: 0, width: reactFlowWrapper.clientWidth, height: reactFlowWrapper.clientHeight };
+  const imageWidth = Math.max(640, Math.ceil(bounds.width + 160));
+  const imageHeight = Math.max(480, Math.ceil(bounds.height + 160));
+  const transform = getViewportForBounds(bounds, imageWidth, imageHeight, 0.5, 2, 0.12);
+  const removeWatermark = watermark ? mountWatermark(viewport || reactFlowWrapper, bounds) : () => {};
+  reactFlowWrapper.classList.add('planner-exporting');
+  await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+  try {
+    const dataUrl = await toPng(viewport || reactFlowWrapper, {
+      backgroundColor: paper,
+      pixelRatio: 2,
+      cacheBust: true,
+      width: imageWidth,
+      height: imageHeight,
+      style: viewport
+        ? {
+            width: `${imageWidth}px`,
+            height: `${imageHeight}px`,
+            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+          }
+        : undefined,
+      filter: (node) =>
+        !(
+          node?.classList?.contains('react-flow__panel') ||
+          node?.classList?.contains('react-flow__controls') ||
+          node?.classList?.contains('react-flow__minimap')
+        ),
+    });
+    return { dataUrl, width: imageWidth, height: imageHeight };
+  } finally {
+    reactFlowWrapper.classList.remove('planner-exporting');
+    removeWatermark();
+  }
+}
+
 async function renderAndDownload(
   toPng: typeof import('html-to-image').toPng,
   nodes: Node[]
 ): Promise<ExportResult> {
   try {
-    const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement | null;
-    if (!reactFlowWrapper) throw new Error('Planfläche nicht gefunden');
-    const styles = getComputedStyle(document.documentElement);
-    const paper =
-      styles.getPropertyValue('--surface-canvas').trim() || styles.getPropertyValue('--paper').trim();
-    const viewport = reactFlowWrapper.querySelector<HTMLElement>('.react-flow__viewport');
-    const bounds =
-      nodes.length > 0
-        ? getNodesBounds(nodes)
-        : { x: 0, y: 0, width: reactFlowWrapper.clientWidth, height: reactFlowWrapper.clientHeight };
-    const imageWidth = Math.max(640, Math.ceil(bounds.width + 160));
-    const imageHeight = Math.max(480, Math.ceil(bounds.height + 160));
-    const transform = getViewportForBounds(bounds, imageWidth, imageHeight, 0.5, 2, 0.12);
-    // Wasserzeichen nur für die Aufnahme einhängen und in jedem Fall wieder
-    // entfernen — auf der Zeichenfläche selbst hat es nichts zu suchen.
-    const removeWatermark = mountWatermark(viewport || reactFlowWrapper, bounds);
-    // Nachtest Bug 13: Auswahlrahmen nicht mit ins PNG rendern.
-    reactFlowWrapper.classList.add('planner-exporting');
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-    let dataUrl: string;
-    try {
-      dataUrl = await toPng(viewport || reactFlowWrapper, {
-        backgroundColor: paper,
-        pixelRatio: 2,
-        cacheBust: true,
-        width: imageWidth,
-        height: imageHeight,
-        style: viewport
-          ? {
-              width: `${imageWidth}px`,
-              height: `${imageHeight}px`,
-              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-            }
-          : undefined,
-        filter: (node) =>
-          !(
-            node?.classList?.contains('react-flow__panel') ||
-            node?.classList?.contains('react-flow__controls') ||
-            node?.classList?.contains('react-flow__minimap')
-          ),
-      });
-    } finally {
-      reactFlowWrapper.classList.remove('planner-exporting');
-      removeWatermark();
-    }
+    const { dataUrl } = await renderToDataUrl(toPng, nodes, true);
     const link = document.createElement('a');
     link.download = '12v-planer-schaltplan.png';
     link.href = dataUrl;

@@ -627,6 +627,18 @@ export function EdgeInspector({
                       : 'rechnerisch mit Referenzmodell bewertet'}
                   . Datengrundlage: docs/KABEL-VERLEGEBEDINGUNGEN.md. Keine normgeprüfte Auslegung.
                 </p>
+                {/* AUD-003: Der Nutzer muss erfahren, WOHER die Tabelle kommt.
+                    „Referenzmodell" allein sagt nicht, dass es eine
+                    Hausinstallationstabelle ist und keine geprüfte
+                    Fahrzeugleitungs-Tabelle. Ohne diesen Satz wirkt die
+                    Zahl fahrzeugspezifisch, obwohl sie es nicht ist. */}
+                {cableConditions?.assessment !== 'manufacturer-data' && (
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid="cable-ampacity-basis">
+                    Die Tabelle gilt für Hausinstallation (DIN VDE 0298-4, Verlegeart B2) — nicht für
+                    Fahrzeugleitungen nach ISO 6722 / FLRY. Für eine belegte Auslegung die Herstellerangabe
+                    I_z aus dem Kabel-Datenblatt eintragen.
+                  </p>
+                )}
               </div>
 
               {(conditionFields.installationCondition === 'custom' ||

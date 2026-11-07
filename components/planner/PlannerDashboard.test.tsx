@@ -31,7 +31,6 @@ const mockOnLayoutV2 = vi.fn().mockResolvedValue({ applied: true, engine: 'elk' 
 const mockUndo = vi.fn();
 const mockRedo = vi.fn();
 const mockClearPlan = vi.fn();
-const mockSetGuidedMode = vi.fn();
 const mockFocusElement = vi.fn();
 const mockEdges: Array<{ id: string; source: string; target: string; data: Record<string, unknown> }> = [];
 let mockWaterWarning: string | null = null;
@@ -48,7 +47,6 @@ const mockLockedMutationErrors: Array<{
 const planState = () => ({
   viewMode: 'electric',
   focusMode: false,
-  guidedMode: true as boolean,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   edges: [] as Array<{ id: string; selected?: boolean }>,
@@ -83,8 +81,6 @@ vi.mock('../../store/usePlannerStore', () => ({
         canUndo: true,
         canRedo: true,
         clearPlan: mockClearPlan,
-        guidedMode: mockState.guidedMode,
-        setGuidedMode: mockSetGuidedMode,
         // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
         autoWireReport: null,
         plannerErrors: [],
@@ -130,7 +126,6 @@ const openMenu = (id: 'datei' | 'bearbeiten' | 'ansicht' | 'werkzeuge' | 'planun
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockState.guidedMode = true;
     mockState.nodes = [];
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
@@ -147,10 +142,13 @@ describe('PlannerDashboard - Core Interactions', () => {
     // View toggles
     expect(screen.getByText('Elektrik')).toBeInTheDocument();
     expect(screen.getByText('Wasser')).toBeInTheDocument();
-    // Guided mode shows exactly the next step. Auto-verbinden bleibt im
-    // Überlauf und zusätzlich als Symbol, das erst unter 480 px sichtbar ist.
-    expect(screen.getByTestId('guided-primary-action')).toHaveTextContent('Batterie hinzufügen');
-    expect(screen.getByTestId('action-autowire')).toHaveClass('cad-autowire-phone');
+    // Nutzer-Entscheidung 2026-11-06: Die Schrittleiste ist entfallen. Der
+    // Automatik-Knopf steht jetzt direkt in der Leiste — vorher war er per
+    // `.cad-autowire-phone` auf Desktop unsichtbar und nur über die Leiste
+    // erreichbar. Genau das ist der behobene Befund.
+    expect(screen.queryByTestId('guided-rail')).not.toBeInTheDocument();
+    expect(screen.getByTestId('action-autowire')).not.toHaveClass('cad-autowire-phone');
+    expect(screen.getByTestId('action-autowire')).toHaveTextContent('Automatisch verbinden');
 
     // Expert actions remain reachable in the overflow menu.
     openMoreMenu();
@@ -306,7 +304,6 @@ describe('PlannerDashboard - Core Interactions', () => {
 describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockState.guidedMode = true;
     mockState.nodes = [];
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
@@ -377,11 +374,10 @@ describe('PlannerDashboard - Action Buttons', () => {
     ]);
   });
 
-  it('calls autoWireSystem from the toolbar primary action in expert mode', () => {
-    mockState.guidedMode = false;
+  it('löst Auto-Wire über den Knopf in der Werkzeugleiste aus', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Automatisch verbinden/));
+    fireEvent.click(screen.getByTestId('action-autowire'));
 
     expect(mockAutoWireSystem).toHaveBeenCalledTimes(1);
     expect(mockAutoWireSystem).toHaveBeenCalledWith();
@@ -462,7 +458,6 @@ describe('PlannerDashboard - Action Buttons', () => {
    * „Automatik“ (Menüleiste → Werkzeuge und ⋯).
    */
   it('bietet in der Leiste genau eine Automatikaktion an und ordnet den Plan über das Menü', async () => {
-    mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
     // Nutzer-Rückmeldung 2026-10-26: „Vorschlag prüfen“, „Plan automatisch
@@ -488,40 +483,25 @@ describe('PlannerDashboard - Action Buttons', () => {
   });
 
   /**
-   * UX-Reset 2026-09 (Priorität 1): Der Planer sagt, was als Nächstes zu tun
-   * ist — die Schrittleiste zeigt den ersten offenen Schritt und dessen
-   * Primäraktion, statt den Nutzer den Werkzeugkasten lesen zu lassen.
+   * Nutzer-Entscheidung 2026-11-06: „Der Automatisch-verbinden-Button ist weg
+   * und ich brauche dieses Planen/Prüfen-Ding nicht."
+   *
+   * Ursache war `.cad-autowire-phone { display:none }`: Im geführten Modus war
+   * der Knopf auf Desktop unsichtbar und die Schrittleiste der einzige Zugang.
+   * Die Leiste ist entfallen — dieser Test hält den Ersatz fest, damit der
+   * Befund nicht zurückkehrt: keine Leiste, dafür ein direkter Knopf.
    */
-  it('führt im geführten Modus mit dem ersten offenen Schritt', () => {
+  it('zeigt keine Schrittleiste, sondern Auto-Verbinden direkt in der Leiste', () => {
     render(<PlannerDashboard />);
 
-    const rail = screen.getByTestId('guided-rail');
-    expect(rail).toBeInTheDocument();
-    // Leerer Plan: Schritt 1 (Anlage/Batterie) ist der aktuelle Schritt.
-    expect(screen.getByTestId('guided-step-define')).toHaveAttribute('aria-current', 'step');
-    expect(screen.getByText(/Schritt 1 von 5/)).toBeInTheDocument();
-  });
+    expect(screen.queryByTestId('guided-rail')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('guided-primary-action')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('guided-expert-toggle')).not.toBeInTheDocument();
 
-  it('bietet schon im ersten Schritt eine ausführbare Aktion an', () => {
-    render(<PlannerDashboard />);
-    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
-
-    // Eine Leiste ohne Knopf beantwortet „Was jetzt?" nicht — Schritt 1 öffnet
-    // den Bauteilkatalog, statt nur zu zählen.
-    const primary = screen.getByTestId('guided-primary-action');
-    expect(primary).toHaveTextContent('Batterie hinzufügen');
-
-    fireEvent.click(primary);
-    const dispatched = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
-    expect(dispatched).toContain('planner-open-catalog');
-  });
-
-  it('schaltet über den Expertenmodus die Schrittleiste ab', () => {
-    render(<PlannerDashboard />);
-
-    fireEvent.click(screen.getByTestId('guided-expert-toggle'));
-
-    expect(mockSetGuidedMode).toHaveBeenCalledWith(false);
+    const button = screen.getByTestId('action-autowire');
+    expect(button).toBeInTheDocument();
+    expect(button).not.toHaveClass('cad-autowire-phone');
+    expect(button).toHaveTextContent('Automatisch verbinden');
   });
 });
 
@@ -570,7 +550,6 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
 describe('PlannerDashboard - Image Export', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockState.guidedMode = true;
     mockState.nodes = [];
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';

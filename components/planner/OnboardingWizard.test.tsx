@@ -4,6 +4,7 @@ import { OnboardingWizard, recommendedTemplateId } from './OnboardingWizard';
 import { PLANNER_TEMPLATES } from './templates';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { AC_230V_PRODUCT_SCOPE_NOTE } from '../../lib/verify/acScope';
 
 describe('OnboardingWizard (B-06, B-23, Nachtest)', () => {
   beforeEach(() => {
@@ -92,5 +93,41 @@ describe('recommendedTemplateId', () => {
     expect(recommendedTemplateId({}, {})).toBe('minimalist');
     expect(recommendedTemplateId({}, { a: true, b: true, c: true })).toBe('kastenwagen');
     expect(recommendedTemplateId({ solar: true }, { a: true, b: true, c: true, d: true })).toBe('autark');
+  });
+});
+
+/**
+ * AUD-002 — die 230-V-Modellgrenze muss vor der Planung sichtbar sein.
+ *
+ * Die Engine weist NET-003 seit 2026-11-04 prüfbar aus. Das Onboarding sprach
+ * aber nicht darüber: Wer „Landstrom" ankreuzt, plant 230 V und erfuhr die
+ * Grenze erst im Warnzentrum. Der Wortlaut kommt aus lib/verify/acScope.ts,
+ * damit Produkt und Engine nicht auseinanderlaufen.
+ */
+describe('OnboardingWizard — AUD-002 230-V-Grenze', () => {
+  beforeEach(() => {
+    useAppStore.setState({ hasOnboarded: false });
+    usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [] });
+  });
+
+  it('nennt die Modellgrenze, sobald Landstrom gewählt wird', () => {
+    render(<OnboardingWizard />);
+    expect(screen.queryByTestId('onboarding-ac-scope-note')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Landstrom vom Campingplatz'));
+
+    const note = screen.getByTestId('onboarding-ac-scope-note');
+    expect(note).toBeInTheDocument();
+    expect(note.textContent).toContain(AC_230V_PRODUCT_SCOPE_NOTE);
+    // Kern der Grenze: Umschaltung und Rückspeisung sind nicht modelliert.
+    expect(note.textContent).toContain('Umschaltung');
+    expect(note.textContent).toContain('Rückspeisung');
+    expect(note.textContent).toContain('Elektrofachkraft');
+  });
+
+  it('belästigt reine 12-V-Planung nicht mit der 230-V-Grenze', () => {
+    render(<OnboardingWizard />);
+    fireEvent.click(screen.getByLabelText('Solar'));
+    expect(screen.queryByTestId('onboarding-ac-scope-note')).not.toBeInTheDocument();
   });
 });

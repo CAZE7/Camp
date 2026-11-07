@@ -450,10 +450,13 @@ export function performAutoWiring(
         kind: 'ambiguous-battery-topology',
         severity: 'warning',
         ruleId: 'AUTO-BANK-001',
+        // AUD-001: Der Text nannte Rohfelder („bankId", „bankTopology"), die
+        // es in der Oberfläche nicht gab — eine Aufforderung ins Leere.
+        // Er nennt jetzt den tatsächlichen Weg in der UI.
         message:
           sameDeclaredBank && bank
-            ? `Batterie „${safeText(extra.data?.label) || extra.id}" gehört zur Bank „${bank.id}", deren Verschaltung „${bank.topology}" AutoWire nicht selbst verdrahtet. Bitte die Bank-Verbindungen von Hand zeichnen.`
-            : `Verschaltung von „${safeText(extra.data?.label) || extra.id}" ist nicht erklärt — AutoWire nimmt NICHT an, dass sie parallel zur Aufbaubatterie liegt. Bitte am Akku „bankId" und „bankTopology" setzen (z. B. beide auf dieselbe Bank mit „parallel").`,
+            ? `Batterie „${safeText(extra.data?.label) || extra.id}" gehört zur Bank „${bank.id}", deren Verschaltung „${bank.topology}" dieser Planer nicht verdrahtet. Erfasse ein 24-V-/48-V-System als eine Batterie mit der Nennspannung des Gesamtsystems.`
+            : `Verschaltung von „${safeText(extra.data?.label) || extra.id}" ist nicht erklärt — AutoWire nimmt NICHT an, dass sie parallel zur Aufbaubatterie liegt. Wähle an der Batterie im Inspektor unter „Batteriebank" die Verschaltung „Parallel" und gib beiden Akkus denselben Bank-Namen.`,
         edgeIds: [],
         nodeIds: [extra.id, batteryNode.id],
       });

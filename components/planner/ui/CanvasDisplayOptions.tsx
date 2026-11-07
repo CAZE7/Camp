@@ -5,8 +5,22 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { PlannerDetailLevel } from '../../../store/slices/types';
 import { DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, type Domain } from '../utils/domainFilter';
 
-/** The canvas gets narrow before the page reaches Tailwind's xl breakpoint. */
-const COMPACT_CANVAS_CONTROLS_QUERY = '(max-width: 1279px)';
+/**
+ * Breite, ab der die offene Chip-Reihe neben dem Modus-Umschalter Platz hat.
+ *
+ * Gemessen 2026-11-06 (Sidebar 248 px, Chip-Reihe 698 px, Moduszeile 306 px,
+ * Canvas-Abstand 15 px): Der Abstand zwischen rechter Kante der mittigen
+ * Moduszeile und linker Kante der rechtsbündigen Chip-Reihe beträgt
+ * `Breite/2 - 990` px — bei 1440 px also -270 px, bei 1920 px -30 px, erst ab
+ * 1980 px nicht mehr negativ. 2048 px lässt ~34 px Luft.
+ *
+ * Vorher kaschierte `guidedMode` (Standard `true`) das: Die Reihe blieb immer
+ * hinter dem „Ansicht"-Auslöser. Mit dem Entfernen der Schrittleiste fiel der
+ * Schutz weg und die Reihe überdeckte die Modusknöpfe (Nachweis:
+ * `elementFromPoint` traf einen Chip statt „Physisch"). Die Schwelle richtet
+ * sich jetzt nach der gemessenen Geometrie statt nach einem Modus-Flag.
+ */
+const COMPACT_CANVAS_CONTROLS_QUERY = '(max-width: 2047.98px)';
 /** Ab hier dockt der Inspector an und entzieht dem Canvas 288–320 px —
  *  die Chip-Reihe hätte dann trotz breitem Fenster keinen Platz mehr. */
 const INSPECTOR_DOCK_QUERY = '(min-width: 1280px)';
@@ -165,14 +179,13 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
   const inspectorDocked = usePlannerStore((state) => state.isInspectorOpen);
   const dockBreakpoint = useMediaQuery(INSPECTOR_DOCK_QUERY);
   /**
-   * UX-Reset 2026-09: Domänen-Filter, Trassen und Hauptstromkreis sind
-   * Expertenwerkzeuge. Im geführten Modus liegen sie deshalb hinter dem
-   * „Ansicht"-Auslöser statt als dauerhafte Chip-Reihe auf dem Plan —
-   * dieselben Schalter, ein bewusster Klick. Im Expertenmodus bleibt die
-   * Chip-Reihe auf breitem Canvas direkt erreichbar.
+   * Domänen-Filter, Trassen und Hauptstromkreis liegen hinter dem
+   * „Ansicht"-Auslöser, solange die offene Reihe die mittige Moduszeile
+   * überdecken würde oder der angedockte Inspector den Canvas verengt —
+   * dieselben Schalter, ein bewusster Klick. Auf breitem Canvas bleibt die
+   * Chip-Reihe direkt erreichbar.
    */
-  const guidedMode = usePlannerStore((state) => state.guidedMode);
-  const compact = compactViewport || (dockBreakpoint && inspectorDocked) || guidedMode;
+  const compact = compactViewport || (dockBreakpoint && inspectorDocked);
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 

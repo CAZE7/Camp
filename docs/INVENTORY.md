@@ -40,7 +40,7 @@ Legende Status:
 | Menüpunkt „Übersicht“                      | `fitView` über `planner-fit-view`-Event                    | ✏️ UX-Reset   | aus der Toolbar ins Menü verschoben — der Canvas trägt dieselbe Aktion als Zoom-Steuerung.                                 |
 | Menüpunkt „Aufräumen“ (Auto-Layout)        | dagre-Layout                                               | ✏️ UX-Reset   | aus der Toolbar ins Menü verschoben; Primärpfad ist „Plan ordnen".                                                         |
 | Menüpunkt „Strukturieren (ELK)“            | `onLayoutV2`, meldet die tatsächlich gelaufene Engine      | ✏️ UX-Reset   | bleibt als expliziter ELK-Pfad erreichbar (`action-layout-v2-menu`).                                                       |
-| Menüpunkt „Expertenmodus / geführt“        | `setGuidedMode(!guidedMode)`                               | 🆕 UX-Reset   | `action-guided-toggle`, `aria-pressed`; schaltet die Schrittleiste.                                                        |
+| Menüpunkt „Expertenmodus / geführt“        | entfernt                                                   | ❌ 2026-11-06 | Schrittleiste entfallen; `action-guided-toggle` und „Planungshilfe" existieren nicht mehr.                                 |
 | Menüpunkt „Stückliste“                     | `exportBOM()` + öffnet `BOMModal`                          | ✏️ R1         | interner Kopier-Button von `copyBomForChat` in `copyBomToClipboard` umbenannt (kein toter Chat-Verweis).                   |
 | Menüpunkt „Plan lokal prüfen“              | `checkSchematic()`, öffnet WarningCenter                   | ✅            | `runCheck`, Feedback im Toast.                                                                                             |
 | Menüpunkt „Bild exportieren“               | `html-to-image` PNG-Download                               | ✅            | `onExportImage`, leerer Plan wird mit ehrlicher Meldung quittiert (R5).                                                    |
@@ -54,19 +54,21 @@ Legende Status:
 | Feedback-Toast                             | Erfolg/Fehler/Info nach Aktion                             | ✅            | `role="status"`/`role="alert"`, `aria-live`.                                                                               |
 | Reset-Dialog                               | Bestätigung „Plan leeren“                                  | ✅            | `AccessibleDialog` mit Fokus-Falle.                                                                                        |
 
-### 2b. Geführte Planungsleiste (`components/planner/ui/GuidedPlanRail.tsx`)
+### 2b. Geführte Planungsleiste (entfernt 2026-11-06)
 
-UX-Reset 2026-09: beantwortet „Was soll ich als Nächstes tun?" — fünf Schritte
-(`guidedSteps.ts`), EIN Primäraktion-Knopf, EIN Planstatus. Nur Elektrik, nur im
-geführten Modus (`guidedMode`, Default `true`, persistiert).
+Die Schrittleiste (`GuidedPlanRail.tsx`) ist auf Nutzerwunsch ersatzlos entfernt:
+fünf Schritte, ein Primäraktion-Knopf und ein Planstatus-Chip genügten dem Nutzer
+nicht als Ersatz für einen sichtbaren Auto-Verbinden-Knopf. Ausschlaggebend war
+`.cad-autowire-phone { display:none }`: im geführten Modus war der Knopf ab 480 px
+unsichtbar, die Leiste war der einzige Desktop-Zugang.
 
-| Element                        | Aktion                                     | Status      | Maßnahme / Code-Stelle                                                                |
-| ------------------------------ | ------------------------------------------ | ----------- | ------------------------------------------------------------------------------------- |
-| Schrittleiste (5 Schritte)     | zeigt Fortschritt, kein Klick              | 🆕 UX-Reset | `<nav aria-label="Planungsablauf">`, `aria-current="step"` am aktuellen Schritt.      |
-| Schritt-Text „Schritt n von 5“ | benennt den aktuellen Schritt + Begründung | 🆕 UX-Reset | `evaluateGuidedSteps` — kumulative Bedingungen, keine elektrische Rechnung in der UI. |
-| Planstatus-Chip                | öffnet die Warn-Zentrale                   | 🆕 UX-Reset | `guided-plan-status`; ohne Hinweise als `role="status"`-Text (kein toter Klick).      |
-| Primäraktion                   | AutoWire / Prüfung / Stückliste je Schritt | 🆕 UX-Reset | `guided-primary-action`; feuert dieselben Events wie Toolbar und Menü.                |
-| „Expertenmodus“                | `setGuidedMode(false)`                     | 🆕 UX-Reset | `guided-expert-toggle`; zurück über das ⋯-Menü.                                       |
+| Element                        | Aktion                                     | Status      | Maßnahme / Code-Stelle                                                       |
+| ------------------------------ | ------------------------------------------ | ----------- | ---------------------------------------------------------------------------- |
+| Schrittleiste (5 Schritte)     | zeigt Fortschritt, kein Klick              | ❌ entfernt | Komponente und Test gelöscht; `.cad-rail`-Regeln aus `globals.css` entfernt. |
+| Schritt-Text „Schritt n von 5“ | benennt den aktuellen Schritt + Begründung | ❌ entfernt | `evaluateGuidedSteps` bleibt als reine Funktion erhalten und getestet.       |
+| Planstatus-Chip                | öffnet die Warn-Zentrale                   | ❌ entfernt | Warn-Zentrale bleibt direkt in der Werkzeugleiste erreichbar.                |
+| Primäraktion                   | AutoWire / Prüfung / Stückliste je Schritt | ❌ entfernt | Alle drei stehen jetzt als direkte Knöpfe in der Werkzeugleiste.             |
+| „Expertenmodus“                | `setGuidedMode(false)`                     | ❌ entfernt | Kein Moduswechsel mehr nötig; `guidedMode` bleibt nur der Persistenz wegen.  |
 
 ## 3. Ansichts-Modus & Canvas
 

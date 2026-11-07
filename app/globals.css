@@ -2141,9 +2141,9 @@ summary:active {
 }
 /* Primärknopf (Designkonzept 2026-10, Planer-Regel 3): 44 px hoch, 4 px
    Radius, Fläche --oxide, Text --on-signal. Genau EINE gefüllte Fläche pro
-   Ansicht — in der geführten Ansicht die Schrittaktion (`GuidedPlanRail`),
-   im Expertenmodus „Vorschlag prüfen“ (`PlannerToolbar`); beide schließen
-   sich gegenseitig aus. Hinweise, Prüfstatus und Schließen sind nie primär. */
+   Ansicht: „Automatisch verbinden“ (`PlannerToolbar`). Bis 2026-11-06 gab es
+   zusätzlich die Schrittaktion der Schrittleiste; die Leiste ist entfallen.
+   Hinweise, Prüfstatus und Schließen sind nie primär. */
 .cad-btn--primary {
   min-height: 44px;
   padding-inline: 0.75rem;
@@ -2522,116 +2522,10 @@ summary:active {
   margin-inline: 0.375rem;
 }
 
-/* Einzeilige Schrittleiste: der nächste Schritt bleibt klar, ohne auf Tablet
-   eine zusätzliche, unvorhersehbare Chrome-Zeile zu erzeugen. */
-.cad-rail {
-  display: flex;
-  min-height: 48px;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.5rem;
-  overflow: hidden;
-}
-
-.cad-rail__compact {
-  flex: 1 1 auto;
-  line-height: 1.25;
-}
-
-.cad-rail__steps {
-  display: none;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  overflow-x: auto;
-  list-style: none;
-  scrollbar-width: none;
-}
-
-.cad-rail__steps::-webkit-scrollbar {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .cad-rail__steps {
-    display: flex;
-  }
-}
-
-.cad-rail__step {
-  display: inline-flex;
-  min-height: 36px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.25rem;
-  padding-inline: 0.5rem;
-  border-right: 1px solid var(--rule);
-  color: var(--text-med);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.cad-rail__step:last-child {
-  border-right: 0;
-}
-
-.cad-rail__step--current {
-  border: 1px solid var(--accent-line);
-  background: color-mix(in srgb, var(--accent-line) 9%, var(--surface-panel));
-  color: var(--text-high);
-  font-weight: 600;
-}
-
-.cad-rail__step--done {
-  color: var(--success);
-}
-
-.cad-rail__step--upcoming {
-  color: var(--text-low);
-}
-
-.cad-rail__detail {
-  min-width: 0;
-  flex: 0 1 14rem;
-  color: var(--text-med);
-}
-
-.cad-rail__status {
-  min-height: 44px;
-  flex: 0 0 auto;
-  border-color: var(--rule-strong);
-  background: var(--surface-raised);
-}
-
-.cad-rail__primary,
-.cad-rail__expert {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 767px) {
-  .cad-rail__expert {
-    width: 44px;
-    justify-content: center;
-    padding-inline: 0;
-  }
-}
-
-.cad-rail__action-label-compact {
-  display: none;
-}
-
-@media (max-width: 479px) {
-  .cad-rail__action-label-full {
-    display: none;
-  }
-
-  .cad-rail__action-label-compact {
-    display: inline;
-  }
-}
+/* Nutzer-Entscheidung 2026-11-06: Hier stand die einzeilige Schrittleiste
+   (Planungsschritte „Anlage · Kern · Verbinden · Prüfen · Ergebnis"). Sie ist
+   ersatzlos entfallen; ihre Regeln hatten danach kein Element mehr und sind
+   mit ihr entfernt. Die Aktionen stehen direkt in der Werkzeugleiste. */
 
 /* Empty inspector doubles as a routing legend. Orthogonal swatches make the
    router's existing line grammar visible without placing a permanent HUD over
@@ -3058,20 +2952,38 @@ summary:active {
   }
 }
 
-/* Ausgabe-Gruppe (Prüfen/Stückliste/Export) erst ab 1280 px sichtbar (M12).
+/* Ausgabe-Gruppe (Prüfen/Stückliste/Export): Schwelle nach gemessener Breite.
    Am Tablet (768–1279 px) war die Werkzeugleiste mit Verlauf, Auto-Wire,
    Ausgabe, Bereichswechsel und fünf Statuschips 983 px breit auf 768 px
    Fläche: Der Warnchip stand bei x = 670…861 (gemessen) und die Aktionsgruppe
-   war auf 0 px zusammengedrückt. Am Tablet sind diese drei Aktionen im
-   `⋯`-Menü (dieselben Einträge, dieselben Handlern) und am Handy zusätzlich
-   in der Schrittleiste erreichbar; ab 1280 px steht die Gruppe wieder offen. */
-@media (min-width: 1280px) {
+   war auf 0 px zusammengedrückt. Darunter liegen die drei Aktionen im
+   `⋯`-Menü (dieselben Einträge, dieselben Handler).
+
+   Nachtrag 2026-11-06: Die Schwelle 1280 px war zu niedrig — die Gruppe ragte
+   in den Bereichs-Umschalter. Gemessen im Browser (rechte Kante der Gruppe
+   862 px mit Text, 733 px als Symbol; linke Kante des Umschalters = Breite
+   minus 676 px bis 1535 px, danach minus 759 px):
+
+     Breite  Gruppe mit Text   linker Umschalter   Abstand
+     1280    862               604                 -258 px
+     1440    862               764                  -98 px
+     1620    862               861                   -1 px
+     1640    862               881                  +19 px
+
+   Der Fehler bestand schon vor der Umbenennung (mit „Vorschlag prüfen"
+   −58 px bei 1440); der längere Name „Automatisch verbinden" hat ihn
+   verbreitert und für alle sichtbar gemacht. Deshalb:
+     · ab 1440 px die Gruppe als Symbole (733 px rechts — bei 1440 ist der
+       Umschalter bei 764 px, also 31 px Luft),
+     · ab 1640 px mit Text, wo der gemessene Abstand positiv wird.
+   Die Beschriftung bleibt in jedem Fall im `aria-label` und als Tooltip. */
+@media (min-width: 1440px) {
   .cad-toolbar__desktop-group {
     display: flex;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1640px) {
   .cad-toolbar .tool-btn__label {
     display: inline;
   }
@@ -3188,7 +3100,6 @@ html.planner-root-active body {
      · die Werkzeugleiste wird 36 px flach (Knöpfe 34 px — über der
        WCAG-2.5.8-Mindestkante von 24 px, unter dem 44-px-Zielwert: eine
        bewusste, dokumentierte Abweichung für Fenster unter 500 px Höhe),
-     · die Schrittleiste bleibt bei 32 px und zeigt nur Fortschritt + Aktion,
      · die Fußleiste bleibt bei 44 px (sie ist der einzige Weg zu den
        Blättern, dort gilt der Zielwert).
    Ergebnis: ~178 → 189 px Zeichenfläche bei 320 px Fensterhöhe. */
@@ -3210,10 +3121,6 @@ html.planner-root-active body {
      drücken. Sichtbar wird sie erst ab 360 px Fensterhöhe (unten). */
   .cad-statusbar {
     display: none;
-  }
-  .cad-rail {
-    min-height: 44px;
-    padding-block: 0;
   }
   .planner-bottom-nav button {
     min-height: 2.75rem;
@@ -3392,19 +3299,15 @@ html.planner-root-active body {
   }
 }
 
-/* Unter 480 px bleibt Auto-verbinden als Symbol in der Leiste, auch im
-   geführten Modus. Teilen weicht in das ⋯-Menü, sonst liegt das Symbol auf
-   dem Statusfeld. Ab 480 px zeigt der geführte Modus den Knopf nicht — die
-   Schrittleiste ist dort die primäre Aktion. */
-.cad-autowire-phone {
-  display: none;
-}
+/* Unter 480 px bleibt Auto-verbinden als Symbol in der Leiste; Teilen weicht
+   in das ⋯-Menü, sonst liegt das Symbol auf dem Statusfeld.
 
+   Nutzer-Rückmeldung 2026-11-06: Hier stand zuletzt `.cad-autowire-phone`
+   mit `display:none` über 480 px. Der Knopf war damit im geführten Modus auf
+   Desktop unsichtbar und nur über die Schrittleiste erreichbar. Die Leiste
+   ist entfallen und der Knopf steht jetzt in jeder Breite direkt in der
+   Werkzeugleiste — die Regel ist ersatzlos entfernt. */
 @media (max-width: 479.98px) {
-  .cad-autowire-phone {
-    display: inline-flex;
-  }
-
   .cad-toolbar [data-testid='action-share'] {
     display: none;
   }
@@ -3688,15 +3591,6 @@ html.planner-root-active body {
     display: none !important;
   }
 
-  .planner-shell:not(.planner-shell--focus) .cad-rail__compact {
-    display: block !important;
-  }
-
-  .planner-shell:not(.planner-shell--focus) .cad-rail__steps,
-  .planner-shell:not(.planner-shell--focus) .cad-rail__detail {
-    display: none !important;
-  }
-
   /* Designkonzept 2026-10, Befund Querformat: Die Blätter waren auf
      min(60dvh, 26rem) begrenzt und zeigten bei 393 px Fensterhöhe nur rund
      150 px Inhalt („Hilfe erst nach Scrollen“). Im flachen Fenster nutzen sie
@@ -3890,18 +3784,6 @@ html.planner-root-active body {
     min-height: 44px;
     max-height: 44px;
     min-width: 44px;
-  }
-
-  .cad-rail {
-    min-height: 44px;
-    max-height: none;
-    padding-block: 0;
-  }
-
-  .cad-rail .cad-btn {
-    min-height: 44px;
-    max-height: 44px;
-    padding-block: 0;
   }
 
   .planner-bottom-nav {
@@ -4497,8 +4379,8 @@ html.planner-root-active body {
 /* Telefon-Kopf: eine Werkzeugzeile, ein Knopfstil.
    Die Menüleiste (Datei … Hilfe) wird zum Knopf „Menü“ in derselben Zeile.
    Dasselbe gilt bei wenig Höhe (Querformat), sonst bleiben Titelleiste,
-   Werkzeugleiste, Schritt und Modus übereinander. Höhe, Radius und Kontur
-   sind gemeinsam; der Akzent bleibt der nächsten Aktion in der Schrittleiste.
+   Werkzeugleiste und Modus übereinander. Höhe, Radius und Kontur
+   sind gemeinsam; der Akzent bleibt „Automatisch verbinden“.
    Schrift der Chromelemente ist die UI-Schrift, nicht die Maßschrift. */
 .planner-mode-short {
   display: none;
@@ -4528,7 +4410,6 @@ html.planner-root-active body {
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn,
   .cad-phone-menu__button,
-  .cad-rail .cad-btn,
   .planner-display-options-panel .cad-btn,
   .de-warning-center > button,
   [data-testid='verification-seal-toggle'] {
@@ -4550,19 +4431,6 @@ html.planner-root-active body {
     background: transparent;
   }
 
-  /* Ein Akzent: die nächste Aktion in der Schrittleiste, gefüllt.
-     Alles andere in der kompakten Leiste bleibt neutral. */
-  .cad-rail .cad-btn--primary {
-    border-color: var(--accent-line);
-    background: var(--accent-line);
-    color: #fff;
-  }
-
-  .cad-rail .cad-btn--primary svg {
-    color: #fff;
-  }
-
-  .cad-rail__compact,
   .cad-statusbar,
   .planner-mode-caption,
   .planner-mode-switch-panel,
@@ -4973,8 +4841,7 @@ html.planner-root-active body {
 @media (max-height: 480px) {
   .cad-toolbar .cad-btn,
   .cad-toolbar .tool-btn,
-  .cad-phone-menu__button,
-  .cad-rail .cad-btn {
+  .cad-phone-menu__button {
     height: 44px;
     min-height: 44px;
     max-height: 44px;
@@ -5072,7 +4939,7 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
    unter 400 px kommen die Abstände auf das Minimum. Nichts wird ausgeblendet:
    Das Häkchen und das Auto-verbinden-Symbol sind beide Testvertrag
    (`tests/e2e/mobile-geometry.spec.ts`), und die Aktionen stehen zusätzlich im
-   „⋯“-Menü bzw. in der Schrittleiste. */
+   „⋯“-Menü. */
 @media (max-width: 767px) {
   .cad-toolbar__status {
     background: var(--surface-panel);
@@ -5161,7 +5028,6 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 @media print {
   .cad-menubar,
   .cad-toolbar,
-  .cad-rail,
   .cad-statusbar,
   .planner-sidebar,
   .planner-inspector,

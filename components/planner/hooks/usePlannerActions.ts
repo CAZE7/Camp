@@ -24,7 +24,6 @@ import {
   ScanSearch,
   Share2,
   LayoutTemplate,
-  SlidersHorizontal,
   Sun,
   Snowflake,
   Trash2,
@@ -165,8 +164,6 @@ export function usePlannerActions({
     setViewMode,
     season,
     setSeason,
-    guidedMode,
-    setGuidedMode,
     detailLevel,
     setDetailLevel,
     trunkMode,
@@ -195,8 +192,6 @@ export function usePlannerActions({
       setViewMode: state.setViewMode,
       season: state.season,
       setSeason: state.setSeason,
-      guidedMode: state.guidedMode,
-      setGuidedMode: state.setGuidedMode,
       detailLevel: state.detailLevel,
       setDetailLevel: state.setDetailLevel,
       trunkMode: state.trunkMode,
@@ -659,20 +654,6 @@ export function usePlannerActions({
             },
           ],
         },
-        {
-          // Nachtest Bug 17: Der Expertenmodus versteckte sich im Hilfe-
-          // Menü. Er ist eine Darstellungs-Einstellung und gehört nach
-          // „Ansicht“ — mit Wortlaut, der sagt, was er tut.
-          label: 'Planungshilfe',
-          items: [
-            {
-              label: 'Expertenmodus (ohne Schrittleiste)',
-              icon: SlidersHorizontal,
-              checked: !guidedMode,
-              run: () => setGuidedMode(!guidedMode),
-            },
-          ],
-        },
       ],
       werkzeuge: [
         {
@@ -841,7 +822,6 @@ export function usePlannerActions({
       saveProject,
       openProject,
       focusMode,
-      guidedMode,
       isInspectorOpen,
       isSidebarOpen,
       onLayout,
@@ -860,7 +840,6 @@ export function usePlannerActions({
       setBackboneGrouping,
       setDetailLevel,
       setFocusMode,
-      setGuidedMode,
       setHasOnboarded,
       setInspectorOpen,
       setSeason,
@@ -940,13 +919,6 @@ export function usePlannerActions({
       {
         label: 'Darstellung',
         items: [
-          {
-            label: guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden',
-            icon: SlidersHorizontal,
-            testId: 'action-guided-toggle',
-            checked: !guidedMode,
-            run: () => setGuidedMode(!guidedMode),
-          },
           { label: 'Einführung erneut öffnen', icon: Info, run: () => setHasOnboarded(false) },
           {
             label: 'Neuen leeren Plan starten',
@@ -958,17 +930,7 @@ export function usePlannerActions({
         ],
       },
     ],
-    [
-      detailLevel,
-      guidedMode,
-      menus,
-      onRequestReset,
-      season,
-      setDetailLevel,
-      setGuidedMode,
-      setHasOnboarded,
-      setSeason,
-    ]
+    [detailLevel, menus, onRequestReset, season, setDetailLevel, setHasOnboarded, setSeason]
   );
 
   return {

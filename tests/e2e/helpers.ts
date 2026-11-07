@@ -162,14 +162,14 @@ export async function openCheckEntry(page: Page): Promise<boolean> {
 }
 
 /**
- * Startet Auto-Wire über den sichtbaren Werkzeugleisten-Knopf oder — im
- * geführten Modus ab 480 px — über das Mehr-Menü, und wartet auf die
- * entstandenen Kanten.
+ * Startet Auto-Wire über den Werkzeugleisten-Knopf und wartet auf die
+ * entstandenen Kanten. Der Ausweg über das Mehr-Menü bleibt als Rückfallebene.
  *
- * Unter 480 px hängt der geführte Modus denselben Knopf als Symbol in die
- * Leiste (`cad-autowire-phone`). Darüber bleibt er im DOM, ist aber per CSS
- * unsichtbar. `count()` allein würde den Klick auf dieses versteckte Symbol
- * legen und bis zum Timeout warten.
+ * 2026-11-06: Der Knopf war im geführten Modus per `.cad-autowire-phone` über
+ * 480 px per CSS unsichtbar; die Schrittleiste war der einzige Zugang. Die
+ * Leiste ist entfallen und der Knopf steht jetzt in jeder Breite direkt in der
+ * Leiste. Die Sichtbarkeitsprüfung bleibt, weil sie robust gegen künftige
+ * Umbauten ist — `count()` allein würde auf ein verstecktes Element klicken.
  */
 export async function autoWire(page: Page): Promise<void> {
   await showCanvas(page);

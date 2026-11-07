@@ -52,7 +52,6 @@ export interface PlannerToolbarProps {
   viewMode: 'electric' | 'water';
   onSelectViewMode: (mode: 'electric' | 'water') => void;
   focusMode: boolean;
-  guidedMode: boolean;
   onToggleFocusMode: () => void;
   /** Überlauf `⋯` — sekundäre Aktionen, gleiche Quelle wie die Menüleiste. */
   overflow: PlannerMenuGroup[];
@@ -303,8 +302,15 @@ function AutoWireButton({
       data-testid="action-autowire"
       onClick={onAutoWire}
       disabled={busy !== null}
+      // WCAG 2.5.3 („Label in Name"): Der zugängliche Name muss den sichtbaren
+      // Text enthalten, sonst trifft Sprachsteuerung den Knopf nicht. Sichtbar
+      // sind je nach Breite „Auto", „Automatisch verbinden" und
+      // „Automatisch verbinden · Vorschau" — die längste Fassung enthält alle
+      // drei. Deshalb steht sie hier UND im Wasser-Hinweis voran.
       aria-label={
-        water ? 'Auto-verbinden: nur im Elektrikplan verfügbar' : 'Auto-verbinden: Vorschlag prüfen'
+        water
+          ? 'Automatisch verbinden · Vorschau — nur im Elektrikplan verfügbar'
+          : 'Automatisch verbinden · Vorschau'
       }
       className={`cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap ${className}`}
       data-tooltip={
@@ -323,8 +329,8 @@ function AutoWireButton({
       ) : (
         <Wand2 className="h-4 w-4" aria-hidden="true" />
       )}
-      <span className="tb-label tb-label--kurz">Vorschau</span>
-      <span className="tb-label tb-label--mittel">Vorschlag prüfen</span>
+      <span className="tb-label tb-label--kurz">Auto</span>
+      <span className="tb-label tb-label--mittel">Automatisch verbinden</span>
       <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
     </button>
   );
@@ -345,7 +351,6 @@ export function PlannerToolbar({
   viewMode,
   onSelectViewMode,
   focusMode,
-  guidedMode,
   onToggleFocusMode,
   overflow,
   openMenu,
@@ -396,22 +401,13 @@ export function PlannerToolbar({
           />
         </div>
 
-        {/* Vorlagen und Teilen stehen auch im geführten Modus: Sie sind der
-          Einstieg (volle Fläche statt leerer) und der Ausgang (Plan ins Forum)
-          — keine Experten-Aktionen, die man verstecken müsste. */}
-        {(onLoadTemplate || onShare || guidedMode) && (
+        {/* Vorlagen und Teilen: Einstieg (volle Fläche statt leerer) und
+          Ausgang (Plan ins Forum). */}
+        {(onLoadTemplate || onShare) && (
           <>
             <span className="cad-toolbar__sep" aria-hidden="true" />
             <div className="cad-toolbar__group">
               {onLoadTemplate && <TemplateMenuButton onLoadTemplate={onLoadTemplate} />}
-              {guidedMode && (
-                <AutoWireButton
-                  busy={busy}
-                  viewMode={viewMode}
-                  onAutoWire={onAutoWire}
-                  className="cad-autowire-phone"
-                />
-              )}
               {onShare && (
                 <ToolButton
                   label="Link zum Plan kopieren"
@@ -427,12 +423,14 @@ export function PlannerToolbar({
           </>
         )}
 
-        {!guidedMode && (
-          <>
-            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+        {/* Nutzer-Rückmeldung 2026-11-06: Im geführten Modus war dieser Knopf
+            per `.cad-autowire-phone` auf Desktop ausgeblendet, und die
+            Schrittleiste war der einzige Zugang. Die Leiste ist entfallen;
+            die Aktionen stehen jetzt immer direkt in der Werkzeugleiste. */}
+        <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
 
-            <div className="cad-toolbar__group">
-              {/*
+        <div className="cad-toolbar__group">
+          {/*
                 GENAU EIN Automatik-Einstieg in der Leiste (Nutzer-Rückmeldung
                 2026-10-26: „Knöpfe, die doppelt sind, wie Optimieren und
                 dieser andere Automatik-Knopf“).
@@ -442,46 +440,44 @@ export function PlannerToolbar({
                 1024 px, ab 1024–1279 px nur als Raster-Symbol ohne Text) und
                 rechts im Statusfeld „Kabel optimieren“ — für den Nutzer zwei
                 bis drei gleichrangige Automatiken ohne erkennbare Reihenfolge.
-                Sichtbar bleibt die Primäraktion des Expertenmodus; die
+                Sichtbar bleibt die Primäraktion; die
                 nachgelagerten Schritte (Ordnen, Kabel optimieren) stehen
                 gemeinsam in der Menügruppe „Automatik“
                 (`usePlannerActions.menus.werkzeuge`) und sind damit über
                 Menüleiste → Werkzeuge UND `⋯` erreichbar.
               */}
-              <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
-            </div>
+          <AutoWireButton busy={busy} viewMode={viewMode} onAutoWire={onAutoWire} />
+        </div>
 
-            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
+        <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
 
-            <div className="cad-toolbar__group cad-toolbar__desktop-group">
-              <ToolButton
-                label="Plan prüfen"
-                visibleLabel="Prüfen"
-                showLabel
-                hint="Befunde und Empfehlungen"
-                icon={ScanSearch}
-                onClick={onCheck}
-              />
-              <ToolButton
-                label="Stückliste"
-                visibleLabel="Stückliste"
-                showLabel
-                hint="Bauteile und Leitungen"
-                icon={Package}
-                onClick={onBom}
-              />
-              <ToolButton
-                label="Plan als Bild exportieren"
-                visibleLabel="Export"
-                showLabel
-                icon={busy === 'export' ? Loader2 : Camera}
-                onClick={onExport}
-              />
-            </div>
+        <div className="cad-toolbar__group cad-toolbar__desktop-group">
+          <ToolButton
+            label="Plan prüfen"
+            visibleLabel="Prüfen"
+            showLabel
+            hint="Befunde und Empfehlungen"
+            icon={ScanSearch}
+            onClick={onCheck}
+          />
+          <ToolButton
+            label="Stückliste"
+            visibleLabel="Stückliste"
+            showLabel
+            hint="Bauteile und Leitungen"
+            icon={Package}
+            onClick={onBom}
+          />
+          <ToolButton
+            label="Plan als Bild exportieren"
+            visibleLabel="Export"
+            showLabel
+            icon={busy === 'export' ? Loader2 : Camera}
+            onClick={onExport}
+          />
+        </div>
 
-            <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
-          </>
-        )}
+        <span className="cad-toolbar__sep cad-toolbar__desktop-sep" aria-hidden="true" />
       </div>
 
       {/* Rechts festgenagelt: Status und der Zugang zu allen sekundären

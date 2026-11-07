@@ -21,7 +21,14 @@ import {
   type LengthAssumption,
 } from './utils/bom';
 import { downloadTextFile } from './utils/fileIO';
-import { buildPrintReportHtml, formatReportTimestamp, openPrintReport } from './utils/printReport';
+import {
+  buildPrintReportHtml,
+  formatReportTimestamp,
+  openPrintReport,
+  type PlanImageInput,
+  openPrintReportWindow,
+} from './utils/printReport';
+import { planCaptureIdentity } from './utils/planCaptureIdentity';
 import { subscribeToBomModalOpen } from './utils/bomModalEvents';
 
 function fmtMeters(value: number | undefined): string {
@@ -43,6 +50,14 @@ interface BomSnapshot {
   assessment: ReleaseAssessment;
   componentCount: number;
   summary: VerificationSummary | null;
+  /**
+   * Identität der DARSTELLUNG beim Öffnen. Der Prüf-Fingerprint allein reicht
+   * nicht: er deckt weder die Lage der Bauteile noch das Wasser-Gewerk ab,
+   * obwohl beides bestimmt, was das Schaltplanbild zeigt.
+   */
+  captureIdentity: string;
+  /** Ansichtsmodus beim Öffnen — bestimmt das Gewerk des Bildes. */
+  viewMode: 'electric' | 'water';
 }
 
 const EMPTY_BOM: BomData = { counts: {}, cableLengths: {}, pipeLengths: {}, lengthAssumptions: [] };
@@ -55,6 +70,11 @@ export function BOMModal() {
   const [copied, setCopied] = useState(false);
   // M6-4: Fehlerursache sichtbar machen statt stillem catch.
   const [copyError, setCopyError] = useState<string | null>(null);
+  // AUD-004: Die Plan-Aufnahme dauert einen Moment — der Knopf zeigt das.
+  const [reportBusy, setReportBusy] = useState(false);
+  // Berichtserzeugung hat eigene Fehler: der Kopier-Fallback (JSON-Textarea)
+  // wäre hier eine falsche Handlungsaufforderung.
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleShowBom = () => {
@@ -64,9 +84,18 @@ export function BOMModal() {
       const summary = verificationSummary(report);
       const componentCount = nodes.length + waterNodes.length;
       const assessment = assessRelease(componentCount > 0 ? summary : null, componentCount);
-      setSnapshot({ bom, assessment, componentCount, summary: componentCount > 0 ? summary : null });
+      const viewMode = usePlannerStore.getState().viewMode === 'water' ? 'water' : 'electric';
+      setSnapshot({
+        bom,
+        assessment,
+        componentCount,
+        summary: componentCount > 0 ? summary : null,
+        captureIdentity: planCaptureIdentity(usePlannerStore.getState()),
+        viewMode,
+      });
       setCopied(false);
       setCopyError(null);
+      setReportError(null);
       setOpen(true);
     };
     return subscribeToBomModalOpen(handleShowBom);
@@ -106,17 +135,89 @@ export function BOMModal() {
     downloadTextFile(`stueckliste-${planFingerprint.slice(0, 8)}.csv`, csv, 'text/csv;charset=utf-8');
   };
 
-  const printReport = () => {
+  const printReport = async () => {
     if (!snapshot || !assessment?.canExportDocument) return;
+    // AUD-004: Der Bericht soll EIN Übergabedokument sein — Schaltplan,
+    // Stückliste und Prüfbericht aus demselben Snapshot. Die Aufnahme wird
+    // deshalb vor dem Bauen des HTML geholt. Scheitert sie, wird der Bericht
+    // trotzdem erzeugt und benennt das fehlende Bild ausdrücklich.
+    // Der Snapshot entsteht beim Öffnen des Dialogs. Würde sich der Plan
+    // inzwischen geändert haben, gehörte das Bild zu einem anderen Stand als
+    // Stückliste und Prüfbericht. Das wird geprüft statt vorausgesetzt.
+    const CHANGED_MESSAGE =
+      'Der Plan hat sich geändert, während der Bericht erstellt wurde. Es wurde kein Dokument erzeugt, damit Schaltplan, Stückliste und Prüfbericht nicht verschiedene Planstände mischen. Öffne die Stückliste erneut und starte den Druckbericht noch einmal.';
+
+    /** Prüft Prüfeingabe UND Darstellung gegen den Snapshot. */
+    const standsGleich = (state: ReturnType<typeof usePlannerStore.getState>): boolean => {
+      const hash = verificationReportFor(state.nodes, state.edges).certificate.planFingerprintHash;
+      return (
+        snapshot.assessment.planFingerprintHash === hash &&
+        snapshot.captureIdentity === planCaptureIdentity(state)
+      );
+    };
+
+    if (!standsGleich(usePlannerStore.getState())) {
+      setReportError(CHANGED_MESSAGE);
+      return;
+    }
+
+    // Das Fenster wird JETZT geöffnet — synchron im Klick. Nach den awaits
+    // wäre die Nutzeraktivierung abgelaufen und der Browser blockiert es.
+    const printWindow = openPrintReportWindow();
+    if (!printWindow) {
+      setReportError(
+        'Der Druckbericht konnte nicht geöffnet werden – der Browser blockiert vermutlich Pop-ups. Erlaube Pop-ups für diese Seite und versuche es erneut.'
+      );
+      return;
+    }
+
+    setReportBusy(true);
+    setReportError(null);
+    let planImage: PlanImageInput | undefined;
+    let planImageError: string | undefined;
+    let capturedViewMode: 'electric' | 'water' = snapshot.viewMode;
+    let captureIdentity: string | null = null;
+    try {
+      const { capturePlanImage } = await import('./utils/exportPlanImage');
+      const capture = await capturePlanImage();
+      planImage = { dataUrl: capture.dataUrl, width: capture.width, height: capture.height };
+      capturedViewMode = capture.viewMode;
+      captureIdentity = capture.identity;
+    } catch (error) {
+      planImageError = `Aufnahme fehlgeschlagen${
+        error instanceof Error && error.name ? ` (${error.name})` : ''
+      }. Der Bericht enthält Stückliste und Prüfbericht, aber kein Schaltplanbild.`;
+    }
+
+    // Entscheidend: NACH der Aufnahme erneut prüfen. Zwischen Vorprüfung und
+    // fertigem Bild liegen dynamischer Import, ein Frame und toPng — dort kann
+    // sich der Plan ändern. Zusätzlich muss die Identität, die die Aufnahme
+    // selbst gelesen hat, zum Snapshot passen.
+    const unveraendert =
+      standsGleich(usePlannerStore.getState()) &&
+      (captureIdentity === null || captureIdentity === snapshot.captureIdentity) &&
+      capturedViewMode === snapshot.viewMode;
+    if (!unveraendert) {
+      printWindow.close();
+      setReportBusy(false);
+      setReportError(CHANGED_MESSAGE);
+      return;
+    }
+
     const html = buildPrintReportHtml({
       bom: snapshot.bom,
       summary: snapshot.summary,
       assessment,
       generatedAt: formatReportTimestamp(new Date()),
       projectName: '12V-Planer',
+      planImage,
+      planImageError,
+      planViewMode: capturedViewMode,
     });
-    if (!openPrintReport(html)) {
-      setCopyError(
+    setReportBusy(false);
+    if (!openPrintReport(html, printWindow)) {
+      printWindow.close();
+      setReportError(
         'Der Druckbericht konnte nicht geöffnet werden – der Browser blockiert vermutlich Pop-ups. Erlaube Pop-ups für diese Seite und versuche es erneut.'
       );
     }
@@ -389,6 +490,17 @@ export function BOMModal() {
         </p>
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4">
+        {reportError && (
+          <div
+            role="alert"
+            data-testid="bom-report-error"
+            className="warn-card warn-card-warning p-3 text-sm"
+          >
+            <p className="font-semibold">Kein Druckbericht erzeugt</p>
+            <p className="mt-1">{reportError}</p>
+          </div>
+        )}
+
         {copyError && (
           <div role="alert" className="warn-card warn-card-warning p-3 text-sm">
             <p className="font-semibold">{copyError}</p>
@@ -423,18 +535,20 @@ export function BOMModal() {
           </Button>
           <Button
             variant="outline"
-            onClick={printReport}
-            disabled={empty || !assessment?.canExportDocument}
+            onClick={() => {
+              void printReport();
+            }}
+            disabled={empty || !assessment?.canExportDocument || reportBusy}
             data-testid="bom-print-report"
             title={
               assessment?.canExportDocument
-                ? 'Druckbericht öffnen – im Druckdialog „Als PDF speichern“ wählen'
+                ? 'Druckbericht mit Schaltplan, Stückliste und Prüfbericht öffnen – im Druckdialog „Als PDF speichern“ wählen'
                 : 'Gesperrt: kritische Befunde müssen zuerst behoben werden.'
             }
             className="min-h-11 gap-2"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
-            Druckbericht (PDF)
+            {reportBusy ? 'Schaltplan wird aufgenommen…' : 'Druckbericht (PDF)'}
           </Button>
           <Button
             variant="outline"

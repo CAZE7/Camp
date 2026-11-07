@@ -116,7 +116,20 @@ export function PlannerStatusBar({ zoom }: PlannerStatusBarProps) {
       <span className="cad-statusbar__sep cad-statusbar__opt cad-statusbar__opt--facts" />
       <span className="cad-statusbar__opt cad-statusbar__opt--facts">Snap aktiv</span>
       <span className="cad-statusbar__sep" />
-      {criticalCount > 0 ? (
+      {/* AUD-019: Im Wassermodus zeigte die Leiste „Keine Fehler" — aus den
+          ELEKTRIK-Warnungen. Das ist eine positive Sicherheitsaussage über
+          einen Bereich, den die Engine nicht prüft (nur TOPO-005, die
+          Brücke zwischen Elektrik und Fluidik). Der Wasserplan ist eine
+          reine Zeichenfläche; die Leiste sagt das jetzt statt zu beruhigen. */}
+      {viewMode === 'water' ? (
+        <span
+          className="cad-statusbar__opt"
+          data-testid="statusbar-water-no-check"
+          title="Der Wasserplan wird nicht fachlich geprüft. Druck, Durchfluss und Querschnitte musst du selbst auslegen; die Prüfregeln gelten für die Elektrik."
+        >
+          Wasser: keine Prüfung
+        </span>
+      ) : criticalCount > 0 ? (
         <span className="cad-statusbar__signal">
           {criticalCount} kritisch
           <span className="hidden md:inline">

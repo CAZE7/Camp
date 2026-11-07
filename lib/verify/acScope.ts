@@ -49,6 +49,22 @@ export interface AcScopeItem {
 export const QUALIFIED_PERSONNEL_NOTICE =
   'Die 230-V-Prüfung und die Abnahme dürfen nur durch entsprechend qualifiziertes Personal erfolgen; dieser Bericht ist kein Normnachweis.';
 
+/**
+ * AUD-002: DIESELBE Grenze in der Produktkommunikation.
+ *
+ * Die Engine weist die Modellgrenzen seit NET-003 prüfbar aus — Startseite und
+ * Onboarding sprachen aber nur allgemein von „fachliche Prüfung bleibt separat".
+ * Ein Laie konnte deshalb einen 230-V-Plan für vollständig geprüft halten,
+ * bevor er überhaupt ein Warnzentrum sieht.
+ *
+ * Dieser Text ist die Kurzform für surfaces AUSSERHALB des Berichts. Er wird
+ * aus derselben Datei exported wie die Scope-Liste, damit Marketing und Engine
+ * nicht auseinanderlaufen. Die ausführliche Fassung bleibt
+ * docs/AC-230V-MODELLGRENZEN.md.
+ */
+export const AC_230V_PRODUCT_SCOPE_NOTE =
+  'Der Planer rechnet 230 V einleiterig: Strom, Querschnitt, Schutzorgan und Spannungsfall einer Leitung. Nicht abgebildet sind getrennte L/N/PE-Leiter, zweipolige Trennung, die Umschaltung zwischen Landstrom und Wechselrichter, der Schutz gegen Rückspeisung und der PE-Anschluss zur Karosserie. Diese Punkte weist der Prüfbericht als „nicht überprüfbar“ aus — Planung und Abnahme der 230-V-Anlage gehören in die Hände einer Elektrofachkraft.';
+
 export const AC_230V_SCOPE_ITEMS: readonly AcScopeItem[] = Object.freeze([
   {
     id: 'computed-core',

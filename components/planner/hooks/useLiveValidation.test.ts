@@ -878,7 +878,7 @@ describe('Autark-Vorlage — großer Standardplan', () => {
 /**
  * P0 / V2-BMS-002: Ein kritischer BMS-Konflikt aus dem AutoWire-Report muss
  * nach dem Anwenden AUCH im Live-Report als kritische Warnung erscheinen.
- * Erst damit greift das Freigabe-Gate (guidedSteps/GuidedPlanRail) und der
+ * Erst damit greift das Freigabe-Gate (guidedSteps) und der
  * Plan kann nicht als „geeignet" freigegeben werden.
  */
 describe('BMS-Designbudget im Live-Report (P0)', () => {
@@ -924,6 +924,129 @@ describe('BMS-Designbudget im Live-Report (P0)', () => {
     const warning = result.current.find((candidate) => candidate.ruleId === 'AUTO-BMS-001');
     expect(warning).toEqual(expect.objectContaining({ type: 'critical', category: 'safety' }));
     expect(warning?.title).toContain('BMS');
+    act(() => clearCableRoutes());
+  });
+});
+
+/**
+ * AUD-001 — die Bank-Rückfrage muss VOR Auto-Wire sichtbar sein.
+ *
+ * Der Filter ließ nur Zähl-/Deklarationsfehler durch und verwarf
+ * `ambiguous-topology`. Damit erschien die eigentlich lösende Frage erst als
+ * AutoWire-Konflikt — der Nutzer hatte bis dahin keinen Hinweis, dass zwei
+ * Aufbaubatterien eine Erklärung brauchen.
+ */
+describe('useLiveValidation — AUD-001 Bank-Verschaltung', () => {
+  const houseBattery = (id: string, data: Record<string, unknown> = {}): Node => ({
+    id,
+    type: 'battery',
+    position: { x: 0, y: 0 },
+    data: { label: id, capacity: 100, chemistry: 'LiFePO4', role: 'house', ...data },
+  });
+
+  it('zeigt die fehlende Bank-Erklärung als Warnung mit Fokus auf die Batterie', () => {
+    act(() => clearCableRoutes());
+    const nodes = [houseBattery('bat1'), houseBattery('bat2')];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+
+    const warning = plannerWarnings(result.current).find(
+      (entry) => entry.ruleId === 'BANK-AMBIGUOUS-TOPOLOGY'
+    );
+    expect(warning).toBeDefined();
+    expect(warning?.focusId).toBe('bat1');
+    expect(warning?.focusType).toBe('node');
+    // Der Text nennt den Weg in der Oberfläche, nicht rohe Feldnamen.
+    expect(warning?.message).toContain('Batteriebank');
+    act(() => clearCableRoutes());
+  });
+
+  it('verschwindet, sobald die Parallelbank erklärt ist', () => {
+    act(() => clearCableRoutes());
+    const nodes = [
+      houseBattery('bat1', { bankId: 'Aufbau', bankTopology: 'parallel' }),
+      houseBattery('bat2', { bankId: 'Aufbau', bankTopology: 'parallel' }),
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+
+    expect(plannerWarnings(result.current).some((entry) => entry.ruleId === 'BANK-AMBIGUOUS-TOPOLOGY')).toBe(
+      false
+    );
+    act(() => clearCableRoutes());
+  });
+
+  it('fragt nicht bei einer einzelnen Aufbaubatterie (kein Lärm im Normalfall)', () => {
+    act(() => clearCableRoutes());
+    const { result } = renderHook(() => useLiveValidation([houseBattery('bat1')], []));
+
+    expect(plannerWarnings(result.current).some((entry) => entry.ruleId === 'BANK-AMBIGUOUS-TOPOLOGY')).toBe(
+      false
+    );
+    act(() => clearCableRoutes());
+  });
+});
+
+/**
+ * AUD-011 — eine erklärte Serienbank darf nicht still falsch rechnen.
+ *
+ * `deriveBatteryBanks` berechnet für `series` eine Bankspannung
+ * (Zellspannung × Reihen). `getSystemVoltage` nimmt aber die Vorrangbatterie
+ * und `shortCircuit` schätzt rein parallel. Ein importierter Serien-Plan
+ * bekäme 24 V in der Bank-Anzeige und 12,8 V in der Auslegung.
+ *
+ * Die UI bietet Serien nicht an (BatteryBankSection). Über eine Projektdatei
+ * ist der Zustand aber erreichbar — dann muss er KRITISCH gemeldet werden,
+ * nicht still getragen (Regel M: kein stiller Fallback).
+ */
+describe('useLiveValidation — AUD-011 Serienbank nicht bewertet', () => {
+  const houseBattery = (id: string, data: Record<string, unknown> = {}): Node => ({
+    id,
+    type: 'battery',
+    position: { x: 0, y: 0 },
+    data: { label: id, capacity: 100, chemistry: 'LiFePO4', role: 'house', ...data },
+  });
+
+  it('meldet eine deklarierte Reihenschaltung als kritisch', () => {
+    act(() => clearCableRoutes());
+    const nodes = [
+      houseBattery('bat1', { bankId: '24V', bankTopology: 'series' }),
+      houseBattery('bat2', { bankId: '24V', bankTopology: 'series' }),
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+
+    const warning = plannerWarnings(result.current).find(
+      (entry) => entry.ruleId === 'BANK-SERIES-UNSUPPORTED'
+    );
+    expect(warning).toBeDefined();
+    expect(warning?.type).toBe('critical');
+    expect(warning?.message).toContain('24 V');
+    act(() => clearCableRoutes());
+  });
+
+  it('meldet auch eine Reihe-Parallel-Schaltung', () => {
+    act(() => clearCableRoutes());
+    const nodes = [
+      houseBattery('b1', { bankId: 'sp', bankTopology: 'series-parallel', bankSeries: 2, bankParallel: 2 }),
+      houseBattery('b2', { bankId: 'sp', bankTopology: 'series-parallel', bankSeries: 2, bankParallel: 2 }),
+      houseBattery('b3', { bankId: 'sp', bankTopology: 'series-parallel', bankSeries: 2, bankParallel: 2 }),
+      houseBattery('b4', { bankId: 'sp', bankTopology: 'series-parallel', bankSeries: 2, bankParallel: 2 }),
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+    expect(plannerWarnings(result.current).some((entry) => entry.ruleId === 'BANK-SERIES-UNSUPPORTED')).toBe(
+      true
+    );
+    act(() => clearCableRoutes());
+  });
+
+  it('bleibt bei einer Parallelbank still (der unterstützte Fall)', () => {
+    act(() => clearCableRoutes());
+    const nodes = [
+      houseBattery('bat1', { bankId: 'Aufbau', bankTopology: 'parallel' }),
+      houseBattery('bat2', { bankId: 'Aufbau', bankTopology: 'parallel' }),
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+    expect(plannerWarnings(result.current).some((entry) => entry.ruleId === 'BANK-SERIES-UNSUPPORTED')).toBe(
+      false
+    );
     act(() => clearCableRoutes());
   });
 });

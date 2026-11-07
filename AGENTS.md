@@ -47,9 +47,11 @@ Nichts davon → UI/Store/Tooling: nachfragen statt raten.
 
 ## 4. Elektro ändern
 
-- **Eine** Stromquelle: `calculateEdgeCurrent` (DC) bzw. `acCurrentA` (AC) —
-  nie einen zweiten Strompfad bauen. `I_B ≤ I_n ≤ I_z` per Konstruktion
-  (ein `DERATE_FACTOR` für Sizing + Sicherung).
+- **Eine** Stromquelle: `getCableCurrents` (`lib/electricalGraph/currentFlow.ts`,
+  DC **und** AC) — nie einen zweiten Strompfad bauen. Die alten Heuristiken
+  `calculateEdgeCurrent`/`acCurrentA` sind ersetzt (`vde-consistency` verbietet
+  sie in `CableEdge`). `I_B ≤ I_n ≤ I_z` per Konstruktion (ein `DERATE_FACTOR`
+  für Sizing + Sicherung).
 - Längen nur über `PX_PER_METER`. Domänen nur über `getEdgeDomain` /
   `getHandleDomain`. Anzeige folgt der Rechnung, nie umgekehrt.
 - Gates: `npx vitest run lib/` (inkl. `vde-properties` G1–G7,
@@ -92,8 +94,9 @@ Nichts davon → UI/Store/Tooling: nachfragen statt raten.
 - Responsive 375 / 768 / 1440 px. Touch = Maus (Drag-Handle, Long-Press,
   Tap-to-Connect). Inspector: Slide-over < 1280 px, Docking ≥ 1280 px
   (288 px, ab 1536 px 320 px).
-- Keine neuen Features ohne Freigabe (kein PWA, kein Export/Import, keine
-  Energiebilanz, kein Multi-Plan).
+- Keine neuen Features ohne Freigabe. Offen und weiterhin freigabepflichtig:
+  PWA, Multi-Plan. (Projektdatei-Export/Import und die Energiebilanz PWR-001
+  sind bereits ausgeliefert — die alte Verbotsliste war hier veraltet.)
 - Ein PR/Commit pro Aufgabe; jeder Bugfix mit Regressionstest. Nach Merge
   Aufgabe hier abhaken bzw. streichen — Erledigtes gehört ins Git-Log, nicht
   in diese Datei. Diese Datei ≤ ~2.000 Tokens halten.
@@ -103,10 +106,9 @@ Nichts davon → UI/Store/Tooling: nachfragen statt raten.
 - [ ] **R-1** Dependabot-Triage (laufend): Majors einzeln prüfen, nie blind mergen.
 - [ ] **R-3 (Rest)** Gemergte Branches löschen (`docs/merged-branch-candidates.txt`);
       `main` ist bereits Default-Branch.
-- [ ] **M11-3 (Rest)** Canvas komplett per Tastatur bedienbar — `?`-Overlay
-      existiert; Abnahme offen: E2E baut Mini-Plan nur per Tastatur.
-- [ ] **M11-5** Lighthouse Performance ≥ 90 im CI + Bundle-Budget (ADR);
-      React Compiler evaluieren (ADR).
+- [ ] **M11-5 (Rest)** Bundle-Budget (ADR); React Compiler evaluieren (ADR).
+      Lighthouse ≥ 90 ist erfüllt: Budgets auf allen drei Routen ≥ 90,
+      gemessen Perf 98/99/99 (`npm run perf:lighthouse`).
 - [ ] **M11-6** Fonts (Inter, IBM Plex Mono) subsetten (latin), kritische
       Schnitte preloaden; LCP vorher/nachher im PR.
 - [ ] **M11-9** Stress-Budget: 100 Bauteile / 300 Kanten — Pan/Drag/Auto-Wire

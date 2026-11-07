@@ -133,3 +133,44 @@ describe('PlannerStatusBar', () => {
     }
   });
 });
+
+/**
+ * AUD-019 — der Wasserplan darf keine Prüfaussage bekommen.
+ *
+ * Die Statusleiste zeigte im Wassermodus „Keine Fehler" — berechnet aus den
+ * ELEKTRIK-Warnungen. Das ist eine positive Sicherheitsaussage über einen
+ * Bereich, den die Engine nicht prüft (nur TOPO-005, die Brücke zwischen
+ * Elektrik und Fluidik). Jetzt steht dort ausdrücklich „keine Prüfung".
+ */
+describe('PlannerStatusBar — AUD-019 Wassermodus ohne Prüfaussage', () => {
+  it('sagt im Wassermodus „keine Prüfung" statt „Keine Fehler"', () => {
+    const previous = usePlannerStore.getState().viewMode;
+    act(() => {
+      usePlannerStore.setState({ viewMode: 'water', waterNodes: [], waterEdges: [] });
+    });
+    try {
+      render(<PlannerStatusBar zoom={1} />);
+      expect(screen.getByTestId('statusbar-water-no-check')).toHaveTextContent('Wasser: keine Prüfung');
+      expect(screen.queryByText('Keine Fehler')).not.toBeInTheDocument();
+    } finally {
+      act(() => {
+        usePlannerStore.setState({ viewMode: previous });
+      });
+    }
+  });
+
+  it('behält die echte Prüfaussage im Elektrikmodus', () => {
+    const previous = usePlannerStore.getState().viewMode;
+    act(() => {
+      usePlannerStore.setState({ viewMode: 'electric' });
+    });
+    try {
+      render(<PlannerStatusBar zoom={1} />);
+      expect(screen.queryByTestId('statusbar-water-no-check')).not.toBeInTheDocument();
+    } finally {
+      act(() => {
+        usePlannerStore.setState({ viewMode: previous });
+      });
+    }
+  });
+});

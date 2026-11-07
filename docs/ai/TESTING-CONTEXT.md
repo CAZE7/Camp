@@ -132,3 +132,54 @@ Begründung (`npm run routing:gallery`).
    Metriken sind der Maßstab.
 6. Unit-Tests gegen eine **Zwischenrepräsentation** prüfen, die der Renderer nicht benutzt
    (das war der historische Doppel-Router-Fehler: grüne Tests an der falschen Engine).
+
+---
+
+## Pixel-Baselines: Zuordnung vor Aktualisierung (Lehre aus AUD-016)
+
+Ein fehlgeschlagener Screenshot-Vergleich ist **kein** Beweis für eine
+Umgebungsabweichung. In dieser Sandbox wurde der Browser aus
+`@sparticuz/chromium` wiederhergestellt (Playwright-Download ist gesperrt);
+damit liegt die Versuchung nahe, jeden Diff der Chromium-Version zuzuschreiben.
+
+**Verbindliche Reihenfolge, bevor eine Baseline angefasst wird:**
+
+1. **Gegenlauf am Basisstand.** Die betroffene Datei testweise auf den
+   Basis-Commit setzen (`git show <base>:<pfad> > <pfad>`), neu bauen, dieselben
+   Tests in derselben Umgebung fahren. Bestehen sie, ist die Abweichung
+   **selbst verursacht**. Der Lauf kostet Sekunden und entscheidet.
+2. **Nach UX-Fehler sehen, nicht nur nach Pixeln.** Der Befund hinter dem Diff
+   kann eine echte Bedienungsverschlechterung sein. Beispiel: Ein zusätzlicher
+   Hinweistext vor den Handlungsbuttons schob den Haupt-CTA auf 375 px aus dem
+   ersten Bildschirm. Der Screenshot zeigte eine Verschiebung; der Fehler war,
+   dass der Nutzer den Einstieg nicht mehr ohne Scrollen erreicht.
+3. **Additivität nachweisen, wenn die Änderung gewollt ist.** Höhendifferenz
+   gegen die Geometrie des neuen Blocks rechnen. Beispiel: 5435 − 5194 = 241 px
+   und der Block misst 221 px + 20 px `margin-top` = 241 px. Damit ist der
+   gesamte Unterschied erklärt und die Aktualisierung begründet.
+4. **Nur die betroffenen Baselines aktualisieren** (`--grep` auf den Fall),
+   nicht den ganzen Satz. Desktop-Baselines blieben im Beispiel byte-identisch.
+5. **Eigenschaft statt Bild testen.** Was sich als Aussage formulieren lässt,
+   gehört in einen Geometrie-Test: „Haupt-CTA liegt im ersten Bildschirm"
+   (`tests/e2e/responsive.spec.ts`). Ein Screenshot prüft Pixel, nicht die Frage
+   „kommt der Nutzer an den Einstieg?".
+6. **Gegenprobe für den neuen Test.** Mit dem alten Aufbau muss er durchfallen.
+   Ein Test, der in beiden Zuständen grün ist, schützt nichts.
+
+**Browser in dieser Sandbox wiederherstellen** (kein Teil des Repos):
+
+```
+npm install --no-save --ignore-scripts @sparticuz/chromium
+# chromium.br ist direkt ein ELF-Binary, al2023.tar.br ein tar mit lib/
+node -e "const z=require('zlib'),f=require('fs');
+  f.writeFileSync('/tmp/chromium/chromium', z.brotliDecompressSync(f.readFileSync('node_modules/@sparticuz/chromium/bin/chromium.br')));
+  f.writeFileSync('/tmp/libs.tar', z.brotliDecompressSync(f.readFileSync('node_modules/@sparticuz/chromium/bin/al2023.tar.br')));"
+chmod +x /tmp/chromium/chromium && mkdir -p /tmp/chromium-libs && tar -xf /tmp/libs.tar -C /tmp/chromium-libs
+# Wrapper setzt LD_LIBRARY_PATH=/tmp/chromium-libs/lib und ruft --no-sandbox
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=<wrapper> npx playwright test …
+```
+
+`lighthouse` ist nicht in `package.json`; für `npm run perf:lighthouse` wird
+`npm install --no-save --ignore-scripts lighthouse` plus `CHROME_PATH=<wrapper>`
+und `LIGHTHOUSE_BIN=./node_modules/lighthouse/cli/index.js` gesetzt.
+**`--no-save` verwenden**, damit `package-lock.json` unverändert bleibt.

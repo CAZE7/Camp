@@ -64,3 +64,47 @@ describe('ADR-Index (Doku-Integrität)', () => {
     }
   });
 });
+
+/**
+ * AUD-010 — die Agenten-Dokus nannten eine tote Stromquelle.
+ *
+ * `AGENTS.md` §4 und `ELECTRICAL-CONTEXT.md` verlangten „eine Stromquelle:
+ * calculateEdgeCurrent (DC) bzw. acCurrentA (AC)". Beide sind durch das
+ * Topologie-Strommodell ersetzt: `calculateEdgeCurrent` hat keine Produktiv-
+ * Aufrufer mehr, `acCurrentA` ist entfernt. Ein Agent, der nur nach Doku
+ * arbeitet, hätte die tote Funktion reaktiviert oder einen zweiten Strompfad
+ * gebaut — genau das, was die Regel verhindern soll.
+ *
+ * Dieser Wächter hält die Doku an den Code, statt sie von Hand zu pflegen.
+ */
+describe('Stromquelle in der Doku (AUD-010)', () => {
+  const electricalContext = readFileSync(join(REPO_ROOT, 'docs', 'ai', 'ELECTRICAL-CONTEXT.md'), 'utf8');
+
+  it('AGENTS.md §4 nennt getCableCurrents als die eine Stromquelle', () => {
+    expect(agents).toContain('getCableCurrents');
+    // Die alten Namen dürfen nur noch als „ersetzt/veraltet" auftauchen,
+    // nicht als Handlungsaufforderung.
+    expect(agents).not.toMatch(/\*\*Eine\*\* Stromquelle: `calculateEdgeCurrent`/);
+  });
+
+  it('ELECTRICAL-CONTEXT nennt getCableCurrents und markiert die alten Namen als veraltet', () => {
+    expect(electricalContext).toContain('getCableCurrents');
+    expect(electricalContext).toMatch(/Veraltet:\*\* `calculateEdgeCurrent`/);
+    // Die Rechenkette darf nicht mehr auf die tote Funktion zeigen.
+    expect(electricalContext).not.toMatch(/→ calculateEdgeCurrent\(\)/);
+  });
+
+  it('die Produktiv-Konsumenten nutzen tatsächlich getCableCurrents', () => {
+    const consumers = [
+      'components/edges/CableEdge.tsx',
+      'components/planner/hooks/useLiveValidation.ts',
+      'components/planner/utils/bom.ts',
+      'lib/verify/graph.ts',
+      'lib/autoWire/sizing.ts',
+    ];
+    for (const file of consumers) {
+      const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+      expect(source, `${file} nutzt nicht die eine Stromquelle`).toContain('getCableCurrents');
+    }
+  });
+});

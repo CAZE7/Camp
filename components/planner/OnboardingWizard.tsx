@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { requestConfirm } from '@/components/ui/ConfirmDialog';
 import { isStarterPlan, PLANNER_TEMPLATES } from './templates';
+import { AC_230V_PRODUCT_SCOPE_NOTE } from '@/lib/verify/acScope';
 
 const STROMQUELLEN = [
   { id: 'solar', label: 'Solar' },
@@ -153,6 +154,18 @@ export function OnboardingWizard() {
                 </label>
               ))}
             </div>
+            {/* AUD-002: Wer Landstrom plant, plant 230 V. Die Modellgrenze
+                gehört an diese Entscheidung, nicht erst in den Prüfbericht.
+                Wortlaut: lib/verify/acScope.ts (eine Quelle mit der Engine). */}
+            {sources.landstrom && (
+              <p
+                className="rounded-lg border border-border bg-accent p-3 text-xs leading-relaxed text-foreground"
+                data-testid="onboarding-ac-scope-note"
+              >
+                <strong className="font-semibold">Landstrom bedeutet 230 V:</strong>{' '}
+                {AC_230V_PRODUCT_SCOPE_NOTE}
+              </p>
+            )}
           </section>
         )}
 

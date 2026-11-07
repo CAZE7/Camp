@@ -30,7 +30,8 @@ import { PIXEL_MARKER } from './pixelMarker';
  *
  * Eingefroren wird der **hydratisierte** Zustand (s. `ready` unten). Für die
  * Planner-Route ist das der Normalfall: Erstbesuch, Onboarding-Dialog offen,
- * Schrittleiste und Hinweis-Abzeichen sichtbar (docs/UI-BASELINE.md §2).
+ * Hinweis-Abzeichen sichtbar (docs/UI-BASELINE.md §2). Die Schrittleiste ist
+ * am 2026-11-06 entfallen — sie fehlt im eingefrorenen Frame jetzt absichtlich.
  */
 
 const SNAPSHOT = { maxDiffPixelRatio: 0.02, animations: 'disabled' as const };
@@ -42,8 +43,8 @@ const SNAPSHOT = { maxDiffPixelRatio: 0.02, animations: 'disabled' as const };
  * Vertrag festhält. Der Planner wird dynamisch importiert; ohne dieses Warten
  * ist der eingefrorene Frame eine Momentaufnahme des halb montierten
  * Dashboards (gemessen 2026-09-28: die Baselines aus der Tablet-Breite
- * zeigten genau das — fehlende Schrittleiste und Hinweis-Abzeichen —, was den
- * Lauf auf beiden Schemata um 2,4–4,1 % abweichen ließ).
+ * zeigten genau das — fehlende Hinweis-Abzeichen —, was den Lauf auf beiden
+ * Schemata um 2,4–4,1 % abweichen ließ).
  */
 const ROUTES: Array<{ path: string; name: string; fullPage: boolean; ready?: string }> = [
   { path: '/', name: 'start', fullPage: true },

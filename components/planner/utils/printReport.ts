@@ -39,6 +39,32 @@ export interface PrintReportInput {
   /** Zeitpunkt der Erzeugung (ISO), nur zur Anzeige. */
   generatedAt: string;
   projectName: string;
+  /**
+   * AUD-004: Schaltplan als eingebettetes Bild. Vorher war der Bericht eine
+   * reine Stücklisten-/Prüfliste und der Plan musste separat als PNG exportiert
+   * werden — zwei Dateien, die auseinanderlaufen konnten. Der Bericht ist jetzt
+   * EIN Übergabedokument aus demselben Snapshot.
+   */
+  planImage?: PlanImageInput;
+  /**
+   * Grund, warum kein Schaltplan eingebettet werden konnte. Wird ausdrücklich
+   * im Bericht genannt statt das Bild stillschweigend wegzulassen.
+   */
+  planImageError?: string;
+  /**
+   * Gewerk des aufgenommenen Bildes. `capturePlanImage` folgt dem
+   * Ansichtsmodus, die Verifikation prüft immer die Elektrik. Ohne diese
+   * Angabe entstünde im Wassermodus ein Dokument, das einen Wasser-Schaltplan
+   * neben einen Elektrik-Prüfbericht stellt und beide für geprüft hält.
+   */
+  planViewMode?: 'electric' | 'water';
+}
+
+export interface PlanImageInput {
+  /** PNG-Data-URL aus `capturePlanImage()`. */
+  dataUrl: string;
+  width: number;
+  height: number;
 }
 
 /** HTML-Escaping für jede Nutzer- oder Engine-Zeichenkette. */
@@ -164,6 +190,52 @@ function verificationBlock(summary: VerificationSummary | null): string {
 }
 
 /**
+ * AUD-004: Der Schaltplan als eigene Seite.
+ *
+ * Ein Übergabedokument ohne Plan ist eine Einkaufsliste. Das Bild steht auf
+ * einer eigenen Seite (`break-before: page`), damit eine lange Stückliste den
+ * Plan nicht auf Restzeilen quetscht, und wird proportional auf die Satzbreite
+ * begrenzt. Ein fehlendes Bild wird BENANNT, nicht verschwiegen.
+ */
+function planImageBlock(
+  image: PlanImageInput | undefined,
+  error: string | undefined,
+  viewMode: 'electric' | 'water' = 'electric'
+): string {
+  if (image) {
+    const ratio = image.width > 0 && image.height > 0 ? image.height / image.width : 0;
+    // Querformatige Pläne dürfen die Seite nicht überlaufen lassen: die Höhe
+    // wird gegen das nutzbare A4-Fenster begrenzt (297mm − 2×16mm Rand,
+    // abzüglich Überschrift). Beide Grenzen greifen über max-*, das Seiten-
+    // verhältnis bleibt über das Attribut-Verhältnis erhalten.
+    const maxHeightMm = ratio > 1.2 ? 240 : 200;
+    const isWater = viewMode === 'water';
+    const heading = isWater ? 'Wasserplan (Übersicht)' : 'Schaltplan';
+    const alt = isWater
+      ? 'Übersicht der geplanten Wasserinstallation'
+      : 'Schaltplan der geplanten Elektroinstallation';
+    // Im Wassermodus darf der Bericht nicht den Eindruck erwecken, die
+    // Wasserplanung sei geprüft. Der Prüfbericht unten betrifft die Elektrik.
+    const scopeNote = isWater
+      ? '<p class="meta"><strong>Achtung — unterschiedliche Gewerke:</strong> Diese Übersicht zeigt das <strong>Wasser</strong>-Gewerk. Der Prüfbericht weiter unten bewertet ausschließlich die <strong>Elektrik</strong>. Für die Wasserinstallation (Druck, Durchfluss, Querschnitte) gibt es keine Prüfung; sie ist selbst auszulegen und fachlich abzunehmen.</p>'
+      : '<p class="meta">Aufnahme desselben Planstands wie Stückliste und Prüfbericht.</p>';
+    return `<section class="plan-sheet">
+    <h2>${escapeHtml(heading)}</h2>
+    ${scopeNote}
+    <img class="plan-image" src="${escapeHtml(image.dataUrl)}" alt="${escapeHtml(alt)}" width="${image.width}" height="${image.height}" style="max-height:${maxHeightMm}mm">
+  </section>`;
+  }
+  const reason =
+    error ??
+    'Der Schaltplan konnte nicht eingebettet werden. Erzeuge ihn zusätzlich über „Plan als Bild exportieren".';
+  return `<section class="plan-sheet">
+    <h2>Schaltplan</h2>
+    <p><strong>Kein Schaltplanbild in diesem Bericht.</strong> ${escapeHtml(reason)}</p>
+    <p class="meta">Stückliste und Prüfbericht beziehen sich dennoch auf den oben genannten Planstand.</p>
+  </section>`;
+}
+
+/**
  * Baut das vollständige HTML-Dokument. Die Funktion ist rein: gleicher Input,
  * gleiches Ergebnis (bis auf nichts — der Zeitstempel kommt von außen).
  */
@@ -176,7 +248,10 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
     blockersBlock(assessment),
     blocked
       ? '<section><p><strong>Stückliste und Dokument werden nicht ausgegeben, solange kritische Befunde offen sind.</strong></p></section>'
-      : bomBlock(bom),
+      : // AUD-004: Plan vor die Stückliste — der Leser sieht zuerst die Anlage,
+        // dann die Materialliste. Bei gesperrtem Plan kein Bild (wie keine BOM).
+        planImageBlock(input.planImage, input.planImageError, input.planViewMode),
+    blocked ? '' : bomBlock(bom),
     verificationBlock(summary),
   ].join('\n');
 
@@ -213,6 +288,11 @@ export function buildPrintReportHtml(input: PrintReportInput): string {
   h2, h3 { break-after: avoid-page; }
   .print-actions { margin: 12pt 0; }
   .print-actions button { font-size: 12pt; padding: 8pt 16pt; cursor: pointer; }
+  /* AUD-004: Der Schaltplan bekommt eine eigene Seite und bleibt proportional.
+     Kein Beschnitt (object-fit: contain), damit keine Leitung abgeschnitten
+     wird — ein unvollständiger Plan ist schlechter als ein kleinerer. */
+  .plan-sheet { break-before: page; }
+  .plan-image { display: block; width: 100%; height: auto; object-fit: contain; border: 1px solid gray; }
   @media print { .print-actions { display: none; } }
 </style>
 </head>
@@ -230,10 +310,43 @@ ${body}
  * Öffnet den Bericht in einem neuen Fenster und startet den Druckdialog.
  * Gibt `false` zurück, wenn der Browser das Fenster blockiert.
  */
-export function openPrintReport(html: string): boolean {
+/**
+ * Öffnet das Druckfenster SYNCHRON im Klick.
+ *
+ * Browser binden `window.open` an eine laufende Nutzeraktivierung. Die
+ * Berichtserzeugung wartet aber auf dynamische Importe, einen Frame und
+ * `toPng` — bei großen Plänen dauert das länger als das Aktivierungsfenster.
+ * Ein danach geöffnetes Fenster wird kommentarlos blockiert, und der Nutzer
+ * hält den Knopf für kaputt.
+ *
+ * Deshalb wird das Fenster sofort geöffnet und später gefüllt. Scheitert die
+ * Erzeugung, schließt der Aufrufer es wieder und meldet den Grund.
+ */
+export function openPrintReportWindow(): Window | null {
   // Kein `noopener` im Feature-String: Dann liefert `window.open` immer `null`.
   // Stattdessen die Verbindung nach dem Öffnen kappen.
   const win = window.open('', '_blank');
+  if (!win) return null;
+  win.opener = null;
+  try {
+    win.document.title = 'Planungsbericht wird erstellt…';
+    win.document.open();
+    win.document.write(
+      '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Planungsbericht wird erstellt…</title></head>' +
+        '<body style="font-family:system-ui,sans-serif;padding:2rem;color:#333">' +
+        '<p><strong>Planungsbericht wird erstellt…</strong></p>' +
+        '<p>Der Schaltplan wird aufgenommen. Bitte dieses Fenster geöffnet lassen.</p>' +
+        '</body></html>'
+    );
+    win.document.close();
+  } catch {
+    /* Ein Fenster ohne Platzhalter ist noch kein Fehler — es wird gleich gefüllt. */
+  }
+  return win;
+}
+
+export function openPrintReport(html: string, targetWindow?: Window | null): boolean {
+  const win = targetWindow ?? openPrintReportWindow();
   if (!win) return false;
   win.opener = null;
   // Nachtest Bug 8: Titel vor dem Schreiben, Druck genau einmal nach load.

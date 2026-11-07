@@ -429,13 +429,62 @@ export function useLiveValidation(
     // erratene Verschaltung. Deklarierte Zählfehler müssen deshalb schon vor
     // Auto-Wire im Prüfzentrum sichtbar sein.
     const bankModel = deriveBatteryBanks(nodes, sysVoltage);
+    // AUD-001: `ambiguous-topology` ist die Frage, die den Normalfall „zwei
+    // Aufbaubatterien" überhaupt erst lösbar macht. Sie wurde hier bisher
+    // herausgefiltert und erschien dadurch erst NACH Auto-Wire als Konflikt
+    // (`AUTO-BANK-001`) — der Nutzer sah eine Aufforderung, Felder zu setzen,
+    // die es in der Oberfläche nicht gab. Jetzt führt die Warn-Zentrale schon
+    // vorher zur Batterie-Inspektor-Sektion „Batteriebank".
+    // AUD-011: Eine ERKLÄRTE Serienbank rechnet das Modell nicht durch.
+    // `deriveBatteryBanks` liefert dafür zwar eine Bankspannung
+    // (Zellspannung × Reihen), aber `getSystemVoltage` nimmt die Vorrang-
+    // batterie und `shortCircuit` schätzt rein parallel. Ein importierter
+    // Serien-Plan bekäme also 24 V in der Bank-Anzeige und 12,8 V in der
+    // Auslegung — still und widersprüchlich. Der Zustand wird deshalb
+    // gemeldet statt getragen. Die UI bietet Serien nicht zur Wahl an
+    // (BatteryBankSection); dieser Fall kommt nur über eine Projektdatei.
+    for (const bank of bankModel.banks) {
+      if (bank.topology !== 'series' && bank.topology !== 'series-parallel') continue;
+      warnings.push({
+        id: `battery-bank-series-unsupported-${bank.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Batterie-Bank: Reihenschaltung wird nicht bewertet',
+        focusId: bank.batteryIds[0],
+        focusType: 'node',
+        ruleId: 'BANK-SERIES-UNSUPPORTED',
+        unit: '',
+        source: 'Batterie-Inspektor → Batteriebank',
+        message: `Kritisch: Die Bank „${bank.id}" ist als ${
+          bank.topology === 'series' ? 'Reihenschaltung' : 'Reihe-Parallel-Schaltung'
+        } deklariert. Der Planer verdrahtet und bewertet das nicht: Systemspannung und Kurzschluss-Schätzung würden von der Deklaration abweichen. Erfasse das System als eine Batterie mit der Nennspannung des Gesamtsystems (z. B. 24 V) und der Kapazität eines Strangs.`,
+      });
+    }
+
     const actionableBankQuestions = bankModel.questions.filter(
       (question) =>
         question.kind === 'member-count-mismatch' ||
         question.kind === 'declaration-mismatch' ||
-        question.kind === 'missing-counts'
+        question.kind === 'missing-counts' ||
+        question.kind === 'ambiguous-topology'
     );
     for (const question of actionableBankQuestions) {
+      if (question.kind === 'ambiguous-topology') {
+        warnings.push({
+          id: `battery-bank-ambiguous-${question.bankId}`,
+          category: 'topology',
+          type: 'warning',
+          title: 'Batterie-Bank: Verschaltung noch nicht erklärt',
+          focusId: question.batteryIds[0],
+          focusType: 'node',
+          ruleId: 'BANK-AMBIGUOUS-TOPOLOGY',
+          unit: '',
+          source: 'Batterie-Inspektor → Batteriebank',
+          message:
+            'Hinweis: Mehrere Aufbaubatterien sind noch nicht als Bank erklärt. Öffne die Batterie und wähle unter „Batteriebank" die Verschaltung (parallel für mehr Kapazität bei gleicher Spannung). Bis dahin bleibt eine weitere Batterie unverbunden und die Bank zählt wie ihre schwächste Einzelbatterie.',
+        });
+        continue;
+      }
       const mismatch = question.kind !== 'missing-counts';
       warnings.push({
         id: `battery-bank-${question.kind}-${question.bankId}`,

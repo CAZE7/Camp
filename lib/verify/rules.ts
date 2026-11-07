@@ -303,7 +303,7 @@ export const RULE_MATRIX: readonly RuleSpec[] = [
     profile: 'NORM_CORE',
     contexts: ALL_CONTEXTS,
     limitation:
-      'I_z ist der Modellwert aus `VDE_AMPACITY × Korrekturfaktoren` (Verlegeart B2, 30 °C Referenz, PVC); die Verlegeart und der Kabeltyp des konkreten Aufbaus (FLRY/FLR2X, Bündel, Kanal) sind nur als Faktoren abgebildet.',
+      'I_z ist der Modellwert aus `VDE_AMPACITY × Korrekturfaktoren` (Verlegeart B2, 30 °C Referenz, PVC). Die Tabelle stammt aus der HAUSinstallation (DIN VDE 0298-4), nicht aus einer geprüften Fahrzeugleitungs-Norm (ISO 6722 / FLRY); Verlegeart und Kabeltyp des konkreten Aufbaus (FLRY/FLR2X, Bündel, Kanal) sind nur als Faktoren abgebildet. Eine Herstellerangabe I_z aus dem Datenblatt übersteuert den Modellwert.',
   },
   {
     id: 'AMP-002-i2-vs-iz',

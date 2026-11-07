@@ -22,9 +22,14 @@ export type GuidedStepId = (typeof GUIDED_STEP_IDS)[number];
 export type GuidedStepStatus = 'done' | 'current' | 'todo';
 
 /**
- * Primäraktion des aktuellen Schritts — ausgeführt von `GuidedPlanRail`.
- * Jeder Schritt hat genau eine; es gibt bewusst kein `none`, sonst stünde der
- * Nutzer im ersten Schritt ohne Antwort auf „Was soll ich jetzt tun?" da.
+ * Primäraktion des aktuellen Schritts. Jeder Schritt hat genau eine; es gibt
+ * bewusst kein `none`, sonst stünde der Nutzer ohne Antwort auf „Was soll ich
+ * jetzt tun?" da.
+ *
+ * 2026-11-06: Ausgeführt wurde das von der Schrittleiste (`GuidedPlanRail`).
+ * Die Leiste ist entfallen; die Schritt-Ableitung bleibt als reine Funktion
+ * erhalten und wird weiterhin getestet (`guidedSteps.test.ts`). Die Aktionen
+ * selbst stehen direkt in der Werkzeugleiste.
  */
 export type GuidedStepAction = 'catalog' | 'autowire' | 'warnings' | 'bom';
 

@@ -160,3 +160,66 @@ describe('openPrintReport · Reiter und Druckstart (B-08)', () => {
     vi.unstubAllGlobals();
   });
 });
+
+/**
+ * AUD-004 — der Bericht war eine Einkaufsliste ohne Schaltplan.
+ *
+ * Stückliste/Prüfbericht und Planbild waren zwei getrennte Exporte und konnten
+ * auseinanderlaufen. Jetzt bettet der Bericht den Plan aus DEMSELBEN Snapshot
+ * ein. Ein gesperrter Plan gibt weiterhin kein Dokument heraus, und ein
+ * fehlgeschlagene Aufnahme wird benannt statt still verschwiegen.
+ */
+describe('buildPrintReportHtml — AUD-004 Schaltplan im Bericht', () => {
+  const planImage = { dataUrl: 'data:image/png;base64,AAAA', width: 1200, height: 800 };
+
+  it('bettet den Schaltplan ein', () => {
+    const html = buildPrintReportHtml({ ...input(), planImage });
+    expect(html).toContain('<h2>Schaltplan</h2>');
+    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    expect(html).toContain('alt="Schaltplan der geplanten Elektroinstallation"');
+  });
+
+  it('setzt den Plan auf eine eigene Seite und beschneidet ihn nicht', () => {
+    const html = buildPrintReportHtml({ ...input(), planImage });
+    expect(html).toContain('.plan-sheet { break-before: page; }');
+    expect(html).toContain('object-fit: contain');
+  });
+
+  it('nennt einen Aufnahmefehler ausdrücklich statt das Bild zu verschweigen', () => {
+    const html = buildPrintReportHtml({
+      ...input(),
+      planImageError: 'Aufnahme fehlgeschlagen (SecurityError).',
+    });
+    expect(html).toContain('Kein Schaltplanbild in diesem Bericht.');
+    expect(html).toContain('SecurityError');
+    expect(html).not.toContain('<img');
+  });
+
+  it('gibt auch ohne Bild einen Hinweis auf den getrennten Bild-Export', () => {
+    const html = buildPrintReportHtml(input());
+    expect(html).toContain('Kein Schaltplanbild in diesem Bericht.');
+    expect(html).toContain('Plan als Bild exportieren');
+  });
+
+  it('zeigt bei gesperrtem Plan weder Stückliste noch Schaltplan', () => {
+    const blocked = summary({
+      verdict: 'NON_COMPLIANT',
+      failed: 1,
+      passed: 0,
+      findings: [criticalFinding('Sicherung zu groß für die Leitung.')],
+    });
+    const html = buildPrintReportHtml({ ...input({ summary: blocked }), planImage });
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('src="data:image/png');
+    expect(html).toContain('werden nicht ausgegeben');
+  });
+
+  it('escaped die Data-URL (kein Attribut-Ausbruch)', () => {
+    const html = buildPrintReportHtml({
+      ...input(),
+      planImage: { ...planImage, dataUrl: 'data:image/png;base64,AA" onload="alert(1)' },
+    });
+    expect(html).not.toContain('onload="alert(1)');
+    expect(html).toContain('&quot;');
+  });
+});

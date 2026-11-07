@@ -254,3 +254,55 @@ describe('EdgeInspector — Verlegebedingungen (P0-3)', () => {
     expect(screen.getByText(/26,0 A/)).toBeInTheDocument(); // 52 A × 0,5 bei 60 °C
   });
 });
+
+/**
+ * AUD-003 — die Herkunft der Belastbarkeitstabelle muss sichtbar sein.
+ *
+ * „Referenzmodell bewertet" sagt nicht, WOHER die Tabelle kommt. Die verwendete
+ * Tabelle ist eine Hausinstallationstabelle (DIN VDE 0298-4, Verlegeart B2),
+ * keine geprüfte Fahrzeugleitungs-Tabelle nach ISO 6722 / FLRY. Ohne diesen
+ * Hinweis wirkt die Zahl fahrzeugspezifisch, obwohl sie es nicht ist.
+ *
+ * Es wird KEIN Zahlenwert geändert — nur die Herkunft benannt. Der Escape-Hatch
+ * `manufacturerIzA` bleibt der Weg zu einer belegten Auslegung; bei gesetztem
+ * Datenblattwert ist der Tabellenhinweis gegenstandslos und entfällt.
+ */
+describe('AUD-003 — Herkunft der Belastbarkeitstabelle', () => {
+  const edge: Edge<CableEdgeData> = {
+    id: 'edge-basis',
+    source: 'n1',
+    target: 'n2',
+    data: { crossSection: 10, edgeDomain: 'DC_12V' },
+  };
+
+  it('nennt Hausinstallation und die fehlende Fahrzeugnorm bei Tabellenrechnung', () => {
+    render(<EdgeInspector edge={edge} onChangeLength={vi.fn()} onChangeCableConditions={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+
+    const basis = screen.getByTestId('cable-ampacity-basis');
+    expect(basis.textContent).toMatch(/DIN VDE 0298-4/);
+    expect(basis.textContent).toMatch(/ISO 6722/);
+    expect(basis.textContent).toMatch(/Hausinstallation/);
+  });
+
+  it('nennt die Tabellengrenze auch bei gewählter Einbausituation', () => {
+    const withEngine: Edge<CableEdgeData> = {
+      ...edge,
+      data: { ...edge.data, installationCondition: 'engine-bay' },
+    };
+    render(<EdgeInspector edge={withEngine} onChangeLength={vi.fn()} onChangeCableConditions={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+    expect(screen.getByTestId('cable-ampacity-basis').textContent).toMatch(/ISO 6722/);
+  });
+
+  it('entfällt bei hinterlegter Herstellerangabe — dann gilt nicht die Tabelle', () => {
+    const withDatasheet: Edge<CableEdgeData> = {
+      ...edge,
+      data: { ...edge.data, installationCondition: 'datasheet', manufacturerIzA: 70 },
+    };
+    render(<EdgeInspector edge={withDatasheet} onChangeLength={vi.fn()} onChangeCableConditions={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Verlegebedingungen/i }));
+    expect(screen.getByText(/Herstellerangabe hinterlegt/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('cable-ampacity-basis')).not.toBeInTheDocument();
+  });
+});

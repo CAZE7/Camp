@@ -60,12 +60,12 @@ Die verbindlichen Pixel-Baselines liegen hier:
 
 **Eingefrorener Zustand (2026-09-28 präzisiert):** Der Planner wird **hydratisiert**
 fotografiert — Erstbesuch mit Onboarding-Dialog, aber mit montierter App-Shell
-(Schrittleiste, Hinweis-Abzeichen, Kopfzeilen-Aktionen). Der Test wartet dafür auf
+(Hinweis-Abzeichen, Kopfzeilen-Aktionen). Der Test wartet dafür auf
 `data-testid="planner-shell"` (`ready` in `tests/e2e/visual.spec.ts`) — dieselbe Kennung,
 die die E2E-Helfer (`openPlanner`) und der Vertragstest
 `components/e2eSelectors.test.tsx` verwenden. Vorher wartete der visuelle Test nur auf
 `load`; die beiden Tablet-Bilder aus der eingefrorenen Aufnahme zeigten dadurch einen halb
-montierten Frame (Schrittleiste und Hinweis-Abzeichen fehlten) und wichen in beiden
+montierten Frame (Hinweis-Abzeichen fehlten) und wichen in beiden
 Schemata ab — 2,18 % hell / 2,40 % dunkel gegen die 2-%-Schwelle (TEST-002, behoben).
 
 Abgedeckte Matrix:

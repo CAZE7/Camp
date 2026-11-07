@@ -59,8 +59,25 @@ Tests: `lib/vde-standards.test.ts`, `lib/vde-properties.test.ts` (Abschnitt „S
 ### Current
 
 **Einzige Stromquelle für Dimensionierung, Anzeige und Validierung:**
-`calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage?, edges?) → Amps`
-(`lib/vde-standards.ts`). Prioritäten:
+`getCableCurrents(nodes, edges, systemVoltageV?) → CableCurrentModel`
+(`lib/electricalGraph/currentFlow.ts`). Ergebnis je Kante über
+`.byEdgeId.get(edgeId).operatingCurrent`; `null` = nicht bestimmbar (Datenlücke,
+die Engine weist sie aus — kein stiller 0-A-Fallback).
+
+Konsumenten (AUD-001…AUD-010 des Product-Readiness-Audits, Stand 2026-11-05):
+`components/edges/CableEdge.tsx`, `components/planner/hooks/useLiveValidation.ts`,
+`components/planner/utils/bom.ts`, `lib/verify/graph.ts`,
+`lib/autoWire/sizing.ts` (`modelCurrentOf`). Der Guard
+`lib/vde-consistency.test.ts` verbietet die alten Endpunkt-Heuristiken in
+`CableEdge.tsx` ausdrücklich.
+
+> **Veraltet:** `calculateEdgeCurrent` (`lib/vde-standards.ts`) und `acCurrentA`
+> wurden durch das Topologie-Strommodell ersetzt. `calculateEdgeCurrent` hat
+> keine Produktiv-Aufrufer mehr (nur Tests), `acCurrentA` ist entfernt. Die
+> unten stehende Prioritätenliste beschreibt das Verhalten des Modells, nicht
+> mehr den Aufruf einer dieser Funktionen.
+
+Verhalten des Modells (Prioritäten):
 
 1. `data.totalAmps` (explizit gesetzt) — unparsebarer Wert zählt **nicht** als 0 A.
 2. Solar-Kante: `watts / 18 V`.
@@ -71,10 +88,15 @@ Tests: `lib/vde-standards.test.ts`, `lib/vde-properties.test.ts` (Abschnitt „S
 5. `data.amps` (Laderegler, Booster, AC-Ladegerät).
 6. Fallback: `max(Σ Verbraucherströme, Σ Ladeströme)`.
 
-AC-Seite: `acCurrentA(sourceNode, targetNode, nodes, edges)` (`lib/autoWire/sizing.ts`)
-(früher zusätzlich `calculateAcEdgeCurrent` — 2026-09-25 entfernt, AUDIT ELE-009) und
-`acCurrentA(sourceNode, targetNode, nodes, edges)` (`lib/autoWire/sizing.ts`) — BFS über die
-AC-Insel ab Quelle, ungerichtet.
+AC-Seite: ebenfalls `getCableCurrents` — die AC-Insel wird per BFS über AC-Kanten
+ab der Quelle bestimmt (`buildAcIslandWatts`, ungerichtet). Die früheren Funktionen
+`calculateAcEdgeCurrent` (2026-09-25 entfernt, AUDIT ELE-009) und `acCurrentA` sind
+ersetzt; es gibt keinen zweiten AC-Strompfad.
+
+Die Auswahl `concurrentDevices` am Wechselrichter steuert NUR die Überlast-Prüfung
+(Karten-Badge, Dashboard-Warnung). Die Kabelauslegung nutzt immer die volle
+angeschlossene Insel-Last — eine Nutzer-Auswahl darf Schutzorgane nicht verkleinern
+(AUD-005; Wächter `lib/electricalGraph/currentFlow.concurrency.test.ts`).
 
 Tests: `lib/vde-standards.test.ts`, `lib/vde-consistency.test.ts`.
 
@@ -304,7 +326,8 @@ DC-Eingangsstrom: `max(Eigenleistung, AC-Insel-Last) / Entladeschlussspannung / 
 
 ### AC (`shorePower`, `consumer230v`)
 
-`shorePower`: `hasRcd` (30 mA, DIN VDE 0100-721), `rating` (A), `acCurrentA`.
+`shorePower`: `hasRcd` (30 mA, DIN VDE 0100-721), `rating` (A). Der Strom kommt aus
+`getCableCurrents` (kein eigenes `acCurrentA`-Feld mehr).
 Leitungen sind im Modell **ein** Außenleiter plus abgeleitete Zusammensetzung
 (`acCableComposition`: L / N / PE nach IEC 60364-5-54 Tab. 54.2, z. B. „3G2,5“).
 
@@ -349,7 +372,7 @@ Tests: `lib/connectionRules.test.ts`, `lib/electrical.test.ts`,
 
 ```
 node.data.watts / amps
-   → calculateEdgeCurrent()                 [lib/vde-standards.ts]   → I [A]
+   → getCableCurrents().byEdgeId            [lib/electricalGraph/currentFlow.ts] → I [A]
    → calculateCrossSection(I, L, cs, dom)   [lib/electrical.ts]      → A [mm²]
    → selectFuseSize(I, A)                   [lib/electrical.ts]      → In [A]
    → edgeVoltageDrop(I, L, A)               [lib/autoWire/primitives.ts] → ΔU [V]
