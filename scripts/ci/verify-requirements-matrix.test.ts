@@ -4,6 +4,14 @@ import { verifyMatrix } from './verify-requirements-matrix.mjs';
 const FIXTURES_DIR = 'scripts/ci/__fixtures__';
 type VerifyResult = { errors: string[]; warnings: string[]; classSCount: number; totalCount: number };
 
+function checkMatrixWith(matrix: string, safetyCase: string, riskRegister: string): VerifyResult {
+  return verifyMatrix(matrix, safetyCase, riskRegister) as VerifyResult;
+}
+
+function errorsContaining(result: VerifyResult, needle: string): string[] {
+  return result.errors.filter((e: string) => e.includes(needle));
+}
+
 function checkMatrix(matrix: string, safetyCase?: string, riskRegister?: string): VerifyResult {
   return verifyMatrix(
     matrix,
@@ -82,5 +90,35 @@ describe('verify-requirements-matrix.mjs', () => {
     const result = checkMatrix(`${FIXTURES_DIR}/matrix-missing-claim.md`);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.some((e) => e.includes('keinen Safety-Case-Claim zugewiesen'))).toBe(true);
+  });
+
+  it('erkennt Widerspruch: Safety Case führt Risiko als „offen\", Risk Register behandelt es', () => {
+    const result = checkMatrixWith(
+      `${FIXTURES_DIR}/matrix-valid.md`,
+      `${FIXTURES_DIR}/safety-case-open-restrisiko.md`,
+      `${FIXTURES_DIR}/risk-register-treated.md`
+    );
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toHaveLength(1);
+    expect(errorsContaining(result, 'R-300')).toHaveLength(1);
+    expect(errorsContaining(result, 'Matrix Rule M-8')).toHaveLength(1);
+  });
+
+  it('kein Widerspruch: Safety Case führt Risiko als „offen\", Risk Register führt es ebenfalls als „offen"', () => {
+    const result = checkMatrixWith(
+      `${FIXTURES_DIR}/matrix-valid.md`,
+      `${FIXTURES_DIR}/safety-case-open-restrisiko.md`,
+      `${FIXTURES_DIR}/risk-register-open.md`
+    );
+    expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toEqual([]);
+  });
+
+  it('kein Widerspruch: Safety Case ohne offen-Annotierung im Restrisiko', () => {
+    const result = checkMatrixWith(
+      `${FIXTURES_DIR}/matrix-valid.md`,
+      `${FIXTURES_DIR}/safety-case-valid.md`,
+      `${FIXTURES_DIR}/risk-register-valid.md`
+    );
+    expect(errorsContaining(result, 'Widerspruch Safety Case ↔ Risk Register')).toEqual([]);
   });
 });

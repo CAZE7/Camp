@@ -1036,3 +1036,33 @@ gar kein Dokument, sondern eine verständliche Meldung.
 `node.width/height` (Architekturregel: über `nodeGeometry` lesen) und
 `waitForTimeout` im E2E. Beide wurden im **Code** behoben, nicht in der
 Prüfung — ein Beispiel dafür, dass die bestehenden Wächter tragen.
+
+### 9.8 CI-Ergebnisse — letzter geprüfter PR-CI-Lauf (historische Werte)
+
+Die folgenden Werte stammen aus dem zuletzt geprüften PR-CI-Lauf (Merge der
+PRs #604, #605, #606 in `main`, 2026-11-07). Sie werden als **historische Werte** gekennzeichnet; ein aktuellerer GitHub-Actions-Lauf mit denselben
+Detail-Metriken lag zum Zeitpunkt dieses Berichts nicht vor (überprüft über
+`gh api repos/CAZE7/Camp/actions/runs`; der jüngste erfolgreiche Lauf auf
+`main` lief am 2026-11-07 09:35 UTC durch: Quality Gate „Typecheck, Tests &
+Build“, Requirements-Matrix-Konsistenzcheck und E2E grün, visuelles Gate
+nicht-blockierend fehlgeschlagen — Pixel-Drift, kein Blocker).
+
+| Prüfung                                                                                   | Befehl / Ort                                          | Ergebnis (letzter PR-CI-Lauf)                                                                                                                                                                                                                                         | Kennzeichnung                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vitest Vollsuite (Unit + Integration, inkl. `test/reference/**` und `test/invariants/**`) | `npx vitest run`                                      | **4.318 bestanden / 1 übersprungen** (letzter PR-CI-Lauf); lokal auf diesem Checkout nachgemessen: **4.321 bestanden / 1 übersprungen** — die +3 sind die neuen Tests für den Requirements-Matrix-Widerspruchscheck (`scripts/ci/verify-requirements-matrix.test.ts`) | Historisch für den Basiswert, lokal nachgemessen                                                                                                                  |
+| Safety-Gate-Tests (G4 kritische Mutanten + G6 kein stilles PASS)                          | `npm run test:gates`                                  | **30 bestanden** (`test/invariants/silent-pass-gate.test.ts`: 21, `test/invariants/mutation-critical.test.ts`: 9)                                                                                                                                                     | Lokal nachgemessen, grün                                                                                                                                          |
+| E2E (funktionale Specs, blockierend, gegen `./out`)                                       | `npm run e2e` (`--grep-invert "hält die Baseline"`)   | **447 bestanden / 277 übersprungen / 0 fehlgeschlagen**                                                                                                                                                                                                               | Historisch (letzter PR-CI-Lauf); CI-E2E-Job am 2026-11-07 grün                                                                                                    |
+| Pixel-Visual-Tests (Baselines „hält die Baseline")                                        | `npx playwright test --grep "hält die Baseline"`      | **76 bestanden / 0 fehlgeschlagen**                                                                                                                                                                                                                                   | Historisch (letzter PR-CI-Lauf); letzter CI-Lauf: visuelles Gate mit `continue-on-error: true` fehlgeschlagen (nicht blockierend, UI-Drift-Meldung)               |
+| Lighthouse                                                                                | `perf:lighthouse` auf `/camper-elektrik/ladebooster/` | **Performance 84 bei Zielwert 90** — Ziel **nicht erreicht**                                                                                                                                                                                                          | Historisch (letzter PR-CI-Lauf); kein aktuellerer Lighthouse-Wert verfügbar; Lab-Werte auf geteilten Runnern schwanken, Zielsenkung wäre keine zulässige Maßnahme |
+
+**Was neuere Läufe zeigen:** Der CI-Lauf vom 2026-11-07 auf `main` (Merge #606)
+war für Quality Gate, Requirements-Matrix-Konsistenzcheck und E2E grün. Der
+visuelle Lauf schlug nicht-blockierend fehl; detaillierte Testzahlen aus diesem
+Lauf liegen als CI-Artifact nicht vor, weshalb die historischen Werte oben
+beibehalten werden.
+
+**Nicht als grün behauptet (ungeprüft):** Reale Mobilgeräte, iOS Safari,
+Firefox (AUD-017); Lighthouse unter CI-Bedingungen; der Ladebooster-Lighthouse-
+Wert von 84 ist ein einzelner historischer Lab-Wert, keine reproduzierte
+Regression (Bundle-Größen der betroffenen Routen unverändert, siehe
+ELECTRICAL-VERIFICATION-STRATEGY.md §12.6/§12.9).

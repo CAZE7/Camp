@@ -143,6 +143,68 @@ function fileExistsWithFallback(filePath) {
 }
 
 /**
+ * Parst eine Markdown-Tabelle (Text in Erinnerung, nicht Dateipfad) in
+ * Zeilen von Zellen. Erste und letzte leere Zelle (Umrandung) werden entfernt,
+ * Trennzeilen (|---|) übersprungen.
+ */
+function parseMarkdownTableRows(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.startsWith('|')) continue;
+    // Trennzeile überspringen (|---|---|)
+    if (/^\s*\|\s*[\s\-:|]+\|\s*$/.test(line)) continue;
+    const cells = line
+      .split('|')
+      .map((c) => c.trim())
+      .filter((_, idx) => idx > 0 && idx < line.split('|').length - 1);
+    if (cells.length >= 1) rows.push(cells);
+  }
+  return rows;
+}
+
+/**
+ * Extrahiert aus dem Safety-Case alle Restrisiken, die explizit als „offen\"
+ * annotiert sind (Muster im Restrisiko-Zell: „R-004 (offen: …)\").
+ * Gibt { claimId, riskId, restrisiko } zurück — generell, ohne harte IDs.
+ */
+function extractOffenMarkierteRestrisiken(safetyCaseText) {
+  const found = [];
+  const rows = parseMarkdownTableRows(safetyCaseText);
+  // Claims-Tabelle: | ID | Behauptung | Argumentation | Kategorie | Referenz | Ergebnis | Restrisiko |
+  for (const row of rows) {
+    const claimId = (row[0] || '').trim();
+    if (!/^CL-\d{3}$/.test(claimId)) continue;
+    const restrisiko = row[6] || '';
+    const ergebnis = (row[5] || '').trim();
+    const matches = restrisiko.match(/R-\d{3}[^|]*?\([^)]*offen[^)]*\)/gi);
+    if (matches) {
+      for (const m of matches) {
+        const riskId = m.match(/R-\d{3}/)[0];
+        found.push({ claimId, riskId, restrisiko, ergebnis });
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Extrahiert aus dem Risk Register die Status pro Risiko-ID.
+ * Risiko-Tabelle: | ID | ... | Status | Verantwortlich | Datum | (Status = Zelle 9).
+ */
+function extractRiskStatuses(riskRegisterText) {
+  const statuses = new Map();
+  const rows = parseMarkdownTableRows(riskRegisterText);
+  for (const row of rows) {
+    const riskId = (row[0] || '').trim();
+    if (/^R-\d{3}$/.test(riskId)) {
+      statuses.set(riskId, (row[9] || '').trim());
+    }
+  }
+  return statuses;
+}
+
+/**
  * Extrahiert tatsächliche Dateipfade aus einer Test-/Implementierungsreferenz.
  *
  * Extrahiert zuerst alle Backtick-Inhalte (z. B. `lib/electrical.ts` aus
@@ -397,6 +459,24 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
           );
         }
       }
+    }
+  }
+
+  // --- Semantischer Abgleich: Safety-Case-Restrisiken vs. Risk-Register-Status (Matrix Rule M-8) ---
+  // Ein Risiko, das im Safety Case explizit als "offen" annotiert ist, darf im
+  // Risk Register nicht als behandelt/geschlossen/akzeptiert stehen. Generell
+  // ohne harte IDs — jeder Claims-/Risiko-Eintrag passt.
+  const offenMarkierteRestrisiken = extractOffenMarkierteRestrisiken(safetyCaseText);
+  const riskStatuses = extractRiskStatuses(riskRegisterText);
+  const behandeltLike = /^(Behandelt|geschlossen|Akzeptiert)/i;
+  for (const { claimId, riskId, restrisiko, ergebnis } of offenMarkierteRestrisiken) {
+    const status = riskStatuses.get(riskId);
+    if (status === undefined) {
+      warnings.push(`${claimId}: Restrisiko verweist auf nicht im Risk Register vorhandenes ${riskId}.`);
+    } else if (behandeltLike.test(status)) {
+      errors.push(
+        `Widerspruch Safety Case ↔ Risk Register: Claim ${claimId} (Ergebnis „${ergebnis}\") führt ${riskId} im Restrisiko als „offen" an („${restrisiko}\"), das Risk Register führt ${riskId} als „${status}\". Entweder Restrisiko-Anmerkung im Safety Case oder Risk-Register-Status korrigieren (Matrix Rule M-8).`
+      );
     }
   }
 
