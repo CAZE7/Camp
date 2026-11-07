@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { openPlanner, showCanvas } from './helpers';
+import { addComponent, openPlanner, showCanvas } from './helpers';
 
 /**
  * tests/e2e/autowire-reachable.spec.ts
@@ -96,4 +96,57 @@ test.describe('Auto-Verbinden ist auffindbar, keine Schrittleiste', () => {
     await expect(page.getByTestId('action-autowire').first()).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Planungsablauf' })).toHaveCount(0);
   });
+});
+
+/**
+ * Der längere Knopfname hat die Aktionsgruppe nach rechts geschoben — sie
+ * ragte in den Bereichs-Umschalter, und „Stückliste" war an seiner rechten
+ * Kante nicht mehr treffbar (gemessen bei 1440 px: Gruppe endet 862,
+ * Umschalter beginnt 764, also 98 px Überlappung).
+ *
+ * Der Fehler bestand schon vor der Umbenennung (mit „Vorschlag prüfen"
+ * −58 px), der längere Name hat ihn verbreitert. Die vorhandenen
+ * Überlappungswächter sahen ihn nicht, weil sie feste Paarungen prüfen.
+ * Hier wird jeder sichtbare Knopf an seiner rechten Kante getroffen
+ * (`elementFromPoint`) — das ist die Frage, die der Nutzer stellt:
+ * „Kann ich das anklicken?"
+ */
+test.describe('Werkzeugleiste bleibt klickbar', () => {
+  for (const width of [1280, 1440, 1640, 1920]) {
+    test(`keine Aktion liegt unter einer anderen bei ${width} px`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop-1440', 'festes Fenster, einmal je Breite');
+      await page.setViewportSize({ width, height: 900 });
+      await openPlanner(page);
+      await showCanvas(page);
+      // Mit Bauteilen im Plan, nicht im leeren Zustand: Die Statuschips
+      // („Ungespeichert“, Befunde) werden breiter und schieben den
+      // Bereichs-Umschalter nach links. Im leeren Plan tritt die Überlappung
+      // bei 1440 px nicht auf — der Gegenbeweis blieb sonst wirkungslos.
+      await addComponent(page, 'battery');
+      await addComponent(page, 'inverter');
+
+      const covered = await page.evaluate(() => {
+        const toolbar = document.querySelector('[data-testid="planner-toolbar"]') as HTMLElement;
+        const bounds = toolbar.getBoundingClientRect();
+        const problems: string[] = [];
+        for (const button of Array.from(toolbar.querySelectorAll('button'))) {
+          const box = button.getBoundingClientRect();
+          if (box.width === 0 || box.right > bounds.right + 1) continue;
+          // Rechte Kante: dort sitzt die Beschriftung, die zuerst verdeckt wird.
+          const x = box.right - 4;
+          const y = box.y + box.height / 2;
+          if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) continue;
+          const hit = document.elementFromPoint(x, y)?.closest('button');
+          if (hit !== button) {
+            const name = button.getAttribute('data-testid') ?? button.getAttribute('aria-label');
+            const by = hit?.getAttribute('data-testid') ?? hit?.getAttribute('aria-label') ?? 'leer';
+            problems.push(`${name} verdeckt von ${by}`);
+          }
+        }
+        return problems;
+      });
+
+      expect(covered, covered.join('; ')).toEqual([]);
+    });
+  }
 });

@@ -4015,9 +4015,52 @@ Funktion auf Desktop ganz gekostet.
 - Die Trassen-Assertion des gelöschten Compact-Tests wurde in den verbleibenden
   Popover-Test übernommen; der Pfad lebt über die Breite weiter.
 
+### Dritter Folgefehler: Werkzeugleiste wurde unklickbar
+
+Beim Screenshot des erreichten Zustands fiel auf, dass „Stückliste" zu
+„Stücklis" abgeschnitten wirkte. Ein Treffertest (`elementFromPoint` an der
+rechten Knopfkante) bestätigte es: bei 1440 px lag die rechte Hälfte unter dem
+Bereichs-Umschalter.
+
+Gemessen (rechte Kante der Ausgabe-Gruppe 862 px mit Text, linker Rand des
+Umschalters = Breite − 676 px bis 1535 px, danach − 759 px):
+
+| Breite | Abstand Gruppe ↔ Umschalter |
+| ------ | --------------------------- |
+| 1280   | −258 px                     |
+| 1440   | −98 px                      |
+| 1620   | −1 px                       |
+| 1640   | +19 px                      |
+
+**Attribution:** Der Fehler ist **nicht neu** — mit dem alten Label
+„Vorschlag prüfen" lag der Abstand bei 1440 px bereits bei −58 px (gegen-
+gemessen). Der längere Name hat ihn auf −98 px verbreitert und damit für jeden
+sichtbar gemacht. Die bestehenden Überlappungswächter (`controls-overlap`,
+`ui-audit-overlaps`, 15/15 grün) sahen ihn nicht, weil sie feste Paarungen
+prüfen, nicht jede Kante.
+
+**Fix:** Ausgabe-Gruppe als Symbole ab 1440 px (rechte Kante 700 px, bei 1440
+bleiben 64 px Luft), mit Text erst ab 1640 px. Beschriftung bleibt im
+`aria-label` und als Tooltip; unter 1440 px liegt sie wie bisher im `⋯`-Menü.
+
+**Gegenprobe:** Neuer Treffertest über vier Breiten. Mit dem alten CSS fallen
+1280 **und** 1440 durch („Stückliste verdeckt von viewmode-electric"), mit dem
+Fix sind alle vier grün. Wichtig: Der Test braucht einen **belegten** Plan —
+im leeren Plan sind die Statuschips schmaler und die Überlappung tritt bei
+1440 px nicht auf. Der erste Gegenlauf war deshalb wirkungslos und wurde
+korrigiert.
+
 **Gates:** `npm run check` EXIT 0 (313 Dateien, 4121 Tests). Visuelles Gate
-**76/76** — auch nach dem Entfernen der toten CSS-Regeln, damit ist der Abbau
-pixelneutral. Build 42 Seiten. Responsive/Handy-Geometrie 67 passed.
+**76/76** — auch nach dem Entfernen der toten CSS-Regeln und nach der neuen
+Schwelle, damit ist der Abbau pixelneutral. Build 42 Seiten.
+Responsive/Handy-Geometrie 67 passed, Überlappungswächter 15/15.
+
+**Lighthouse:** Der nicht blockierende CI-Schritt „Lighthouse-Budget" fiel auf
+dem ersten Push durch. Lokal halten alle Budgets (`perf:lighthouse` EXIT 0,
+dreimal stabil: `/` Perf 91, LCP 1209 ms). **Gegenmessung mit der CSS vor
+diesem Auftrag: Perf 90, identische CLS 0.194** — die Knappheit am 90er-Budget
+ist also vorbestehend und nicht Folge dieser Änderung; der Abbau hat sie leicht
+verbessert. Das Budget wurde **nicht** abgesenkt.
 
 **Grenzen:** Keine Änderung an elektrischen Formeln, Grenzwerten, Normtabellen,
 Routing-Garantien oder Golden Fixtures. Keine neuen Skips, keine abgeschwächten

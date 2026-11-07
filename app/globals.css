@@ -2952,20 +2952,38 @@ summary:active {
   }
 }
 
-/* Ausgabe-Gruppe (Prüfen/Stückliste/Export) erst ab 1280 px sichtbar (M12).
+/* Ausgabe-Gruppe (Prüfen/Stückliste/Export): Schwelle nach gemessener Breite.
    Am Tablet (768–1279 px) war die Werkzeugleiste mit Verlauf, Auto-Wire,
    Ausgabe, Bereichswechsel und fünf Statuschips 983 px breit auf 768 px
    Fläche: Der Warnchip stand bei x = 670…861 (gemessen) und die Aktionsgruppe
-   war auf 0 px zusammengedrückt. Am Tablet sind diese drei Aktionen im
-   `⋯`-Menü erreichbar (dieselben Einträge, dieselben Handler); ab 1280 px
-   steht die Gruppe wieder offen. */
-@media (min-width: 1280px) {
+   war auf 0 px zusammengedrückt. Darunter liegen die drei Aktionen im
+   `⋯`-Menü (dieselben Einträge, dieselben Handler).
+
+   Nachtrag 2026-11-06: Die Schwelle 1280 px war zu niedrig — die Gruppe ragte
+   in den Bereichs-Umschalter. Gemessen im Browser (rechte Kante der Gruppe
+   862 px mit Text, 733 px als Symbol; linke Kante des Umschalters = Breite
+   minus 676 px bis 1535 px, danach minus 759 px):
+
+     Breite  Gruppe mit Text   linker Umschalter   Abstand
+     1280    862               604                 -258 px
+     1440    862               764                  -98 px
+     1620    862               861                   -1 px
+     1640    862               881                  +19 px
+
+   Der Fehler bestand schon vor der Umbenennung (mit „Vorschlag prüfen"
+   −58 px bei 1440); der längere Name „Automatisch verbinden" hat ihn
+   verbreitert und für alle sichtbar gemacht. Deshalb:
+     · ab 1440 px die Gruppe als Symbole (733 px rechts — bei 1440 ist der
+       Umschalter bei 764 px, also 31 px Luft),
+     · ab 1640 px mit Text, wo der gemessene Abstand positiv wird.
+   Die Beschriftung bleibt in jedem Fall im `aria-label` und als Tooltip. */
+@media (min-width: 1440px) {
   .cad-toolbar__desktop-group {
     display: flex;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1640px) {
   .cad-toolbar .tool-btn__label {
     display: inline;
   }
