@@ -1,3 +1,4 @@
+/** @type {import('./verify-requirements-matrix.mjs').VerifyMatrixOptions} */
 /**
  * scripts/ci/verify-requirements-matrix.mjs
  *
@@ -16,10 +17,16 @@
  *   8. Risk-Register-Eintrag (für Klasse S zwingend, muss im Risk Register existieren)
  *   9. Release-Status (Warnung, nicht blockierend)
  *
+ * Zusätzlich prüft Matrix Rule M-8 den semantischen Abgleich:
+ * Ein Risiko, das im Safety Case ausdrücklich als unbehandelt offen annotiert
+ * ist, darf im Risk Register nicht als technisch behandelt/geschlossen
+ * dargestellt werden. Ein akzeptiertes Restrisiko ("Akzeptiert als Restrisiko")
+ * bleibt als solches erkennbar und wird nicht mit "Behandelt" gleichgesetzt.
+ *
  * Bei Verstößen gibt das Skript die betroffenen Zeilen aus und beendet sich
  * mit Exit-Code 1 (CI-Job schlägt fehl).
  *
- * Aufruf: node scripts/ci/verify-requirements-matrix.mjs [matrixPath]
+ * Aufruf: node scripts/ci/verify-requirements-matrix.mjs [matrixPath] [safetyCasePath] [riskRegisterPath]
  *
  * Wenn matrixPath angegeben wird, wird diese Datei statt der Haupt-Matrix
  * geprüft (für Unit-Tests des Prüfsystems).
@@ -35,11 +42,233 @@ const DEFAULT_RISK_REGISTER_PATH = 'docs/safety/RISK-REGISTER.md';
 const VALID_KLASSEN = new Set(['S', 'F', 'D', 'P', 'Q']);
 const VALID_ERGEBNISSE = new Set(['Erfüllt', 'Teilweise', 'Offen', 'Nicht zutreffend']);
 
+// Statuswerte, die als "technisch behandelt" gelten (für M-8-Abgleich).
+// Prüft auf Präfix-Match, da Register-Status oft Zusätze tragen (z. B. "Behandelt (mit Nachweis)").
+const BEHANDELT_LIKE = /^(Behandelt|geschlossen|Akzeptiert als Restrisiko)/i;
+
+// Statuswerte im Risk Register, die als "nicht behandelt" gelten.
+// Prüft auf Präfix-Match, da Register-Status oft Zusätze tragen.
+const NICHT_BEHANDELT_LIKE = /^(Offen|In Behandlung)/i;
+
+// --- Ergebnis-Typen ----------------------------------------------------------
+
 /**
- * Extrahiert den reinen Ergebnisstatus (ohne Zusatztexte in Klammern).
- * "Teilweise (Annahme nicht messverifiziert)" -> "Teilweise"
- * "Grün (blockierende Specs)" -> "Erfüllt" (Alias)
+ * @typedef {Object} VerifyResult
+ * @property {string[]} errors
+ * @property {string[]} warnings
+ * @property {number} classSCount
+ * @property {number} totalCount
  */
+
+/**
+ * @typedef {Object} TableInfo
+ * @property {string[]} headers
+ * @property {number[][]} cellIndices  // [rowIndex, colIndex] für jede Pflichtspalte
+ * @property {string[][]} rows
+ */
+
+// --- Markdown-Tabellen-Parsing (robust) --------------------------------------
+
+/**
+ * Teilt eine Markdown-Tabellenzeile in Zellen auf und behandelt dabei:
+ * - escaped Pipes (\|) innerhalb von Zellen
+ * - Backticks (keine Sonderbehandlung nötig, Pipes darin sind kein Trennzeichen)
+ * - leere Zellen
+ * - unterschiedliche Spaltenbreiten
+ *
+ * Die führende und abschließende "|"-Umrandung wird entfernt.
+ */
+function splitTableRow(line) {
+  const cells = [];
+  let current = '';
+  let i = 0;
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '\\' && i + 1 < line.length) {
+      // Escaped Zeichen – nächstes Zeichen 1:1 übernehmen
+      current += line[i + 1];
+      i += 2;
+      continue;
+    }
+    if (ch === '|') {
+      cells.push(current.trim());
+      current = '';
+      i++;
+      continue;
+    }
+    current += ch;
+    i++;
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+/**
+ * Prüft, ob eine Zeile eine Markdown-Trennzeile ist (|---|:---|).
+ */
+function isSeparatorLine(line) {
+  return /^\s*\|?\s*[\s\-:|]+\s*\|?\s*$/.test(line) && /[-:]/.test(line);
+}
+
+/**
+ * Parst eine Markdown-Tabelle aus reinem Text.
+ *
+ * Gibt { headers, rows } zurück, wobei rows Arrays von Zellen-Strings sind.
+ * Die erste Datenzeile nach der Trennzeile ist die Kopfzeile (headers).
+ * Fehlerhafte Tabellen (ohne Kopfzeile, ohne Trennzeile) ergeben { headers: [], rows: [] }.
+ */
+function parseMarkdownTable(text) {
+  const tables = [];
+  let currentTable = null;
+  let inTable = false;
+  let headerDone = false;
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('|')) {
+      // Tabellen-Block verlassen
+      if (inTable && headerDone && currentTable) {
+        tables.push(currentTable);
+        currentTable = null;
+      }
+      inTable = false;
+      headerDone = false;
+      continue;
+    }
+
+    if (isSeparatorLine(trimmed)) {
+      if (inTable && !headerDone) {
+        headerDone = true;
+      }
+      continue;
+    }
+
+    if (!inTable) {
+      inTable = true;
+      currentTable = { headers: [], rows: [] };
+    }
+
+    const cells = splitTableRow(trimmed);
+
+    if (!headerDone) {
+      // Erste Zeile = Kopfzeile
+      currentTable.headers.push(...cells);
+      headerDone = true;
+    } else {
+      currentTable.rows.push(cells);
+    }
+  }
+
+  // Letzte Tabelle abschließen, falls Datei mit Tabelle endet
+  if (inTable && headerDone && currentTable) {
+    tables.push(currentTable);
+  }
+
+  return tables;
+}
+
+/**
+ * Baut einen Index von Kopfzeilenname → Spaltenindex.
+ * Doppelte Kopfzeilen werfen einen Fehler.
+ */
+function buildHeaderIndex(headers, tableName) {
+  const index = new Map();
+  for (let i = 0; i < headers.length; i++) {
+    const h = headers[i].trim();
+    if (!h) continue;
+    if (index.has(h)) {
+      throw new Error(
+        `Tabelle "${tableName}": doppelte Kopfzeile "${h}" (Spaltenindex ${i}). ` +
+          'Jede Pflichtspalte muss eindeutig benannt sein.'
+      );
+    }
+    index.set(h, i);
+  }
+  return index;
+}
+
+/**
+ * Liest eine Markdown-Datei und extrahiert die erste Tabelle mit Header-Index.
+ * Gibt { headers, headerIndex, rows } oder wirft einen Fehler bei ungültiger Struktur.
+ */
+function readTableWithHeaders(path, requiredHeaders, tableName) {
+  let text;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return { error: `Datei nicht gefunden: ${path}`, headers: [], headerIndex: new Map(), rows: [] };
+  }
+
+  const tables = parseMarkdownTable(text);
+
+  if (tables.length === 0) {
+    return {
+      error: `Tabelle "${tableName}" in ${path} hat keine erkennbare Kopfzeile.`,
+      headers: [],
+      headerIndex: new Map(),
+      rows: [],
+    };
+  }
+
+  // Die Tabelle finden, die alle erforderlichen Pflichtspalten enthält.
+  // Die erste Tabelle im Dokument ist oft eine Legende, nicht die eigentliche Matrix.
+  let selected = null;
+  for (const t of tables) {
+    const headerIndex = buildHeaderIndex(t.headers, tableName);
+    const missing = requiredHeaders.filter((h) => !headerIndex.has(h));
+    if (missing.length === 0) {
+      selected = { headers: t.headers, headerIndex, rows: t.rows };
+      break;
+    }
+  }
+
+  if (!selected) {
+    // Fallback: erste Tabelle nehmen, um eine aussagekräftige Fehlermeldung zu liefern
+    const headerIndex = buildHeaderIndex(tables[0].headers, tableName);
+    const missing = requiredHeaders.filter((h) => !headerIndex.has(h));
+    return {
+      error: `Tabelle "${tableName}" in ${path}: fehlende Pflichtspalte(n): ${missing.join(', ')}. Vorhanden: ${tables[0].headers.join(', ')}.`,
+      headers: tables[0].headers,
+      headerIndex,
+      rows: tables[0].rows,
+    };
+  }
+
+  return { ...selected, error: null };
+}
+
+/**
+ * Holt den Zellwert einer Zeile über den Header-Namen.
+ * Gibt '' zurück, wenn die Spalte nicht existiert oder die Zelle leer ist.
+ */
+function cellByHeader(row, headerIndex, name) {
+  const idx = headerIndex.get(name);
+  if (idx === undefined || idx >= row.length) return '';
+  return (row[idx] || '').trim();
+}
+
+// --- ID-Extraktion nur aus offiziellen Tabellen ------------------------------
+
+/**
+ * Extrahiert alle IDs des Musters aus den Zellen einer Tabelle.
+ * Nur echte Tabelleneinträge gelten als vorhanden; historische Erwähnungen
+ * im Fließtext außerhalb von Tabellen zählen nicht.
+ */
+function extractIdsFromTable(rows, headerIndex, colName, pattern) {
+  const ids = new Set();
+  for (const row of rows) {
+    const value = cellByHeader(row, headerIndex, colName);
+    if (!value) continue;
+    let m;
+    while ((m = pattern.exec(value)) !== null) {
+      ids.add(m[0]);
+    }
+  }
+  return ids;
+}
+
+// --- Hilfsfunktionen ---------------------------------------------------------
+
 function extractErgebnisstatus(value) {
   const trimmed = value.trim();
   if (/^Grün/i.test(trimmed)) return 'Erfüllt';
@@ -47,28 +276,15 @@ function extractErgebnisstatus(value) {
   return match ? match[1] : trimmed;
 }
 
-/**
- * Prüft, ob ein String ein tatsächlicher Dateipfad ist (enthält / oder . oder beginnt mit lib/|components/|scripts/|tests/|app/|store/|docs/).
- * Beschreibende Texte wie "UI-Komponenten delegieren an lib/" werden ignoriert.
- * Glob-Muster (enthaltend *) sind gültig. Build-Artefakte unter out/ werden ignoriert.
- */
 function looksLikeFilePath(value) {
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (trimmed.includes('*')) return true;
   if (trimmed.startsWith('npm ') || trimmed.startsWith('npx ')) return false;
-  if (trimmed.startsWith('out/')) return false; // Build-Artefakt, keine Quelldatei
+  if (trimmed.startsWith('out/')) return false;
   return trimmed.includes('/') || /^(lib|components|scripts|tests|app|store|docs)\//.test(trimmed);
 }
 
-/**
- * Prüft, ob ein Glob-Muster tatsächlich mindestens eine Datei im
- * Dateisystem trifft. Unterstützt einfache Muster wie "tests/e2e/*.spec.ts".
- *
- * Gibt true zurück, wenn mindestens eine Datei gefunden wurde.
- * Gibt false zurück, wenn keine Datei gefunden wurde oder das Muster
- * nicht auflösbar ist.
- */
 function globMatchesAnyFile(pattern) {
   const trimmed = pattern.trim();
   if (!trimmed.includes('*')) return false;
@@ -85,10 +301,6 @@ function globMatchesAnyFile(pattern) {
   return dirHasMatch(dirPart, filePart);
 }
 
-/**
- * Prüft, ob ein Verzeichnis mindestens eine Datei enthält, die dem
- * Dateinamen-Muster entspricht. Unterstützt ** für rekursive Suche.
- */
 function dirHasMatch(dirPath, filePattern) {
   let entries;
   try {
@@ -115,21 +327,12 @@ function dirHasMatch(dirPath, filePattern) {
   return false;
 }
 
-/**
- * Einfaches Glob-Matching für Dateinamen.
- * Unterstützt * (beliebige Zeichen innerhalb eines Namens).
- */
 function matchesGlob(filename, pattern) {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   const regex = new RegExp(`^${escaped}$`);
   return regex.test(filename);
 }
 
-/**
- * Prüft, ob eine Datei existiert, mit Fallback auf bekannte Endungen.
- * "lib/validationSeverity" -> prüft auch "lib/validationSeverity.ts", ".tsx", ".mjs", ".js"
- * Glob-Muster müssen tatsächlich mindestens einen Treffer liefern.
- */
 function fileExistsWithFallback(filePath) {
   if (filePath.includes('*')) {
     return globMatchesAnyFile(filePath);
@@ -142,16 +345,6 @@ function fileExistsWithFallback(filePath) {
   return false;
 }
 
-/**
- * Extrahiert tatsächliche Dateipfade aus einer Test-/Implementierungsreferenz.
- *
- * Extrahiert zuerst alle Backtick-Inhalte (z. B. `lib/electrical.ts` aus
- * "`lib/electrical.ts` `selectFuseSize`"). Von jedem Backtick-Inhalt wird
- * nur der Teil vor dem ersten Leerzeichen genommen (Dateipfad ohne
- * Funktionsname). Glob-Muster (enthaltend *) sind gültig.
- *
- * Trennt bei Semikolon und beschreibt nur echte Dateipfade.
- */
 function extractFilePaths(value) {
   if (!value) return [];
   const paths = [];
@@ -161,97 +354,140 @@ function extractFilePaths(value) {
     const backtickMatches = trimmed.match(/`([^`]+)`/g);
     if (backtickMatches) {
       for (const bt of backtickMatches) {
-        const content = bt.slice(1, -1); // Backticks entfernen
-        const filePath = content.split(/\s+/)[0]; // Nur Teil vor erstem Leerzeichen
+        const content = bt.slice(1, -1);
+        const filePath = content.split(/\s+/)[0];
         if (filePath && looksLikeFilePath(filePath)) {
           paths.push(filePath);
         }
       }
     } else {
-      // Keine Backticks: ganzen Teil als Kandidaten betrachten
       const candidate = trimmed.replace(/`/g, '').split(/\s+/)[0];
       if (candidate && looksLikeFilePath(candidate)) {
         paths.push(candidate);
       }
     }
   }
-  // Duplikate entfernen
   return [...new Set(paths)];
 }
+
+function isEmptyOrDash(value) {
+  return !value || value === '—' || value === '-' || value === '';
+}
+
+// --- Hauptprüfunktion --------------------------------------------------------
 
 /**
  * Prüft eine Requirements Matrix und gibt ein Ergebnis-Objekt zurück.
  *
- * @returns {Object} { errors: string[], warnings: string[], classSCount: number, totalCount: number }
+ * @param {string} matrixPath
+ * @param {string} safetyCasePath
+ * @param {string} riskRegisterPath
+ * @returns {VerifyResult} { errors, warnings, classSCount, totalCount }
  */
 function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   const errors = [];
   const warnings = [];
 
-  // --- Hilfsfunktionen -------------------------------------------------------
+  // --- Requirements Matrix einlesen ------------------------------------------
 
-  function readTableRows(path) {
-    let text;
-    try {
-      text = readFileSync(path, 'utf8');
-    } catch {
-      return { rows: [], error: `Datei nicht gefunden: ${path}` };
-    }
-    const rows = [];
-    const lines = text.split('\n');
-    for (const line of lines) {
-      if (!line.startsWith('|')) continue;
-      // Trennzeile überspringen (|---|---|)
-      if (/^\s*\|[\s\-:|]+\|\s*$/.test(line)) continue;
-      const cells = line
-        .split('|')
-        .map((c) => c.trim())
-        .filter((_, idx) => idx > 0 && idx < line.split('|').length - 1);
-      if (cells.length >= 1) rows.push(cells);
-    }
-    return { rows, error: null };
+  const MATRIX_HEADERS = [
+    'Req-ID',
+    'Anforderung',
+    'Klasse',
+    'Fachliche Grundlage',
+    'Implementierung',
+    'Test',
+    'Ergebnis',
+    'Release',
+    'Claim',
+    'Risk',
+  ];
+
+  const matrixTable = readTableWithHeaders(matrixPath, MATRIX_HEADERS, 'Requirements Matrix');
+  if (matrixTable.error) {
+    return { errors: [matrixTable.error], warnings: [], classSCount: 0, totalCount: 0 };
   }
 
-  function extractIds(text, pattern) {
-    const ids = new Set();
-    let m;
-    while ((m = pattern.exec(text)) !== null) {
-      ids.add(m[0]);
-    }
-    return ids;
-  }
-
-  function isEmptyOrDash(value) {
-    return !value || value === '—' || value === '-' || value === '';
-  }
-
-  // --- Dateien einlesen ------------------------------------------------------
-
-  const matrixResult = readTableRows(matrixPath);
-  if (matrixResult.error) {
-    return { errors: [matrixResult.error], warnings: [], classSCount: 0, totalCount: 0 };
-  }
-  const matrixRows = matrixResult.rows;
+  const { headerIndex: mIdx, rows: matrixRows } = matrixTable;
 
   let safetyCaseText = '';
   let riskRegisterText = '';
-  try {
+
+  // --- Safety Case einlesen (nur Tabellen, keine Fließtext-Erwähnungen) ------
+  // Die Claims-Tabelle im Safety Case nutzt "ID" als erste Spalte (Werte: CL-001, CL-002, …);
+  // für Kompatibilität wird auch "Claim" oder "Claim-ID" akzeptiert.
+  function findHeaderIndex(table, candidates) {
+    for (const c of candidates) {
+      if (table.headerIndex.has(c)) return c;
+    }
+    return null;
+  }
+
+  const safetyCaseTable = readTableWithHeaders(
+    safetyCasePath,
+    ['ID', 'Ergebnis', 'Restrisiko'],
+    'Safety Case'
+  );
+  if (safetyCaseTable.error) {
+    warnings.push(`Safety-Case-Tabelle nicht lesbar: ${safetyCaseTable.error}`);
+  } else {
     safetyCaseText = readFileSync(safetyCasePath, 'utf8');
-  } catch {
-    warnings.push(`Safety-Case nicht gefunden: ${safetyCasePath}`);
   }
-  try {
+
+  // --- Risk Register einlesen (nur Tabellen) ---------------------------------
+  const riskRegisterTable = readTableWithHeaders(riskRegisterPath, ['ID', 'Status'], 'Risk Register');
+  if (riskRegisterTable.error) {
+    warnings.push(`Risk-Register-Tabelle nicht lesbar: ${riskRegisterTable.error}`);
+  } else {
     riskRegisterText = readFileSync(riskRegisterPath, 'utf8');
-  } catch {
-    warnings.push(`Risk Register nicht gefunden: ${riskRegisterPath}`);
   }
 
-  const existingClaims = extractIds(safetyCaseText, /CL-\d{3}/g);
-  const existingRisks = extractIds(riskRegisterText, /R-\d{3}/g);
+  // Claim- und Risk-IDs nur aus den offiziellen Tabellen extrahieren
+  const claimCol = findHeaderIndex(safetyCaseTable, ['ID', 'Claim', 'Claim-ID']);
+  const existingClaims = claimCol
+    ? extractIdsFromTable(safetyCaseTable.rows, safetyCaseTable.headerIndex, claimCol, /CL-\d{3}/g)
+    : new Set();
+  const existingRisks = extractIdsFromTable(
+    riskRegisterTable.rows,
+    riskRegisterTable.headerIndex,
+    'ID',
+    /R-\d{3}/g
+  );
 
-  // Spaltenindex in der Matrix-Tabelle:
-  // 0: Req-ID, 1: Anforderung, 2: Klasse, 3: Fachliche Grundlage,
-  // 4: Implementierung, 5: Test, 6: Ergebnis, 7: Release, 8: Claim, 9: Risk
+  // Doppelte Claim- und Risk-IDs in den offiziellen Tabellen erkennen
+  const duplicateClaims = claimCol
+    ? findDuplicateIds(safetyCaseTable.rows, safetyCaseTable.headerIndex, claimCol, /CL-\d{3}/g)
+    : [];
+  const duplicateRisks = findDuplicateIds(
+    riskRegisterTable.rows,
+    riskRegisterTable.headerIndex,
+    'ID',
+    /R-\d{3}/g
+  );
+  for (const dup of duplicateClaims) {
+    errors.push(`Safety Case: doppelter Claim ${dup} mehrfach in der Tabelle eingetragen.`);
+  }
+  for (const dup of duplicateRisks) {
+    errors.push(`Risk Register: doppelter Risk ${dup} mehrfach in der Tabelle eingetragen.`);
+  }
+
+  // Risiko-Status aus dem Risk Register extrahieren (nur aus offizieller Tabelle)
+  const riskStatuses = new Map();
+  for (const row of riskRegisterTable.rows) {
+    const riskId = cellByHeader(row, riskRegisterTable.headerIndex, 'ID');
+    if (/^R-\d{3}$/.test(riskId)) {
+      riskStatuses.set(riskId, cellByHeader(row, riskRegisterTable.headerIndex, 'Status'));
+    }
+  }
+
+  // Offen-markierte Restrisiken aus dem Safety Case extrahieren (aus offizieller Tabelle)
+  const offenMarkierteRestrisiken = extractOffenMarkierteRestrisikenFromTable(
+    safetyCaseTable.rows,
+    safetyCaseTable.headerIndex,
+    claimCol
+  );
+
+  // --- Matrix-Zeilen prüfen ---------------------------------------------------
 
   let classSCount = 0;
   let totalCount = 0;
@@ -259,35 +495,38 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
 
   for (let rowIdx = 0; rowIdx < matrixRows.length; rowIdx++) {
     const row = matrixRows[rowIdx];
-    const reqId = row[0];
+    const reqId = cellByHeader(row, mIdx, 'Req-ID');
     if (!reqId || !reqId.startsWith('CAMP-REQ-')) continue;
 
     totalCount++;
 
-    // Duplicate-ID prüfen
+    // Doppelte Requirement-ID
     if (seenReqIds.has(reqId)) {
       errors.push(`Zeile ${rowIdx + 2}: Doppelte Requirement-ID ${reqId} in der Matrix.`);
     }
     seenReqIds.add(reqId);
 
-    const klasseRaw = row[2] || '';
-    const anforderung = row[1] || '';
-    const grundlage = row[3] || '';
-    const implementierung = row[4] || '';
-    const test = row[5] || '';
-    const ergebnisRaw = row[6] || '';
-    const release = row[7] || '';
-    const claim = row[8] || '';
-    const risk = row[9] || '';
+    const claimRaw = cellByHeader(row, mIdx, 'Claim');
+    const claimIds = claimRaw.match(/CL-\d{3}/g) || [];
+
+    const riskRaw = cellByHeader(row, mIdx, 'Risk');
+    const riskIds = riskRaw.match(/R-\d{3}/g) || [];
+
+    const klasseRaw = cellByHeader(row, mIdx, 'Klasse');
+    const grundlage = cellByHeader(row, mIdx, 'Fachliche Grundlage');
+    const implementierung = cellByHeader(row, mIdx, 'Implementierung');
+    const test = cellByHeader(row, mIdx, 'Test');
+    const ergebnisRaw = cellByHeader(row, mIdx, 'Ergebnis');
+    const release = cellByHeader(row, mIdx, 'Release');
 
     const zeilenInfo = `Zeile ${rowIdx + 2} (${reqId})`;
 
-    // --- Prüfung 1: Requirement-ID Format -------------------------------
+    // Prüfung 1: Requirement-ID Format
     if (!/^CAMP-REQ-\d{3}$/.test(reqId)) {
       errors.push(`${zeilenInfo}: Ungültige Requirement-ID-Format: "${reqId}". Erwartet: CAMP-REQ-XXX.`);
     }
 
-    // --- Prüfung 2: Requirement-Klasse -------------------------------
+    // Prüfung 2: Requirement-Klasse
     const klassenTeile = klasseRaw.split('/').map((k) => k.trim());
     let klasseUngueltig = false;
     for (const k of klassenTeile) {
@@ -304,17 +543,16 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
 
     const primareKlasse = klassenTeile[0];
 
-    // --- Prüfung 3: Fachliche Grundlage -------------------------------
+    // Prüfung 3: Fachliche Grundlage
     if (isEmptyOrDash(grundlage)) {
       errors.push(
         `${zeilenInfo}: Keine fachliche Grundlage angegeben. Jede Anforderung benötigt eine Quelle (Norm, Datenblatt, Modellannahme, Architekturentscheidung).`
       );
     }
 
-    // --- Prüfung 4: Implementierungsreferenz -------------------------------
+    // Prüfung 4: Implementierungsreferenz
     const implPaths = extractFilePaths(implementierung);
     if (implPaths.length === 0 && !isEmptyOrDash(implementierung)) {
-      // Es steht etwas, aber kein erkennbarer Dateipfad - Warnung, kein Fehler
       warnings.push(
         `${zeilenInfo}: Kein erkennbarer Dateipfad in der Implementierungsreferenz: "${implementierung}".`
       );
@@ -327,7 +565,7 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
       }
     }
 
-    // --- Prüfung 5: Testreferenz -------------------------------
+    // Prüfung 5: Testreferenz
     const testPaths = extractFilePaths(test);
     if (testPaths.length === 0 && !isEmptyOrDash(test)) {
       warnings.push(`${zeilenInfo}: Kein erkennbarer Dateipfad in der Testreferenz: "${test}".`);
@@ -338,7 +576,7 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
       }
     }
 
-    // --- Prüfung 6: Ergebnisstatus -------------------------------
+    // Prüfung 6: Ergebnisstatus
     const ergebnisStatus = extractErgebnisstatus(ergebnisRaw);
     if (!VALID_ERGEBNISSE.has(ergebnisStatus)) {
       errors.push(
@@ -346,24 +584,22 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
       );
     }
 
-    // --- Prüfung 7: Release-Status (Warnung, nicht blockierend) ---------
+    // Prüfung 7: Release-Status (Warnung)
     if (isEmptyOrDash(release)) {
       warnings.push(`${zeilenInfo}: Kein Release-Status angegeben. Empfohlen: Verweis auf Release/Gate.`);
     }
 
-    // --- Prüfung 8+9: Klasse-S-Anforderungen benötigen Claim + Risk (M-4) --
+    // Prüfung 8+9: Klasse-S-Anforderungen benötigen Claim + Risk (M-4)
     if (primareKlasse === 'S') {
       classSCount++;
 
-      // Claim prüfen
-      if (isEmptyOrDash(claim)) {
+      if (isEmptyOrDash(claimRaw)) {
         errors.push(
           `${zeilenInfo}: Klasse-S-Anforderung hat keinen Safety-Case-Claim zugewiesen. Matrix Rule M-4 verlangt einen Claim für jede Klasse-S-Anforderung.`
         );
       } else {
-        const claimIds = claim.match(/CL-\d{3}/g) || [];
         if (claimIds.length === 0) {
-          errors.push(`${zeilenInfo}: Keine gültige Claim-ID (CL-XXX) in der Claim-Spalte: "${claim}".`);
+          errors.push(`${zeilenInfo}: Keine gültige Claim-ID (CL-XXX) in der Claim-Spalte: "${claimRaw}".`);
         }
         for (const cid of claimIds) {
           if (!existingClaims.has(cid)) {
@@ -372,15 +608,13 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
         }
       }
 
-      // Risk prüfen
-      if (isEmptyOrDash(risk)) {
+      if (isEmptyOrDash(riskRaw)) {
         errors.push(
           `${zeilenInfo}: Klasse-S-Anforderung hat keinen Risk-Register-Eintrag zugewiesen. Matrix Rule M-4 verlangt einen Risk-Register-Eintrag für jede Klasse-S-Anforderung.`
         );
       } else {
-        const riskIds = risk.match(/R-\d{3}/g) || [];
         if (riskIds.length === 0) {
-          errors.push(`${zeilenInfo}: Keine gültige Risk-ID (R-XXX) in der Risk-Spalte: "${risk}".`);
+          errors.push(`${zeilenInfo}: Keine gültige Risk-ID (R-XXX) in der Risk-Spalte: "${riskRaw}".`);
         }
         for (const rid of riskIds) {
           if (!existingRisks.has(rid)) {
@@ -389,9 +623,9 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
         }
       }
 
-      // Prüfung: "Erfüllt" darf nicht ohne vollständigen Nachweis sein
+      // "Erfüllt" darf nicht ohne vollständigen Nachweis sein
       if (ergebnisStatus === 'Erfüllt') {
-        if (isEmptyOrDash(claim) || isEmptyOrDash(risk)) {
+        if (isEmptyOrDash(claimRaw) || isEmptyOrDash(riskRaw)) {
           errors.push(
             `${zeilenInfo}: Ergebnis "Erfüllt" ohne vollständigen Claim/Risk-Nachweis. Ein unvollständiger Nachweis darf niemals als erfüllt gelten.`
           );
@@ -400,7 +634,121 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
     }
   }
 
+  // --- Matrix Rule M-8: Semantischer Abgleich Safety Case ↔ Risk Register ---
+
+  // Regel R1: Ein Risiko, das im Safety Case ausdrücklich als unbehandelt offen
+  // annotiert ist ("R-XXX (offen: …)" oder "R-XXX (Akzeptiert als Restrisiko: …)"),
+  // darf im Risk Register nicht als behandelt/geschlossen stehen.
+  // "Akzeptiert als Restrisiko" (Safety Case) vs "Behandelt" (Register) sind
+  // semantisch verschiedene Zustände (M-8: nicht gleichsetzen).
+  // Wenn beide Seiten "Akzeptiert als Restrisiko" sagen, ist das konsistent.
+  for (const { claimId, riskId, restrisiko, ergebnis, restrisikoTyp } of offenMarkierteRestrisiken) {
+    const status = riskStatuses.get(riskId);
+    if (status === undefined) {
+      warnings.push(`${claimId}: Restrisiko verweist auf nicht im Risk Register vorhandenes ${riskId}.`);
+    } else if (restrisikoTyp === 'offen' && BEHANDELT_LIKE.test(status)) {
+      // Offen annotiert, aber Register sagt behandelt/geschlossen/akzeptiert → Widerspruch
+      errors.push(
+        `Widerspruch Safety Case ↔ Risk Register: Claim ${claimId} (Ergebnis "${ergebnis}") führt ${riskId} im Restrisiko als "offen" an ("${restrisiko}"), das Risk Register führt ${riskId} als "${status}". Entweder Restrisiko-Anmerkung im Safety Case oder Risk-Register-Status korrigieren (Requirements-Matrix-Regel M-8).`
+      );
+    } else if (restrisikoTyp === 'akzeptiert' && /^(Behandelt|geschlossen)/i.test(status)) {
+      // Als Restrisiko akzeptiert, aber Register sagt technisch behandelt → Widerspruch
+      errors.push(
+        `Widerspruch Safety Case ↔ Risk Register: Claim ${claimId} (Ergebnis "${ergebnis}") führt ${riskId} im Restrisiko als "Akzeptiert als Restrisiko" an ("${restrisiko}"), das Risk Register führt ${riskId} als "${status}". "Akzeptiert als Restrisiko" ist nicht dasselbe wie "Behandelt" (Requirements-Matrix-Regel M-8).`
+      );
+    }
+  }
+
+  // Regel R2: Ein im Safety Case als behandelt/geschlossen dargestelltes Risiko
+  // darf nicht ohne nachvollziehbare Begründung im Risk Register als unbehandelt
+  // offen stehen. Das prüfen wir über Claims mit Ergebnis "Erfüllt", die auf
+  // ein Risiko verweisen, das im Register "Offen" ist.
+  for (let rowIdx = 0; rowIdx < matrixRows.length; rowIdx++) {
+    const row = matrixRows[rowIdx];
+    const reqId = cellByHeader(row, mIdx, 'Req-ID');
+    if (!reqId || !reqId.startsWith('CAMP-REQ-')) continue;
+    const ergebnisStatus = extractErgebnisstatus(cellByHeader(row, mIdx, 'Ergebnis'));
+    if (ergebnisStatus !== 'Erfüllt') continue;
+
+    const claimRaw = cellByHeader(row, mIdx, 'Claim');
+    const riskRaw = cellByHeader(row, mIdx, 'Risk');
+    const riskIds = riskRaw.match(/R-\d{3}/g) || [];
+
+    // Finde den zugehörigen Claim im Safety Case, um dessen Restrisiko-Status zu prüfen
+    for (const rid of riskIds) {
+      const registerStatus = riskStatuses.get(rid);
+      if (registerStatus && NICHT_BEHANDELT_LIKE.test(registerStatus)) {
+        warnings.push(
+          `${reqId}: Ergebnis "Erfüllt" verweist auf ${rid}, das im Risk Register als "${registerStatus}" geführt wird. Wenn der Claim erfüllt ist, sollte der Risiko-Status konsistent sein (Behandelt oder Akzeptiert als Restrisiko mit Begründung).`
+        );
+      }
+    }
+  }
+
   return { errors, warnings, classSCount, totalCount };
+}
+
+/**
+ * Findet doppelte IDs in einer Tabellenspalte.
+ */
+function findDuplicateIds(rows, headerIndex, colName, pattern) {
+  const counts = new Map();
+  for (const row of rows) {
+    const value = cellByHeader(row, headerIndex, colName);
+    if (!value) continue;
+    let m;
+    while ((m = pattern.exec(value)) !== null) {
+      counts.set(m[0], (counts.get(m[0]) || 0) + 1);
+    }
+  }
+  const dups = [];
+  for (const [id, count] of counts) {
+    if (count > 1) dups.push(id);
+  }
+  return dups;
+}
+
+/**
+ * Extrahiert aus dem Safety-Case alle Restrisiken, die explizit als "offen"
+ * oder als "Akzeptiert als Restrisiko" annotiert sind
+ * (Muster im Restrisiko-Zell: "R-004 (offen: …)" oder "R-004 (Akzeptiert als Restrisiko: …)").
+ * Gibt { claimId, riskId, restrisiko, ergebnis, restrisikoTyp } zurück —
+ * restrisikoTyp ist 'offen' oder 'akzeptiert'.
+ * Liest nur aus der offiziellen Claims-Tabelle (nicht aus Fließtext).
+ */
+function extractOffenMarkierteRestrisikenFromTable(rows, headerIndex, claimColName = 'Claim') {
+  const found = [];
+  const claimIdx = headerIndex.get(claimColName);
+  const ergebnisIdx = headerIndex.get('Ergebnis');
+  const restrisikoIdx = headerIndex.get('Restrisiko');
+
+  if (claimIdx === undefined || restrisikoIdx === undefined) return found;
+
+  for (const row of rows) {
+    const claimId = (row[claimIdx] || '').trim();
+    if (!/^CL-\d{3}$/.test(claimId)) continue;
+    const restrisiko = (row[restrisikoIdx] || '').trim();
+    const ergebnis = ergebnisIdx !== undefined ? (row[ergebnisIdx] || '').trim() : '';
+
+    // "offen"-Annotierung
+    const offenMatches = restrisiko.match(/R-\d{3}[^|]*?\([^)]*offen[^)]*\)/gi);
+    if (offenMatches) {
+      for (const m of offenMatches) {
+        const riskId = m.match(/R-\d{3}/)[0];
+        found.push({ claimId, riskId, restrisiko, ergebnis, restrisikoTyp: 'offen' });
+      }
+    }
+
+    // "Akzeptiert als Restrisiko"-Annotierung (semantisch ebenfalls unbehandelt)
+    const akzeptiertMatches = restrisiko.match(/R-\d{3}[^|]*?\([^)]*Akzeptiert als Restrisiko[^)]*\)/gi);
+    if (akzeptiertMatches) {
+      for (const m of akzeptiertMatches) {
+        const riskId = m.match(/R-\d{3}/)[0];
+        found.push({ claimId, riskId, restrisiko, ergebnis, restrisikoTyp: 'akzeptiert' });
+      }
+    }
+  }
+  return found;
 }
 
 // --- CLI-Einstieg ----------------------------------------------------------
@@ -432,8 +780,7 @@ if (isMainModule) {
   console.log(`\n✅ REQUIREMENTS-MATRIX KONSISTENZCHECK BESTANDEN\n`);
   console.log(`Geprüfte Datei: ${matrixPath}`);
   console.log(`Anforderungen insgesamt: ${result.totalCount}`);
-  console.log(`Klasse-S-Anforderungen: ${result.classSCount}`);
-  console.log(`Alle Klasse-S-Anforderungen haben gültige Claims und Risk-Register-Einträge.\n`);
+  console.log(`Klasse-S-Anforderungen: ${result.classSCount}\n`);
   if (result.warnings.length > 0) {
     console.log(`⚠️  Warnungen (nicht blockierend):`);
     result.warnings.forEach((w) => console.log(`  ${w}`));
@@ -443,3 +790,6 @@ if (isMainModule) {
 }
 
 export { verifyMatrix };
+
+// Typ-Export für TypeScript-Tests
+export const VerifyMatrixOptions = undefined;

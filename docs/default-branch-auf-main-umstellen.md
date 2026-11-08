@@ -1,10 +1,16 @@
 # Standard-Branch auf `main` umstellen (Deploy-Runbook)
 
 Anleitung für den Betreiber oder einen Agenten mit **Admin- und
-`workflows:write`-Rechten** am Repo. **Nur Vorbereitung ist im Repo
-geschehen** — die Ziel-Änderung des Deploy-Triggers auf `main` liegt als
-Patch bei (siehe Tabelle), umgestellt hat das Repository selbst damit
-noch nichts. Die Reihenfolge unten ist so gebaut, dass **kein Gate rot
+`workflows:write`-Rechten** am Repo. > **Aktueller Stand (2026-11-07):** Der Default-Branch des Repositories ist
+
+> bereits `main` (`origin/HEAD -> origin/main`); die Umstellung wurde
+> inzwischen ausgeführt. Dieser Runbook dokumentiert das historische
+> Vorgehen der Umstellung und dient als Nachweis; Schritte, die eine
+> Änderung des Default-Branch voraussetzen, sind abgehakt.
+
+Die Ziel-Änderung des Deploy-Triggers auf `main` liegt als Patch bei
+(siehe Tabelle), umgestellt hat das Repository selbst damit bereits.
+Die Reihenfolge unten ist so gebaut, dass **kein Gate rot
 liegt** und die Seite zu keinem Zeitpunkt ausfällt.
 
 ## Ausgangslage (gemessen am 2026-10-12)

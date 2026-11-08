@@ -91,6 +91,67 @@ describe('DOM-002 — Kurzschlussstrom Ik', () => {
   it('Bank ohne schätzbaren Block → null (ehrliche Leere statt Zahl)', () => {
     expect(bankShortCircuitCurrentA([battery('b1', { etiquettes: true })])).toBeNull();
   });
+
+  it('Serienbank: Ri addiert sich, Spannung addiert sich, Ik gleich Einzelblock', () => {
+    const bank = [
+      battery('b1', { capacity: 100, chemistry: 'LiFePO4', bankId: 'bank-24v', bankTopology: 'series' }),
+      battery('b2', { capacity: 100, chemistry: 'LiFePO4', bankId: 'bank-24v', bankTopology: 'series' }),
+    ];
+    // Ri = 3 + 3 = 6 mΩ (Serie addiert)
+    expect(bankEquivalentRiMilliOhm(bank)).toBeCloseTo(6, 10);
+    // Spannung = 12,8 + 12,8 = 25,6 V
+    expect(bankShortCircuitCurrentA(bank)).toBeCloseTo(4266.67, 1); // 25,6 / 0,006
+  });
+
+  it('Serienbank ohne bankTopology fällt auf single zurück (Parallel-Formel)', () => {
+    const bank = [
+      battery('b1', { capacity: 100, chemistry: 'LiFePO4', bankId: 'bank-a' }),
+      battery('b2', { capacity: 100, chemistry: 'LiFePO4', bankId: 'bank-b' }),
+    ];
+    // Jede Batterie eigene Bank (keine gemeinsame bankId), beide single → parallel kombiniert
+    expect(bankEquivalentRiMilliOhm(bank)).toBeCloseTo(1.5, 10);
+  });
+
+  it('Series-Parallel: 2s2p bei identischen Blöcken → Ri = (2 × 3 mΩ) / 2 = 3 mΩ', () => {
+    const bank = [
+      battery('b1', {
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        bankId: 'bank-sp',
+        bankTopology: 'series-parallel',
+        bankSeries: 2,
+        bankParallel: 2,
+      }),
+      battery('b2', {
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        bankId: 'bank-sp',
+        bankTopology: 'series-parallel',
+        bankSeries: 2,
+        bankParallel: 2,
+      }),
+      battery('b3', {
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        bankId: 'bank-sp',
+        bankTopology: 'series-parallel',
+        bankSeries: 2,
+        bankParallel: 2,
+      }),
+      battery('b4', {
+        capacity: 100,
+        chemistry: 'LiFePO4',
+        bankId: 'bank-sp',
+        bankTopology: 'series-parallel',
+        bankSeries: 2,
+        bankParallel: 2,
+      }),
+    ];
+    // øRi = 3 mΩ; Ri pro String = 2 × 3 = 6 mΩ; äquivalent = 6 / 2 = 3 mΩ
+    expect(bankEquivalentRiMilliOhm(bank)).toBeCloseTo(3, 10);
+    // Spannung pro String = 2 × 12,8 = 25,6 V
+    expect(bankShortCircuitCurrentA(bank)).toBeCloseTo(25.6 / 0.003, 0);
+  });
 });
 
 describe('DOM-002 — Kabeldämpfung bis zur Sicherung', () => {

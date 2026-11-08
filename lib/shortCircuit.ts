@@ -14,11 +14,12 @@
  *   100/Kapazität — typische Größenordnung gängiger 12-V-Blöcke,
  *   UNVERIFIED im Einzelprodukt (Anker: Herstellerangaben typischer
  *   LiFePO4-Drop-ins ≈ 2–5 mΩ gesamt, AGM-Starterbatterien ≈ 3–8 mΩ).
- * - Die Bank wird als reine PARALLELSchaltung modelliert (Ri parallel,
- *   Ik addiert sich). Serien-Strings sind nicht modelliert — wie die
- *   Serien-Grenze in ELE-003 dokumentiert ist; pro Batterie einzeln wäre
- *   Ik dort ohnehin ähnlich, die Parallelschätzung ist konservativ
- *   (größerer Ik → strengere Forderung ans Abschaltvermögen).
+ * - Die Bank wird topologie-konsistent modelliert (data.bankTopology):
+ *   `single`/`parallel` → Parallelformel (Ri parallel, Ik addiert sich);
+ *   `series` → Innenwiderstände und Nennspannungen addieren sich;
+ *   `series-parallel` → (seriesCount × øRi) / parallelCount.
+ *   Verschiedene Banken werden parallel kombiniert.
+ *   Serien-Strings sind nicht mehr still als Parallel falsch berechnet.
  * - Ik am Sicherungseinbauort: Ik = U_nom / (Ri_bank + R_Leitung(Pol→Sicherung))
  *   mit R_Leitung = 2·L/(58·A) (Kupfer, Hin+Rück). fuseOffset fehlt → 0 m
  *   (Sicherung direkt am Pol = ungünstigster Fall). Spannungsbasis ist die
@@ -160,8 +161,16 @@ export function batteryShortCircuitCurrentA(node: Node | undefined): number | nu
 }
 
 /**
- * Ersatz-Innenwiderstand (mΩ) der reinen Parallelschaltung aller Blöcke
- * (Haus-Bank; Starterbatterien gehören fachlich nicht in den Haus-Kreis).
+ * Ersatz-Innenwiderstand (mΩ) der Haus-Bank, topologie-konsistent.
+ *
+ * Batterien werden nach `data.bankId` gruppiert (fehlende `bankId` ⇒ jede
+ * Batterie ist eine eigene Bank). Innerhalb einer Bank gilt die erklärte
+ * `data.bankTopology`:
+ *   - `single` / `parallel`: Parallelformel (1/Ri = Σ 1/Ri) — unverändert.
+ *   - `series`: Ri addiert sich (Ri_ges = Σ Ri).
+ *   - `series-parallel`: (seriesCount × øRi) / parallelCount.
+ *
+ * Verschiedene Banken werden parallel kombiniert (1/Ri_ges = Σ 1/Ri_bank).
  * null, wenn kein Block schätzbar ist.
  */
 export function bankEquivalentRiMilliOhm(batteries: readonly Node[]): number | null {
@@ -169,12 +178,48 @@ export function bankEquivalentRiMilliOhm(batteries: readonly Node[]): number | n
     const role = dataOf(b)?.role;
     return role !== 'starter';
   });
-  let conductance = 0;
+  if (house.length === 0) return null;
+
+  // Nach bankId gruppieren; fehlende bankId ⇒ Knoten-Id als Bank-Id
+  const byBank = new Map<string, readonly Node[]>();
   for (const b of house) {
-    const ri = internalResistanceMilliOhmOf(b);
-    if (ri !== null && ri > 0) conductance += 1 / ri;
+    const bankId = (dataOf(b)?.bankId as string | undefined) ?? b.id;
+    const group = byBank.get(bankId) ?? [];
+    byBank.set(bankId, [...group, b]);
   }
-  return conductance > 0 ? 1 / conductance : null;
+
+  // Äquivalent-Ri pro Bank, dann parallel kombiniert
+  let totalConductance = 0;
+  for (const group of byBank.values()) {
+    const topology = (dataOf(group[0]!)?.bankTopology as string | undefined) ?? 'single';
+    const ris = group
+      .map((b) => internalResistanceMilliOhmOf(b))
+      .filter((r): r is number => r !== null && r > 0);
+    if (ris.length === 0) continue;
+
+    let bankRi: number;
+    if (topology === 'series') {
+      // Serie: Innenwiderstände addieren sich
+      bankRi = ris.reduce((sum, r) => sum + r, 0);
+    } else if (topology === 'series-parallel') {
+      const seriesRaw = dataOf(group[0]!)?.bankSeries;
+      const parallelRaw = dataOf(group[0]!)?.bankParallel;
+      const seriesCount = typeof seriesRaw === 'number' && seriesRaw > 0 ? seriesRaw : 1;
+      const parallelCount = typeof parallelRaw === 'number' && parallelRaw > 0 ? parallelRaw : 1;
+      const avgRi = ris.reduce((sum, r) => sum + r, 0) / ris.length;
+      // Ri pro Serien-String = seriesCount × øRi; äquivalent über parallelCount Stränge
+      bankRi = (seriesCount * avgRi) / parallelCount;
+    } else {
+      // single / parallel: Parallelformel (bisheriges Verhalten)
+      let conductance = 0;
+      for (const r of ris) conductance += 1 / r;
+      bankRi = conductance > 0 ? 1 / conductance : 0;
+    }
+
+    if (bankRi > 0) totalConductance += 1 / bankRi;
+  }
+
+  return totalConductance > 0 ? 1 / totalConductance : null;
 }
 
 /**
@@ -203,9 +248,42 @@ function bankVoltage(
 ): number | null {
   const house = batteries.filter((b) => dataOf(b)?.role !== 'starter');
   if (house.length === 0) return systemVoltage;
-  const voltages = house.map(nominalVoltageOf);
-  const reference = voltages[0]!;
-  const uniform = voltages.every((voltage) => Math.abs(voltage - reference) <= 0.01);
+
+  // Nach bankId gruppieren; fehlende bankId ⇒ Knoten-Id als Bank-Id
+  const byBank = new Map<string, readonly Node[]>();
+  for (const b of house) {
+    const bankId = (dataOf(b)?.bankId as string | undefined) ?? b.id;
+    const group = byBank.get(bankId) ?? [];
+    byBank.set(bankId, [...group, b]);
+  }
+
+  // Nennspannung pro Bank; Serienbanken addieren die Einzelspannungen
+  const bankVoltages: number[] = [];
+  for (const group of byBank.values()) {
+    const topology = (dataOf(group[0]!)?.bankTopology as string | undefined) ?? 'single';
+    const voltages = group.map(nominalVoltageOf);
+
+    if (topology === 'series' || topology === 'series-parallel') {
+      // Serie / Series-Parallel: Nennspannung pro String = seriesCount × øSpannung.
+      // Fehlt bankSeries, wird es aus der Gruppengröße geschlossen (alle Blöcke
+      // der Bank sind in Reihe geschaltet).
+      const seriesRaw = dataOf(group[0]!)?.bankSeries;
+      const seriesCount =
+        typeof seriesRaw === 'number' && seriesRaw > 0 ? seriesRaw : topology === 'series' ? group.length : 1;
+      const avgVoltage = voltages.reduce((sum, v) => sum + v, 0) / voltages.length;
+      bankVoltages.push(seriesCount * avgVoltage);
+    } else {
+      // single / parallel: muss einheitlich sein (bisheriges Verhalten)
+      const reference = voltages[0]!;
+      const uniform = voltages.every((voltage) => Math.abs(voltage - reference) <= 0.01);
+      if (!uniform) return null;
+      bankVoltages.push(reference);
+    }
+  }
+
+  // Verschiedene Banken müssen auf derselben Systemspannung liegen
+  const reference = bankVoltages[0]!;
+  const uniform = bankVoltages.every((voltage) => Math.abs(voltage - reference) <= 0.01);
   return uniform ? reference : null;
 }
 
