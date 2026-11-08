@@ -414,9 +414,18 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   let riskRegisterText = '';
 
   // --- Safety Case einlesen (nur Tabellen, keine Fließtext-Erwähnungen) ------
+  // Die Claims-Tabelle im Safety Case nutzt "ID" als erste Spalte (Werte: CL-001, CL-002, …);
+  // für Kompatibilität wird auch "Claim" oder "Claim-ID" akzeptiert.
+  function findHeaderIndex(table, candidates) {
+    for (const c of candidates) {
+      if (table.headerIndex.has(c)) return c;
+    }
+    return null;
+  }
+
   const safetyCaseTable = readTableWithHeaders(
     safetyCasePath,
-    ['Claim', 'Ergebnis', 'Restrisiko'],
+    ['ID', 'Ergebnis', 'Restrisiko'],
     'Safety Case'
   );
   if (safetyCaseTable.error) {
@@ -434,12 +443,10 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   }
 
   // Claim- und Risk-IDs nur aus den offiziellen Tabellen extrahieren
-  const existingClaims = extractIdsFromTable(
-    safetyCaseTable.rows,
-    safetyCaseTable.headerIndex,
-    'Claim',
-    /CL-\d{3}/g
-  );
+  const claimCol = findHeaderIndex(safetyCaseTable, ['ID', 'Claim', 'Claim-ID']);
+  const existingClaims = claimCol
+    ? extractIdsFromTable(safetyCaseTable.rows, safetyCaseTable.headerIndex, claimCol, /CL-\d{3}/g)
+    : new Set();
   const existingRisks = extractIdsFromTable(
     riskRegisterTable.rows,
     riskRegisterTable.headerIndex,
@@ -448,12 +455,9 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   );
 
   // Doppelte Claim- und Risk-IDs in den offiziellen Tabellen erkennen
-  const duplicateClaims = findDuplicateIds(
-    safetyCaseTable.rows,
-    safetyCaseTable.headerIndex,
-    'Claim',
-    /CL-\d{3}/g
-  );
+  const duplicateClaims = claimCol
+    ? findDuplicateIds(safetyCaseTable.rows, safetyCaseTable.headerIndex, claimCol, /CL-\d{3}/g)
+    : [];
   const duplicateRisks = findDuplicateIds(
     riskRegisterTable.rows,
     riskRegisterTable.headerIndex,
@@ -479,7 +483,8 @@ function verifyMatrix(matrixPath, safetyCasePath, riskRegisterPath) {
   // Offen-markierte Restrisiken aus dem Safety Case extrahieren (aus offizieller Tabelle)
   const offenMarkierteRestrisiken = extractOffenMarkierteRestrisikenFromTable(
     safetyCaseTable.rows,
-    safetyCaseTable.headerIndex
+    safetyCaseTable.headerIndex,
+    claimCol
   );
 
   // --- Matrix-Zeilen prüfen ---------------------------------------------------
@@ -711,9 +716,9 @@ function findDuplicateIds(rows, headerIndex, colName, pattern) {
  * restrisikoTyp ist 'offen' oder 'akzeptiert'.
  * Liest nur aus der offiziellen Claims-Tabelle (nicht aus Fließtext).
  */
-function extractOffenMarkierteRestrisikenFromTable(rows, headerIndex) {
+function extractOffenMarkierteRestrisikenFromTable(rows, headerIndex, claimColName = 'Claim') {
   const found = [];
-  const claimIdx = headerIndex.get('Claim');
+  const claimIdx = headerIndex.get(claimColName);
   const ergebnisIdx = headerIndex.get('Ergebnis');
   const restrisikoIdx = headerIndex.get('Restrisiko');
 
