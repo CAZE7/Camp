@@ -453,13 +453,20 @@ export function ExpertPanel() {
     };
   }, [autoWireSummary, edges, nodes, routingValidation]);
 
-  // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
-  // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
+  /**
+   * Merkt sich das Ergebnis der automatischen Verbindung — öffnet das Panel
+   * aber NICHT mehr von selbst.
+   *
+   * Vorher schob sich nach „Automatisch verbinden“ das Fachwissen-Panel über
+   * die rechte Planhälfte, direkt über das eben berechnete Ergebnis
+   * (Ist-Befund 2026-11-10, AC-O3). Der Nutzer sieht jetzt den Plan und die
+   * Meldung im Meldungsplatz; das Fachwissen öffnet nur auf ausdrücklichen
+   * Ruf (Menü Hilfe, `⋯`, Hinweis in der Ansicht Prüfung).
+   */
   useEffect(() => {
     const onAutoWired = (event: Event) => {
       const detail = (event as CustomEvent<{ edgeCount?: number }>).detail;
       const state = usePlannerStore.getState();
-      setIsOpen(true);
       setAutoWireSummary({
         edgeCount: Number(detail?.edgeCount) || 0,
         topology: graphTopologyFingerprint(state.nodes, state.edges),

@@ -21,7 +21,8 @@ import { PLANNER_URL } from './helpers';
  * Die Legende liegt im Inspector und der ist immer eingeklappt gestartet —
  * gemessen über 375, 768, 1024 und 1440 px: der Schalter
  * „Rechte Sidebar ausklappen“ (PlannerInspector.tsx) existiert auf jeder
- * Breite, die Reiter-Leiste `nav-tab-inspector` nur auf dem Handy.
+ * Breite ab 1280 px; auf dem Handy öffnet `phone-open-detail` in der
+ * Werkzeugzone des Schaltplans dieselbe Ebene (Spezifikation §6.2).
  *
  * Wichtig: Die Legende steht im Zustand „Kein Element ausgewählt“
  * (Inspector.tsx: EmptySelection → RoutingLegend). Wer für die Legende ein
@@ -32,10 +33,11 @@ async function zeigeLegende(page: import('@playwright/test').Page): Promise<bool
   if (await legende.isVisible().catch(() => false)) return true;
 
   const handle = page.getByRole('button', { name: /Rechte Sidebar ausklappen/ });
-  const reiter = page.getByTestId('nav-tab-inspector');
+  const reiter = page.getByTestId('phone-open-detail');
   if (await handle.isVisible().catch(() => false)) {
     await handle.click();
   } else if (await reiter.isVisible().catch(() => false)) {
+    await page.getByTestId('nav-tab-schaltplan').click();
     await reiter.click();
   } else {
     return false;
@@ -323,8 +325,9 @@ test.describe('Katalog und angewandte Prüfungen', () => {
 
 /**
  * Der Löschknopf sitzt im Inspector, und der ist nicht auf jeder Breite offen:
- * ab Desktop gibt es den Klappgriff, unter 768 px einen Reiter
- * (`nav-tab-inspector`). Beides wird versucht — gemessen an `zeigeLegende`.
+ * ab Desktop gibt es den Klappgriff, unter 768 px den Knopf `phone-open-detail`
+ * in der Werkzeugzone des Schaltplans. Beides wird versucht — gemessen an
+ * `zeigeLegende`.
  */
 async function zeigeLoeschKnopf(
   page: import('@playwright/test').Page
@@ -332,8 +335,9 @@ async function zeigeLoeschKnopf(
   const loesch = page.getByRole('button', { name: /^Löschen$/ }).first();
   if (await loesch.isVisible().catch(() => false)) return loesch;
 
-  const reiter = page.getByTestId('nav-tab-inspector');
+  const reiter = page.getByTestId('phone-open-detail');
   if (await reiter.isVisible().catch(() => false)) {
+    await page.getByTestId('nav-tab-schaltplan').click();
     await reiter.click();
   } else {
     const griff = page.getByRole('button', { name: /Rechte Sidebar ausklappen/ });

@@ -91,8 +91,8 @@ for (const { path, name } of PAGES) {
  */
 test.describe('axe: Planer-Blätter auf dem Handy', () => {
   for (const step of [
-    { name: 'Bauteilkatalog-Blatt', open: 'nav-tab-sidebar' },
-    { name: 'Eigenschaften-Blatt', open: 'nav-tab-inspector' },
+    { name: 'Bauteilkatalog-Ebene', open: 'nav-tab-bauteile', trigger: 'phone-add' },
+    { name: 'Eigenschaften-Ebene', open: 'nav-tab-schaltplan', trigger: 'phone-open-detail' },
   ] as const) {
     test(`${step.name} ohne kritische/schwere Verstöße`, async ({ page }) => {
       const width = page.viewportSize()?.width ?? 0;
@@ -104,8 +104,15 @@ test.describe('axe: Planer-Blätter auf dem Handy', () => {
       // Klicks ab — er ist selbst Teil der Startprüfung oben, hier geht es um
       // die Blätter dahinter.
       await dismissOnboarding(page);
+      // Handy-Hülle (Spezifikation §5.2/§7): Die Ebene öffnet aus der Ansicht
+      // heraus. Ein Fußziel schließt sie wieder — `aria-expanded` gibt es
+      // deshalb nicht mehr; geprüft wird die sichtbare Ebene selbst.
       await page.getByTestId(step.open).click();
-      await expect(page.getByTestId(step.open)).toHaveAttribute('aria-expanded', 'true');
+      const trigger = page.getByTestId(step.trigger);
+      if (await trigger.isVisible()) await trigger.click();
+      await expect(
+        page.getByTestId(step.trigger === 'phone-add' ? 'sidebar' : 'inspector-panel')
+      ).toBeVisible();
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

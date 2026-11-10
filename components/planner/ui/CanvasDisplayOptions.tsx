@@ -35,6 +35,13 @@ type CanvasDisplayOptionsProps = {
   /** Detailgrad der Bauteilkarten (`overview` = Symbol + Name). */
   detailLevel: PlannerDetailLevel;
   onSelectDetailLevel: (level: PlannerDetailLevel) => void;
+  /**
+   * `inline` (Standard): die schwebende Chip-Reihe bzw. der „Ansicht“-Auslöser
+   * am Canvas. `flow`: die Schalter liegen als aufgeklappter Bereich IM Fluss
+   * (Handy-Werkzeugzone, Spezifikation §6.2) — kein `fixed`-Popover, kein
+   * zweiter Ebenenstapel über dem Plan.
+   */
+  variant?: 'inline' | 'flow';
 };
 
 /**
@@ -175,6 +182,17 @@ function DisplayToggles({
  * same controls as an intentional, thumb-friendly popover.
  */
 export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
+  if (props.variant === 'flow') {
+    return (
+      <div className="border border-rule-strong bg-surface-panel p-2">
+        <DisplayToggles {...props} compact />
+      </div>
+    );
+  }
+  return <CanvasDisplayOptionsInline {...props} />;
+}
+
+function CanvasDisplayOptionsInline(props: CanvasDisplayOptionsProps) {
   const compactViewport = useMediaQuery(COMPACT_CANVAS_CONTROLS_QUERY);
   const inspectorDocked = usePlannerStore((state) => state.isInspectorOpen);
   const dockBreakpoint = useMediaQuery(INSPECTOR_DOCK_QUERY);

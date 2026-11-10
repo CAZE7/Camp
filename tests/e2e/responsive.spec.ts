@@ -29,10 +29,12 @@ test.describe('Responsives Layout', () => {
     const sidebar = page.getByTestId('sidebar');
 
     if (width < 768) {
-      // Handy: Bottom-Navigation sichtbar, Sidebar nur über ihren Tab.
+      // Handy (Spezifikation §5): vier Ansichten in der Fußleiste, der
+      // Katalog öffnet als Ebene aus „Bauteile“.
       await expect(bottomNav).toBeVisible();
       await expect(sidebar).toBeHidden();
-      await page.getByTestId('nav-tab-sidebar').click();
+      await page.getByTestId('nav-tab-bauteile').click();
+      await page.getByTestId('phone-add').click();
       await expect(sidebar).toBeVisible();
     } else {
       // Tablet und Desktop: Sidebar dauerhaft sichtbar, keine Bottom-Tabs.
@@ -104,7 +106,7 @@ test.describe('Responsives Layout', () => {
     const width = page.viewportSize()?.width ?? 0;
     test.skip(width >= 768, 'Bottom-Navigation existiert nur unter 768 px.');
 
-    for (const id of ['nav-tab-sidebar', 'nav-tab-electric', 'nav-tab-water', 'nav-tab-inspector']) {
+    for (const id of ['nav-tab-bauteile', 'nav-tab-schaltplan', 'nav-tab-pruefung', 'nav-tab-mehr']) {
       const box = await page.getByTestId(id).boundingBox();
       expect(box, `${id} nicht sichtbar`).not.toBeNull();
       expect(box!.height, `${id} zu klein`).toBeGreaterThanOrEqual(44);

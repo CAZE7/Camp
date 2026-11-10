@@ -57,7 +57,28 @@ describe('ExpertPanel', () => {
     expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
   });
 
-  it('blendet die Auto-Wire-Erfolgsmeldung nach Undo eines Graphenwechsels aus', () => {
+  it('öffnet das Panel nach Automatisch verbinden NICHT mehr von selbst (AC-O3)', () => {
+    const mutableState = {
+      selectedNodes: [],
+      nodes: [] as Array<{ id: string; type: string; data: Record<string, unknown> }>,
+      edges: [] as Array<{ id: string; source: string; target: string; data: Record<string, unknown> }>,
+    };
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(mutableState) as typeof usePlannerStore);
+    Object.assign(usePlannerStore, { getState: () => mutableState });
+    render(<ExpertPanel />);
+
+    // Vorher schob sich das Fachwissen-Blatt über die rechte Planhälfte,
+    // sobald Auto-Wire fertig war (Ist-Befund 2026-11-10). Der Nutzer soll
+    // das Ergebnis sehen, nicht ein zweites Panel darüber.
+    fireEvent(window, new CustomEvent('planner-auto-wired', { detail: { edgeCount: 3 } }));
+
+    expect(screen.queryByTestId('expert-panel-open')).not.toBeInTheDocument();
+    expect(screen.queryByText('Automatische Verbindung abgeschlossen')).not.toBeInTheDocument();
+    // Der Schalter bleibt der einzige Weg hinein.
+    expect(screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i })).toBeInTheDocument();
+  });
+
+  it('hält die Auto-Wire-Zusammenfassung an den Plan gebunden, auf dem sie entstand', () => {
     const mutableState = {
       selectedNodes: [] as Array<{ id: string; type: string; data: Record<string, unknown> }>,
       nodes: [] as Array<{
@@ -72,7 +93,11 @@ describe('ExpertPanel', () => {
     Object.assign(usePlannerStore, { getState: () => mutableState });
     const { rerender } = render(<ExpertPanel />);
 
+    // Seit AC-O3 öffnet sich das Panel nicht mehr von selbst; die
+    // Zusammenfassung entsteht trotzdem und erscheint, wenn der Nutzer das
+    // Fachwissen ausdrücklich öffnet.
     fireEvent(window, new CustomEvent('planner-auto-wired', { detail: { edgeCount: 3 } }));
+    fireEvent(window, new Event('planner-open-expert-panel'));
     expect(screen.getByText('Automatische Verbindung abgeschlossen')).toBeInTheDocument();
 
     // Undo restores the graph topology; the still-open help panel must not

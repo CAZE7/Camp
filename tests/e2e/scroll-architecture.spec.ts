@@ -1,6 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 
-import { expandAllCategories, openMenubar, openPlanner, showCanvas, showSidebar } from './helpers';
+import {
+  expandAllCategories,
+  isPhoneShell,
+  openMenubar,
+  openPlanner,
+  showCanvas,
+  showSidebar,
+} from './helpers';
 
 /**
  * tests/e2e/scroll-architecture.spec.ts
@@ -137,13 +144,14 @@ test.describe('M12 Scroll-Architektur', () => {
     // 2. Eigenschaften: am Handy ein Blatt, ab 1280 px eine Spalte. Nur dort
     //    gibt es einen Schalter, der ihn ohne Auswahl öffnet.
     const inspectorHandle = page.getByRole('button', { name: /Rechte Sidebar/ });
-    const navInspector = page.getByTestId('nav-tab-inspector');
+    const navInspector = page.getByTestId('phone-open-detail');
     const panel = page.getByTestId('inspector-panel');
     if (await navInspector.isVisible()) {
+      await page.getByTestId('nav-tab-schaltplan').click();
       await navInspector.click();
       await expect(panel).toBeVisible();
-      expectInsideViewport(await boxOf(page, 'inspector-panel'), view, 'Eigenschaften-Blatt');
-      await page.getByTestId('nav-tab-electric').click();
+      expectInsideViewport(await boxOf(page, 'inspector-panel'), view, 'Eigenschaften-Ebene');
+      await page.getByTestId('nav-tab-schaltplan').click();
     } else if (await inspectorHandle.isVisible()) {
       await inspectorHandle.click();
       await expect(panel).toBeVisible();
@@ -154,41 +162,37 @@ test.describe('M12 Scroll-Architektur', () => {
     // Auswahl öffnet — ohne Auswahl gibt es dort bewusst keinen Schalter.
     // Geprüft wird deshalb nur, was auch bedienbar ist.
 
-    // 3. Das „Weitere Aktionen“-Menü der Werkzeugleiste.
+    // 3. Auf dem Handy gibt es weder Werkzeugleiste noch Menüleiste — die
+    //    eine Stelle für Aktionen ist die Ansicht „Mehr“ (Spec §6.4). Sie
+    //    liegt als volle Ebene im Bild und scrollt nur sich selbst.
+    const onPhone = await isPhoneShell(page);
+    if (onPhone) {
+      await page.getByTestId('nav-tab-mehr').click();
+      const mehr = page.getByTestId('planner-phone-view');
+      await expect(mehr).toHaveAttribute('data-phone-view', 'mehr');
+      expectInsideViewport(await boxOf(page, 'planner-phone-view'), view, 'Ansicht Mehr');
+      const scrollable = await mehr.evaluate(
+        (el) =>
+          el.scrollHeight > el.clientHeight + 4 || el.querySelector('[class*="overflow-y-auto"]') !== null
+      );
+      expect(scrollable, '„Mehr“ hat keinen eigenen Scrollbereich').toBe(true);
+      await page.getByTestId('nav-tab-bauteile').click();
+      return;
+    }
+
+    // 4. Das „Weitere Aktionen“-Menü der Werkzeugleiste.
     await page.getByTestId('action-more').click();
     const toolbarMenu = page.getByRole('menu', { name: 'Weitere Aktionen' });
     await expect(toolbarMenu).toBeVisible();
     expectInsideViewport(roundBox((await toolbarMenu.boundingBox())!), view, 'Werkzeugmenü');
     await page.keyboard.press('Escape');
 
-    // 4. Ein Menü der Menüleiste.
-    // Ab 768 px ist der Auslöser ein `menuitem`, das Dropdown heißt „Menü“.
-    // Darunter liegt er als Knopf im Blatt hinter „Menü“; das geöffnete
-    // Menü heißt dann nach dem Abschnitt („Ansicht“).
-    const onPhone =
-      (await page.getByTestId('phone-menu').count()) > 0 &&
-      (await page.getByTestId('phone-menu').isVisible());
+    // 5. Ein Menü der Menüleiste (Dropdown „Menü“).
     await openMenubar(page, 'ansicht');
-    const menubarMenu = page.getByRole('menu', { name: onPhone ? 'Ansicht' : 'Menü' });
+    const menubarMenu = page.getByRole('menu', { name: 'Menü' });
     await expect(menubarMenu).toBeVisible();
-    if (onPhone) {
-      // Der Abschnitt darf im Blatt scrollen. Gemessen wird das Blatt, nicht
-      // die volle Höhe der Einträge, und der erste Eintrag liegt darin.
-      const sheet = page.getByTestId('phone-menu-sheet');
-      const sheetBox = roundBox((await sheet.boundingBox())!);
-      expectInsideViewport(sheetBox, view, 'Menüblatt');
-      const nav = page.getByTestId('planner-bottom-nav');
-      if (await nav.isVisible()) {
-        const navBox = await boxOf(page, 'planner-bottom-nav');
-        expect(sheetBox.bottom, 'Menüblatt liegt unter der Fußleiste').toBeLessThanOrEqual(navBox.y + 1);
-      }
-      const itemBox = roundBox((await menubarMenu.getByRole('menuitem').first().boundingBox())!);
-      expect(itemBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
-      expect(itemBox.bottom).toBeLessThanOrEqual(sheetBox.bottom + 1);
-    } else {
-      const menubarBox = roundBox((await menubarMenu.boundingBox())!);
-      expectInsideViewport(menubarBox, view, 'Menüleiste-Dropdown');
-    }
+    const menubarBox = roundBox((await menubarMenu.boundingBox())!);
+    expectInsideViewport(menubarBox, view, 'Menüleiste-Dropdown');
     await page.keyboard.press('Escape');
   });
 
@@ -200,9 +204,12 @@ test.describe('M12 Scroll-Architektur', () => {
     const before = await boxOf(page, 'planner-canvas-column');
     expect(before.height, 'Zeichenfläche zu klein').toBeGreaterThanOrEqual(240);
 
-    await page.getByTestId('nav-tab-sidebar').click();
+    // Die Zeichenfläche bleibt montiert; die Ansicht „Bauteile“ liegt als
+    // Ebene darüber (Spec §5). Gemessen wird die Geometrie der Fläche.
+    await page.getByTestId('nav-tab-bauteile').click();
+    await page.getByTestId('phone-add').click();
     await expect(page.getByTestId('sidebar')).toBeVisible();
-    expect(await boxOf(page, 'planner-canvas-column'), 'Katalogblatt hat den Canvas verschoben').toEqual(
+    expect(await boxOf(page, 'planner-canvas-column'), 'Katalogeebene hat den Canvas verschoben').toEqual(
       before
     );
 
@@ -226,23 +233,24 @@ test.describe('M12 Scroll-Architektur', () => {
       scrollWidth: (await documentScroll(page)).width,
     });
 
-    // Auf dem Handy sind es die Blatt-Schalter der Fußleiste, ab 768 px die
+    // Auf dem Handy sind es die vier Ansichten der Fußleiste, ab 768 px die
     // Griffe an der Panelkante — beides ist derselbe Umschaltvorgang.
-    const navSidebar = page.getByTestId('nav-tab-sidebar');
-    const useNav = await navSidebar.isVisible();
+    const navBauteile = page.getByTestId('nav-tab-bauteile');
+    const useNav = await navBauteile.isVisible();
     const sidebarHandle = page.getByRole('button', { name: /Linke Sidebar (ein|aus)klappen/ });
     const inspectorHandle = page.getByRole('button', { name: /Rechte Sidebar (ein|aus)klappen/ });
 
     const before = await snapshot();
     for (let round = 0; round < 10; round += 1) {
       if (useNav) {
-        await navSidebar.click();
+        await navBauteile.click();
+        await page.getByTestId('phone-add').click();
         await expect(page.getByTestId('sidebar')).toBeVisible();
-        await page.getByTestId('nav-tab-electric').click();
+        await page.getByTestId('nav-tab-schaltplan').click();
         await expect(page.getByTestId('sidebar')).toBeHidden();
-        await page.getByTestId('nav-tab-inspector').click();
+        await page.getByTestId('phone-open-detail').click();
         await expect(page.getByTestId('inspector-panel')).toBeVisible();
-        await page.getByTestId('nav-tab-electric').click();
+        await page.getByTestId('nav-tab-schaltplan').click();
       } else {
         await sidebarHandle.click();
         await sidebarHandle.click();
@@ -281,7 +289,7 @@ test.describe('M12 Scroll-Architektur', () => {
   test('Werkzeugleiste und Fußleiste bleiben erreichbar und überlappen nichts', async ({ page }) => {
     await openPlanner(page);
     // Mit geöffnetem Katalog: Die Leisten liegen darüber, nicht darunter. Auf
-    // dem Handy ist der Katalog ein Blatt (`nav-tab-sidebar`), ab 768 px ist er
+    // dem Handy liegt er hinter „Hinzufügen“ (`nav-tab-bauteile`), ab 768 px ist er
     // die linke Spalte und bereits sichtbar.
     await showSidebar(page);
     await expect(page.getByTestId('sidebar')).toBeVisible();

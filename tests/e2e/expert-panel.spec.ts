@@ -26,10 +26,14 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     await showCanvas(page);
     await addComponent(page, 'battery');
 
-    // Mobil ist das FAB bewusst ausgeblendet (CSS: „Die Hilfe bleibt über
-    // das Hilfe-Menü erreichbar“) — dort führt der Weg übers Menü.
+    // Handy (Spec §6.4): „Hilfe & Fachwissen“ ist eine Zeile in „Mehr“.
+    // Am Desktop öffnet das FAB, sonst der Menüeintrag.
+    const moreTab = page.getByTestId('nav-tab-mehr');
     const openFab = page.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
-    if ((await openFab.count()) > 0 && (await openFab.isVisible())) {
+    if (await moreTab.isVisible().catch(() => false)) {
+      await moreTab.click();
+      await page.getByTestId('action-help').click();
+    } else if ((await openFab.count()) > 0 && (await openFab.isVisible())) {
       await openFab.click();
     } else {
       await openMenubar(page, 'hilfe');
@@ -55,6 +59,7 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     const neighbors = [
       { name: 'minimap', box: await boxOf(page.locator('.react-flow__minimap')) },
       { name: 'statusbar', box: await boxOf(page.locator('.planner-statusbar')) },
+      // Handy: Die Übersicht liegt in der Werkzeugzone des Schaltplans.
       { name: 'mobile-overview', box: await boxOf(page.getByTestId('mobile-overview')) },
     ];
     for (const neighbor of neighbors) {

@@ -50,18 +50,23 @@ test.describe('M10-2 Prüfbericht bleibt im Bild', () => {
 });
 
 test.describe('M10-2 Control-Überlappungen', () => {
-  test('Statuszeile, MiniMap, FAB und Controls überlappen nicht', async ({ page }) => {
+  test('Statuszeile, MiniMap, Werkzeugzone und Griffe überlappen nicht', async ({ page }) => {
     await openPlanner(page);
     await showCanvas(page);
     await addComponent(page, 'battery');
 
+    // Handy-Hülle (Spec §6.2): Controls und MiniMap werden dort nicht
+    // gerendert, die Statuszeile entfällt — es bleiben Werkzeugzone und
+    // Werkzeugknöpfe. Am Desktop ist alles wie bisher.
     const named = [
       { name: 'controls', box: await boxOf(page.locator('.react-flow__controls')) },
       { name: 'minimap', box: await boxOf(page.locator('.react-flow__minimap')) },
       { name: 'statusbar', box: await boxOf(page.locator('.planner-statusbar')) },
       { name: 'expert-panel', box: await boxOf(page.getByTestId('expert-panel')) },
+      { name: 'phone-canvas-toolbar', box: await boxOf(page.getByTestId('phone-canvas-toolbar')) },
       { name: 'mobile-overview', box: await boxOf(page.getByTestId('mobile-overview')) },
       { name: 'mobile-undo', box: await boxOf(page.getByTestId('mobile-undo')) },
+      { name: 'phone-open-detail', box: await boxOf(page.getByTestId('phone-open-detail')) },
     ].filter((item): item is { name: string; box: NonNullable<(typeof item)['box']> } => item.box !== null);
 
     for (let i = 0; i < named.length; i++) {

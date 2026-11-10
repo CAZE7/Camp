@@ -45,16 +45,21 @@ test.describe('Touch-Bedienung', () => {
     expect(await nodeCount(page)).toBe(1);
   });
 
-  test('die Bottom-Tabs wechseln zwischen den Bereichen', async ({ page }) => {
+  test('die vier Ansichten wechseln und öffnen Katalog und Eigenschaften', async ({ page }) => {
     await openPlanner(page);
 
-    await page.getByTestId('nav-tab-sidebar').tap();
+    // Startansicht ist Bauteile; „Hinzufügen“ öffnet den Katalog als Ebene.
+    await page.getByTestId('nav-tab-bauteile').tap();
+    const add = page.getByTestId('phone-add');
+    if (await add.isVisible()) await add.tap();
     await expect(page.getByTestId('sidebar')).toBeVisible();
 
-    await page.getByTestId('nav-tab-electric').tap();
+    // Fußziel schließt die Ebene und wechselt zur Fläche (Spec §7).
+    await page.getByTestId('nav-tab-schaltplan').tap();
     await expect(page.getByTestId('planner-canvas-column')).toBeVisible();
 
-    await page.getByTestId('nav-tab-inspector').tap();
+    // Eigenschaften liegen im Schaltplan hinter dem Knopf der Werkzeugzone.
+    await page.getByTestId('phone-open-detail').tap();
     await expect(page.getByTestId('inspector-panel')).toBeVisible();
   });
 

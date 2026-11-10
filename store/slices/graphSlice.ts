@@ -89,6 +89,7 @@ export type GraphSlice = Pick<
   | 'autoWirePreview'
   | 'structureAutoWiring'
   | 'autoStructurePending'
+  | 'templateStructurePending'
   | 'onLayout'
   | 'applyTemplate'
   | 'onDrop'
@@ -317,6 +318,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   canRedo: false,
   autoWirePreview: null,
   autoStructurePending: false,
+  templateStructurePending: false,
   onNodesChange: (changes) => {
     const current = get();
     const locked = lockedElectricalEdges(current.edges);
@@ -1088,16 +1090,21 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
    * nicht.
    */
   structureAutoWiring: async (): Promise<void> => {
-    if (!get().autoStructurePending) return;
+    // Zwei Auslöser teilen sich diesen einen Lauf: „Automatisch verbinden“
+    // (`autoStructurePending`) und eine frisch geladene Vorlage
+    // (`templateStructurePending`). Beide brauchen dieselbe ELK-Struktur mit
+    // gemessenen Kartenmaßen — ein zweiter Layout-Pfad wäre eine zweite
+    // Wahrheit über dieselben Positionen.
+    if (!get().autoStructurePending && !get().templateStructurePending) return;
     const { nodes, edges } = get();
     if (nodes.length === 0) {
-      set({ autoStructurePending: false });
+      set({ autoStructurePending: false, templateStructurePending: false });
       return;
     }
     const locked = lockedElectricalEdges(edges);
     if (locked.length > 0) {
       for (const edge of locked) reportLockedMutation(get(), edge, 'layout');
-      set({ isLayoutPending: false, autoStructurePending: false });
+      set({ isLayoutPending: false, autoStructurePending: false, templateStructurePending: false });
       return;
     }
 
@@ -1110,7 +1117,8 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       // Wasserplan bleibt von diesem Knopf unberührt.
       result = await applyAdvancedLayout(nodes, edges, 'LR');
     } catch {
-      if (mySeq === layoutV2Seq) set({ isLayoutPending: false, autoStructurePending: false });
+      if (mySeq === layoutV2Seq)
+        set({ isLayoutPending: false, autoStructurePending: false, templateStructurePending: false });
       return;
     }
 
@@ -1124,6 +1132,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       edges: [...result.edges],
       isLayoutPending: false,
       autoStructurePending: false,
+      templateStructurePending: false,
     });
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -1134,7 +1143,8 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   onLayout: () => {
     // Wie bei onLayoutV2: Das Aufräumen erledigt die Auto-Wire-Struktur mit.
-    if (get().autoStructurePending) set({ autoStructurePending: false });
+    if (get().autoStructurePending || get().templateStructurePending)
+      set({ autoStructurePending: false, templateStructurePending: false });
     const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
     if (viewMode !== 'water') {
       const locked = lockedElectricalEdges(edges);
@@ -1176,33 +1186,69 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       set({ isLayoutPending: false });
     }
   },
-  applyTemplate: (templateId: string) => {
+  /**
+   * Lädt eine offizielle Vorlage — und zwar so, wie sie nach
+   * „Automatisch verbinden“ aussieht.
+   *
+   * Warum der Umweg über AutoWire: Die Vorlagen in `components/planner/templates.ts`
+   * beschreiben die logische Stückliste (Bauteile, Nutzerleitungen, feste
+   * Startpositionen). „Automatisch verbinden“ ergänzt danach Bauteile (Smart
+   * Shunt, fehlende Schienen, Rückleitungen), setzt Sicherungen/Querschnitte
+   * nach dem bestehenden Modell und strukturiert den Plan per ELK neu. Genau
+   * das erwartet der Nutzer von einer fertigen Vorlage — heute änderte sich die
+   * Anordnung beim ersten Klick auf „Automatisch verbinden“ (Ist-Befund
+   * 2026-11-10). Deshalb läuft dieselbe Funktion, kein zweiter Pfad, keine
+   * zweiten Positionszahlen in `templates.ts`.
+   *
+   * Der Review-Dialog bleibt aus: Eine Vorlage ist das Produktversprechen
+   * „fertig verkabelt“, sie fragt nicht nach ihren eigenen Ergänzungen. Die
+   * ELK-Struktur wartet wie bei `autoWireSystem` auf gemessene Kartenmaße
+   * (`templateStructurePending` → `structureAutoWiring` im Canvas).
+   *
+   * Rückgabe `false`, wenn die Vorlage unbekannt ist oder wegen fixierter
+   * Leitungen nicht ersetzt werden durfte — der Aufrufer meldet das.
+   */
+  applyTemplate: (templateId: string): boolean => {
     const template = TEMPLATES_DICT[templateId];
-    if (template) {
-      const current = get();
-      const templateNodes = nodesWithUniqueDesignators(template.nodes);
-      const templateEdges = [...template.edges] as Edge<CableEdgeData>[];
-      const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, templateNodes, templateEdges);
-      if (lockedMutations.length > 0) {
-        for (const mutation of lockedMutations) {
-          reportLockedMutation(current, mutation.edge, 'replace-plan', mutation.nodeId);
-        }
-        return;
+    if (!template) return false;
+    const current = get();
+    const templateNodes = nodesWithUniqueDesignators(template.nodes);
+    const templateEdges = [...template.edges] as Edge<CableEdgeData>[];
+    const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, templateNodes, templateEdges);
+    if (lockedMutations.length > 0) {
+      for (const mutation of lockedMutations) {
+        reportLockedMutation(current, mutation.edge, 'replace-plan', mutation.nodeId);
       }
-      set((state) =>
-        withHistory(state, {
-          nodes: templateNodes,
-          edges: templateEdges,
-          // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
-          // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
-          // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
-          selectedNodes: [],
-          selectedEdges: [],
-          // Eine offene ELK-Strukturierung gehört zum ersetzten Plan.
-          autoStructurePending: false,
-        })
-      );
+      return false;
     }
+
+    // Derselbe Pfad wie „Automatisch verbinden“: `performAutoWiring` prüft
+    // den Graphen und ergänzt ihn; danach gilt der Vorschlag als übernommen
+    // (hier ohne Dialog, weil es eine offizielle Vorlage ist).
+    const wired = performAutoWiring(templateNodes, templateEdges);
+
+    set((state) =>
+      withHistory(state, {
+        nodes: wired ? wired.nodes : templateNodes,
+        edges: wired ? wired.edges : templateEdges,
+        ...(wired ? { autoWireReport: wired.report } : {}),
+        // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
+        // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
+        // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
+        selectedNodes: [],
+        selectedEdges: [],
+        // Eine offene (alte) Automatik-Anforderung gehört zum ersetzten Plan;
+        // die neue ELK-Struktur der Vorlage wird hier angefordert.
+        autoStructurePending: false,
+        templateStructurePending: wired !== null,
+      })
+    );
+
+    // „Fertig verkabelt“ ist erst wahr, wenn ELK mit gemessenen Karten gelaufen
+    // ist. Der Canvas startet den Lauf; ohne ihn bleibt die Rohposition aus
+    // `templates.ts` stehen und der nächste Klick auf „Automatisch verbinden“
+    // würde den Plan trotzdem verschieben.
+    return true;
   },
   onDrop: (event, screenToFlowPosition) => {
     event.preventDefault();
@@ -1411,6 +1457,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         // Ein Schritt zurück nimmt eine offene Struktur-Anforderung mit —
         // sonst ordnete ELK einen Plan, den es so nicht mehr gibt.
         autoStructurePending: false,
+        templateStructurePending: false,
       };
     });
   },
@@ -1439,6 +1486,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         canUndo: true,
         canRedo: nextFuture.length > 0,
         autoStructurePending: false,
+        templateStructurePending: false,
       };
     });
   },
@@ -1460,6 +1508,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         firstTappedHandle: null,
         // Eine offene ELK-Strukturierung gehört zum gelöschten Plan.
         autoStructurePending: false,
+        templateStructurePending: false,
       })
     );
   },
@@ -1481,6 +1530,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         firstTappedHandle: null,
         // Eine offene ELK-Strukturierung gehört zum ersetzten Plan.
         autoStructurePending: false,
+        templateStructurePending: false,
       })
     );
     // Die Jahreszeit ist ein Planungsparameter, aber kein Teil der Undo-

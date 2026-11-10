@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
@@ -12,6 +11,9 @@ import { PlannerMenubar, PlannerPhoneMenu } from './ui/PlannerMenubar';
 import { PlannerToolbar } from './ui/PlannerToolbar';
 import { SaveIndicator } from './ui/SaveIndicator';
 import { WarningCenter } from './ui/WarningCenter';
+import { PlannerMessageSlot, type PlannerMessage } from './ui/PlannerMessageSlot';
+import { PHONE_CHROME_QUERY } from './ui/breakpoints';
+import { canOpenOverlay } from './ui/overlayRoute';
 import { VerificationSeal } from './ui/VerificationSeal';
 import { verificationSummary } from './utils/verificationWarnings';
 import { nextStepSummary } from './utils/verificationActions';
@@ -32,12 +34,8 @@ import { isRouteLocked } from '../../lib/electricalGraph/intent';
  * Aktionspfad (und damit auch keinen zweiten, der abdriften könnte).
  */
 
-interface ActionFeedback {
-  type: 'success' | 'error' | 'info';
-  message: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}
+/** Eine Meldung im Meldungsplatz (siehe `ui/PlannerMessageSlot.tsx`). */
+type ActionFeedback = PlannerMessage;
 
 /** Übersetzt einen Prüfbefund in den Store-Typ (eine Quelle für Zählung und Liste). */
 function warningToPlannerError(w: ValidationWarning) {
@@ -67,14 +65,36 @@ export function warningDedupeKey(w: ValidationWarning): string {
 }
 
 export function PlannerDashboard() {
-  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
-  const [resetOpen, setResetOpen] = useState(false);
-  const [openMenu, setOpenMenu] = useState<PlannerMenuId | 'more' | null>(null);
+  // EINE Meldung für den ganzen Planer (Meldungsplatz): Aktionsmeldungen und
+  // Einstiegstext schreiben in denselben Store-Eintrag. Kein zweiter Kanal.
+  const feedback = usePlannerStore((state) => state.plannerMessage) as ActionFeedback | null;
+  const setFeedback = usePlannerStore((state) => state.setPlannerMessage);
+  const [resetOpen, setResetOpenRaw] = useState(false);
+  const setResetOpen = useCallback((open: boolean) => setResetOpenRaw(open), []);
   const [phoneChrome, setPhoneChrome] = useState(false);
+  // Overlay-Manager: Menü und `⋯` sind DIESELBE Ebene. Zwei sichtbare Menüs
+  // (eines aus der Menüleiste, eines aus der Werkzeugleiste) gibt es nicht —
+  // das war auf dem Desktop ein Dauerzustand, sobald der Nutzer beide öffnete.
+  const overlay = usePlannerStore((state) => state.overlay);
+  const openOverlay = usePlannerStore((state) => state.openOverlay);
+  const closeOverlay = usePlannerStore((state) => state.closeOverlay);
+  const openMenu: PlannerMenuId | 'more' | null =
+    overlay?.id === 'menu' ? ((overlay.key as PlannerMenuId | 'more' | undefined) ?? null) : null;
+  const setOpenMenu = useCallback(
+    (menu: PlannerMenuId | 'more' | null) => {
+      if (menu === null) {
+        closeOverlay('menu');
+        return;
+      }
+      if (!canOpenOverlay(overlay, 'menu')) return;
+      openOverlay({ id: 'menu', key: menu });
+    },
+    [closeOverlay, openOverlay, overlay]
+  );
 
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia('(max-width: 767px), (max-height: 500px)');
+    const query = window.matchMedia(PHONE_CHROME_QUERY);
     const apply = () => setPhoneChrome(query.matches);
     apply();
     query.addEventListener('change', apply);
@@ -260,13 +280,33 @@ export function PlannerDashboard() {
       window.removeEventListener('planner-save', onSave);
       window.removeEventListener('planner-action-feedback', onActionFeedback);
     };
-  }, []);
+    // `setFeedback` ist die Store-Aktion (stabile Referenz) — sie steht hier,
+    // weil sie nicht mehr aus `useState` kommt und die Regel sie sonst
+    // vermisst.
+  }, [setFeedback]);
 
   useEffect(() => {
     if (!feedback) return;
     const timer = window.setTimeout(() => setFeedback(null), 5000);
     return () => window.clearTimeout(timer);
-  }, [feedback]);
+  }, [feedback, setFeedback]);
+
+  /**
+   * Ein sichtbarer modaler Dialog hat Vorrang (Overlay-Regel 1 und 3): Der
+   * Meldungsplatz zeichnet dann nichts, damit kein Toast über einem
+   * Bestätigungsdialog klebt. Beobachtet wird das DOM — Dialoge kommen aus
+   * vielen Komponenten (`AccessibleDialog`, `ConfirmDialog`, BoM, Review) und
+   * melden sich bewusst nicht über die Route, weil sie ihre Vorgängerebene
+   * beim Schließen wiederherstellen.
+   */
+  const [dialogOpen, setDialogOpen] = useState(false);
+  useEffect(() => {
+    const sync = () => setDialogOpen(document.querySelector('[role="dialog"]') !== null);
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: false });
+    return () => observer.disconnect();
+  }, []);
 
   const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
   const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
@@ -363,50 +403,16 @@ export function PlannerDashboard() {
         }
       />
 
-      {feedback && (
-        <div
-          role={feedback.type === 'error' ? 'alert' : 'status'}
-          aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
-          data-testid="action-feedback"
-          className={`planner-action-feedback flex w-11/12 max-w-md items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
-            feedback.type === 'error'
-              ? 'border-l-destructive'
-              : feedback.type === 'success'
-                ? 'border-l-success'
-                : 'border-l-oxide'
-          }`}
-        >
-          {feedback.type === 'error' ? (
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-          ) : feedback.type === 'success' ? (
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-          ) : (
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-oxide" aria-hidden="true" />
-          )}
-          <span className="flex-1">{feedback.message}</span>
-          {feedback.actionLabel && feedback.onAction && (
-            <button
-              type="button"
-              data-testid="feedback-action"
-              onClick={() => {
-                feedback.onAction?.();
-                setFeedback(null);
-              }}
-              className="cad-btn cad-btn--line shrink-0"
-            >
-              {feedback.actionLabel}
-            </button>
-          )}
-          <button
-            type="button"
-            aria-label="Meldung schließen"
-            onClick={() => setFeedback(null)}
-            className="cad-btn min-h-11 min-w-11 shrink-0 justify-center px-1"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      {/* Meldungsplatz: EINE Meldung im Fluss, direkt unter der Kopfleiste.
+          Auf jeder Geräteklasse derselbe Ort — kein `position: fixed`, keine
+          Überdeckung von Zoom, Rückgängig oder Karten. Während ein modaler
+          Dialog offen ist, bleibt der Platz leer; der Text wartet. */}
+      <PlannerMessageSlot
+        message={feedback}
+        onDismiss={() => setFeedback(null)}
+        hidden={dialogOpen}
+        className="planner-message-slot--desktop"
+      />
 
       <AccessibleDialog
         open={resetOpen}

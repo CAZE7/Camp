@@ -30,10 +30,16 @@ const REQUIRED_TESTIDS = [
   'planner-canvas-column',
   'inspector-panel',
   'planner-bottom-nav',
-  'nav-tab-sidebar',
-  'nav-tab-electric',
-  'nav-tab-water',
-  'nav-tab-inspector',
+  // Handy-Hülle (Spezifikation §5.2, PR #610): vier Ansichten statt fünf
+  // Blatt-Schalter. Die alten Kennungen (`nav-tab-sidebar`, `-electric`,
+  // `-water`, `-inspector`) gibt es nicht mehr — Katalog und Eigenschaften
+  // öffnen aus „Bauteile“ bzw. aus der Werkzeugzone des Schaltplans.
+  'nav-tab-bauteile',
+  'nav-tab-schaltplan',
+  'nav-tab-pruefung',
+  'nav-tab-mehr',
+  'phone-open-detail',
+  'phone-display-toggle',
   'sidebar',
   'sidebar-search',
   'sidebar-item',
@@ -64,6 +70,11 @@ function hasTestId(sources: string, id: string): boolean {
   ) {
     return true;
   }
+  // Positionsargument: Die Ansicht „Mehr“ der Handy-Hülle (Spec §6.4) rendert
+  // ihre Zeilen über `row(label, hint, handler, 'action-bom')`; das Attribut
+  // entsteht damit erst im Aufruf. Erkannt wird nur die letzte Stelle eines
+  // Aufrufs, nicht die Kennung irgendwo im Text.
+  if (new RegExp(`,\\s*'${id}'\\s*\\)`).test(sources)) return true;
   // Dynamisch gerenderte Kennungen (Nachtest-Spec): `menubar-${menu}`,
   // `planner-mode-${mode}`, `detail-level-${level}` entstehen erst zur
   // Laufzeit. Der Vertrag erkennt sie an ihrem statischen Präfix im

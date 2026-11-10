@@ -198,6 +198,11 @@ const defaultPlannerStoreState = {
   setHighlightedEdgeId: vi.fn(),
   trunkMode: false,
   setTrunkMode: vi.fn(),
+  // Domänen-Filter liegt seit der Handy-Hülle im Store (die Werkzeugzone dort
+  // bedient dieselben Schalter): Der Canvas liest `activeDomains` und ruft
+  // `toggleDomain`. Der Doppel-Zustand braucht beides.
+  activeDomains: ['DC_12V', 'AC_230V', 'Solar'],
+  toggleDomain: vi.fn(),
   backboneGrouping: true,
   setBackboneGrouping: vi.fn(),
   detailLevel: 'detail',
@@ -306,16 +311,28 @@ describe('FlowCanvas', () => {
     expect(screen.getByRole('button', { name: 'Solar' })).toBeInTheDocument();
   });
 
-  it('toggles a domain filter chip off and on', () => {
+  it('schaltet einen Domänen-Filter über den Store (eine Zustandsquelle)', () => {
     render(<FlowCanvas />);
     const solarChip = screen.getByRole('button', { name: 'Solar' });
+    // Der gepresste Zustand kommt aus `activeDomains` des Stores — nicht mehr
+    // aus einem lokalen `useState` im Canvas. Grund: Die Werkzeugzone der
+    // Handy-Hülle bedient dieselben Schalter (Spec §6.2); zwei Zustände hätten
+    // sich auseinanderentwickelt.
     expect(solarChip).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(solarChip);
-    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'false');
+    expect(defaultPlannerStoreState.toggleDomain).toHaveBeenCalledWith('Solar');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Solar' }));
-    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'true');
+    // Der Doppel-Zustand antwortet wie der echte Store: eine Domäne weniger.
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
+        ...defaultPlannerStoreState,
+        activeDomains: defaultPlannerStoreState.activeDomains.filter((domain) => domain !== 'Solar'),
+      })
+    );
+    render(<FlowCanvas />);
+    expect(screen.getAllByRole('button', { name: 'Solar' }).at(-1)).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('renders a trunk-mode toggle and flips it', () => {

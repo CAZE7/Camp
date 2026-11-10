@@ -270,16 +270,29 @@ test.describe('M12 Geometrie', () => {
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await openPlanner(page);
+      // Handy-Hülle: Die Werkzeugzone steht nur in der Ansicht „Schaltplan“
+      // (Spec §6.2); die Startansicht ist „Bauteile“.
+      const schaltplan = page.getByTestId('nav-tab-schaltplan');
+      if (await schaltplan.isVisible().catch(() => false)) await schaltplan.click();
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
       const result = await page.evaluate(() => {
+        // Handy-Hülle: Zoom und Übersicht liegen in der Werkzeugzone
+        // (`phone-canvas-toolbar`), nicht in schwebenden Griffen (Spec §6.2).
+        // Die Liste führt beide Formen; „nicht gerendert“ ist für die jeweils
+        // andere Geräteklasse der richtige Zustand.
         const handles = [
           '.react-flow__controls',
-          '.planner-mobile-history',
+          '[data-testid="phone-canvas-toolbar"] [data-testid="phone-zoom-in"]',
+          '[data-testid="phone-canvas-toolbar"] [data-testid="mobile-overview"]',
           '.planner-expert-panel',
           '[data-testid="canvas-display-options"]',
+          '[data-testid="phone-display-toggle"]',
         ];
         const pane = document.querySelector('.react-flow')!.getBoundingClientRect();
+        const column = document
+          .querySelector('[data-testid="planner-canvas-column"]')!
+          .getBoundingClientRect();
         return handles.map((selector) => {
           const element = document.querySelector(selector);
           if (!element || element.getClientRects().length === 0) {
@@ -290,11 +303,14 @@ test.describe('M12 Geometrie', () => {
             Math.round(box.x + box.width / 2),
             Math.round(box.y + box.height / 2)
           );
+          // Die Werkzeugzone liegt IM Fluss über der Fläche, also innerhalb
+          // der Spalte, aber außerhalb der React-Flow-Pane (Spec §6.2).
+          const bounds = element.closest('[data-testid="phone-canvas-toolbar"]') ? column : pane;
           const inside =
-            box.x >= pane.x - 1 &&
-            box.y >= pane.y - 1 &&
-            box.right <= pane.right + 1 &&
-            box.bottom <= pane.bottom + 1;
+            box.x >= bounds.x - 1 &&
+            box.y >= bounds.y - 1 &&
+            box.right <= bounds.right + 1 &&
+            box.bottom <= bounds.bottom + 1;
           const free = !!center && (center === element || element.contains(center));
           return {
             selector,
@@ -309,8 +325,13 @@ test.describe('M12 Geometrie', () => {
 
       // Auf jeder Größe muss mindestens die Zoom-Bedienung erreichbar sein: Sie
       // ist der einzige Weg zu Zoom ohne Geste (WCAG 2.5.8 „Zielgröße").
-      const controls = result.find((entry) => entry.selector === '.react-flow__controls');
-      expect(controls?.state, `${size.name}: Zoom-Bedienung nicht erreichbar`).toBe('ok');
+      // Am Desktop sind das die React-Flow-`Controls`, auf dem Handy die
+      // Zoom-Knöpfe der Werkzeugzone.
+      const zoomEntries = result.filter(
+        (entry) => entry.selector === '.react-flow__controls' || entry.selector.includes('phone-zoom-in')
+      );
+      const reachable = zoomEntries.filter((entry) => entry.state === 'ok');
+      expect(reachable.length, `${size.name}: Zoom-Bedienung nicht erreichbar`).toBeGreaterThan(0);
     }
   });
 
@@ -338,12 +359,15 @@ test.describe('M12 Geometrie', () => {
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await openPlanner(page);
-      for (const tab of ['nav-tab-sidebar', 'nav-tab-inspector']) {
-        const element = page.getByTestId(tab);
-        if (await element.isVisible().catch(() => false)) {
-          await element.click();
-          await expect(element).toHaveAttribute('aria-expanded', 'true');
-        }
+      // Handy-Hülle: Katalog und Eigenschaften sind volle Ebenen (Spec §7).
+      // Sie werden über ihre Auslöser geöffnet, nicht über Fuß-Schalter —
+      // `aria-expanded` trägt hier der Auslöser, nicht ein Reiter.
+      const phoneCatalog = page.getByTestId('phone-add');
+      if (await phoneCatalog.isVisible().catch(() => false)) {
+        await page.getByTestId('nav-tab-bauteile').click();
+        await phoneCatalog.click();
+        await expect(page.getByTestId('sidebar')).toBeVisible();
+        await page.getByTestId('nav-tab-bauteile').click();
       }
 
       const offenders = await page.evaluate((breakpoints) => {
@@ -418,13 +442,30 @@ test.describe('M12 Geometrie', () => {
     for (const size of [SIZES[0]!, SIZES[1]!, SIZES[2]!, SIZES[3]!]) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await openPlanner(page);
-      await page.getByTestId('nav-tab-sidebar').click();
+      // Handy: Katalog aus der Ansicht Bauteile; Tablet/Desktop: er ist da.
+      const addButton = page.getByTestId('phone-add');
+      if (
+        await page
+          .getByTestId('nav-tab-bauteile')
+          .isVisible()
+          .catch(() => false)
+      ) {
+        await page.getByTestId('nav-tab-bauteile').click();
+        if (await addButton.isVisible().catch(() => false)) await addButton.click();
+      }
       await expect(page.getByTestId('sidebar')).toBeVisible();
       const palette = (await measure(page)).palette;
       expect(palette.x, `${size.name}: Katalog links außerhalb`).toBeGreaterThanOrEqual(-1);
       expect(palette.right, `${size.name}: Katalog rechts außerhalb`).toBeLessThanOrEqual(size.width + 1);
       expect(palette.bottom, `${size.name}: Katalog unten außerhalb`).toBeLessThanOrEqual(size.height + 1);
-      await page.getByTestId('nav-tab-electric').click();
+      if (
+        await page
+          .getByTestId('nav-tab-schaltplan')
+          .isVisible()
+          .catch(() => false)
+      ) {
+        await page.getByTestId('nav-tab-schaltplan').click();
+      }
     }
   });
 

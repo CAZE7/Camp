@@ -82,13 +82,15 @@ test.describe('Frischstart: Beispielplan', () => {
 test.describe('Frischstart: Handy-Hochformat', () => {
   test.use({ viewport: { width: 393, height: 852 } });
 
-  test('Undo-Leiste überdeckt die Übersicht nicht', async ({ page }) => {
+  test('Rückgängig überdeckt die Übersicht nicht', async ({ page }) => {
     await openFreshExample(page);
+    // Die Werkzeugzone steht nur in der Ansicht „Schaltplan“ (Spec §6.2).
+    await page.getByTestId('nav-tab-schaltplan').click();
     await expect(page.getByTestId('mobile-overview')).toHaveCount(1);
     const overview = page.getByTestId('mobile-overview');
     const undo = page.getByTestId('mobile-undo');
     await expect(overview).toBeVisible();
-    await expect(overview).toHaveAccessibleName(/Planübersicht/);
+    await expect(overview).toHaveAccessibleName(/Übersicht/);
     await expect(overview).toContainText('Übersicht');
 
     const overviewBox = await overview.boundingBox();

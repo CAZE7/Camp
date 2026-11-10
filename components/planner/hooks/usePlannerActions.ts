@@ -107,6 +107,11 @@ export interface PlannerActions {
   openProject: () => Promise<void>;
   openBom: () => void;
   openWarnings: () => void;
+  /** Kabelwege optimieren — dieselbe Sperrbedingung wie der Menüeintrag. */
+  runOptimizeRouting: () => void;
+  optimizeRoutingDisabled: boolean;
+  /** „Am Raster ausrichten“ (bestehender `onLayout`, ohne ELK). */
+  runGridLayout: () => void;
   openShortcuts: () => void;
   openCatalog: () => void;
   requestReset: () => void;
@@ -266,11 +271,11 @@ export function usePlannerActions({
         type: outcome.engine === 'elk' ? 'success' : 'info',
         message:
           outcome.engine === 'elk'
-            ? 'Plan automatisch angeordnet. Rückgängig ist möglich.'
-            : 'Automatische Anordnung war nicht rechtzeitig fertig — Raster-Anordnung angewendet. Rückgängig ist möglich.',
+            ? 'Anordnung angepasst. Rückgängig ist möglich.'
+            : 'Anordnung war nicht rechtzeitig fertig — stattdessen am Raster ausgerichtet. Rückgängig ist möglich.',
       });
     } else if (outcome.reason === 'empty') {
-      onFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
+      onFeedback({ type: 'info', message: 'Keine Bauteile zum Anordnen im Plan.' });
     } else if (outcome.reason === 'error') {
       onFeedback({
         type: 'error',
@@ -280,22 +285,26 @@ export function usePlannerActions({
     setBusy(null);
   }, [onLayoutV2, onFeedback]);
 
+  /**
+   * EIN Handler für „Prüfung“ (Spezifikation §16.2).
+   *
+   * Vorher öffnete `runCheck` den Bericht nur bei Befunden, `openWarnings`
+   * immer — zwei Einstiege mit ähnlichem, aber unterschiedlichem Verhalten.
+   * Genau die Zahl der Live-Befunde ist der aktuelle Stand; der Bericht öffnet
+   * bei jedem Aufruf, weil der Nutzer genau das verlangt hat. Ohne Befunde
+   * bleibt die Bestätigung im Meldungsplatz, ohne ein leeres Blatt zu öffnen.
+   */
   const runCheck = useCallback(() => {
     flashBusy('check');
-    // Die Prüfung läuft live (useLiveValidation); die Aktion öffnet den Bericht.
     if (warnings.length > 0) {
       dispatchPlannerEvent('open-warning-center');
-      onFeedback({
-        type: 'info',
-        message: `${warnings.length} Hinweis${warnings.length === 1 ? '' : 'e'} gefunden. Die Prüfliste wurde geöffnet.`,
-      });
-    } else {
-      onFeedback({ type: 'success', message: 'Lokale Planprüfung abgeschlossen: aktuell keine Hinweise.' });
+      return;
     }
+    onFeedback({ type: 'success', message: 'Prüfung abgeschlossen: aktuell keine Hinweise.' });
   }, [warnings.length, flashBusy, onFeedback]);
 
   const openBom = useCallback(() => requestBomModalOpen(), []);
-  const openWarnings = useCallback(() => dispatchPlannerEvent('open-warning-center'), []);
+  const openWarnings = runCheck;
   const openShortcuts = useCallback(() => dispatchPlannerEvent('open-shortcut-overlay'), []);
   const openCatalog = useCallback(() => dispatchPlannerEvent('planner-open-catalog'), []);
 
@@ -399,12 +408,24 @@ export function usePlannerActions({
         return;
       // Nach der Rückfrage neu lesen: während sie offen ist, kann der Plan
       // weiterbearbeitet worden sein. `current` wäre ein Stand von vorher.
-      usePlannerStore.getState().applyTemplate(templateId);
+      // `applyTemplate` verdrahtet und strukturiert die Vorlage selbst
+      // (siehe Graph-Slice) — kein Review-Dialog, keine zweite Automatik.
+      const applied = usePlannerStore.getState().applyTemplate(templateId);
       setHasOnboarded(true);
+      if (!applied) {
+        onFeedback({
+          type: 'error',
+          message:
+            'Die Vorlage wurde nicht geladen: Der aktuelle Plan enthält fest verdrahtete Leitungen. Siehe Warnungen — oder löse die Fixierung und lade erneut.',
+        });
+        return;
+      }
       fitViewAfterEntry();
       onFeedback({
         type: 'success',
-        message: template ? `Vorlage „${template.label}“ geladen.` : 'Vorlage geladen.',
+        message: template
+          ? `Vorlage „${template.label}“ geladen und automatisch verbunden.`
+          : 'Vorlage geladen und automatisch verbunden.',
       });
     },
     [onFeedback, setHasOnboarded]
@@ -668,20 +689,21 @@ export function usePlannerActions({
           label: 'Automatik',
           items: [
             {
-              label: 'Auto-verbinden — Vorschlag prüfen',
+              label: 'Automatisch verbinden',
               icon: Wand2,
               hint: 'Übernahme erst nach Bestätigung',
               testId: 'action-autowire-menu',
               run: runAutoWire,
             },
             {
-              label: 'Plan automatisch ordnen',
+              label: 'Anordnung anpassen',
               icon: Network,
+              hint: 'Leitungen bleiben, wie sie sind',
               testId: 'action-layout-v2-menu',
               run: () => void runLayoutV2(),
             },
             {
-              label: 'Kabel optimieren',
+              label: 'Kabelwege optimieren',
               icon: Route,
               hint: 'Geräte bleiben stehen',
               testId: 'action-optimize-routing',
@@ -692,8 +714,14 @@ export function usePlannerActions({
         },
         {
           items: [
-            { label: 'Plan prüfen', icon: ScanSearch, testId: 'action-check', run: runCheck },
-            { label: 'Aufräumen (Raster)', icon: LayoutGrid, testId: 'action-layout', run: onLayout },
+            { label: 'Prüfung', icon: ScanSearch, testId: 'action-check', run: runCheck },
+            {
+              label: 'Am Raster ausrichten',
+              icon: LayoutGrid,
+              hint: 'grobe Ordnung ohne ELK',
+              testId: 'action-layout',
+              run: onLayout,
+            },
           ],
         },
         {
@@ -717,7 +745,7 @@ export function usePlannerActions({
       planung: [
         {
           items: [
-            { label: 'Prüfbericht öffnen', icon: Info, run: openWarnings },
+            { label: 'Prüfung öffnen', icon: Info, run: openWarnings },
             { label: 'Bauteil hinzufügen …', icon: Plus, run: openCatalog },
           ],
         },
@@ -889,17 +917,6 @@ export function usePlannerActions({
         ],
       },
       {
-        label: 'Ansicht',
-        items: [
-          {
-            label: 'Messwerte ein-/ausblenden',
-            icon: Ruler,
-            checked: detailLevel === 'detail',
-            run: () => setDetailLevel(detailLevel === 'detail' ? 'overview' : 'detail'),
-          },
-        ],
-      },
-      {
         label: 'Jahreszeit',
         items: [
           {
@@ -917,8 +934,17 @@ export function usePlannerActions({
         ],
       },
       {
+        // Kein doppeltes „Neuen leeren Plan starten“: Es steht genau einmal in
+        // der Chrome (Datei-Menü) und einmal hier im `⋯` — nie beide gleichzeitig
+        // sichtbar, weil immer nur EIN Menü offen ist (Overlay-Manager §16.1).
         label: 'Darstellung',
         items: [
+          {
+            label: detailLevel === 'detail' ? 'Messwerte ausblenden' : 'Messwerte einblenden',
+            icon: Ruler,
+            checked: detailLevel === 'detail',
+            run: () => setDetailLevel(detailLevel === 'detail' ? 'overview' : 'detail'),
+          },
           { label: 'Einführung erneut öffnen', icon: Info, run: () => setHasOnboarded(false) },
           {
             label: 'Neuen leeren Plan starten',
@@ -952,6 +978,9 @@ export function usePlannerActions({
     openShortcuts,
     openCatalog,
     requestReset: onRequestReset,
+    runOptimizeRouting,
+    optimizeRoutingDisabled,
+    runGridLayout: onLayout,
   };
 }
 

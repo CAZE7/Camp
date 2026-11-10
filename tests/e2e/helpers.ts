@@ -57,17 +57,27 @@ export async function dismissOnboarding(page: Page): Promise<void> {
   }
 }
 
-/** Auf dem Handy liegt die Sidebar hinter einem eigenen Tab. */
+/**
+ * Öffnet den Bauteilkatalog.
+ *
+ * Seit der Handy-Hülle (Spezifikation §5.2, PR #610) gibt es keinen eigenen
+ * Katalog-Reiter mehr: Die Ansicht **Bauteile** ist die Startansicht, und ihr
+ * Knopf „Hinzufügen“ öffnet denselben Katalog als volle Ebene. Ab 768 px ist
+ * der Katalog ohnehin eine Spalte und braucht keinen Klick.
+ */
 export async function showSidebar(page: Page): Promise<void> {
-  const tab = page.getByTestId('nav-tab-sidebar');
-  if (await tab.isVisible()) {
-    await tab.click();
+  const nav = page.getByTestId('nav-tab-bauteile');
+  if (await nav.isVisible()) {
+    await nav.click();
+    const add = page.getByTestId('phone-add');
+    if (await add.isVisible()) await add.click();
   }
   await expect(page.getByTestId('sidebar')).toBeVisible();
 }
 
+/** Wechselt auf die Ansicht **Schaltplan** (dort liegt die Zeichenfläche). */
 export async function showCanvas(page: Page): Promise<void> {
-  const tab = page.getByTestId('nav-tab-electric');
+  const tab = page.getByTestId('nav-tab-schaltplan');
   if (await tab.isVisible()) {
     await tab.click();
   }
@@ -154,6 +164,13 @@ export async function edgeCount(page: Page): Promise<number> {
  * sauber: dann gibt es auch keinen Routing-Befund zu sehen).
  */
 export async function openCheckEntry(page: Page): Promise<boolean> {
+  // Handy: Der Bericht ist eine eigene Ansicht, kein Blatt (Spec §6.3).
+  const checkTab = page.getByTestId('nav-tab-pruefung');
+  if (await checkTab.isVisible().catch(() => false)) {
+    await checkTab.click();
+    await expect(page.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'pruefung');
+    return true;
+  }
   const chip = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
   if ((await chip.count()) === 0 || !(await chip.isVisible())) return false;
   await chip.click();
@@ -197,30 +214,66 @@ export async function autoWire(page: Page): Promise<void> {
  * Öffnet ein Hauptmenü. Unter 768 px liegt es im Blatt hinter „Menü“,
  * darüber direkt in der Menüleiste.
  */
-/** Macht die Hauptmenüs sichtbar: auf dem Telefon das Blatt, sonst die Leiste. */
+/**
+ * Macht die Aktionen erreichbar.
+ *
+ * Am Desktop ist das die Menüleiste; auf dem Handy gibt es sie nicht mehr —
+ * dort ist die Ansicht **Mehr** die einzige Stelle für Plan-Aktionen
+ * (Spezifikation §6.4). Der Helper stellt in beiden Fällen nur sicher, dass
+ * die Ziele im DOM und sichtbar sind.
+ */
 export async function revealMainMenus(page: Page): Promise<void> {
-  const phone = page.getByTestId('phone-menu');
-  if ((await phone.count()) > 0 && (await phone.isVisible())) {
-    const sheet = page.getByTestId('phone-menu-sheet');
-    if (!(await sheet.isVisible())) await phone.click();
-    await expect(sheet).toBeVisible();
+  const moreView = page.getByTestId('nav-tab-mehr');
+  if (await moreView.isVisible().catch(() => false)) {
+    await moreView.click();
+    await expect(page.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'mehr');
   }
 }
 
 export async function openMenubar(page: Page, menu: string): Promise<void> {
   const trigger = page.getByTestId(`menubar-${menu}`);
-  if (!(await trigger.isVisible().catch(() => false))) await revealMainMenus(page);
+  if (!(await trigger.isVisible().catch(() => false))) {
+    // Handy: „Mehr“ enthält dieselben Einträge. Die Menügruppe wird nicht
+    // nachgebaut — der Aufrufer klickt danach die Kennung (z. B. `action-bom`).
+    await revealMainMenus(page);
+    return;
+  }
   await expect(trigger).toBeVisible();
   await trigger.click();
 }
 
-/** Öffnet einen Eintrag aus dem „Mehr“-Menü der Kopfzeile. */
+/**
+ * Öffnet einen Eintrag aus dem „Mehr“-Menü der Kopfzeile.
+ *
+ * Am Desktop ist das der `⋯`-Überlauf; auf dem Handy gibt es ihn nicht mehr —
+ * die Ansicht **Mehr** enthält dieselben Aktionen mit denselben Kennungen
+ * (Spezifikation §6.4). Der Helper führt beide Wege.
+ */
 export async function openMoreMenuItem(page: Page, testId: string): Promise<void> {
+  const moreView = page.getByTestId('nav-tab-mehr');
+  if (await moreView.isVisible().catch(() => false)) {
+    await moreView.click();
+    const item = page.getByTestId(testId);
+    await expect(item).toBeVisible();
+    await item.click();
+    return;
+  }
   await showCanvas(page);
   await page.getByTestId('action-more').click();
   const item = page.getByTestId(testId);
   await expect(item).toBeVisible();
   await item.click();
+}
+
+/**
+ * Ist der Planer gerade in der Handy-Hülle? (Grenze `(max-width: 767px),
+ * (max-height: 500px)` — dieselbe Abfrage wie in der Anwendung.)
+ */
+export async function isPhoneShell(page: Page): Promise<boolean> {
+  return page
+    .getByTestId('planner-phone-header')
+    .isVisible()
+    .catch(() => false);
 }
 
 /** Prüft, dass die Seite nicht horizontal scrollt. */

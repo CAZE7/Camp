@@ -5131,3 +5131,62 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
     background-color: var(--surface-hover);
   }
 }
+
+/* --- Handy-Hülle: vier Ansichten, eine Fläche, keine schwebenden Griffe ----
+
+   Die Hülle (Spezifikation §5–§8) bringt eigene Werkzeuge mit: Zoom und
+   Verlauf in der Werkzeugzone, den Modus im Fluss, die Prüfzahl am Fuß.
+   Deshalb entfallen auf dem Handy alle schwebenden Canvas-Griffe — sie lägen
+   sonst als zweite Bedienung über der Fläche und verdeckten den Plan.
+
+   Die Grenze ist dieselbe wie in `PlannerInner`/`PHONE_CHROME_QUERY`:
+   `(max-width: 767px), (max-height: 500px)`. Das Attribut setzt die Shell,
+   damit CSS und JS nicht auseinanderlaufen können. */
+
+.planner-shell[data-phone-shell='true'] .planner-controls,
+.planner-shell[data-phone-shell='true'] .planner-minimap,
+.planner-shell[data-phone-shell='true'] .planner-mode-switch-panel,
+.planner-shell[data-phone-shell='true'] .planner-display-options-panel,
+.planner-shell[data-phone-shell='true'] .planner-mobile-history,
+.planner-shell[data-phone-shell='true'] .planner-expert-panel,
+.planner-shell[data-phone-shell='true'] .planner-focus-exit {
+  display: none !important;
+}
+
+/* Kopf und Fuß der Hülle: 48 px plus Safe-Area (Spec §5.1/§5.2). Der
+   Home-Indicator darf nichts überdecken. */
+.planner-phone-header {
+  min-height: 48px;
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Der Meldungsplatz im Fluss ist höchstens 4,5 rem hoch; längerer Text
+   scrollt in der Meldung statt die Ansicht zusammenzudrücken (Spec §5.3). */
+.planner-message-slot--phone > * {
+  max-height: 4.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Übergang der Ansichten: nur Deckkraft, höchstens 150 ms — und nur, wenn
+   der Nutzer Bewegung nicht abbestellt hat (Spec §8). */
+@media (prefers-reduced-motion: no-preference) {
+  .planner-phone-view {
+    animation: planner-phone-view-in 150ms ease-out;
+  }
+}
+
+@keyframes planner-phone-view-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-phone-view {
+    animation: none;
+  }
+}

@@ -3,6 +3,7 @@ import {
   addComponent,
   edgeCount,
   expandAllCategories,
+  isPhoneShell,
   nodeCount,
   openMenubar,
   openMoreMenuItem,
@@ -212,7 +213,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await openPlanner(page);
       await expectNoHorizontalOverflow(page, 'Planer');
 
-      for (const testId of ['nav-tab-sidebar', 'nav-tab-electric', 'nav-tab-water', 'nav-tab-inspector']) {
+      for (const testId of ['nav-tab-bauteile', 'nav-tab-schaltplan', 'nav-tab-pruefung', 'nav-tab-mehr']) {
         const tab = page.getByTestId(testId);
         if ((await tab.count()) === 0 || !(await tab.isVisible())) continue;
         await expectWithinViewport(page, tab, testId);
@@ -220,14 +221,11 @@ for (const viewport of MOBILE_VIEWPORTS) {
         await expectNotCovered(tab, testId);
       }
 
-      // Menüleisten-Knöpfe müssen erreichbar sein. Auf dem Telefon liegen sie
-      // im Blatt hinter „Menü“, nicht in einer zweiten Kopfzeile.
+      // Die Aktionen liegen auf dem Handy in „Mehr“ (Spec §6.4) — nicht in
+      // einer zweiten Kopfzeile und nicht in einem Menü-Blatt.
       await revealMainMenus(page);
-      for (const menu of ['datei', 'hilfe']) {
-        const trigger = page.getByTestId(`menubar-${menu}`);
-        await expect(trigger).toBeVisible();
-        await expectTapTarget(trigger, `menubar-${menu}`);
-      }
+      await expect(page.getByTestId('action-bom')).toBeVisible();
+      await expectTapTarget(page.getByTestId('action-bom'), 'action-bom');
     });
 
     test('Menüs, Mehr-Menü und Panels bleiben im Viewport und unverdeckt', async ({ page }) => {
@@ -236,30 +234,34 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await addComponent(page, 'consumer');
       await showCanvas(page);
 
+      // Handy-Hülle: Es gibt keine Menüleiste und kein Werkzeugleisten-Menü
+      // (Spec §5.1). Die Menüs ersetzen die Ansicht „Mehr“ und der Katalog.
+      if (await isPhoneShell(page)) {
+        await revealMainMenus(page);
+        await expectWithinViewport(page, page.getByTestId('planner-phone-view'), 'Ansicht Mehr');
+        // Jede sichtbare Zeile liegt im Bild und ist antippbar.
+        const rows = page.getByTestId('planner-phone-view').locator('section button');
+        const rowCount = await rows.count();
+        expect(rowCount).toBeGreaterThan(8);
+        for (let index = 0; index < rowCount; index += 1) {
+          const row = rows.nth(index);
+          if (!(await row.isVisible())) continue;
+          await expectWithinViewport(page, row, `Mehr-Zeile ${index}`);
+        }
+        await page.getByTestId('nav-tab-schaltplan').click();
+        await expect(page.getByTestId('planner-toolbar')).toHaveCount(0);
+        await expect(page.getByTestId('phone-canvas-toolbar')).toBeVisible();
+        return;
+      }
+
       // Jedes Menü öffnen: Dropdown muss im Bild liegen.
       for (const menu of ['datei', 'bearbeiten', 'ansicht', 'werkzeuge', 'planung', 'hilfe']) {
-        await revealMainMenus(page);
         const trigger = page.getByTestId(`menubar-${menu}`);
         await trigger.scrollIntoViewIfNeeded();
         await trigger.click();
         const dropdown = page.locator('[role="menu"]').first();
         await expect(dropdown).toBeVisible();
-        const phoneSheet = page.getByTestId('phone-menu-sheet');
-        if (await phoneSheet.isVisible()) {
-          await expectWithinViewport(page, phoneSheet, `Menüblatt ${menu}`);
-          const item = dropdown.getByRole('menuitem').first();
-          const sheetBox = await boxOf(phoneSheet, `Menüblatt ${menu}`);
-          const itemBox = await boxOf(item, `Menü ${menu}`);
-          expect(itemBox.y, `Menü ${menu}: erster Eintrag über dem Blatt`).toBeGreaterThanOrEqual(
-            sheetBox.y - 1
-          );
-          expect(
-            itemBox.y + itemBox.height,
-            `Menü ${menu}: erster Eintrag unter dem Blatt`
-          ).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
-        } else {
-          await expectWithinViewport(page, dropdown, `Menü ${menu}`);
-        }
+        await expectWithinViewport(page, dropdown, `Menü ${menu}`);
         await page.keyboard.press('Escape');
         await expect(dropdown).toBeHidden();
       }
@@ -324,8 +326,13 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await openPlanner(page);
       await addComponent(page, 'battery');
       await showCanvas(page);
+
+      // Handy-Hülle (Spec §6.2): Modus und „Darstellung“ stehen untereinander
+      // in der Werkzeugzone; am Desktop liegen Modus-Chip und Ansicht-Knopf
+      // nebeneinander in der Werkzeugleiste.
+      const phone = await isPhoneShell(page);
       const mode = page.getByTestId('planner-mode-planung');
-      const displayOptions = page.getByTestId('canvas-display-options');
+      const displayOptions = page.getByTestId(phone ? 'phone-display-toggle' : 'canvas-display-options');
       if (
         (await mode.count()) > 0 &&
         (await mode.isVisible()) &&
@@ -338,14 +345,19 @@ for (const viewport of MOBILE_VIEWPORTS) {
         const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
         expect(overlapX > 0 && overlapY > 0, 'Modus-Umschalter und Ansicht überlappen').toBe(false);
       }
-      // Zoom-Kontrollen: 44 px (per CSS über dem RF-Standard) und unverdeckt.
-      const zoomIn = page.locator('.react-flow__controls-zoomin');
+
+      // Zoom: Am Desktop die React-Flow-`Controls` (44 px, unverdeckt), in
+      // der Handy-Hülle die Knöpfe der Werkzeugzone — dort gibt es die
+      // `Controls` nicht mehr.
+      const zoomIn = page.locator(phone ? '[data-testid="phone-zoom-in"]' : '.react-flow__controls-zoomin');
       if ((await zoomIn.count()) > 0 && (await zoomIn.isVisible())) {
         await expectTapTarget(zoomIn, 'Zoom +');
         await expectNotCovered(zoomIn, 'Zoom +');
       }
       // Bug 23: „Planübersicht“ (Fit-View) lag unter der Undo-Leiste.
-      const fitView = page.locator('.react-flow__controls-fitview');
+      const fitView = page.locator(
+        phone ? '[data-testid="mobile-overview"]' : '.react-flow__controls-fitview'
+      );
       if ((await fitView.count()) > 0 && (await fitView.isVisible())) {
         await expectNotCovered(fitView, 'Planübersicht');
       }
@@ -401,10 +413,11 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await page.getByTestId('expert-panel-close').click();
       await expect(expertPanel).toBeHidden();
 
-      // Bug 27: Fokus-Tab hat eine sichtbare Wirkung (Chrome verschwindet)
-      // und der Ausstieg ist ein eigener, erreichbarer Knopf — die untere
-      // Navigation ist im Fokusmodus bewusst ausgeblendet.
-      const focusTab = page.getByTestId('nav-tab-focus');
+      // Bug 27: Fokus-Knopf hat eine sichtbare Wirkung (Chrome verschwindet)
+      // und der Ausstieg ist ein eigener, erreichbarer Knopf. Er sitzt jetzt
+      // in der Werkzeugzone des Schaltplans (Spec §6.2), nicht in der
+      // Fußleiste: Er blendet Kopf, Zone und Fuß aus.
+      const focusTab = page.getByTestId('phone-focus-toggle');
       if ((await focusTab.count()) > 0 && (await focusTab.isVisible())) {
         await focusTab.click();
         await expect(page.locator('.planner-shell--focus')).toBeVisible();
@@ -422,8 +435,9 @@ for (const viewport of MOBILE_VIEWPORTS) {
     test('Stückliste aus dem Details-Tab öffnet über dem Blatt (Bug 29)', async ({ page }) => {
       await openPlanner(page);
       await addComponent(page, 'battery');
-      const inspectorTab = page.getByTestId('nav-tab-inspector');
+      const inspectorTab = page.getByTestId('phone-open-detail');
       if ((await inspectorTab.count()) > 0 && (await inspectorTab.isVisible())) {
+        await page.getByTestId('nav-tab-schaltplan').click();
         await inspectorTab.click();
       }
       await openMenubar(page, 'datei');

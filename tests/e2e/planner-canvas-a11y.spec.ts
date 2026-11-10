@@ -115,8 +115,14 @@ test.describe('Planer-Canvas: Barrierefreiheit', () => {
     page,
   }) => {
     await openExampleCanvas(page);
-    const sidebarTab = page.getByTestId('nav-tab-sidebar');
-    if (await sidebarTab.isVisible()) await sidebarTab.click();
+    // Auf dem Handy liegt der Katalog hinter „Hinzufügen“ in der Ansicht
+    // Bauteile (Spezifikation §6.1); ab 768 px ist er eine Spalte.
+    const sidebarTab = page.getByTestId('nav-tab-bauteile');
+    if (await sidebarTab.isVisible()) {
+      await sidebarTab.click();
+      const add = page.getByTestId('phone-add');
+      if (await add.isVisible()) await add.click();
+    }
     const search = page.getByTestId('sidebar-search');
     await search.fill('Leerrohr');
     const conduit = page.locator('[data-testid="sidebar-item"][data-component-type="conduit"]').first();
