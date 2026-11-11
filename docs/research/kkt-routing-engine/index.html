@@ -3396,6 +3396,8 @@ window.CampEngine = CAMPEngine;
     }
     state.result = res;
     state.layout = buildLayout(res);
+    // Debug-/Audithaken: Layout-Invarianten von außen prüfbar (Tests, Prüfbericht).
+    window.__layout = state.layout;
     state.solveMs = performance.now() - t0;
     renderAll();
   }
@@ -3429,14 +3431,14 @@ window.CampEngine = CAMPEngine;
   };
 
   /**
-   * Sugiyama-Layering mit Barycenter-Kreuzungsminimierung und anschließender
-   * äquidistanter Achsenzuweisung. Deterministisch (Tie-Break = Knoten-ID).
+   * Planare Ebenenordnung durch DFS-Intervallschlüssel, Port-Fächerung,
+   * VCG-Kanalrouting und Zwei-Pass-Höhenlayout. Deterministisch (Tie-Break =
+   * Knoten-ID) und für Bäume konstruktiv kreuzungsfrei.
    */
   function buildLayout(res) {
     const net = res.network;
     const topo = res.topology;
     const layerCount = Math.max(...net.nodes.map((n) => n.layer)) + 1;
-    const height = TOP + (layerCount - 1) * DY + NODE_H + 74;
     const layers = Array.from({ length: layerCount }, () => []);
     net.nodes.forEach((node, i) => layers[node.layer].push(i));
     layers.forEach((arr) => arr.sort((a, b) => net.nodes[a].id.localeCompare(net.nodes[b].id)));
@@ -3451,25 +3453,50 @@ window.CampEngine = CAMPEngine;
     };
     layers.forEach((arr, k) => assign(arr, k));
 
-    const barycenter = (v, useParents) => {
-      const nb = useParents ? [topo.parentNode[v]] : topo.children[v];
-      const xs = nb.filter((x) => x >= 0).map((x) => pos.get(x).x);
-      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : pos.get(v).x;
-    };
-
-    for (let sweep = 0; sweep < 8; sweep += 1) {
-      const down = sweep % 2 === 0;
-      const order = down
-        ? Array.from({ length: layerCount - 1 }, (_, i) => i + 1)
-        : Array.from({ length: layerCount - 1 }, (_, i) => layerCount - 1 - i);
-      for (const k of order) {
-        const arr = layers[k];
-        const keyed = arr.map((v) => ({ v, b: barycenter(v, down) }));
-        keyed.sort((p, q) => p.b - q.b || net.nodes[p.v].id.localeCompare(net.nodes[q.v].id));
-        layers[k] = keyed.map((o) => o.v);
-        assign(layers[k], k);
+    /**
+     * Planare Ebenenordnung durch DFS-Intervallschlüssel.
+     *
+     * Ein Baum ist planar; eine geschichtete Zeichnung ist genau dann
+     * kreuzungsfrei, wenn die Knoten jeder Ebene so geordnet sind, daß der
+     * Teilbaum jedes Knotens ein zusammenhängendes x-Intervall belegt
+     * (Reingold-Tilford-/DFS-Ordnung). Wir numerieren die Blätter in
+     * DFS-Reihenfolge und geben jedem inneren Knoten das Intervall seiner
+     * Blätter; sortiert wird nach der Intervallmitte. Damit sind die
+     * x-Bereiche disjunkter Teilbäume disjunkt, und Geschwisterfolgen sind
+     * monoton — beides sind exakt die Bedingungen, unter denen der
+     * VCG-Kanalrouter (§5) garantiert kreuzungsfrei routet.
+     *
+     * Die frühere Barycenter-Heuristik (Sugiyama) minimierte Kreuzungen nur
+     * heuristisch und ließ sie in Einzelfällen stehen.
+     */
+    const interval = new Map();
+    let leafIndex = 0;
+    const dfsOrder = (v) => {
+      const kids = (topo.children[v] || []).filter((c) => c >= 0);
+      if (!kids.length) {
+        interval.set(v, [leafIndex, leafIndex]);
+        leafIndex += 1;
+        return;
       }
-    }
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const c of kids) {
+        dfsOrder(c);
+        const [a, b] = interval.get(c);
+        lo = Math.min(lo, a);
+        hi = Math.max(hi, b);
+      }
+      interval.set(v, [lo, hi]);
+    };
+    dfsOrder(topo.root);
+    const keyOf = (v) => {
+      const iv = interval.get(v);
+      return iv ? (iv[0] + iv[1]) / 2 : Number.MAX_SAFE_INTEGER;
+    };
+    layers.forEach((arr, k) => {
+      arr.sort((x, y) => keyOf(x) - keyOf(y) || net.nodes[x].id.localeCompare(net.nodes[y].id));
+      assign(arr, k);
+    });
 
     // Ports: Ausgänge eines Knotens fächern in x auf (Manhattan-Fan-out).
     const outEdges = new Map();
@@ -3502,8 +3529,24 @@ window.CampEngine = CAMPEngine;
     });
 
     const edgeGeom = new Map();
-    const channelStats = [];
+    const crossingList = [];
+    let crossings = 0;
+    let doglegs = 0;
     let maxTrack = 0;
+
+    /**
+     * Zwei-Pass-Layout.
+     *
+     * Pass 1 bestimmt je Kanal die Spurenzahl aus dem vertikalen
+     * Constraint-Graphen (VCG); das hängt nur von den x-Positionen ab.
+     *
+     * Pass 2 leitet daraus den vertikalen Ebenenabstand ab:
+     *   gap_k = max(46, (T_k + 0.6)·12 + 14)
+     * Damit liegt das Spurenband (T_k − 1)·d immer *innerhalb* des Kanals.
+     * Die frühere feste DY = 152 reichte bei vielen Netzen nicht — die Spuren
+     * wanderten über die Elternkarten und die Stichleitungen liefen rückwärts.
+     */
+    const channelData = new Map();
     channels.forEach((list, key) => {
       const items = list.map((e) => {
         const edge = net.edges[e];
@@ -3511,56 +3554,246 @@ window.CampEngine = CAMPEngine;
         const b = topo.index.get(edge.to);
         const x1 = portX.get(e) ?? pos.get(a).x;
         const x2 = pos.get(b).x;
-        return { e, x1, x2, start: Math.min(x1, x2), end: Math.max(x1, x2), track: -1 };
+        return { e, x1, x2, lo: Math.min(x1, x2), hi: Math.max(x1, x2), track: -1 };
       });
-      items.sort((p, q) => p.start - q.start || p.end - q.end || p.e - q.e);
+      const n = items.length;
 
-      const trackEnds = [];
-      items.forEach((item) => {
-        let t = 0;
-        while (t < trackEnds.length && trackEnds[t] > item.start + 2) t += 1;
-        trackEnds[t] = item.end;
-        item.track = t;
+      // ---- Port-Reparatur (vertikale Kollinearität) --------------------
+      {
+        const ports = items.map((i2) => i2.x1);
+        for (let it = 0; it < 80; it += 1) {
+          let moved = false;
+          for (let i2 = 0; i2 < n; i2 += 1) {
+            for (let j2 = 0; j2 < n; j2 += 1) {
+              if (i2 === j2) continue;
+              const gap2 = ports[i2] - items[j2].x2;
+              if (Math.abs(gap2) < 5) {
+                ports[i2] += gap2 >= 0 ? 6 : -6;
+                moved = true;
+              }
+            }
+            for (let j2 = i2 + 1; j2 < n; j2 += 1) {
+              if (Math.abs(ports[i2] - ports[j2]) < 7) {
+                ports[j2] += 7;
+                moved = true;
+              }
+            }
+          }
+          if (!moved) break;
+        }
+        const byParent = new Map();
+        items.forEach((i2, idx) => {
+          const p = net.edges[i2.e].from;
+          if (!byParent.has(p)) byParent.set(p, []);
+          byParent.get(p).push(idx);
+        });
+        byParent.forEach((idxs) => {
+          if (idxs.length < 2) return;
+          const sortedPorts = idxs.map((i2) => ports[i2]).sort((a, b) => a - b);
+          const byChild = idxs
+            .slice()
+            .sort((a, b) => items[a].x2 - items[b].x2 || items[a].e - items[b].e);
+          byChild.forEach((i2, k2) => {
+            ports[i2] = sortedPorts[k2];
+          });
+        });
+        items.forEach((i2, k2) => {
+          i2.x1 = ports[k2];
+          i2.lo = Math.min(i2.x1, i2.x2);
+          i2.hi = Math.max(i2.x1, i2.x2);
+        });
+      }
+
+      // ---- Constraints -------------------------------------------------
+      const above = items.map(() => new Set());
+      const strictIn = (x, lo, hi) => x > lo + 0.5 && x < hi - 0.5;
+      for (let i = 0; i < n; i += 1) {
+        for (let j = 0; j < n; j += 1) {
+          if (i === j) continue;
+          if (strictIn(items[j].x1, items[i].lo, items[i].hi)) above[i].add(j);
+          if (strictIn(items[j].x2, items[i].lo, items[i].hi)) above[j].add(i);
+        }
+      }
+
+      // ---- topologische Sortierung (Kahn) ------------------------------
+      const indeg = items.map((_, j) => above[j].size);
+      const dependents = items.map(() => []);
+      above.forEach((set, j) => set.forEach((i) => dependents[i].push(j)));
+      const queue = [];
+      indeg.forEach((d2, j) => {
+        if (d2 === 0) queue.push(j);
       });
-      const trackCount = Math.max(...items.map((i) => i.track)) + 1;
+      const orderIdx = [];
+      const seen = new Array(n).fill(false);
+      while (queue.length) {
+        queue.sort((a, b) => items[a].lo - items[b].lo || items[a].e - items[b].e);
+        const j = queue.shift();
+        if (seen[j]) continue;
+        seen[j] = true;
+        orderIdx.push(j);
+        for (const k2 of dependents[j]) {
+          indeg[k2] -= 1;
+          if (indeg[k2] === 0) queue.push(k2);
+        }
+      }
+      const cyclic = orderIdx.length < n;
+      if (cyclic) {
+        for (let j = 0; j < n; j += 1) {
+          if (!seen[j]) {
+            orderIdx.push(j);
+            doglegs += 1;
+          }
+        }
+      }
+
+      // ---- Spurenvergabe ----------------------------------------------
+      const trackSpans = [];
+      const level = new Array(n).fill(0);
+      for (const j of orderIdx) {
+        const minLevel = above[j].size ? Math.max(...[...above[j]].map((i) => level[i] + 1)) : 0;
+        let t = minLevel;
+        for (;;) {
+          const spans = trackSpans[t] || [];
+          const clash = spans.some((sp) => !(items[j].hi < sp[0] - 2 || items[j].lo > sp[1] + 2));
+          if (!clash) break;
+          t += 1;
+        }
+        trackSpans[t] = (trackSpans[t] || []).concat([[items[j].lo, items[j].hi]]);
+        level[j] = t;
+        items[j].track = t;
+      }
+      const trackCount = Math.max(...items.map((i2) => i2.track)) + 1;
       maxTrack = Math.max(maxTrack, trackCount);
+      channelData.set(key, { items, trackCount, cyclic, key });
+    });
 
-      const topY = TOP + key * DY + NODE_H;
-      const bottomY = TOP + (key + 1) * DY;
-      const gap = Math.max(bottomY - topY, 24);
-      const dTrack = clamp(gap / (trackCount + 1.6), 8, 16);
-      const mid = (topY + bottomY) / 2;
-      channelStats.push({ depth: key, tracks: trackCount, dTrack });
+    // ---- Pass 2: vertikale Ebenenabstände aus den Spurenzahlen --------
+    const layerY = [TOP + NODE_H / 2];
+    let cursor = TOP + NODE_H;
+    let channelHeight = 0;
+    for (let k = 0; k < layerCount - 1; k += 1) {
+      const ch = channelData.get(k);
+      const T = ch ? ch.trackCount : 0;
+      const gap = Math.max(48, (T + 0.6) * 12 + 16);
+      if (ch) ch.gap = gap;
+      channelHeight += gap;
+      cursor += gap;
+      layerY.push(cursor + NODE_H / 2);
+      cursor += NODE_H;
+    }
+    const height = cursor + 74;
 
+    pos.forEach((p, v) => {
+      p.y = layerY[net.nodes[v].layer];
+    });
+
+    // ---- Geometrie je Kanal ------------------------------------------
+    const channelStats = [];
+    channelData.forEach((ch) => {
+      const { items, trackCount: T, gap } = ch;
+      const topY = layerY[net.nodes[topo.index.get(net.edges[items[0].e].from)].layer] + NODE_H / 2;
+      const mid = topY + gap / 2;
+      const dTrack = clamp(gap / (T + 1.6), 8, 16);
+      channelStats.push({ depth: ch.key, tracks: T, dTrack, cyclic: ch.cyclic, gap });
       items.forEach((item) => {
-        const yTrack = mid + (item.track - (trackCount - 1) / 2) * dTrack;
-        const y1 = pos.get(topo.index.get(net.edges[item.e].from)).y + NODE_H / 2;
-        const y2 = pos.get(topo.index.get(net.edges[item.e].to)).y - NODE_H / 2;
+        const yTrack = mid + (item.track - (T - 1) / 2) * dTrack;
+        const yTop = layerY[net.nodes[topo.index.get(net.edges[item.e].from)].layer] + NODE_H / 2;
+        const yBot = layerY[net.nodes[topo.index.get(net.edges[item.e].to)].layer] - NODE_H / 2;
         const points = [
-          [item.x1, y1],
+          [item.x1, yTop],
           [item.x1, yTrack],
           [item.x2, yTrack],
-          [item.x2, y2],
+          [item.x2, yBot],
         ];
         edgeGeom.set(item.e, {
           points,
           track: item.track,
-          trackCount,
+          trackCount: T,
           dTrack,
-          channel: key,
+          channel: ch.key,
           midY: yTrack,
           fromX: item.x1,
           toX: item.x2,
+          jog: 0,
         });
       });
     });
 
-    return { pos, edgeGeom, height, layers, channelStats, maxTrack, layerCount };
+    // ---- Invariantenprüfung: Kreuzungen und kollineare Überlappungen --
+    const allEdges = [...edgeGeom.entries()].map(([e, g]) => ({ e, pts: g.points }));
+    const segOf = (pts) => pts.slice(0, -1).map((a, i) => [a, pts[i + 1]]);
+    const strict = (x, lo, hi) => x > lo + 0.5 && x < hi - 0.5;
+    const eps = 0.6;
+    for (let i = 0; i < allEdges.length; i += 1) {
+      for (let j = i + 1; j < allEdges.length; j += 1) {
+        for (const [a, b] of segOf(allEdges[i].pts)) {
+          for (const [c, e2] of segOf(allEdges[j].pts)) {
+            const h1 = Math.abs(a[1] - b[1]) < eps;
+            const h2 = Math.abs(c[1] - e2[1]) < eps;
+            if (h1 && h2) {
+              if (Math.abs(a[1] - c[1]) < eps) {
+                const lo = Math.max(Math.min(a[0], b[0]), Math.min(c[0], e2[0]));
+                const hi = Math.min(Math.max(a[0], b[0]), Math.max(c[0], e2[0]));
+                if (hi - lo > eps) {
+                  crossings += 1;
+                  crossingList.push({ type: 'h-h', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, y: a[1] });
+                }
+              }
+            } else if (!h1 && !h2) {
+              if (Math.abs(a[0] - c[0]) < eps) {
+                const lo = Math.max(Math.min(a[1], b[1]), Math.min(c[1], e2[1]));
+                const hi = Math.min(Math.max(a[1], b[1]), Math.max(c[1], e2[1]));
+                if (hi - lo > eps) {
+                  crossings += 1;
+                  crossingList.push({ type: 'v-v', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, x: a[0] });
+                }
+              }
+            } else {
+              const [h, v] = h1 ? [[a, b], [c, e2]] : [[c, e2], [a, b]];
+              const y = h[0][1];
+              const x = v[0][0];
+              const hx1 = Math.min(h[0][0], h[1][0]);
+              const hx2 = Math.max(h[0][0], h[1][0]);
+              const vy1 = Math.min(v[0][1], v[1][1]);
+              const vy2 = Math.max(v[0][1], v[1][1]);
+              if (strict(x, hx1, hx2) && strict(y, vy1, vy2)) {
+                crossings += 1;
+                crossingList.push({ type: 'h-v', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, point: [x, y] });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return { pos, edgeGeom, height, layers, channelStats, maxTrack, layerCount, crossings, doglegs, crossingList };
   }
 
   // ---------------------------------------------------------------------------
   // SVG
   // ---------------------------------------------------------------------------
+
+  /**
+   * Reiner Routing-Haken: baut nur das Layout (ohne Netzberechnung) und gibt die
+   * Invarianten zurück. Dient dem randomisierten Routing-Stresstest.
+   */
+  function routeOnly(network) {
+    const layout = buildLayout({ network, topology: CampEngine.buildTopology(network) });
+    return {
+      crossings: layout.crossings,
+      doglegs: layout.doglegs,
+      maxTrack: layout.maxTrack,
+      crossingList: layout.crossingList.slice(0, 6),
+      edges: [...layout.edgeGeom.entries()].map(([e, g]) => ({
+        id: e,
+        pts: g.points.map((q) => [Math.round(q[0]), Math.round(q[1])]),
+        channel: g.channel,
+        track: g.track,
+        jog: g.jog,
+      })),
+      channels: layout.channelStats.map((c) => ({ depth: c.depth, tracks: c.tracks, cyclic: c.cyclic })),
+    };
+  }
 
   function pointsToPath(points) {
     return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
@@ -3592,6 +3825,51 @@ window.CampEngine = CAMPEngine;
     if (dropPct > budgetPct + 1e-9) return 'err';
     if (dropPct > budgetPct * 0.9) return 'warn';
     return 'ok';
+  }
+
+  /**
+   * Label-Platzierung mit Hindernisvermeidung.
+   *
+   * Das Kabel-Label sitzt konventionsgemäß auf seinem eigenen Horizontalsegment.
+   * Überdeckt es dabei eine Knotenkarte oder ein bereits platziertes Label,
+   * wird es entlang des Segments verschoben; ist das Segment zu kurz, weicht es
+   * um eine Zeile nach oben oder unten aus. Der Labelkasten maskiert die
+   * Leitung, die Zuordnung bleibt eindeutig. Deterministisch: Kandidaten
+   * werden in fester Reihenfolge geprüft.
+   */
+  function makeLabelPlacer(cardRects) {
+    const placed = [];
+    const hits = (r, list) =>
+      list.some(
+        (o) => r[0] < o[0] + o[2] + 2 && o[0] < r[0] + r[2] + 2 && r[1] < o[1] + o[3] + 2 && o[1] < r[1] + r[3] + 2
+      );
+    return (points, midY) => {
+      const x1 = points[1][0];
+      const x2 = points[2][0];
+      const lo = Math.min(x1, x2);
+      const hi = Math.max(x1, x2);
+      const w = 68;
+      const h = 15;
+      const centre = clamp((x1 + x2) / 2, 40, CANVAS_W - 40);
+      const candidates = [];
+      for (const dy of [-10, -26, 6]) {
+        candidates.push([centre, midY + dy]);
+        for (let d = 16; d <= 160; d += 16) {
+          candidates.push([clamp(centre - d, 40, CANVAS_W - 40), midY + dy]);
+          candidates.push([clamp(centre + d, 40, CANVAS_W - 40), midY + dy]);
+        }
+      }
+      for (const [cx, cy] of candidates) {
+        if (cx - w / 2 < lo - 60 || cx + w / 2 > hi + 60) continue;
+        const r = [cx - w / 2, cy - 9, w, h + 3];
+        if (!hits(r, cardRects) && !hits(r, placed)) {
+          placed.push(r);
+          return [cx, cy];
+        }
+      }
+      placed.push([centre - w / 2, midY - 19, w, h]);
+      return [centre, midY - 10];
+    };
   }
 
   function renderSvg() {
@@ -3626,6 +3904,12 @@ window.CampEngine = CAMPEngine;
       )}</text>`;
     }
 
+    const cardRects = net.nodes.map((node, v) => {
+      const p = layout.pos.get(v);
+      return [p.x - NODE_W / 2, p.y - NODE_H / 2, NODE_W, NODE_H];
+    });
+    const placeLabel = makeLabelPlacer(cardRects);
+
     let edgeMarkup = '';
     net.edges.forEach((edge, e) => {
       const geom = layout.edgeGeom.get(e);
@@ -3639,8 +3923,7 @@ window.CampEngine = CAMPEngine;
       const points = geom.points;
 
       const mid = points[1];
-      const labelX = clamp((points[1][0] + points[2][0]) / 2, 70, CANVAS_W - 70);
-      const labelY = geom.midY - 10;
+      const [labelX, labelY] = placeLabel(points, geom.midY);
       const showFuse = selectedEdge;
       const label = `${nf(rep.area, rep.area < 10 ? 1 : 0)} mm²`;
       const fuseLabel = `${rep.fuse.typeLabel} ${nf(rep.fuse.ratedA, 0)} A`;
@@ -4132,6 +4415,7 @@ window.CampEngine = CAMPEngine;
     if (!host) return;
     const res = state.result;
     const m = res.metrics;
+    const lay = state.layout;
     const history = m.thermalHistory;
     const logMax = Math.log10(Math.max(...history, 1e-6));
     const bars = history
@@ -4163,6 +4447,15 @@ window.CampEngine = CAMPEngine;
         }</b></div>
         <div><span>Laufzeit</span><b>${nf(m.runtimeMs, 0)} ms</b></div>
         <div><span>Reparaturen</span><b>${nf(m.repairs, 0)}</b></div>
+      </div>
+      <div class="solver-grid" style="margin-top:8px">
+        <div><span>Kanäle / Spuren max.</span><b>${nf(lay.channelStats.length, 0)} / ${nf(lay.maxTrack, 0)}</b></div>
+        <div><span>Kreuzungen</span><b class="${lay.crossings === 0 ? 'ok-text' : 'warn-text'}">${nf(lay.crossings, 0)}</b></div>
+        <div><span>Jogs (Doglegs)</span><b>${nf(lay.doglegs, 0)}</b></div>
+        <div><span>Biegungen</span><b>${nf(
+          [...lay.edgeGeom.values()].reduce((a, g) => a + g.points.length - 2, 0),
+          0
+        )}</b></div>
       </div>
       ${protoBlock(m)}
       <div class="legend">
@@ -4534,6 +4827,9 @@ window.CampEngine = CAMPEngine;
     solveNow();
     applyView();
   }
+
+  // Öffentlicher Prüfhaken für den Routing-Stresstest (kein Einfluß auf die UI).
+  window.__route = routeOnly;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

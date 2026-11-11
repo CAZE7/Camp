@@ -5,7 +5,7 @@ Zahlen in Teil A sind aus dem Lauf von Teil B abgeschrieben (keine hartkodierten
 
 | Teil | Datei | Inhalt |
 |---|---|---|
-| **A** | [`WHITEPAPER.md`](./WHITEPAPER.md) | Mathematische Spezifikation: KKT-Relaxation + duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$, elektro-thermischer Banach-Fixpunkt mit Kontaktwiderständen und CP-Lasten, Schleifenimpedanz-Tensor mit $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$- und I²t-Selektivitätskaskade, Sugiyama-/Barycenter-Layout mit Intervallgraph-Kanalrouting — plus durchgerechneter Vergleich „Stamm + vier Zweige“ gegen naive Einzelstrang-Bemessung, Greedy-Reparatur und proportionale Budgetaufteilung. |
+| **A** | [`WHITEPAPER.md`](./WHITEPAPER.md) | Mathematische Spezifikation: KKT-Relaxation + duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$, elektro-thermischer Banach-Fixpunkt mit Kontaktwiderständen und CP-Lasten, Schleifenimpedanz-Tensor mit $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$- und I²t-Selektivitätskaskade, planare Ebenenordnung (DFS-Intervallschlüssel), VCG-Kanalrouting, Zwei-Pass-Höhenlayout — plus durchgerechneter Vergleich „Stamm + vier Zweige“ gegen naive Einzelstrang-Bemessung, Greedy-Reparatur und proportionale Budgetaufteilung. |
 | **B** | [`index.html`](./index.html) | Interaktive Referenzimplementierung: **eine** Datei, HTML5 + Tailwind (CDN) + Vanilla ES6+ + SVG, kein Build-Schritt. Lädt beim Start ein mehrstufiges Referenznetz (Batterie → Haupt-Busbar → Sub-Verteiler → Lasten), löst und routet live; zeigt Konvergenz-Iterationen, $U_v$ auf 3 Dezimalen, $Z_{\text{loop}}$ in mΩ, $I_k$ in kA, I²t-Reserve in %, Kupfermasse und Ersparnis. |
 
 ## Bedienung
@@ -25,7 +25,7 @@ sowie Isolierklasse lösen das Netz neu.
 | Thermischer Fixpunkt | Restfehler $<10^{-4}$ K, Kontraktion $\approx0{,}30$ |
 | Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft, 42/42 Läufe im Betriebsbereich zulässig |
 | Sicherungskoordination nach Politur | $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ für jede Kante geprüft |
-| Geometrie (Kartenkollision, kollineare Überlappung) | 0 / 0 in allen drei Szenarien |
+| Routing | 0 Kreuzungen, 0 Jogs, 0 Karten-/Labelkollisionen in allen Szenarien; **144/144 zufällige Bäume kreuzungsfrei** |
 | DOM-Assertions (KPIs, Tabellen, Flags, Status, Konsole) | alle bestanden, 0 Konsolenfehler |
 
 ## Deklarationen

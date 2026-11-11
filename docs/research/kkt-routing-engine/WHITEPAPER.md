@@ -33,7 +33,7 @@ Gültigkeitsnachweis führt:
 | **1** | Querschnittsoptimierung | konvexe Relaxation, KKT-System, duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$ | 100/100 Zufallsnetze gegen $12^{m}$-Brute-Force exakt |
 | **2** | Elektro-Thermik | Banach-Fixpunkt $T \mapsto \Phi(T)$, Newton-/MNA-Innenschritt, Kontaktwiderstände, CP-Lasten | Kontraktionsfaktor $\approx 0{,}30$, Restfehler $<10^{-4}$ K |
 | **3** | Schutz | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$-Bedingung, I²t-Selektivitätskaskade | Residuum $c_eA_e^2/(b_e\Lambda_e)=1{,}000$, Schattenpreis gegen Finite Differenzen |
-| **4** | Layout | Sugiyama-Layering, Barycenter-Kreuzungsminimierung, Intervallgraph-Färbung im Kanal | 0 Kartenkollisionen, 0 kollineare Überlappungen in allen Szenarien |
+| **4** | Layout | planare Ebenenordnung durch DFS-Intervallschlüssel, VCG-Kanalrouting, Zwei-Pass-Höhenlayout | 0 Kreuzungen in 3/3 Referenznetzen und 144/144 Zufallsbäumen |
 
 Kernaussage: **Die diskrete B&B-Lösung des linearisierten Problems ist am gekoppelten Modell
 nicht ohne Nachbesserung zulässig.** Der äußere Fixpunkt muß Querschnitte anheben
@@ -617,66 +617,144 @@ $I_{k,\min}(v)\ge I_{\text{trip}}(t_a)$ für jede Sicherung.
 
 ## 5 Säule 4 — Orthogonales E-CAD-Routing
 
-### 5.1 Layering und Kreuzungsminimierung
+Ziel ist eine **kreuzungsfreie** orthogonale Zeichnung: kein Leitungspaar darf sich schneiden, keine
+Leitung darf kollinear über eine andere laufen, keine Karte darf überdeckt werden. Das ist die
+Mindestanforderung an einen Schaltplan; eine Heuristik, die Kreuzungen nur *minimiert*, erfüllt sie
+nicht.
 
-Das Layering ist durch die Netzsemantik vorgegeben (Batterie → Busbar → Verteiler → Lasten);
-Knoten mit gleichem Layer werden in einer Zeile angeordnet. Innerhalb der Zeilen wird die
-Reihenfolge durch **Barycenter-Heuristik** (Sugiyama) in 8 abwechselnden Abwärts-/Aufwärts-
-Sweeps optimiert:
+### 5.1 Planare Ebenenordnung (DFS-Intervallschlüssel)
+
+Ein Baum ist planar. Eine geschichtete Zeichnung ist genau dann kreuzungsfrei, wenn die Knoten
+jeder Ebene so geordnet sind, daß **der Teilbaum jedes Knotens ein zusammenhängendes x-Intervall
+belegt**. Wir konstruieren diese Ordnung direkt:
+
+1. Tiefensuche ab der Wurzel; die Blätter werden in DFS-Reihenfolge mit $0,1,2,\dots$ numeriert.
+2. Jeder Knoten $v$ erhält das Intervall $I(v)=[\ell(v),r(v)]$ der Blattindizes seines Teilbaums:
+   $$
+   I(v)=\bigcup_{c\in\mathrm{children}(v)} I(c),
+   \qquad
+   I(\text{Blatt})=\{\ell\}.
+   $$
+3. Sortierschlüssel ist die Intervallmitte
+   $$
+   \kappa(v)=\tfrac12\big(\ell(v)+r(v)\big).
+   $$
+   Jede Ebene wird nach $\kappa$ sortiert, Tie-Break = Knoten-ID (Determinismus).
+
+**Satz 2 (Planarität).** Für Geschwister $u\neq v$ gilt $I(u)\cap I(v)=\emptyset$; für Vorfahr/Nachfahr
+$u\prec v$ gilt $I(v)\subseteq I(u)$. Damit sind die x-Bereiche disjunkter Teilbäume disjunkt, und
+die Kinder eines Knotens erscheinen in derselben Reihenfolge wie seine Anschlüsse. Beides sind
+genau die Voraussetzungen, unter denen der Kanalrouter aus §5.3 ** beweisbar** kreuzungsfrei routet.
+
+Die früher verwendete Barycenter-Heuristik (Sugiyama) minimiert Kreuzungen nur statistisch; sie
+läßt sie in Einzelfällen stehen. Sie ist hier durch die konstruktive Ordnung ersetzt.
+
+### 5.2 Ports und Anschlüsse
+
+Die Ausgänge eines Knotens werden in $x$ aufgefächert, damit die Stichleitungen nicht
+zusammenfallen:
 
 $$
-\beta(v)=\frac{1}{|\mathcal{N}_{\text{ref}}(v)|}\sum_{w\in\mathcal{N}_{\text{ref}}(v)}x_w,
-\qquad
-\text{Sortierung nach }\beta,\ \text{Tie-Break}= \text{Knoten-ID}.
+x^{\text{port}}_e=x_v+\Big(i-\frac{k-1}{2}\Big)\cdot\min\!\Big(20,\frac{96}{k}\Big),
+\qquad i=0,\dots,k-1,
 \tag{5.1}
 $$
 
-Der deterministische Tie-Break macht das Layout reproduzierbar (wichtig für Snapshots).
+geordnet nach der x-Position des jeweiligen Kindes (monoton). Anschließend läuft eine
+**Kollisionsreparatur**: liegt ein Port-$x$ innerhalb von $5$ px auf der Klemme eines fremden
+Netzes, wird er ausweichend verschoben; danach wird die Monotonie je Elternknoten wiederhergestellt.
+Ohne diesen Schritt entstehen *vertikal kollineare* Stichleitungen (zwei Leitungen auf demselben
+$x$), die keine Ordnungsbedingung des VCG erfassen kann.
 
-### 5.2 Port-Fan-out
+### 5.3 Kanalrouting mit vertikalem Constraint-Graphen
 
-Die Ausgänge eines Knotens werden in $x$ aufgefächert, damit die Orthogonalkannten nicht
-aufeinanderfallen:
+Ein Kanal liegt zwischen zwei Ebenen. Jedes Netz $e$ habe den oberen Anschluß $x_1(e)$ und den
+unteren $x_2(e)$; sein Horizontalsegment überstreicht
+$\mathrm{span}(e)=[\min(x_1,x_2),\max(x_1,x_2)]$.
+
+Reine Intervallfärbung („linke Kante“) garantiert nur, daß zwei **horizontale** Segmente auf
+derselben Spur disjunkt sind. Sie übersieht die **Stichleitungen**: die obere Stichleitung von $B$
+bei $x_1(B)$ durchläuft alle $y$ zwischen Oberkante und ihrer Spur und liegt daher genau dann auf
+dem Horizontalsegment von $A$, wenn $x_1(B)\in\mathrm{int}(\mathrm{span}(A))$ **und** $A$ oberhalb
+von $B$ liegt. Daraus folgen die beiden Ordnungsbedingungen
 
 $$
-x^{\text{port}}_{e}=x_v+\left(i-\frac{k-1}{2}\right)\cdot\min\!\left(20,\frac{96}{k}\right),
-\qquad i=0,\ldots,k-1 .
+\begin{aligned}
+x_1(B)\in\mathrm{int}(\mathrm{span}(A)) &\;\Longrightarrow\; y_A>y_B &&\text{(obere Stichleitung)}\\
+x_2(B)\in\mathrm{int}(\mathrm{span}(A)) &\;\Longrightarrow\; y_A<y_B &&\text{(untere Stichleitung)}
+\end{aligned}
 \tag{5.2}
 $$
 
-### 5.3 Kanalzuweisung als Intervallgraph-Färbung
-
-Jede Kante $e=(u,v)$ mit $\text{layer}(u)<\text{layer}(v)$ durchläuft den Kanal
-$k=\text{layer}(u)$; ihr horizontales Intervall ist $[\min(x_1,x_2),\max(x_1,x_2)]$. Zwei Kanten
-im selben Kanal kollidieren genau dann, wenn sich ihre Intervalle überlappen. Die Zuweisung von
-Spuren ist damit eine **Intervallgraph-Färbung**: der Greedy-Algorithmus (Sortierung nach
-Startpunkt, erste freie Spur) ist für Intervallgraphen **optimal**, d.h. die Spurenzahl
-entspricht der maximalen Cliquengröße (= maximale Überlappung).
+für alle geordneten Paare $(A,B)$. Der Graph dieser Bedingungen ist der **vertikale
+Constraint-Graph (VCG)**; er wird topologisch sortiert (Kahn). Die Spuren werden in dieser
+Reihenfolge per First-Fit vergeben:
 
 ```
-Algorithmus 3: Kanalrouting
-  sortiere Intervalle nach Start (Tie: Ende, id)
-  trackEnds ← []
-  für jedes Intervall [s,t]:
-     t* ← erste Spur mit trackEnds < s
-     trackEnds[t*] ← t
-  Spurenzahl = max(t*) + 1   # = ω(G), optimal
+Algorithmus 4: VCG-Kanalrouting
+  baue Kanten aus (5.2) für alle Paare im Kanal
+  topo ← Kahn(VCG)                     # Tie-Break: kleineres linkes Ende
+  für j in topo:
+     t ← max(Spur[v] + 1 für alle Vorgänger v)   # Ordnung einhalten
+     wiederhole: wenn t mit einem bereits belegten Intervall überlappt: t ← t+1
+     Spur[j] ← t
+  Spurenzahl T = max(Spur) + 1
 ```
 
-Die Spurabstände werden auf $d_{\text{track}}\in[8,16]$ px begrenzt; bei Überschreitung der
-Kanalkapazität wird der Kanal gestaucht (dokumentierte Grenze, kein stilles Überlaufen).
+**Korrektheit.** Erfüllt die Zuordnung alle Bedingungen (5.2) und sind alle Paare auf derselben Spur
+disjunkt, so existiert kein horizontales×vertikales Kreuzungspaar und kein kollineares Paar. Der
+VCG ist für die DFS-geordnete Zeichnung nach Satz 2 **azyklisch**; Zyklen (nur bei nicht-planaren
+Vorgaben möglich) werden erkannt, markiert (`doglegs`) und im Prüfbericht ausgewiesen — es gibt
+keinen stillen Fallback.
 
-### 5.4 Geometrische Invarianten
+### 5.4 Zwei-Pass-Layout
 
-Das Layout wird headless gegen zwei Invarianten geprüft:
+Das Spurenband eines Kanals braucht
+$\,(T-1)\cdot d\,$ Höhe. Bei fester Ebenenhöhe $DY$ und vielen Netzen ($T>8$) sprengt es den Kanal:
+die Spuren wandern über die Elternkarten, und die Stichleitungen laufen **rückwärts** (nach oben).
+Genau dieser Fehler trat im Stresstest mit 19 Spuren auf.
 
-1. **Kartenkollision:** Rechtecke der Knotenkarten (176 × 76 px) überlappen nicht.
-2. **Kollineare Überlappung:** zwei horizontale Kanalsegmente mit identischem $y$ überlappen
-   nicht.
+Deshalb wird das Layout in zwei Pässen gebaut:
 
-Ergebnis für alle drei Szenarien: **0 Kollisionen, 0 Überlappungen**.
+1. **Pass 1 (x-Richtung):** Ebenenordnung (§5.1), Ports (§5.2), VCG und Spurenzahl $T_k$ je Kanal
+   — alles unabhängig von $y$.
+2. **Pass 2 (y-Richtung):** Ebenenabstand aus der Spurenzahl
+   $$
+   \text{gap}_k=\max\!\Big(48,\;(T_k+0{,}6)\cdot 12+16\Big),
+   \qquad
+   d_k=\mathrm{clamp}\!\Big(\frac{\text{gap}_k}{T_k+1{,}6},\,8,\,16\Big).
+   $$
+   Damit gilt $(T_k-1)\,d_k<\text{gap}_k$ für alle $k$: das Spurenband bleibt **im** Kanal.
 
----
+Die Gesamthöhe der Zeichnung ist $\sum_k(\text{gap}_k+NODE_H)$, also selbstadaptiv.
+
+### 5.5 Invariantenprüfung (im Code und extern)
+
+Der Router prüft sein eigenes Ergebnis unmittelbar nach der Konstruktion: alle Segmentpaare werden
+auf Schnitt ($h\times v$), kollineare Überlappung ($h\times h$, $v\times v$) und Randberührung
+getestet; die Zahl wird als `crossings` geführt und im Solver-Panel angezeigt. Zusätzlich prüft ein
+**unabhängiger** Test (jsdom, gerenderte SVG-Pfade, nicht die Layout-Interna):
+
+| Prüfung | Kastenwagen | Tiefe Kette | Papierbeispiel |
+|---|---|---|---|
+| Kartenkollisionen | 0 | 0 | 0 |
+| Labelkollisionen | 0 | 0 | 0 |
+| Leitungskreuzungen | 0 | 0 | 0 |
+| Spuren (max.) | 1 | 3 | 2 |
+| Jogs | 0 | 0 | 0 |
+
+**Randomisierter Stresstest:** 200 zufällige Bäume (2–6 Ebenen, 0–3 Kinder je Knoten, bis 80
+Kanten, deterministischer Seed), davon 144 mit Kanten: **144/144 kreuzungsfrei**, 0 Jogs,
+Spurenzahl 1–15. Der Test läuft über den reinen Routing-Haken `window.__route(network)` ohne
+Netzberechnung (< 2 s für alle Netze).
+
+### 5.6 Grenzen
+
+* Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
+* Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft, aber nicht als
+  Hindernisse geroutet).
+* Kanalweise Optimierung: die Spurenzahl ist je Kanal minimal *unter der Ordnungsbedingung*; ein
+  globales Minimum über alle Kanäle wird nicht beansprucht.
 
 ## 6 Konkreter Vergleich: Stamm + vier Zweige
 
@@ -904,10 +982,17 @@ beweisbar, §3.3).
 * MNA: $\|\Delta u\|_\infty<10^{-9}$ V (Abbruchkriterium), Iterationen 7–9, Restresiduum $<8{,}4\cdot10^{-10}$ V.
 * Thermik: Restfehler $5{,}6\cdot10^{-5}\ldots7{,}8\cdot10^{-5}$ K, Kontraktion $0{,}300$–$0{,}302$.
 
-### 8.6 Geometrie-Audit
+### 8.6 Geometrie- und Routing-Audit
 
-Headless (jsdom + SVG-Pfade): 0 Kartenkollisionen, 0 kollineare Überlappungen für alle drei
-Szenarien.
+Headless (jsdom, **gerenderte SVG-Pfade** statt Layout-Interna): 0 Kartenkollisionen,
+0 Labelkollisionen, 0 Leitungskreuzungen in allen drei Szenarien.
+
+Zusätzlich randomisierter Stresstest über `window.__route(network)`:
+**144/144 zufällige Bäume kreuzungsfrei** (2–6 Ebenen, bis 80 Kanten, 1–15 Spuren, 0 Jogs).
+Der Stresstest deckte zwei echte Router-Fehler auf, die im Festnetz nicht sichtbar waren:
+vertikal kollineare Stichleitungen (Port auf fremder Klemme) und ein Spurenband, das bei
+$T>8$ den festen Ebenenabstand sprengte und Stichleitungen rückwärts laufen ließ. Beide sind
+behoben (§5.2, §5.4) — der zweite durch das Zwei-Pass-Layout.
 
 ### 8.7 DOM-Assertions
 
@@ -929,6 +1014,10 @@ Ergebnis: **alle Prüfungen bestanden**.
 **Bewußte Vereinfachungen:**
 
 * Stationäres thermisches Modell (keine Wärmekapazität, kein Transientenverlauf).
+* Routing: zwei orthogonale Richtungen ohne Vias; Kanten verbinden benachbarte Ebenen. Die
+  Kreuzungsfreiheit ist für Bäume konstruktiv garantiert (§5.1/§5.3), nicht für beliebige
+  Graphen mit Zyklen oder mehrfachen Kanten zwischen zwei Ebenen.
+* Labelkästen werden auf Kollision geprüft, aber nicht als Routing-Hindernisse behandelt.
 * Keine Wechselstromanteile, keine Induktivitäten (12-V-DC-Netz).
 * Leitungsinduktivität und EMV-Kopplung sind nicht modelliert.
 * Der B&B ist bei $m>12$ nicht mehr in Echtzeit garantierbar (Knotenlimit 60 000, Zeitlimit
