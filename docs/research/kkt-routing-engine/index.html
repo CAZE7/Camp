@@ -1047,6 +1047,11 @@
         color: #cfe4f4;
         letter-spacing: 0.02em;
       }
+      .proto-row > span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .proto-row i {
         font-style: normal;
         color: var(--dim);
@@ -4106,7 +4111,9 @@ window.CampEngine = CAMPEngine;
       const cycle = earlier.some((q) => q.areas.join(',') === p.areas.join(','));
       return `<div class="proto-row${cycle ? ' is-cycle' : ''}">
         <b>${String(p.outer).padStart(2, '0')}</b>
-        <span>${p.areas.map((a) => nf(a, a < 10 ? 1 : 0)).join(' · ')}</span>
+        <span title="${esc(p.areas.map((a) => nf(a, a < 10 ? 1 : 0)).join(' · '))} mm²">${p.areas
+          .map((a) => nf(a, a < 10 ? 1 : 0))
+          .join(' · ')}</span>
         <i>${nf(p.maxDropPct, 2)} %</i>
       </div>`;
     }).join('');
