@@ -1,0 +1,4289 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KUPFERWERK — KKT-Routing-Engine für 12-V-Bordnetze</title>
+    <meta
+      name="description"
+      content="Gekoppelte Elektro-Thermik, KKT-optimale Querschnittskaskade mit Branch-and-Bound, Kurzschluss- und I²t-Nachweis sowie algorithmisches Manhattan-Routing für 12-V-Bordnetze."
+    />
+    <!-- Tailwind Play CDN: Utility-Layer für optionale Feinarbeit. Die gesamte
+         Gestaltung liegt zusätzlich als eigenständiges, offline-fähiges
+         CSS-System in diesem Dokument, damit die Seite ohne Netz identisch
+         rendert. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --bg: #05090f;
+        --bg-2: #070d15;
+        --panel: #0a121c;
+        --panel-2: #0d1824;
+        --line: #17293a;
+        --line-2: #213a51;
+        --text: #dfeaf5;
+        --muted: #8199ad;
+        --dim: #526a7f;
+        --cyan: #35d6e8;
+        --green: #3ddc97;
+        --amber: #f4b860;
+        --orange: #fb923c;
+        --rose: #fb7185;
+        --violet: #a78bfa;
+        --copper: #d98e58;
+        --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background:
+          radial-gradient(1100px 620px at 12% -8%, rgba(53, 214, 232, 0.09), transparent 62%),
+          radial-gradient(900px 520px at 88% 4%, rgba(167, 139, 250, 0.08), transparent 60%),
+          linear-gradient(180deg, #060b12 0%, #05090f 100%);
+        background-attachment: fixed;
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 13px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono {
+        font-family: var(--mono);
+        font-variant-numeric: tabular-nums;
+      }
+      .dim {
+        color: var(--dim);
+      }
+      .ok-text {
+        color: var(--green);
+      }
+      .warn-text {
+        color: var(--rose);
+      }
+
+      .shell {
+        max-width: 1880px;
+        margin: 0 auto;
+        padding: 0 16px 34px;
+        line-height: 1.45;
+      }
+
+      /* ---------------------------------------------------------------- topbar */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 4px 12px;
+        margin-bottom: 14px;
+        background: linear-gradient(180deg, rgba(5, 9, 15, 0.96) 60%, rgba(5, 9, 15, 0.7));
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(33, 58, 81, 0.55);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(160deg, rgba(217, 142, 88, 0.24), rgba(53, 214, 232, 0.12));
+        border: 1px solid rgba(217, 142, 88, 0.42);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        flex: 0 0 auto;
+      }
+      .brand-title {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand-ver {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        color: var(--cyan);
+        border: 1px solid rgba(53, 214, 232, 0.35);
+        border-radius: 999px;
+        padding: 1px 7px;
+      }
+      .brand-sub {
+        font-size: 10.5px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      .topbar-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-left: 8px;
+      }
+      .chip {
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        background: rgba(13, 24, 36, 0.7);
+        padding: 4px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .topbar-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.11em;
+        padding: 6px 11px;
+        border-radius: 999px;
+        border: 1px solid rgba(61, 220, 151, 0.35);
+        background: rgba(61, 220, 151, 0.08);
+        color: #9ff0c9;
+        white-space: nowrap;
+      }
+      .status-pill.warn {
+        border-color: rgba(244, 184, 96, 0.4);
+        background: rgba(244, 184, 96, 0.09);
+        color: #ffd79a;
+      }
+      .pulse {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0 0 rgba(61, 220, 151, 0.55);
+        animation: pulse 2.4s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(61, 220, 151, 0.5);
+        }
+        70% {
+          box-shadow: 0 0 0 7px rgba(61, 220, 151, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(61, 220, 151, 0);
+        }
+      }
+      .runtime {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+        min-width: 58px;
+        text-align: right;
+      }
+
+      /* ------------------------------------------------------------- workspace */
+      .workspace {
+        display: grid;
+        grid-template-columns: 262px minmax(0, 1fr) 326px;
+        gap: 14px;
+        align-items: start;
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .mainpane {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+      .card {
+        background: linear-gradient(180deg, rgba(13, 24, 36, 0.92), rgba(8, 15, 23, 0.94));
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.03) inset,
+          0 18px 40px -28px rgba(0, 0, 0, 0.9);
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px 13px;
+        border-bottom: 1px solid rgba(23, 41, 58, 0.9);
+      }
+      .card-title {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 650;
+      }
+      .card-body {
+        padding: 12px 13px;
+      }
+
+      /* --------------------------------------------------------------- controls */
+      .control {
+        padding: 9px 0 11px;
+        border-bottom: 1px dashed rgba(33, 58, 81, 0.55);
+      }
+      .control:last-child {
+        border-bottom: 0;
+        padding-bottom: 2px;
+      }
+      .control-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 7px;
+      }
+      .control-label {
+        font-size: 11px;
+        color: var(--text);
+      }
+      .control-value {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cyan);
+      }
+      .control-hint {
+        font-size: 9.5px;
+        color: var(--dim);
+        margin-top: 5px;
+        line-height: 1.35;
+      }
+      input[type="range"] {
+        width: 100%;
+        height: 18px;
+        appearance: none;
+        -webkit-appearance: none;
+        background: transparent;
+        accent-color: var(--cyan);
+        cursor: pointer;
+        margin: 0;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 3px;
+        border-radius: 3px;
+        background: linear-gradient(90deg, rgba(53, 214, 232, 0.55), rgba(33, 58, 81, 0.9));
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px;
+        height: 12px;
+        margin-top: -4.5px;
+        border-radius: 50%;
+        background: #c9f6ff;
+        border: 2px solid #0a121c;
+        box-shadow: 0 0 0 2px rgba(53, 214, 232, 0.35);
+      }
+      input[type="range"]::-moz-range-track {
+        height: 3px;
+        border-radius: 3px;
+        background: #213a51;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 11px;
+        height: 11px;
+        border: 2px solid #0a121c;
+        background: #c9f6ff;
+        border-radius: 50%;
+      }
+      select,
+      .btn {
+        font-family: var(--sans);
+        font-size: 11.5px;
+        color: var(--text);
+        background: #0b1521;
+        border: 1px solid var(--line-2);
+        border-radius: 8px;
+        padding: 7px 9px;
+        width: 100%;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      select:hover,
+      .btn:hover {
+        border-color: rgba(53, 214, 232, 0.45);
+        background: #0e1c2a;
+      }
+      select:focus-visible,
+      .btn:focus-visible {
+        border-color: var(--cyan);
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 0;
+        font-size: 11px;
+        color: var(--text);
+        border-bottom: 1px dashed rgba(33, 58, 81, 0.45);
+      }
+      .toggle-row:last-child {
+        border-bottom: 0;
+      }
+      .switch {
+        position: relative;
+        width: 32px;
+        height: 17px;
+        flex: 0 0 auto;
+      }
+      .switch input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
+      }
+      .switch span {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: #17293a;
+        border: 1px solid #24405a;
+        transition: background 0.18s;
+        pointer-events: none;
+      }
+      .switch span::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #7f95a9;
+        transition: transform 0.18s, background 0.18s;
+      }
+      .switch input:checked + span {
+        background: rgba(53, 214, 232, 0.25);
+        border-color: rgba(53, 214, 232, 0.6);
+      }
+      .switch input:checked + span::after {
+        transform: translateX(14px);
+        background: #bff6ff;
+      }
+      .btn-reset {
+        margin-top: 10px;
+        font-size: 10.5px;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        background: transparent;
+      }
+
+      /* ------------------------------------------------------------------ KPI */
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .kpi {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(13, 24, 36, 0.94), rgba(8, 15, 23, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px 10px;
+      }
+      .kpi::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: var(--line-2);
+      }
+      .kpi.copper::before {
+        background: var(--copper);
+      }
+      .kpi.cyan::before {
+        background: var(--cyan);
+      }
+      .kpi.violet::before {
+        background: var(--violet);
+      }
+      .kpi.good::before {
+        background: var(--green);
+      }
+      .kpi.bad::before {
+        background: var(--rose);
+      }
+      .kpi.warn::before {
+        background: var(--amber);
+      }
+      .kpi-label {
+        font-size: 8.8px;
+        text-transform: uppercase;
+        letter-spacing: 0.11em;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .kpi-value {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 3px 0 2px;
+        line-height: 1.1;
+      }
+      .kpi-unit {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 3px;
+        letter-spacing: 0;
+      }
+      .kpi-sub {
+        font-size: 8.8px;
+        color: var(--dim);
+        line-height: 1.3;
+      }
+
+      /* ---------------------------------------------------------------- canvas */
+      .canvas-card {
+        overflow: hidden;
+      }
+      .canvas-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 13px;
+        border-bottom: 1px solid rgba(23, 41, 58, 0.9);
+      }
+      .canvas-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 10px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 650;
+      }
+      .canvas-title i {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 10px rgba(53, 214, 232, 0.8);
+      }
+      .canvas-tools {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .icon-btn {
+        width: 26px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        border: 1px solid var(--line-2);
+        background: #0b1521;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        padding: 0;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .icon-btn:hover {
+        color: var(--cyan);
+        border-color: rgba(53, 214, 232, 0.5);
+      }
+      #zoomLabel {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--dim);
+        min-width: 42px;
+        text-align: right;
+      }
+      .canvas-body {
+        position: relative;
+        background:
+          radial-gradient(700px 340px at 50% 0%, rgba(53, 214, 232, 0.05), transparent 70%),
+          #060c13;
+      }
+      .canvas-body::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        box-shadow: inset 0 0 70px 18px rgba(4, 8, 13, 0.55);
+      }
+      #canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 640px;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+      }
+      #canvas.is-panning {
+        cursor: grabbing;
+      }
+      .canvas-foot {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 13px;
+        border-top: 1px solid rgba(23, 41, 58, 0.8);
+        font-family: var(--mono);
+        font-size: 8.8px;
+        color: var(--dim);
+        flex-wrap: wrap;
+      }
+
+      /* SVG-Klassen */
+      .layer-line {
+        stroke: rgba(33, 58, 81, 0.7);
+        stroke-dasharray: 2 7;
+        stroke-width: 1;
+      }
+      .layer-tag {
+        fill: #405a6e;
+        font-family: var(--mono);
+        font-size: 7.6px;
+        letter-spacing: 0.1em;
+      }
+      .edge {
+        transition: opacity 0.18s;
+      }
+      .edge.is-dim {
+        opacity: 0.22;
+      }
+      .edge-glow {
+        fill: none;
+        opacity: 0.12;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: url(#glow);
+      }
+      .edge-line {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.92;
+      }
+      .edge.is-selected .edge-line {
+        opacity: 1;
+        filter: url(#glow);
+      }
+      .edge.is-selected .edge-glow {
+        opacity: 0.3;
+      }
+      .edge-hit {
+        fill: none;
+        stroke: transparent;
+        cursor: pointer;
+      }
+      .return-line {
+        fill: none;
+        stroke: #5f7b92;
+        stroke-dasharray: 4 5;
+        opacity: 0.5;
+        stroke-linejoin: round;
+      }
+      .fuse-glyph rect {
+        fill: #0a121c;
+        stroke: #6c8ba3;
+        stroke-width: 1;
+      }
+      .fuse-glyph line {
+        stroke: #cfe6f5;
+        stroke-width: 1.2;
+      }
+      .cable-label rect {
+        fill: rgba(6, 11, 17, 0.86);
+        stroke: rgba(33, 58, 81, 0.85);
+        stroke-width: 0.8;
+      }
+      .cable-label text {
+        font-family: var(--mono);
+        text-anchor: middle;
+        fill: #a9c2d6;
+        font-size: 8.6px;
+        letter-spacing: 0.02em;
+      }
+      .cable-label.is-strong rect {
+        stroke: rgba(53, 214, 232, 0.7);
+      }
+      .cable-label.is-strong text.cl-area {
+        fill: #d8f7ff;
+      }
+      .cable-label text.cl-fuse {
+        font-size: 7.6px;
+        fill: #7f95a9;
+      }
+      .node {
+        transition: opacity 0.18s;
+      }
+      .node.is-dim {
+        opacity: 0.3;
+      }
+      .node-card {
+        fill: url(#cardBg);
+        stroke: #22384e;
+        stroke-width: 1;
+      }
+      .node.is-selected .node-card {
+        fill: url(#cardBgSel);
+        stroke: #35d6e8;
+        stroke-width: 1.6;
+        filter: url(#glow);
+      }
+      .node-kind {
+        font-family: var(--mono);
+        font-size: 7.4px;
+        letter-spacing: 0.17em;
+        opacity: 0.9;
+      }
+      .node-title {
+        fill: #e6f1fa;
+        font-family: var(--sans);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .node-sep {
+        stroke: rgba(33, 58, 81, 0.75);
+        stroke-width: 0.8;
+      }
+      .node:hover .node-card {
+        stroke: rgba(53, 214, 232, 0.55);
+      }
+      .node-sub {
+        fill: #728ba0;
+        font-family: var(--mono);
+        font-size: 8.6px;
+      }
+      .node-volt {
+        font-family: var(--mono);
+        font-size: 10.6px;
+        font-weight: 600;
+      }
+      .node-drop {
+        font-family: var(--mono);
+        font-size: 8.2px;
+      }
+      .node-volt.ok,
+      .node-drop.ok {
+        fill: #7fd8b4;
+      }
+      .node-volt.warn,
+      .node-drop.warn {
+        fill: #f4b860;
+      }
+      .node-volt.err,
+      .node-drop.err {
+        fill: #fb7185;
+      }
+      .node-led {
+        opacity: 0.85;
+      }
+
+      /* ----------------------------------------------------------------- tabs */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        padding: 8px 10px 0;
+        border-bottom: 1px solid rgba(23, 41, 58, 0.9);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .tab-btn {
+        font-size: 10.5px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 8px 8px 0 0;
+        padding: 8px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        font-family: var(--sans);
+      }
+      .tab-btn:hover {
+        color: var(--text);
+      }
+      .tab-btn.is-active {
+        color: var(--text);
+        background: rgba(12, 22, 33, 0.95);
+        border-color: var(--line);
+        box-shadow: 0 1px 0 #0c1621 inset;
+      }
+      .tab-panel {
+        display: none;
+        padding: 10px 12px 12px;
+      }
+      .tab-panel.is-active {
+        display: block;
+        animation: fadein 0.22s ease;
+      }
+      @keyframes fadein {
+        from {
+          opacity: 0;
+          transform: translateY(3px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* --------------------------------------------------------------- tables */
+      .table-scroll {
+        max-height: 330px;
+        overflow: auto;
+        border: 1px solid rgba(23, 41, 58, 0.8);
+        border-radius: 9px;
+        scrollbar-width: thin;
+        scrollbar-color: #24405a transparent;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5px;
+        white-space: nowrap;
+      }
+      .data-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #0e1a26;
+        color: #8ea8bd;
+        font-size: 8.8px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        font-weight: 600;
+        text-align: right;
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line-2);
+      }
+      .data-table thead th:nth-child(-n + 2) {
+        text-align: left;
+      }
+      .data-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid rgba(23, 41, 58, 0.55);
+        text-align: right;
+        color: #c6d8e8;
+      }
+      .data-table td:nth-child(-n + 2) {
+        text-align: left;
+      }
+      .data-table tbody tr {
+        transition: background 0.12s;
+      }
+      .data-table tbody tr:hover {
+        background: rgba(53, 214, 232, 0.06);
+        cursor: pointer;
+      }
+      .data-table tbody tr.is-selected {
+        background: rgba(53, 214, 232, 0.1);
+        box-shadow: inset 2px 0 0 var(--cyan);
+      }
+      .data-table td.strong {
+        color: #f0f8ff;
+        font-weight: 600;
+      }
+      .data-table.compact td {
+        padding: 5px 8px;
+        font-size: 10px;
+      }
+      .table-note {
+        margin: 8px 2px 0;
+        font-size: 9.4px;
+        color: var(--dim);
+        line-height: 1.5;
+      }
+      .model-mark {
+        color: var(--amber);
+        margin-left: 1px;
+      }
+      .bar {
+        display: inline-block;
+        width: 44px;
+        height: 4px;
+        border-radius: 3px;
+        background: rgba(33, 58, 81, 0.9);
+        margin-right: 6px;
+        vertical-align: middle;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+      }
+      .panel-subtitle {
+        font-size: 9.4px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+        margin: 16px 2px 7px;
+      }
+
+      /* --------------------------------------------------------------- KKT */
+      .kkt-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 9px;
+      }
+      .kkt-card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 11px;
+        background: linear-gradient(180deg, rgba(14, 27, 40, 0.7), rgba(9, 17, 26, 0.6));
+      }
+      .kkt-card-title {
+        font-size: 8.6px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .kkt-big {
+        font-family: var(--mono);
+        font-size: 20px;
+        font-weight: 600;
+        margin: 4px 0 5px;
+      }
+      .kkt-big span {
+        font-size: 9.5px;
+        color: var(--dim);
+        margin-left: 3px;
+        font-weight: 400;
+      }
+      .kkt-card p {
+        margin: 0 0 7px;
+        font-size: 9.2px;
+        line-height: 1.45;
+        color: var(--dim);
+      }
+      .kkt-mini {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--dim);
+        border-top: 1px dashed rgba(33, 58, 81, 0.55);
+        padding-top: 5px;
+        margin-top: 4px;
+      }
+      .kkt-mini b {
+        color: #cfe4f4;
+        font-weight: 500;
+      }
+
+      /* ---------------------------------------------------------------- flags */
+      .flags {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 250px;
+        overflow: auto;
+      }
+      .flag {
+        display: grid;
+        grid-template-columns: 7px 46px 1fr;
+        gap: 7px;
+        align-items: start;
+        font-size: 10px;
+        line-height: 1.4;
+        color: #b9cddd;
+        padding: 6px 7px;
+        border-radius: 7px;
+        border: 1px solid rgba(23, 41, 58, 0.85);
+        background: rgba(10, 18, 28, 0.75);
+      }
+      .flag-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-top: 4px;
+        background: var(--muted);
+      }
+      .flag.ok .flag-dot {
+        background: var(--green);
+      }
+      .flag.warn .flag-dot {
+        background: var(--amber);
+      }
+      .flag.error .flag-dot {
+        background: var(--rose);
+      }
+      .flag.info .flag-dot {
+        background: var(--cyan);
+      }
+      .flag-code {
+        font-family: var(--mono);
+        font-size: 8.4px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .flag.error .flag-code {
+        color: var(--rose);
+      }
+      .flag.warn .flag-code {
+        color: var(--amber);
+      }
+      .flag.ok .flag-code {
+        color: var(--green);
+      }
+
+      /* -------------------------------------------------------------- solver */
+      .conv-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9.4px;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .spark {
+        width: 100%;
+        height: 56px;
+        margin: 6px 0 10px;
+        background: linear-gradient(180deg, rgba(53, 214, 232, 0.04), transparent);
+        border-radius: 6px;
+      }
+      .spark .bar {
+        fill: rgba(53, 214, 232, 0.42);
+      }
+      .spark .bar-last {
+        fill: var(--cyan);
+      }
+      .solver-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px 10px;
+      }
+      .solver-grid div {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 9.4px;
+        color: var(--dim);
+        padding: 3px 0;
+        border-bottom: 1px dashed rgba(33, 58, 81, 0.4);
+      }
+      .solver-grid b {
+        font-family: var(--mono);
+        font-weight: 500;
+        color: #cfe4f4;
+        white-space: nowrap;
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 10px;
+        margin-top: 10px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(23, 41, 58, 0.7);
+        font-size: 9.2px;
+        color: var(--muted);
+      }
+      .legend div {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .swatch {
+        width: 11px;
+        height: 3px;
+        border-radius: 2px;
+      }
+      .swatch-line {
+        width: 13px;
+        height: 0;
+        border-top: 1.5px dashed #5f7b92;
+      }
+
+      /* ----------------------------------------------------------- inspector */
+      .insp-head {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding-bottom: 9px;
+        margin-bottom: 7px;
+        border-bottom: 1px solid rgba(23, 41, 58, 0.8);
+      }
+      .insp-head span {
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+      .insp-head b {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .insp-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        max-height: 360px;
+        overflow: auto;
+      }
+      .insp-rows div {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 9.8px;
+        padding: 4px 0;
+        border-bottom: 1px dashed rgba(33, 58, 81, 0.35);
+      }
+      .insp-rows span {
+        color: var(--dim);
+      }
+      .insp-rows b {
+        font-family: var(--mono);
+        font-weight: 500;
+        color: #d4e7f6;
+        text-align: right;
+      }
+      .empty-inspector {
+        text-align: center;
+        padding: 14px 8px 18px;
+        color: var(--dim);
+      }
+      .empty-glyph {
+        font-size: 22px;
+        color: #2b455c;
+        margin-bottom: 6px;
+      }
+      .empty-inspector p {
+        font-size: 9.8px;
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      .model-notes {
+        font-size: 9.4px;
+        color: var(--dim);
+        line-height: 1.55;
+      }
+      .model-notes b {
+        color: #a8c1d5;
+        font-weight: 600;
+      }
+      .model-notes ul {
+        margin: 6px 0 0;
+        padding-left: 15px;
+      }
+      .model-notes li {
+        margin-bottom: 3px;
+      }
+
+      footer {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(23, 41, 58, 0.7);
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 9.2px;
+        color: var(--dim);
+      }
+
+      /* ----------------------------------------------------------- responsive */
+      @media (max-width: 1480px) {
+        .workspace {
+          grid-template-columns: 244px minmax(0, 1fr) 300px;
+        }
+        .kpis {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .kkt-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 1180px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+        .rail {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
+        }
+        .rail.right {
+          grid-template-columns: 1fr 1fr;
+        }
+        .topbar-meta {
+          display: none;
+        }
+      }
+      @media (max-width: 760px) {
+        .kpis {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .rail,
+        .rail.right {
+          grid-template-columns: 1fr;
+        }
+        .kkt-grid {
+          grid-template-columns: 1fr;
+        }
+        .brand-sub {
+          display: none;
+        }
+        .kpi-value {
+          font-size: 18px;
+        }
+        #canvas {
+          max-height: 420px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M3 7h5l3 10h5l5-10" stroke="#d98e58" stroke-width="1.6" stroke-linecap="round" />
+              <circle cx="3" cy="7" r="1.8" fill="#35d6e8" />
+              <circle cx="21" cy="7" r="1.8" fill="#d98e58" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">KUPFERWERK <span class="brand-ver">ENGINE 1.0</span></div>
+            <div class="brand-sub">KKT-Querschnittskaskade · Elektro-Thermik · Schutzkoordination</div>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <span id="scenarioTag" class="chip">—</span>
+          <span class="chip mono">MNA · DC-Power-Flow</span>
+          <span class="chip mono">Branch &amp; Bound</span>
+        </div>
+        <div class="topbar-right">
+          <span id="statusPill" class="status-pill ok"><span class="pulse"></span>SOLVER STARTET</span>
+          <span class="runtime mono" id="runtime">—</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="rail left">
+          <section class="card">
+            <div class="card-head">
+              <span class="card-title">Netz &amp; Randbedingungen</span>
+            </div>
+            <div class="card-body">
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="scenario">Szenario</label>
+                </div>
+                <select id="scenario" aria-label="Szenario"></select>
+                <div class="control-hint">Drei Referenznetze — vom handrechenbaren Papierbeispiel bis zur fünften Versorgungsstufe.</div>
+              </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="dropPct">Spannungsfall-Budget</label>
+                  <span class="control-value" id="dropPctOut">3,0 %</span>
+                </div>
+                <input id="dropPct" type="range" min="1" max="6" step="0.1" value="3" />
+                <div class="control-hint">Bezogen auf 12 V Nennspannung; gilt für den gesamten Pfad Wurzel → Blatt.</div>
+              </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="ambient">Umgebungstemperatur</label>
+                  <span class="control-value" id="ambientOut">25 °C</span>
+                </div>
+                <input id="ambient" type="range" min="15" max="60" step="1" value="25" />
+                <div class="control-hint">Wirkt über f<sub>T</sub> auf I<sub>z</sub> und über ΔT auf die Leitertemperatur.</div>
+              </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="lengthScale">Leitungslängen</label>
+                  <span class="control-value" id="lengthScaleOut">× 1,00</span>
+                </div>
+                <input id="lengthScale" type="range" min="0.5" max="2.5" step="0.05" value="1" />
+                <div class="control-hint">Skaliert alle Trassenlängen — zeigt die Sensitivität des Optimums.</div>
+              </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="contactScale">Kontakt-/Crimp-Widerstände</label>
+                  <span class="control-value" id="contactScaleOut">× 1,0</span>
+                </div>
+                <input id="contactScale" type="range" min="0" max="2" step="0.1" value="1" />
+                <div class="control-hint">0,1–0,8 mΩ je Klemmstelle — hier skaliert für die Empfindlichkeitsanalyse.</div>
+              </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="insulation">Isolierung</label>
+                </div>
+                <select id="insulation" aria-label="Isolierung">
+                  <option value="PVC">PVC · 70 °C · k = 115</option>
+                  <option value="XLPE">XLPE · 90 °C · k = 143</option>
+                </select>
+              </div>
+              <div class="toggle-row">
+                <span>Rückleiter-Paar zeigen</span>
+                <label class="switch"><input id="toggleReturn" type="checkbox" /><span></span></label>
+              </div>
+              <div class="toggle-row">
+                <span>Spannungs-Wärmekarte</span>
+                <label class="switch"><input id="toggleHeat" type="checkbox" checked /><span></span></label>
+              </div>
+              <button class="btn btn-reset" id="btnReset" type="button">↺ Standardwerte</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="card-title">Prüfbericht</span>
+            </div>
+            <div class="card-body">
+              <ul class="flags" id="flags"></ul>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><span class="card-title">Modellgrenzen</span></div>
+            <div class="card-body model-notes">
+              <b>Bewusste Annahmen, keine Normzitate:</b>
+              <ul>
+                <li>Temperaturkopplung stationär; Lasten als Leistungs- oder Stromkonstant.</li>
+                <li>Schmelz-Zeit-Kennlinien über I²t-Modellparameter (UNVERIFIED).</li>
+                <li>Batterie als Norton-Quelle mit R<sub>i</sub> + Shunt; keine Serienstrings.</li>
+                <li>95/120 mm² außerhalb des Repo-Normankers — als MODEL markiert.</li>
+                <li>Selektivität über Durchlassenergie, nicht über Zeit-Strom-Felder.</li>
+              </ul>
+            </div>
+          </section>
+        </aside>
+
+        <section class="mainpane">
+          <div class="kpis" id="kpis"></div>
+
+          <section class="card canvas-card">
+            <div class="canvas-head">
+              <div class="canvas-title"><i></i>Netzplan · hierarchisches Manhattan-Routing</div>
+              <div class="canvas-tools">
+                <span id="zoomLabel" class="mono">100 %</span>
+                <button class="icon-btn" id="btnZoomOut" type="button" title="Herauszoomen">−</button>
+                <button class="icon-btn" id="btnZoomIn" type="button" title="Hineinzoomen">+</button>
+                <button class="icon-btn" id="btnZoomFit" type="button" title="Ansicht zurücksetzen">⤢</button>
+              </div>
+            </div>
+            <div class="canvas-body">
+              <svg id="canvas" role="img" aria-label="Bordnetz-Schaltplan mit orthogonalen Trassen"></svg>
+            </div>
+            <div class="canvas-foot">
+              <span id="modelNote"></span>
+              <span>Klick = Details · Ziehen = Pan · Rad = Zoom</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <nav class="tabs" aria-label="Detailansichten">
+              <button class="tab-btn is-active" data-tab="edges" type="button">Kanten &amp; Thermik</button>
+              <button class="tab-btn" data-tab="nodes" type="button">Knoten &amp; Kurzschluss</button>
+              <button class="tab-btn" data-tab="protection" type="button">Schutz &amp; Selektivität</button>
+              <button class="tab-btn" data-tab="kkt" type="button">KKT-Optimum &amp; B&amp;B</button>
+            </nav>
+            <div class="tab-panel is-active" id="panel-edges" data-panel="edges"></div>
+            <div class="tab-panel" id="panel-nodes" data-panel="nodes"></div>
+            <div class="tab-panel" id="panel-protection" data-panel="protection"></div>
+            <div class="tab-panel" id="panel-kkt" data-panel="kkt"></div>
+          </section>
+        </section>
+
+        <aside class="rail right">
+          <section class="card">
+            <div class="card-head"><span class="card-title">Solver-Konvergenz</span></div>
+            <div class="card-body" id="solverPanel"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><span class="card-title">Inspektor</span></div>
+            <div class="card-body" id="inspector"></div>
+          </section>
+        </aside>
+      </main>
+
+      <footer>
+        <span>KUPFERWERK ENGINE · <span class="mono">CAMP</span> — mathematischer Kernel, kein Produktiv-Planer. Alle Normwerte mit Quelle im Whitepaper; Modellannahmen ausgewiesen.</span>
+        <span class="mono">Deterministisch · keine Zufallszahlen · alle Beträge in SI</span>
+      </footer>
+    </div>
+
+    <script>
+      /*
+ * CAMP — Copper-Optimal Routing Kernel (v1.0)
+ * -----------------------------------------------------------------------------
+ * Numerischer Kern einer 12-V-Bordnetz-Engine:
+ *   §1 Werkstoff-/Normdaten        §5 Elektrostatik (MNA, DC Power Flow)
+ *   §2 Referenznetz                §6 Elektro-thermischer Fixpunkt
+ *   §3 Numerik                     §7 KKT-Kaskade + Branch-and-Bound
+ *   §4 Topologie                   §8 Kurzschluss / I²t / Selektivität
+ *
+ * Reine Funktionen: kein DOM, kein Store, kein Zufall. Im Browser und unter
+ * Node identisch lauffähig.
+ */
+const CAMPEngine = (() => {
+  'use strict';
+
+  // ===========================================================================
+  // §1 Werkstoff- und Normdaten
+  // ===========================================================================
+
+  /** Normquerschnitte in mm² (DIN VDE 0298-4 Reihe). */
+  const A_NORM = Object.freeze([1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]);
+
+  /**
+   * Strombelastbarkeit Kupfer/PVC, Verlegeart B2, 2 belastete Adern, 30 °C.
+   * 1,5…70 mm² = Anker aus `lib/electrical.ts` (B2-Reihe).
+   * 95/120 mm² liegen außerhalb des Repo-Ankers → MODEL (nicht normzitiert).
+   */
+  const AMPACITY = Object.freeze({
+    1.5: 16.5,
+    2.5: 23,
+    4: 30,
+    6: 38,
+    10: 52,
+    16: 69,
+    25: 90,
+    35: 111,
+    50: 136,
+    70: 172,
+    95: 207,
+    120: 239,
+  });
+
+  /** Querschnitte mit belegtem Repo-Anker. */
+  const AMPACITY_VERIFIED = Object.freeze([1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70]);
+
+  /** Häufungsfaktoren k_B(n), n = 1…9 (DIN VDE 0298-4, Repo-Transkription). */
+  const GROUP_FACTORS = Object.freeze([null, 1.0, 0.8, 0.7, 0.65, 0.6, 0.57, 0.54, 0.52, 0.5]);
+
+  /** ρ Kupfer 20 °C in Ω·mm²/m (konservativer Planungswert, Repo). */
+  const RHO20 = 0.0175;
+  /** κ_eff = 1/ρ20 = 57,143 m/(Ω·mm²) — EIN Kupferwert im ganzen Kernel. */
+  const GAMMA20 = 1 / RHO20;
+  /** Temperaturkoeffizient Kupfer in 1/K. */
+  const ALPHA20 = 0.00393;
+  /** Bezugs-Umgebungstemperatur der Belastbarkeitstabelle in °C. */
+  const T_REF_RATING = 30;
+  /** Grenztemperatur der Isolierung in °C. */
+  const T_MAX_INSULATION = Object.freeze({ PVC: 70, XLPE: 90 });
+  /** Adiabatischer Beiwert k in A·√s/mm² (IEC 60364-4-43). */
+  const K_INSULATION = Object.freeze({ PVC: 115, XLPE: 143 });
+  /** Kupfermasse: 8,96 g je (mm²·m). */
+  const CU_DENSITY = 8.96;
+
+  const U_NOMINAL = 12;
+  const VOLTAGE_DROP_PCT_PLAN = 3;
+
+  /**
+   * Schutzorgane. Abschaltvermögen = Repo-Anker (`lib/shortCircuit.ts`,
+   * Herstellerdatenblätter ≤ 32 V DC; MRBF 10 kA @ 14 V DC).
+   * t2x = Modellzeit bei 2·I_n bis Schmelzbeginn (s) → Vorlichtbogen-I²t.
+   * t2x ist ein ENGINEERING-MODEL, kein Normzitat.
+   */
+  const FUSE_TYPES = Object.freeze({
+    ato: { label: 'ATO / Blade', short: 'ATO', maxA: 40, minA: 1, breakingA: 1000, t2x: 0.35, tier: 0 },
+    midi: { label: 'MIDI', short: 'MIDI', maxA: 200, minA: 30, breakingA: 2000, t2x: 1.2, tier: 1 },
+    mega: { label: 'MEGA', short: 'MEGA', maxA: 500, minA: 60, breakingA: 2000, t2x: 1.5, tier: 2 },
+    mrbf: { label: 'MRBF (Pol)', short: 'MRBF', maxA: 300, minA: 30, breakingA: 10000, t2x: 1.0, tier: 3 },
+    classT: { label: 'Class T', short: 'Class T', maxA: 400, minA: 110, breakingA: 20000, t2x: 0.8, tier: 4 },
+    anl: { label: 'ANL', short: 'ANL', maxA: 750, minA: 80, breakingA: 6000, t2x: 2.0, tier: 2 },
+  });
+
+  const FUSE_SIZES = Object.freeze([
+    1, 2, 3, 4, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 125, 150, 175, 200, 225, 250, 300,
+    350, 400, 450, 500, 600,
+  ]);
+
+  /** Eskalationsreihenfolge nach Abschaltvermögen (aufsteigend). */
+  const FUSE_ESCALATION = Object.freeze(['ato', 'midi', 'mega', 'anl', 'mrbf', 'classT']);
+
+  // ===========================================================================
+  // §2 Referenznetz (mehrstufig, mit leistungskonstanten Wandlern)
+  // ===========================================================================
+
+  const DEFAULT_NETWORK = Object.freeze({
+    name: 'Kastenwagen · 4-stufig',
+    battery: {
+      label: 'LiFePO4 4S · 280 Ah',
+      uoc: 13.2,
+      uMax: 14.4,
+      uMin: 11.0,
+      riMilliohm: 1.2,
+      shuntMilliohm: 0.1,
+    },
+    ambientC: 25,
+    nodes: [
+      { id: 'bat', label: 'Batteriebank', kind: 'battery', layer: 0, contactMilliohm: 0 },
+      { id: 'bus', label: 'Haupt-Busbar', kind: 'busbar', layer: 1, contactMilliohm: 0.15 },
+      { id: 'disA', label: 'Sub-Verteiler A', kind: 'distributor', layer: 2, contactMilliohm: 0.25 },
+      { id: 'disB', label: 'Sub-Verteiler B', kind: 'distributor', layer: 2, contactMilliohm: 0.25 },
+      {
+        id: 'fridge',
+        label: 'Kompressor-Kühlbox',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.3,
+        load: { powerW: 60, efficiency: 0.9, mode: 'cp' },
+      },
+      {
+        id: 'heater',
+        label: 'Diesel-Standheizung',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.3,
+        load: { powerW: 45, efficiency: 0.9, mode: 'cp' },
+      },
+      {
+        id: 'led',
+        label: 'LED-Beleuchtung',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.2,
+        load: { powerW: 24, efficiency: 1.0, mode: 'cc' },
+      },
+      {
+        id: 'pump',
+        label: 'Wasserpumpe',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.3,
+        load: { powerW: 90, efficiency: 0.85, mode: 'cc' },
+      },
+      {
+        id: 'inv',
+        label: 'Wechselrichter 600 W',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.2,
+        load: { powerW: 600, efficiency: 0.88, mode: 'cp' },
+      },
+      {
+        id: 'booster',
+        label: 'DC-DC-Ladebooster',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.2,
+        load: { powerW: 300, efficiency: 0.92, mode: 'cp' },
+      },
+    ],
+    edges: [
+      { id: 'e1', from: 'bat', to: 'bus', lengthM: 1.0, bundle: 1, insulation: 'PVC' },
+      { id: 'e2', from: 'bus', to: 'disA', lengthM: 2.2, bundle: 2, insulation: 'PVC' },
+      { id: 'e3', from: 'bus', to: 'disB', lengthM: 1.8, bundle: 2, insulation: 'PVC' },
+      { id: 'e4', from: 'disA', to: 'fridge', lengthM: 4.5, bundle: 2, insulation: 'PVC' },
+      { id: 'e5', from: 'disA', to: 'heater', lengthM: 5.0, bundle: 2, insulation: 'PVC' },
+      { id: 'e6', from: 'disA', to: 'led', lengthM: 6.0, bundle: 2, insulation: 'PVC' },
+      { id: 'e7', from: 'disB', to: 'pump', lengthM: 4.0, bundle: 2, insulation: 'PVC' },
+      { id: 'e8', from: 'disB', to: 'inv', lengthM: 1.2, bundle: 1, insulation: 'PVC' },
+      { id: 'e9', from: 'disB', to: 'booster', lengthM: 1.5, bundle: 1, insulation: 'PVC' },
+    ],
+  });
+
+  /**
+   * Zweites Szenario: vierstufige Versorgungskette bis zu den Lasten. Genau
+   * hier versagt die Einzelstrang-Rechnung systematisch, weil sich pro Stufe
+   * ein eigenes 3-%-Budget aufaddiert.
+   */
+  const DEEP_CHAIN_NETWORK = Object.freeze({
+    name: 'Tiefe Kette · 5 Stufen',
+    battery: {
+      label: 'LiFePO4 4S · 200 Ah',
+      uoc: 13.2,
+      uMax: 14.4,
+      uMin: 11.0,
+      riMilliohm: 1.8,
+      shuntMilliohm: 0.1,
+    },
+    ambientC: 25,
+    nodes: [
+      { id: 'bat', label: 'Batteriebank', kind: 'battery', layer: 0, contactMilliohm: 0 },
+      { id: 'bus', label: 'Haupt-Busbar', kind: 'busbar', layer: 1, contactMilliohm: 0.2 },
+      { id: 'subA', label: 'Verteiler Heck', kind: 'distributor', layer: 2, contactMilliohm: 0.3 },
+      { id: 'subB', label: 'Unterverteiler Küche', kind: 'distributor', layer: 3, contactMilliohm: 0.4 },
+      {
+        id: 'fridge2',
+        label: 'Kühlbox',
+        kind: 'load',
+        layer: 4,
+        contactMilliohm: 0.3,
+        load: { powerW: 60, efficiency: 0.9, mode: 'cp' },
+      },
+      {
+        id: 'led2',
+        label: 'LED-Leiste',
+        kind: 'load',
+        layer: 4,
+        contactMilliohm: 0.2,
+        load: { powerW: 30, efficiency: 1.0, mode: 'cc' },
+      },
+      {
+        id: 'pump2',
+        label: 'Wasserpumpe',
+        kind: 'load',
+        layer: 4,
+        contactMilliohm: 0.3,
+        load: { powerW: 90, efficiency: 0.85, mode: 'cc' },
+      },
+      {
+        id: 'heat2',
+        label: 'Standheizung',
+        kind: 'load',
+        layer: 4,
+        contactMilliohm: 0.3,
+        load: { powerW: 45, efficiency: 0.9, mode: 'cp' },
+      },
+      {
+        id: 'inv2',
+        label: 'Wechselrichter 400 W',
+        kind: 'load',
+        layer: 3,
+        contactMilliohm: 0.2,
+        load: { powerW: 400, efficiency: 0.88, mode: 'cp' },
+      },
+    ],
+    edges: [
+      { id: 'd1', from: 'bat', to: 'bus', lengthM: 1.0, bundle: 1, insulation: 'PVC' },
+      { id: 'd2', from: 'bus', to: 'subA', lengthM: 2.8, bundle: 2, insulation: 'PVC' },
+      { id: 'd3', from: 'subA', to: 'subB', lengthM: 3.0, bundle: 2, insulation: 'PVC' },
+      { id: 'd4', from: 'subB', to: 'fridge2', lengthM: 4.0, bundle: 2, insulation: 'PVC' },
+      { id: 'd5', from: 'subB', to: 'led2', lengthM: 8.0, bundle: 2, insulation: 'PVC' },
+      { id: 'd6', from: 'subB', to: 'pump2', lengthM: 5.0, bundle: 2, insulation: 'PVC' },
+      { id: 'd7', from: 'subB', to: 'heat2', lengthM: 6.0, bundle: 2, insulation: 'PVC' },
+      { id: 'd8', from: 'subA', to: 'inv2', lengthM: 1.5, bundle: 1, insulation: 'PVC' },
+    ],
+  });
+
+  /**
+   * Handrechenbares Papierbeispiel: ein Stamm und vier Zweige mit reinen
+   * Stromlasten (keine Leistungskonstanten, keine Kontaktwiderstände), damit
+   * jede Zahl im Whitepaper von Hand nachvollziehbar bleibt.
+   */
+  const PAPER_NETWORK = Object.freeze({
+    name: 'Papierbeispiel · Stamm + 4 Zweige',
+    battery: { label: 'Batterie 4S', uoc: 13.2, uMax: 14.4, uMin: 11.0, riMilliohm: 2.0, shuntMilliohm: 0.1 },
+    ambientC: 25,
+    nodes: [
+      { id: 'bat', label: 'Batterie', kind: 'battery', layer: 0, contactMilliohm: 0 },
+      { id: 'bus', label: 'Busbar', kind: 'busbar', layer: 1, contactMilliohm: 0 },
+      { id: 'la', label: 'Last A', kind: 'load', layer: 2, contactMilliohm: 0, load: { powerW: 240, efficiency: 1, mode: 'cc' } },
+      { id: 'lb', label: 'Last B', kind: 'load', layer: 2, contactMilliohm: 0, load: { powerW: 120, efficiency: 1, mode: 'cc' } },
+      { id: 'lc', label: 'Last C', kind: 'load', layer: 2, contactMilliohm: 0, load: { powerW: 180, efficiency: 1, mode: 'cc' } },
+      { id: 'ld', label: 'Last D', kind: 'load', layer: 2, contactMilliohm: 0, load: { powerW: 180, efficiency: 1, mode: 'cc' } },
+    ],
+    edges: [
+      { id: 't1', from: 'bat', to: 'bus', lengthM: 2.0, bundle: 1, insulation: 'PVC' },
+      { id: 'b1', from: 'bus', to: 'la', lengthM: 5.0, bundle: 1, insulation: 'PVC' },
+      { id: 'b2', from: 'bus', to: 'lb', lengthM: 5.0, bundle: 1, insulation: 'PVC' },
+      { id: 'b3', from: 'bus', to: 'lc', lengthM: 5.0, bundle: 1, insulation: 'PVC' },
+      { id: 'b4', from: 'bus', to: 'ld', lengthM: 5.0, bundle: 1, insulation: 'PVC' },
+    ],
+  });
+
+  const SCENARIOS = Object.freeze([
+    { id: 'camper', label: DEFAULT_NETWORK.name, network: DEFAULT_NETWORK },
+    { id: 'chain', label: DEEP_CHAIN_NETWORK.name, network: DEEP_CHAIN_NETWORK },
+    { id: 'paper', label: PAPER_NETWORK.name, network: PAPER_NETWORK },
+  ]);
+
+  // ===========================================================================
+  // §3 Numerische Helfer
+  // ===========================================================================
+
+  const clamp = (x, lo, hi) => (x < lo ? lo : x > hi ? hi : x);
+  const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+  const round = (x, digits) => {
+    const f = 10 ** digits;
+    return Math.round(x * f) / f;
+  };
+
+  function normUp(x) {
+    for (const a of A_NORM) if (a >= x - 1e-12) return a;
+    return A_NORM[A_NORM.length - 1];
+  }
+
+  function normDown(x) {
+    let best = A_NORM[0];
+    for (const a of A_NORM) if (a <= x + 1e-12) best = a;
+    return best;
+  }
+
+  function ampacityOf(a) {
+    return AMPACITY[a] ?? 0;
+  }
+
+  function groupFactor(n) {
+    const value = GROUP_FACTORS[n];
+    if (value === undefined || value === null) {
+      throw new RangeError(`groupFactor: n = ${n} außerhalb der Tabelle (1…9)`);
+    }
+    return value;
+  }
+
+  /** f_T = sqrt((T_max − T_amb)/(T_max − 30 °C)). */
+  function ambientDerating(insulation, ambientC) {
+    const tMax = T_MAX_INSULATION[insulation];
+    if (!tMax) throw new RangeError(`ambientDerating: Isolierung ${insulation} unbekannt`);
+    return Math.sqrt(clamp((tMax - ambientC) / (tMax - T_REF_RATING), 0, 1));
+  }
+
+  /** I_z,eff = I_z(A)·f_H·f_T. */
+  function effectiveAmpacity(a, edge, ambientC) {
+    return ampacityOf(a) * groupFactor(edge.bundle) * ambientDerating(edge.insulation, ambientC);
+  }
+
+  function nextFuse(I) {
+    for (const s of FUSE_SIZES) if (s >= I - 1e-9) return s;
+    return FUSE_SIZES[FUSE_SIZES.length - 1];
+  }
+
+  // ===========================================================================
+  // §4 Topologie
+  // ===========================================================================
+
+  function buildTopology(network) {
+    const nodes = network.nodes;
+    const edges = network.edges;
+    const index = new Map(nodes.map((node, i) => [node.id, i]));
+    const n = nodes.length;
+    const m = edges.length;
+
+    const parentEdge = new Array(n).fill(-1);
+    const parentNode = new Array(n).fill(-1);
+    const children = Array.from({ length: n }, () => []);
+    const outgoingEdge = Array.from({ length: n }, () => []);
+    const depth = new Array(n).fill(-1);
+
+    edges.forEach((edge, ei) => {
+      const a = index.get(edge.from);
+      const b = index.get(edge.to);
+      if (a === undefined || b === undefined) throw new Error(`Kante ${edge.id}: unbekannter Knoten`);
+      if (parentEdge[b] !== -1) throw new Error(`Knoten ${edge.to} hat zwei Elternkanten — kein Baum`);
+      parentEdge[b] = ei;
+      parentNode[b] = a;
+      children[a].push(b);
+      outgoingEdge[a].push(ei);
+    });
+
+    const root = 0;
+    if (nodes[root].kind !== 'battery') throw new Error('Knoten 0 muss die Batteriebank sein');
+    depth[root] = 0;
+    const order = [root];
+    for (let i = 0; i < order.length; i += 1) {
+      for (const w of children[order[i]]) {
+        if (depth[w] !== -1) throw new Error('Netz enthält einen Zyklus');
+        depth[w] = depth[order[i]] + 1;
+        order.push(w);
+      }
+    }
+    if (order.length !== n) throw new Error('Netz ist nicht zusammenhängend');
+
+    // Nachfahrenmengen je Knoten (absteigende BFS-Reihenfolge).
+    const descendants = Array.from({ length: n }, () => []);
+    for (let i = order.length - 1; i >= 1; i -= 1) {
+      const v = order[i];
+      descendants[parentNode[v]] = descendants[parentNode[v]].concat([v], descendants[v]);
+    }
+
+    // Pfad Wurzel → Knoten.
+    const pathEdges = Array.from({ length: n }, () => []);
+    for (let i = 1; i < order.length; i += 1) {
+      const v = order[i];
+      pathEdges[v] = pathEdges[parentNode[v]].concat([parentEdge[v]]);
+    }
+
+    const sinks = nodes.map((node, i) => (node.load && node.load.powerW > 0 ? i : -1)).filter((i) => i >= 0);
+
+    // Senken je Kante (Teilbaum) und Kanten je Senke (Pfad).
+    const edgeSinks = Array.from({ length: m }, () => []);
+    sinks.forEach((v) => {
+      for (const e of pathEdges[v]) edgeSinks[e].push(v);
+    });
+
+    const nodeSinkIndex = new Map(sinks.map((v, i) => [v, i]));
+
+    return {
+      n,
+      m,
+      index,
+      root,
+      parentEdge,
+      parentNode,
+      children,
+      outgoingEdge,
+      depth,
+      order,
+      descendants,
+      pathEdges,
+      sinks,
+      edgeSinks,
+      nodeSinkIndex,
+    };
+  }
+
+  // ===========================================================================
+  // §5 Elektrostatischer Zustand (MNA + DC Power Flow)
+  // ===========================================================================
+
+  function demandCurrent(node, u) {
+    const load = node.load;
+    if (!load || load.powerW <= 0) return 0;
+    if (load.mode === 'cc') {
+      const unom = load.nominalV ?? U_NOMINAL;
+      return load.powerW / (load.efficiency * unom);
+    }
+    return load.powerW / (load.efficiency * Math.max(u, 0.5));
+  }
+
+  /** Dichte Gauß-Elimination mit Spaltenpivotisierung. */
+  function solveLinear(G, rhs) {
+    const n = rhs.length;
+    const A = G.map((row, i) => row.concat([rhs[i]]));
+    for (let col = 0; col < n; col += 1) {
+      let pivot = col;
+      for (let r = col + 1; r < n; r += 1) {
+        if (Math.abs(A[r][col]) > Math.abs(A[pivot][col])) pivot = r;
+      }
+      if (Math.abs(A[pivot][col]) < 1e-15) throw new Error('MNA: singuläre Matrix');
+      if (pivot !== col) {
+        const tmp = A[pivot];
+        A[pivot] = A[col];
+        A[col] = tmp;
+      }
+      const piv = A[col][col];
+      for (let r = col + 1; r < n; r += 1) {
+        const f = A[r][col] / piv;
+        if (f === 0) continue;
+        for (let c = col; c <= n; c += 1) A[r][c] -= f * A[col][c];
+      }
+    }
+    const x = new Array(n).fill(0);
+    for (let r = n - 1; r >= 0; r -= 1) {
+      let s = A[r][n];
+      for (let c = r + 1; c < n; c += 1) s -= A[r][c] * x[c];
+      x[r] = s / A[r][r];
+    }
+    return x;
+  }
+
+  function contactOhm(a, b) {
+    return ((a.contactMilliohm ?? 0) + (b.contactMilliohm ?? 0)) / 1000;
+  }
+
+  /**
+   * Elektrischer Zustand bei festen Leitertemperaturen T.
+   * Batterie als Norton-Äquivalent (U_oc/R_i ∥ R_i + R_shunt), Lasten als
+   * spannungsabhängige Konduktanzen (Leistungskonstant → DC Power Flow).
+   */
+  function solveElectrical(network, topo, A, T, options) {
+    const { n, m, index, root, edgeSinks } = topo;
+    const nodes = network.nodes;
+    const battery = network.battery;
+    const rInt = (battery.riMilliohm + battery.shuntMilliohm) / 1000;
+    const maxIter = options.maxElectricalIterations;
+    const tol = options.electricalTolerance;
+
+    let u = new Array(n).fill(battery.uoc);
+    let iterations = 0;
+    let residual = Infinity;
+    const resistance = new Array(m).fill(0);
+    const conductorR = new Array(m).fill(0);
+    const contactR = new Array(m).fill(0);
+
+    for (let iter = 1; iter <= maxIter; iter += 1) {
+      iterations = iter;
+      for (let e = 0; e < m; e += 1) {
+        const edge = network.edges[e];
+        const na = nodes[index.get(edge.from)];
+        const nb = nodes[index.get(edge.to)];
+        const length = edge.lengthM * options.lengthScale;
+        const rCu = (2 * RHO20 * length * (1 + ALPHA20 * (T[e] - 20))) / A[e];
+        const rC = contactOhm(na, nb);
+        conductorR[e] = rCu;
+        contactR[e] = rC;
+        resistance[e] = rCu + rC;
+      }
+
+      const G = Array.from({ length: n }, () => new Array(n).fill(0));
+      const rhs = new Array(n).fill(0);
+      G[root][root] += 1 / rInt;
+      rhs[root] += battery.uoc / rInt;
+
+      for (let e = 0; e < m; e += 1) {
+        const edge = network.edges[e];
+        const a = index.get(edge.from);
+        const b = index.get(edge.to);
+        const g = 1 / resistance[e];
+        G[a][a] += g;
+        G[b][b] += g;
+        G[a][b] -= g;
+        G[b][a] -= g;
+      }
+
+      for (let v = 0; v < n; v += 1) {
+        const node = nodes[v];
+        if (!node.load || node.load.powerW <= 0) continue;
+        const uSafe = Math.max(u[v], 0.5);
+        const d = demandCurrent(node, node.load.mode === 'cp' ? uSafe : battery.uoc);
+        G[v][v] += d / uSafe;
+      }
+
+      const next = solveLinear(G, rhs);
+      residual = 0;
+      for (let v = 0; v < n; v += 1) residual = Math.max(residual, Math.abs(next[v] - u[v]));
+      u = next;
+      if (residual < tol) break;
+    }
+
+    const nodeCurrent = nodes.map((node, v) => demandCurrent(node, u[v]));
+    const I = new Array(m).fill(0);
+    for (let e = 0; e < m; e += 1) {
+      let s = 0;
+      for (const v of edgeSinks[e]) s += nodeCurrent[v];
+      I[e] = s;
+    }
+
+    const uRoot = u[root];
+    const iRoot = (battery.uoc - uRoot) / rInt;
+    return {
+      u,
+      I,
+      T: T.slice(),
+      resistance,
+      conductorR,
+      contactR,
+      iterations,
+      residual,
+      iRoot,
+      totalDemand: sum(nodeCurrent),
+    };
+  }
+
+  // ===========================================================================
+  // §6 Elektro-thermischer Fixpunkt
+  // ===========================================================================
+
+  /**
+   * T_e = T_amb + (T_max − T_amb)·(I_e/(I_z(A_e)·f_H))².
+   *
+   * Die Prompt-Form mit konstantem ΔT_max und f_T im Nenner gilt exakt nur für
+   * T_amb = 30 °C. Für beliebige T_amb wird ΔT_max ambientabhängig gesetzt;
+   * das ist die algebraisch erzwungene Korrektur, damit
+   * T(I_z·f_H·f_T) = T_max exakt gilt (f_T² = (T_max−T_amb)/(T_max−30)).
+   */
+  function edgeTemperature(edge, area, current, ambientC) {
+    const tMax = T_MAX_INSULATION[edge.insulation];
+    const iz = ampacityOf(area) * groupFactor(edge.bundle);
+    if (iz <= 0) return ambientC;
+    const ratio = Math.abs(current) / iz;
+    return clamp(ambientC + (tMax - ambientC) * ratio * ratio, ambientC, 400);
+  }
+
+  function solveElectroThermal(network, topo, A, options) {
+    const m = topo.m;
+    const ambient = options.ambientC;
+    const T = network.edges.map(() => ambient);
+    const history = [];
+    const relax = options.thermalRelaxation;
+    let residual = Infinity;
+    let iterations = 0;
+    let state = null;
+
+    for (let k = 1; k <= options.maxThermalIterations; k += 1) {
+      iterations = k;
+      state = solveElectrical(network, topo, A, T, options);
+      let maxDelta = 0;
+      const next = new Array(m);
+      for (let e = 0; e < m; e += 1) {
+        next[e] = edgeTemperature(network.edges[e], A[e], state.I[e], ambient);
+        maxDelta = Math.max(maxDelta, Math.abs(next[e] - T[e]));
+      }
+      residual = maxDelta;
+      history.push(maxDelta);
+      for (let e = 0; e < m; e += 1) T[e] += relax * (next[e] - T[e]);
+      if (maxDelta < options.thermalTolerance) break;
+    }
+
+    const finalState = solveElectrical(network, topo, A, T, options);
+    const contraction =
+      history.length > 1 ? history[history.length - 1] / Math.max(history[history.length - 2], 1e-12) : 0;
+    return {
+      ...finalState,
+      T,
+      thermalIterations: iterations,
+      thermalResidual: residual,
+      thermalHistory: history,
+      contraction,
+    };
+  }
+
+  // ===========================================================================
+  // §7 KKT-Kaskade & Branch-and-Bound
+  // ===========================================================================
+
+  /**
+   * Problemdaten für feste Ströme und Temperaturen:
+   *   c_e = 2·l_e·ρ_Cu        (Kupfermasse in g)
+   *   b_e = 2·l_e·I_e·(1+αΔT)/κ  (Spannungsabfall · mm²)
+   *   Budget  B_v = ΔU_zul − Σ Kontaktabfälle auf dem Pfad
+   */
+  function buildConstraintData(network, topo, state, options) {
+    const m = topo.m;
+    const c = new Array(m);
+    const b = new Array(m);
+    const floor = new Array(m);
+    const contactDrop = new Array(m).fill(0);
+    const ambient = options.ambientC;
+
+    for (let e = 0; e < m; e += 1) {
+      const edge = network.edges[e];
+      const length = edge.lengthM * options.lengthScale;
+      c[e] = 2 * length * CU_DENSITY;
+      const hotFactor = 1 + ALPHA20 * (state.T[e] - 20);
+      b[e] = (2 * length * Math.max(state.I[e], 0) * hotFactor) / GAMMA20;
+      floor[e] = A_NORM[0];
+      contactDrop[e] = Math.max(state.I[e], 0) * state.contactR[e];
+    }
+    return { c, b, floor, contactDrop };
+  }
+
+  /**
+   * Exakte Lösung der konvexen Relaxation (duale Koordinaten-Aszension).
+   *
+   * Bei festen λ_u (u≠v) ist der Pfadabfall
+   *   ΔU_v(λ_v) = const + Σ_{e∈P(v)} b_e / max(a_e, √(b_e(λ_v+M_e)/c_e))
+   * streng monoton fallend in λ_v → Bisektion. Die Box-Schranke a_e (Norm-
+   * Minimum) erzeugt die KKT-Bedingung für aktive Querschnitts-Untergrenzen.
+   */
+  function continuousRelaxation(cd, topo, sinks, budgets, fixed, options) {
+    const m = topo.m;
+    const tiny = 1e-12;
+    const lambda = new Array(sinks.length).fill(0);
+    const Lambda = new Array(m).fill(0);
+    const areas = new Array(m).fill(0);
+
+    let fixedCost = 0;
+    const fixedDrop = new Array(sinks.length).fill(0);
+    for (let e = 0; e < m; e += 1) {
+      if (fixed[e] !== null) {
+        areas[e] = fixed[e];
+        fixedCost += cd.c[e] * fixed[e];
+      }
+    }
+    sinks.forEach((v, li) => {
+      for (const e of topo.pathEdges[v]) {
+        if (fixed[e] !== null) fixedDrop[li] += cd.b[e] / fixed[e];
+      }
+    });
+
+    const residualBudget = budgets.map((B, li) => B - fixedDrop[li]);
+    if (residualBudget.some((B) => B < -1e-12)) {
+      return { feasible: false, cost: Infinity, bound: Infinity, areas, lambda, sweeps: 0 };
+    }
+
+    for (let e = 0; e < m; e += 1) if (fixed[e] === null) areas[e] = cd.floor[e];
+
+    let sweeps = 0;
+    for (let sweep = 0; sweep < options.maxSweeps; sweep += 1) {
+      sweeps = sweep + 1;
+      let maxRel = 0;
+      for (let li = 0; li < sinks.length; li += 1) {
+        const v = sinks[li];
+        const path = topo.pathEdges[v];
+        // Ziel ist der VOLLE Pfadabfall (feste + freie Kanten), nicht das
+        // Restbudget — fixedDrop steckt bereits in dropAt.
+        const target = budgets[li];
+        if (target <= 1e-12) {
+          const bump = 1e-6;
+          for (const e of path) Lambda[e] += bump;
+          lambda[li] += bump;
+          continue;
+        }
+        const old = lambda[li];
+        const dropAt = (lv) => {
+          let d = fixedDrop[li];
+          for (const e of path) {
+            if (fixed[e] !== null) continue;
+            const me = Lambda[e] - old;
+            const aa = Math.sqrt((cd.b[e] * Math.max(lv + me, tiny)) / cd.c[e]);
+            d += cd.b[e] / Math.max(aa, cd.floor[e]);
+          }
+          return d;
+        };
+
+        let next;
+        if (dropAt(0) <= target) {
+          next = 0;
+        } else {
+          let hi = 1e-6;
+          for (let k = 0; k < 200 && dropAt(hi) > target; k += 1) hi *= 2;
+          let lo = 0;
+          for (let k = 0; k < 40; k += 1) {
+            const mid = Math.sqrt((lo + tiny) * (hi + tiny));
+            if (dropAt(mid) > target) lo = mid;
+            else hi = mid;
+          }
+          next = hi;
+        }
+
+        const delta = next - old;
+        lambda[li] = next;
+        for (const e of path) Lambda[e] += delta;
+        if (old > 0) maxRel = Math.max(maxRel, Math.abs(delta) / old);
+        else if (next > 0) maxRel = 1;
+      }
+
+      for (let e = 0; e < m; e += 1) {
+        if (fixed[e] !== null) continue;
+        const aa = Math.sqrt((cd.b[e] * Math.max(Lambda[e], tiny)) / cd.c[e]);
+        areas[e] = Math.max(aa, cd.floor[e]);
+      }
+      if (sweeps > 1 && maxRel < 1e-9) break;
+      // Duallücke als exaktes Konvergenzkriterium (billiger als λ-Vergleich).
+      if (sweeps > 2 && options.gapTolerance) {
+        let dualNow = 0;
+        for (let e = 0; e < m; e += 1) {
+          if (fixed[e] !== null) {
+            dualNow += cd.c[e] * fixed[e] + Lambda[e] * (cd.b[e] / fixed[e]);
+          } else {
+            const aa = Math.max(cd.floor[e], Math.sqrt((cd.b[e] * Lambda[e]) / cd.c[e]));
+            dualNow += cd.c[e] * aa + (Lambda[e] * cd.b[e]) / aa;
+          }
+        }
+        let primalNow = 0;
+        for (let e = 0; e < m; e += 1) {
+          if (fixed[e] !== null) primalNow += cd.c[e] * fixed[e];
+          else {
+            const aa = Math.max(cd.floor[e], Math.sqrt((cd.b[e] * Lambda[e]) / cd.c[e]));
+            primalNow += cd.c[e] * aa;
+          }
+        }
+        for (let li = 0; li < sinks.length; li += 1) dualNow -= lambda[li] * budgets[li];
+        if (primalNow - dualNow <= options.gapTolerance * Math.max(1, primalNow)) break;
+      }
+    }
+
+    let cost = fixedCost;
+    for (let e = 0; e < m; e += 1) if (fixed[e] === null) cost += cd.c[e] * areas[e];
+
+    // Schwache Dualität: g(λ) = Σ_e min_{A≥f}(c_e A + Λ_e b_e/A) − Σ_v λ_v B_v
+    // ist für JEDES λ ≥ 0 eine untere Schranke des Optimums — unabhängig davon,
+    // ob die Koordinaten-Aszension bereits vollständig konvergiert ist.
+    let dual = 0;
+    for (let e = 0; e < m; e += 1) {
+      if (fixed[e] !== null) {
+        dual += cd.c[e] * fixed[e] + Lambda[e] * (cd.b[e] / fixed[e]);
+      } else {
+        const aa = Math.max(cd.floor[e], Math.sqrt((cd.b[e] * Lambda[e]) / cd.c[e]));
+        dual += cd.c[e] * aa + (Lambda[e] * cd.b[e]) / aa;
+      }
+    }
+    for (let li = 0; li < sinks.length; li += 1) dual -= lambda[li] * budgets[li];
+
+    return { feasible: true, cost, bound: dual, areas, lambda, sweeps, residualBudget };
+  }
+
+  /**
+   * Diskrete Projektion auf A_norm via Branch-and-Bound.
+   *
+   * Je Knoten: (a) Zulässigkeit mit Maximalquerschnitten, (b) exakte konvexe
+   * Relaxation der offenen Kanten als untere Schranke. Inzident: Aufrunden des
+   * Relaxationsoptimums + abstiegsorientierte Lokalsuche.
+   */
+  function discreteOptimize(cd, topo, sinks, budgets, ampacityFloor, options) {
+    const m = topo.m;
+    const started = Date.now();
+    const fixed = new Array(m).fill(null);
+    const relaxed = continuousRelaxation(cd, topo, sinks, budgets, fixed, options);
+
+    const incumbent = new Array(m);
+    for (let e = 0; e < m; e += 1) incumbent[e] = Math.max(normUp(relaxed.areas[e]), ampacityFloor[e]);
+
+    const costOf = (assign) => {
+      let s = 0;
+      for (let e = 0; e < m; e += 1) s += cd.c[e] * assign[e];
+      return s;
+    };
+    const dropsOf = (assign) =>
+      sinks.map((v) => {
+        let d = 0;
+        for (const e of topo.pathEdges[v]) d += cd.b[e] / assign[e];
+        return d;
+      });
+    const feasible = (assign) => dropsOf(assign).every((d, li) => d <= budgets[li] + 1e-9);
+
+    if (!feasible(incumbent)) {
+      for (let e = 0; e < m; e += 1) incumbent[e] = A_NORM[A_NORM.length - 1];
+      if (!feasible(incumbent)) {
+        return {
+          assign: incumbent,
+          cost: Infinity,
+          proven: false,
+          nodes: 0,
+          pruned: 0,
+          evaluations: 0,
+          relaxations: 0,
+          relaxed,
+          feasible: false,
+          aborted: false,
+          infeasible: true,
+        };
+      }
+    }
+
+    const order = Array.from({ length: m }, (_, i) => i);
+    order.sort((x, y) => cd.c[y] * incumbent[y] - cd.c[x] * incumbent[x] || x - y);
+
+    for (let pass = 0; pass < 6; pass += 1) {
+      let changed = false;
+      for (const e of order) {
+        let idx = A_NORM.indexOf(incumbent[e]);
+        while (idx > 0) {
+          const cand = A_NORM[idx - 1];
+          if (cand < ampacityFloor[e] - 1e-12) break;
+          const trial = incumbent.slice();
+          trial[e] = cand;
+          if (feasible(trial)) {
+            incumbent[e] = cand;
+            changed = true;
+            break;
+          }
+          idx -= 1;
+        }
+      }
+      if (!changed) break;
+    }
+
+    let best = incumbent.slice();
+    let bestCost = costOf(best);
+
+    const vars = order.slice();
+    // Kandidatenmenge: alle Normgrößen ab der Belastbarkeits-Untergrenze.
+    // Eine Obergrenze aus der Inzidentlösung ist NICHT zulässig: eine Kante darf
+    // größer werden, wenn dadurch mehrere andere Kanten kleiner werden können.
+    const candidates = vars.map((e) => {
+      const list = A_NORM.filter((a) => a >= ampacityFloor[e] - 1e-12);
+      return list.length > 0 ? list : [best[e]];
+    });
+
+    const maxArea = A_NORM[A_NORM.length - 1];
+    // Laufende Belegung: NICHT mit der Inzidentlösung vorbelegen, sonst werden
+    // noch nicht entschiedene Kanten in der Maximalquerschnitt-Schranke wie
+    // feste Werte behandelt (unzulässiges Pruning).
+    const assignment = new Array(m).fill(null);
+    const relaxOptions = { ...options, maxSweeps: 40 };
+    let nodes = 0;
+    let pruned = 0;
+    let aborted = false;
+    let evaluations = 0;
+    let relaxations = 0;
+
+    const pathSet = new Array(m).fill(null);
+    const dropMax = new Array(sinks.length).fill(0);
+
+    const dfs = (depth, cost) => {
+      nodes += 1;
+      if (nodes > options.nodeLimit || Date.now() - started > options.timeLimitMs) {
+        aborted = true;
+        return;
+      }
+      if (cost >= bestCost - 1e-9) {
+        pruned += 1;
+        return;
+      }
+      if (depth === vars.length) {
+        if (feasible(assignment)) {
+          best = assignment.slice();
+          bestCost = cost;
+        }
+        return;
+      }
+
+      const e = vars[depth];
+      const list = candidates[depth];
+      for (let k = 0; k < list.length; k += 1) {
+        const a = list[k];
+        const nextCost = cost + cd.c[e] * a;
+        assignment[e] = a;
+        evaluations += 1;
+        if (nextCost >= bestCost - 1e-9) {
+          pruned += 1;
+          continue;
+        }
+
+        let impossible = false;
+        for (let li = 0; li < sinks.length; li += 1) {
+          const v = sinks[li];
+          let dMax = 0;
+          for (const pe of topo.pathEdges[v]) {
+            dMax += cd.b[pe] / (assignment[pe] === null ? maxArea : assignment[pe]);
+          }
+          dropMax[li] = dMax;
+          if (dMax > budgets[li] + 1e-9) {
+            impossible = true;
+            break;
+          }
+        }
+        if (impossible) {
+          pruned += 1;
+          continue;
+        }
+
+        const relaxFixed = new Array(m).fill(null);
+        for (let d2 = 0; d2 <= depth; d2 += 1) relaxFixed[vars[d2]] = assignment[vars[d2]];
+        const lb = continuousRelaxation(cd, topo, sinks, budgets, relaxFixed, relaxOptions);
+        relaxations += 1;
+        if (!lb.feasible || lb.bound >= bestCost - 1e-9) {
+          pruned += 1;
+          continue;
+        }
+        dfs(depth + 1, nextCost);
+        if (aborted) {
+          assignment[e] = null;
+          return;
+        }
+      }
+      assignment[e] = null;
+      void pathSet;
+    };
+
+    dfs(0, 0);
+
+    // Sicherheitsnetz: nach Abbruch muß `best` zulässig sein (ist es per Konstruktion).
+    if (!feasible(best)) {
+      for (let e = 0; e < m; e += 1) best[e] = ampacityFloor[e];
+    }
+
+    return {
+      assign: best,
+      cost: bestCost,
+      proven: !aborted,
+      nodes,
+      pruned,
+      evaluations,
+      relaxations,
+      relaxed,
+      feasible: feasible(best),
+      aborted,
+      infeasible: false,
+    };
+  }
+
+  // ===========================================================================
+  // §8 Schutzorgane, Kurzschluss, I²t, Selektivität
+  // ===========================================================================
+
+  function pickFuse(I, izEff, ikProspective) {
+    const In = nextFuse(Math.max(I, 1));
+    let type = null;
+    for (const key of FUSE_ESCALATION) {
+      const t = FUSE_TYPES[key];
+      if (In >= t.minA && In <= t.maxA && t.breakingA >= ikProspective) {
+        type = key;
+        break;
+      }
+    }
+    let escalated = false;
+    if (type === null) {
+      // Nichts deckt den prospektiven Strom → stärkstes Organ, Eskalation markieren.
+      type = 'classT';
+      escalated = true;
+    }
+    const spec = FUSE_TYPES[type];
+    const preArc = (2 * In) ** 2 * spec.t2x;
+    const total = 1.25 * preArc;
+    return {
+      type,
+      typeLabel: spec.label,
+      ratedA: In,
+      breakingA: spec.breakingA,
+      breakingOk: spec.breakingA >= ikProspective,
+      escalated,
+      preArcI2t: preArc,
+      totalI2t: total,
+      cableOk: In <= izEff + 1e-9,
+      izEff,
+      tripCurrentAt5s: Math.sqrt(preArc / 5),
+      utilization: izEff > 0 ? In / izEff : Infinity,
+    };
+  }
+
+  // ===========================================================================
+  // §9 Gesamtlösung
+  // ===========================================================================
+
+  const DEFAULT_OPTIONS = Object.freeze({
+    dropPct: VOLTAGE_DROP_PCT_PLAN,
+    ambientC: 25,
+    lengthScale: 1,
+    maxElectricalIterations: 400,
+    electricalTolerance: 1e-9,
+    maxThermalIterations: 140,
+    thermalTolerance: 1e-4,
+    thermalRelaxation: 0.7,
+    maxOuterIterations: 5,
+    maxSweeps: 240,
+    gapTolerance: 1e-10,
+    nodeLimit: 60000,
+    timeLimitMs: 500,
+    faultClearingTimeS: 5,
+  });
+
+  function resolveOptions(network, user) {
+    return {
+      ...DEFAULT_OPTIONS,
+      ...user,
+      ambientC: user.ambientC ?? network.ambientC ?? DEFAULT_OPTIONS.ambientC,
+    };
+  }
+
+  /**
+   * Diskrete Politur am gekoppelten Fixpunkt.
+   *
+   * Die B&B-Lösung entsteht bei eingefrorenen Temperaturen (linearisiertes
+   * Problem). Weil R(T) und die Lastströme von den Querschnitten abhängen,
+   * wird das Ergebnis anschließend mit dem VOLLEN elektro-thermischen Modell
+   * verifiziert: jede Kantenreduktion wird nur akzeptiert, wenn der exakte
+   * MNA-Zustand das Pfadbudget weiterhin einhält. Das Ergebnis ist damit
+   * zulässig und lokal optimal im gekoppelten Problem.
+   */
+  /** Schnelle Zulässigkeitsschätzung mit eingefrorenen Strömen (Vorfilter). */
+  function cheapFeasible(network, topo, state, areas, budgetV, options) {
+    const ambient = options.ambientC;
+    for (const v of topo.sinks) {
+      let drop = 0;
+      for (const e of topo.pathEdges[v]) {
+        const edge = network.edges[e];
+        const length = edge.lengthM * options.lengthScale;
+        const t = edgeTemperature(edge, areas[e], state.I[e], ambient);
+        const r = (2 * RHO20 * length * (1 + ALPHA20 * (t - 20))) / areas[e] + state.contactR[e];
+        drop += Math.abs(state.I[e]) * r;
+      }
+      if (drop > budgetV + 1e-9) return false;
+    }
+    return true;
+  }
+
+  function polishSizes(network, topo, start, options, budgetV, minArea) {
+    let best = start.slice();
+    let state = solveElectroThermal(network, topo, best, options);
+    const feasible = (s) =>
+      topo.sinks.every((v) => s.u[topo.root] - s.u[v] <= budgetV + 1e-9);
+    if (!feasible(state)) return { areas: best, state, accepted: 0, feasible: false };
+
+    const massOf = (e, a) => 2 * network.edges[e].lengthM * options.lengthScale * a * CU_DENSITY;
+    const order = Array.from({ length: topo.m }, (_, e) => e);
+    order.sort((x, y) => massOf(y, best[y]) - massOf(x, best[x]) || x - y);
+
+    let accepted = 0;
+    for (let pass = 0; pass < 2; pass += 1) {
+      let improved = false;
+      for (const e of order) {
+        let idx = A_NORM.indexOf(best[e]);
+        while (idx > 0) {
+          const cand = A_NORM[idx - 1];
+          if (cand < minArea[e] - 1e-12) break;
+          const trial = best.slice();
+          trial[e] = cand;
+          // Vorfilter mit eingefrorenen Strömen: ist der geschätzte Abfall schon
+          // über dem Budget, kann die exakte (teurere) Prüfung nicht bestehen.
+          if (!cheapFeasible(network, topo, state, trial, budgetV, options)) {
+            idx -= 1;
+            continue;
+          }
+          const st = solveElectroThermal(network, topo, trial, options);
+          if (feasible(st)) {
+            best = trial;
+            state = st;
+            improved = true;
+            accepted += 1;
+            break;
+          }
+          idx -= 1;
+        }
+      }
+      if (!improved) break;
+    }
+    return { areas: best, state, accepted, feasible: feasible(state) };
+  }
+
+  /** Gesamtwiderstand eines Pfades (Kupfer + Kontakt) bei Temperatur T. */
+  function pathResistance(topo, v, conductorR, contactR) {
+    let r = 0;
+    for (const e of topo.pathEdges[v]) r += conductorR[e] + contactR[e];
+    return r;
+  }
+
+  /**
+   * Vollständige Lösung: Querschnitts-Kaskade ↔ Elektro-Thermik (äußere
+   * Fixpunkt-Schleife), danach Schutz-, Kurzschluss- und Selektivitätsnachweis.
+   */
+  function solve(network = DEFAULT_NETWORK, userOptions = {}) {
+    const started = Date.now();
+    const options = resolveOptions(network, userOptions);
+    const topo = buildTopology(network);
+    const m = topo.m;
+    const sinks = topo.sinks;
+    const budgetV = (U_NOMINAL * options.dropPct) / 100;
+    const budgets = sinks.map(() => budgetV);
+
+    // Startquerschnitte aus dem Nennstrom bei 12 V (vermeidet den entarteten
+    // ersten MNA-Zustand, in dem leistungskonstante Lasten bei
+    // Kurzschluss-nahen Spannungen unrealistisch hohe Ströme ziehen).
+    const nominalCurrent = new Array(m).fill(0);
+    for (let e = 0; e < m; e += 1) {
+      let current = 0;
+      for (const v of topo.edgeSinks[e]) {
+        const load = network.nodes[v].load;
+        if (!load) continue;
+        current += load.powerW / (load.efficiency * U_NOMINAL);
+      }
+      nominalCurrent[e] = current;
+    }
+    let A = network.edges.map((edge, e) => {
+      const need = nextFuse(Math.max(nominalCurrent[e], 0.1));
+      for (const a of A_NORM) {
+        if (effectiveAmpacity(a, edge, options.ambientC) >= need - 1e-9) return a;
+      }
+      return A_NORM[A_NORM.length - 1];
+    });
+    let state = solveElectroThermal(network, topo, A, options);
+    let outerIterations = 0;
+    let lastSizing = null;
+    const seenAreas = new Set();
+    let cd = null;
+    let ampacityFloor = network.edges.map(() => A_NORM[0]);
+
+    for (let outer = 1; outer <= options.maxOuterIterations; outer += 1) {
+      outerIterations = outer;
+
+      // Belastbarkeits-Untergrenze inkl. Sicherungskoordination I_n ≤ I_z.
+      ampacityFloor = network.edges.map((edge, e) => {
+        const need = nextFuse(Math.max(Math.abs(state.I[e]), 0.1));
+        let chosen = null;
+        for (const a of A_NORM) {
+          if (effectiveAmpacity(a, edge, options.ambientC) >= need - 1e-9) {
+            chosen = a;
+            break;
+          }
+        }
+        return chosen ?? A_NORM[A_NORM.length - 1];
+      });
+
+      cd = buildConstraintData(network, topo, state, options);
+      const floors = ampacityFloor.map((a, e) => Math.max(a, cd.floor[e]));
+      const cdFloored = { ...cd, floor: floors };
+
+      // Budget um die (querschnittsunabhängigen) Kontaktabfälle reduzieren.
+      const residualBudgets = sinks.map((v, li) => {
+        let drop = 0;
+        for (const e of topo.pathEdges[v]) drop += cd.contactDrop[e];
+        return budgets[li] - drop;
+      });
+
+      lastSizing = discreteOptimize(cdFloored, topo, sinks, residualBudgets, ampacityFloor, options);
+
+      const nextA = lastSizing.assign;
+      let changed = false;
+      for (let e = 0; e < m; e += 1) if (nextA[e] !== A[e]) changed = true;
+      A = nextA;
+      state = solveElectroThermal(network, topo, A, options);
+      const key = A.join(',');
+      if (!changed || seenAreas.has(key)) break;
+      seenAreas.add(key);
+    }
+
+    // Verifikation gegen den realen MNA-Zustand; Nachbessern, falls die
+    // Rückkopplung (Temperatur, Leistungskonstant) das Budget verschiebt.
+    let repairs = 0;
+    for (let guard = 0; guard < 12; guard += 1) {
+      const violations = [];
+      sinks.forEach((v, li) => {
+        const drop = state.u[topo.root] - state.u[v];
+        if (drop > budgets[li] + 1e-9) violations.push({ v, li, drop });
+      });
+      if (violations.length === 0) break;
+      repairs += 1;
+      // Kanten der verletzten Pfade nach Querschnitts-Wirkung sortieren.
+      const candidates = new Set();
+      violations.forEach(({ v }) => topo.pathEdges[v].forEach((e) => candidates.add(e)));
+      const ranked = [...candidates].sort((x, y) => {
+        const gainX = state.conductorR[x] * Math.abs(state.I[x]);
+        const gainY = state.conductorR[y] * Math.abs(state.I[y]);
+        return gainY - gainX || x - y;
+      });
+      let upgraded = false;
+      for (const e of ranked) {
+        const idx = A_NORM.indexOf(A[e]);
+        if (idx >= 0 && idx < A_NORM.length - 1) {
+          A[e] = A_NORM[idx + 1];
+          upgraded = true;
+          break;
+        }
+      }
+      if (!upgraded) break;
+      state = solveElectroThermal(network, topo, A, options);
+    }
+
+    // Diskrete Politur mit vollständiger elektro-thermischer Verifikation.
+    const polished = polishSizes(network, topo, A, options, budgetV, ampacityFloor);
+    let polishSteps = 0;
+    if (polished.feasible) {
+      A = polished.areas;
+      state = polished.state;
+      polishSteps = polished.accepted;
+    }
+
+    // ---------------------------------------------------------------------
+    // Nachweise
+    // ---------------------------------------------------------------------
+    const battery = network.battery;
+    const rInt = (battery.riMilliohm + battery.shuntMilliohm) / 1000;
+    const nodes = network.nodes;
+
+    const nodeReports = nodes.map((node, v) => {
+      const rPathCold = pathResistance(topo, v, state.conductorR.map((r, e) => {
+        const edge = network.edges[e];
+        const length = edge.lengthM * options.lengthScale;
+        return (2 * RHO20 * length) / A[e];
+      }), state.contactR);
+      const rPathHot = pathResistance(topo, v, state.conductorR, state.contactR);
+      const zCold = rInt + rPathCold;
+      const zHot = rInt + rPathHot;
+      const drop = v === topo.root ? 0 : state.u[topo.root] - state.u[v];
+      return {
+        id: node.id,
+        label: node.label,
+        kind: node.kind,
+        layer: node.layer,
+        u: state.u[v],
+        dropV: drop,
+        dropPct: (drop / U_NOMINAL) * 100,
+        power: node.load ? node.load.powerW : 0,
+        current: demandCurrent(node, state.u[v]),
+        zLoopColdMilliohm: zCold * 1000,
+        zLoopHotMilliohm: zHot * 1000,
+        ikMaxA: battery.uMax / zCold,
+        ikMinA: battery.uMin / zHot,
+      };
+    });
+
+    const edgeReports = network.edges.map((edge, e) => {
+      const a = topo.index.get(edge.from);
+      const b = topo.index.get(edge.to);
+      const length = edge.lengthM * options.lengthScale;
+      const rCu20 = (2 * RHO20 * length) / A[e];
+      const izEff = effectiveAmpacity(A[e], edge, options.ambientC);
+      const ikFuse = Math.max(nodeReports[a].ikMaxA, nodeReports[b].ikMaxA);
+      const fuse = pickFuse(Math.abs(state.I[e]), izEff, ikFuse);
+      const i2tLimit = K_INSULATION[edge.insulation] ** 2 * A[e] ** 2;
+      const reserve = ((i2tLimit - fuse.totalI2t) / i2tLimit) * 100;
+      const tripOk = nodeReports[b].ikMinA >= fuse.tripCurrentAt5s;
+      return {
+        id: edge.id,
+        from: edge.from,
+        to: edge.to,
+        fromLabel: nodes[a].label,
+        toLabel: nodes[b].label,
+        lengthM: length,
+        bundle: edge.bundle,
+        insulation: edge.insulation,
+        area: A[e],
+        areaVerified: AMPACITY_VERIFIED.includes(A[e]),
+        current: state.I[e],
+        currentDensity: Math.abs(state.I[e]) / A[e],
+        rCu20Milliohm: rCu20 * 1000,
+        rHotMilliohm: state.conductorR[e] * 1000,
+        rContactMilliohm: state.contactR[e] * 1000,
+        temperatureC: state.T[e],
+        dU: Math.abs(state.I[e]) * state.resistance[e],
+        dUModel: Math.abs(state.I[e]) * state.conductorR[e],
+        izEff,
+        loading: izEff > 0 ? Math.abs(state.I[e]) / izEff : Infinity,
+        massG: 2 * length * A[e] * CU_DENSITY,
+        fuse,
+        i2tLimit,
+        i2tReservePct: reserve,
+        tripOk,
+        ikFuseA: ikFuse,
+        ikMinA: nodeReports[b].ikMinA,
+        shareOfDrop: 0,
+      };
+    });
+
+    // Anteil jeder Kante am Spannungsabfall ihres stärksten Blattes.
+    const worstSink = sinks.reduce((best, v) => {
+      const drop = state.u[topo.root] - state.u[v];
+      return drop > best.drop ? { v, drop } : best;
+    }, { v: sinks[0], drop: -Infinity });
+    if (worstSink.drop > 0) {
+      edgeReports.forEach((rep, e) => {
+        rep.shareOfDrop = topo.pathEdges[worstSink.v].includes(e) ? (rep.dU / worstSink.drop) * 100 : 0;
+      });
+    }
+
+    // Schutz-Koordination: Eltern-Kante vs. Kind-Kante.
+    const selectivity = [];
+    for (let v = 0; v < topo.n; v += 1) {
+      const pe = topo.parentEdge[v];
+      if (pe < 0) continue;
+      for (const ei of topo.outgoingEdge[v]) {
+        const parent = edgeReports[pe].fuse;
+        const child = edgeReports[ei].fuse;
+        const ratio = child.totalI2t > 0 ? parent.preArcI2t / child.totalI2t : Infinity;
+        selectivity.push({
+          parentEdge: edgeReports[pe].id,
+          childEdge: edgeReports[ei].id,
+          parentFuse: parent,
+          childFuse: child,
+          ratio,
+          ok: ratio > 1,
+        });
+      }
+    }
+
+    // Pillar-1-Auswertung am endgültigen Fixpunkt: kontinuierliche Relaxation
+    // und B&B-Optimum des linearisierten Problems (Temperaturen eingefroren).
+    const finalCd = buildConstraintData(network, topo, state, options);
+    const finalSizing = discreteOptimize(finalCd, topo, topo.sinks, budgets, finalCd.floor, options);
+
+    // KKT-Auswertung: Schattenpreise, Budgetaufteilung, kontinuierliche Masse.
+    const kkt = {
+      budgetV,
+      budgetPct: options.dropPct,
+      lambdaPerVolt: lastSizing ? lastSizing.relaxed.lambda.slice() : [],
+      perSink: sinks.map((v, li) => ({
+        id: nodes[v].id,
+        label: nodes[v].label,
+        lambda: lastSizing ? lastSizing.relaxed.lambda[li] : 0,
+        area: lastSizing ? lastSizing.relaxed.areas : [],
+      })),
+      continuousMassG: finalSizing.relaxed.cost,
+      linearDiscreteMassG: finalSizing.cost,
+      discreteMassG: sum(edgeReports.map((r) => r.massG)),
+      gapPct:
+        finalSizing.cost > 0
+          ? ((finalSizing.cost - finalSizing.relaxed.cost) / finalSizing.cost) * 100
+          : 0,
+      couplingPremiumPct:
+        sum(edgeReports.map((r) => r.massG)) > 0
+          ? ((sum(edgeReports.map((r) => r.massG)) - finalSizing.cost) /
+              sum(edgeReports.map((r) => r.massG))) *
+            100
+          : 0,
+      nodes: finalSizing.nodes,
+      pruned: finalSizing.pruned,
+      evaluations: finalSizing.evaluations,
+      relaxations: finalSizing.relaxations,
+      proven: finalSizing.proven,
+      infeasible: finalSizing.feasible === false,
+      sweeps: finalSizing.relaxed.sweeps,
+      linearAreas: finalSizing.assign.slice(),
+      drops: sinks.map((v) => {
+        let d = 0;
+        for (const e of topo.pathEdges[v]) d += finalCd.b[e] / finalSizing.assign[e];
+        return d;
+      }),
+    };
+    void A;
+
+    // Vergleich mit der trivialen Einzelstrang-Rechnung.
+    const naive = computeNaive(network, topo, state, options, A, budgetV);
+
+    const leaves = sinks.map((v) => ({
+      id: nodes[v].id,
+      label: nodes[v].label,
+      u: state.u[v],
+      dropV: state.u[topo.root] - state.u[v],
+      dropPct: ((state.u[topo.root] - state.u[v]) / U_NOMINAL) * 100,
+      budgetV,
+      ikMaxA: nodeReports[v].ikMaxA,
+      ikMinA: nodeReports[v].ikMinA,
+      zLoopMilliohm: nodeReports[v].zLoopColdMilliohm,
+    }));
+
+    const minReserve = edgeReports.reduce((min, r) => Math.min(min, r.i2tReservePct), Infinity);
+    const worstLoading = edgeReports.reduce((max, r) => Math.max(max, r.loading), 0);
+    const maxDrop = leaves.reduce((max, l) => Math.max(max, l.dropV), 0);
+    const violations = leaves.filter((l) => l.dropV > budgetV + 1e-9);
+    const selectivityFails = selectivity.filter((s) => !s.ok);
+    const fuseFails = edgeReports.filter((r) => !r.fuse.breakingOk || !r.fuse.cableOk || !r.tripOk);
+    const degraded = [];
+    if (maxDrop > budgetV + 1e-9) degraded.push('Spannungsfall-Budget nach Reparatur nicht eingehalten');
+    if (!kkt.proven) degraded.push('B&B mit Knotenlimit abgebrochen — Optimalität nicht bewiesen');
+    if (state.thermalResidual > options.thermalTolerance) degraded.push('Thermischer Fixpunkt nicht konvergiert');
+    if (state.residual > 1e-6) degraded.push('MNA-Fixpunkt nicht konvergiert');
+
+    const massG = kkt.discreteMassG;
+    const primary = network.edges[0];
+    const mainFuse = edgeReports[0].fuse;
+
+    const metrics = {
+      runtimeMs: Date.now() - started,
+      outerIterations,
+      repairs,
+      polishSteps,
+      copperMassG: massG,
+      copperMassKg: massG / 1000,
+      naiveMassG: naive.massG,
+      naiveMaxDropPct: naive.maxDropPct,
+      naiveViolations: naive.violations,
+      naiveRepairedMassG: naive.repairedMassG,
+      naiveRepairedMaxDropPct: naive.repairedMaxDropPct,
+      heuristicMassG: naive.proportional.massG,
+      heuristicMaxDropPct: naive.proportional.maxDropPct,
+      heuristicSavingsPct:
+        naive.proportional.massG > 0
+          ? ((naive.proportional.massG - massG) / naive.proportional.massG) * 100
+          : 0,
+      savingsG: naive.repairedMassG - massG,
+      savingsPct: naive.repairedMassG > 0 ? ((naive.repairedMassG - massG) / naive.repairedMassG) * 100 : 0,
+      continuousMassG: kkt.continuousMassG,
+      maxDropV: maxDrop,
+      maxDropPct: (maxDrop / U_NOMINAL) * 100,
+      budgetV,
+      minVoltage: Math.min(...state.u),
+      maxVoltage: Math.max(...state.u),
+      rootVoltage: state.u[topo.root],
+      ikMaxA: Math.max(...nodeReports.map((r) => r.ikMaxA)),
+      ikMinA: Math.min(...nodeReports.filter((r) => r.kind !== 'battery').map((r) => r.ikMinA)),
+      minI2tReservePct: minReserve,
+      worstLoading,
+      selectivityFails: selectivityFails.length,
+      fuseFails: fuseFails.length,
+      thermalIterations: state.thermalIterations,
+      thermalResidual: state.thermalResidual,
+      electricalIterations: state.iterations,
+      electricalResidual: state.residual,
+      contraction: state.contraction,
+      thermalHistory: state.thermalHistory,
+      totalLoadW: sum(nodes.map((n) => (n.load ? n.load.powerW : 0))),
+      batteryCurrentA: Math.abs(state.iRoot),
+      mainFuse,
+      mainFuseLabel: `${mainFuse.typeLabel} ${mainFuse.ratedA} A`,
+      mainEdgeId: primary.id,
+      mainArea: A[0],
+      violations: violations.length,
+      kktProven: kkt.proven,
+      kktNodes: kkt.nodes,
+      kktGapPct: kkt.gapPct,
+      degraded,
+    };
+
+    const flags = [];
+    edgeReports.forEach((r) => {
+      if (!r.fuse.breakingOk) {
+        flags.push({
+          level: 'error',
+          code: 'AIC',
+          text: `${r.id}: I_k,max = ${(r.ikFuseA / 1000).toFixed(2)} kA > Abschaltvermögen ${(r.fuse.breakingA / 1000).toFixed(1)} kA — Eskalation auf ${r.fuse.typeLabel}`,
+        });
+      }
+      if (!r.fuse.cableOk) {
+        flags.push({
+          level: 'error',
+          code: 'COORD',
+          text: `${r.id}: I_n = ${r.fuse.ratedA} A > I_z,eff = ${r.izEff.toFixed(1)} A`,
+        });
+      }
+      if (!r.tripOk) {
+        flags.push({
+          level: 'warn',
+          code: 'TRIP',
+          text: `${r.id}: I_k,min = ${r.ikMinA.toFixed(0)} A < Auslöse Strom bei t_a = ${options.faultClearingTimeS} s (${r.fuse.tripCurrentAt5s.toFixed(0)} A)`,
+        });
+      }
+      if (r.i2tReservePct < 0) {
+        flags.push({
+          level: 'error',
+          code: 'I2T',
+          text: `${r.id}: Durchlassenergie ${(r.fuse.totalI2t / 1000).toFixed(1)} kA²s > k²A² = ${(r.i2tLimit / 1000).toFixed(1)} kA²s`,
+        });
+      } else if (r.i2tReservePct < 25) {
+        flags.push({
+          level: 'warn',
+          code: 'I2T',
+          text: `${r.id}: I²t-Reserve nur ${r.i2tReservePct.toFixed(0)} %`,
+        });
+      }
+      if (r.loading > 1 + 1e-9) {
+        flags.push({
+          level: 'error',
+          code: 'THERM',
+          text: `${r.id}: I = ${Math.abs(r.current).toFixed(0)} A > I_z,eff = ${r.izEff.toFixed(0)} A`,
+        });
+      }
+    });
+    selectivityFails.forEach((s) => {
+      flags.push({
+        level: 'warn',
+        code: 'SEL',
+        text: `Selektivität ${s.parentFuse.ratedA} A / ${s.childFuse.ratedA} A: I²t_pre,Eltern / I²t_total,Kind = ${s.ratio.toFixed(2)} ≤ 1`,
+      });
+    });
+    degraded.forEach((d) => flags.push({ level: 'warn', code: 'SOLVER', text: d }));
+    if (repairs > 0) {
+      flags.push({
+        level: 'info',
+        code: 'REPAIR',
+        text: `${repairs} Nachbesserungsstufe(n) nach der KKT-Projektion (thermische Rückkopplung)`,
+      });
+    }
+    if (flags.length === 0) {
+      flags.push({ level: 'ok', code: 'OK', text: 'Alle Nachweise erfüllt — Budget, Belastbarkeit, Abschaltvermögen, I²t, Selektivität.' });
+    }
+
+    return {
+      network,
+      options,
+      topology: topo,
+      areas: A.slice(),
+      state,
+      nodes: nodeReports,
+      edges: edgeReports,
+      leaves,
+      selectivity,
+      kkt,
+      naive,
+      metrics,
+      flags,
+      budgets,
+    };
+  }
+
+  /**
+   * Triviale Einzelstrang-Rechnung (Referenz-Verhalten): jede Leitung erhält
+   * das VOLLE Spannungsfall-Budget, ohne Baumkopplung und ohne Temperatur.
+   * Ergebnis ist i. d. R. nicht pfadkonsistent.
+   */
+  function computeNaive(network, topo, state, options, actual, budgetV) {
+    const m = topo.m;
+    const areas = new Array(m);
+    const currents = new Array(m);
+    for (let e = 0; e < m; e += 1) {
+      const edge = network.edges[e];
+      const length = edge.lengthM * options.lengthScale;
+      currents[e] = Math.abs(state.I[e]);
+      const required = (2 * length * currents[e]) / (GAMMA20 * budgetV);
+      let a = normUp(Math.max(required, A_NORM[0]));
+      // Belastbarkeit nicht unterschreiten (die triviale Rechnung prüft sie separat).
+      for (const cand of A_NORM) {
+        if (cand >= a - 1e-12 && effectiveAmpacity(cand, edge, options.ambientC) >= currents[e] - 1e-9) {
+          a = cand;
+          break;
+        }
+      }
+      areas[e] = a;
+    }
+
+    const massOf = (arr) => {
+      let s = 0;
+      for (let e = 0; e < m; e += 1) s += 2 * network.edges[e].lengthM * options.lengthScale * arr[e] * CU_DENSITY;
+      return s;
+    };
+
+    const dropOf = (arr) =>
+      topo.sinks.map((v) => {
+        let d = 0;
+        for (const e of topo.pathEdges[v]) {
+          const length = network.edges[e].lengthM * options.lengthScale;
+          const r = (2 * RHO20 * length) / arr[e] + state.contactR[e];
+          d += Math.abs(state.I[e]) * r;
+        }
+        return d;
+      });
+
+    let maxDrop = Math.max(...dropOf(areas));
+    const repaired = areas.slice();
+    let guard = 0;
+    while (maxDrop > budgetV + 1e-9 && guard < 200) {
+      guard += 1;
+      const drops = dropOf(repaired);
+      let worst = -1;
+      let excess = 1e-12;
+      topo.sinks.forEach((v, li) => {
+        if (drops[li] > budgetV + 1e-9 && drops[li] - budgetV > excess) {
+          excess = drops[li] - budgetV;
+          worst = v;
+        }
+      });
+      if (worst < 0) break;
+      // Handkorrektur: die Kante mit dem größten Spannungsabfallanteil auf
+      // dem verletzten Pfad wird eine Normstufe hochgesetzt.
+      let pick = -1;
+      let pickDrop = -1;
+      for (const e of topo.pathEdges[worst]) {
+        const length = network.edges[e].lengthM * options.lengthScale;
+        const d = (2 * RHO20 * length * Math.abs(state.I[e])) / repaired[e];
+        if (d > pickDrop && A_NORM.indexOf(repaired[e]) < A_NORM.length - 1) {
+          pickDrop = d;
+          pick = e;
+        }
+      }
+      if (pick < 0) break;
+      repaired[pick] = A_NORM[A_NORM.indexOf(repaired[pick]) + 1];
+      maxDrop = Math.max(...dropOf(repaired));
+    }
+
+    // Zweite Referenz: längenproportionale Budgetteilung (klassische Heuristik).
+    const propAreas = new Array(m).fill(A_NORM[0]);
+    const allocated = new Array(m).fill(Infinity);
+    topo.sinks.forEach((v, li) => {
+      const path = topo.pathEdges[v];
+      const totalLength = path.reduce((acc, e) => acc + network.edges[e].lengthM * options.lengthScale, 0);
+      const available = budgetV - path.reduce((acc, e) => acc + Math.abs(state.I[e]) * state.contactR[e], 0);
+      for (const e of path) {
+        const length = network.edges[e].lengthM * options.lengthScale;
+        const share = totalLength > 0 ? available * (length / totalLength) : available / path.length;
+        allocated[e] = Math.min(allocated[e], share);
+      }
+    });
+    for (let e = 0; e < m; e += 1) {
+      const edge = network.edges[e];
+      const length = edge.lengthM * options.lengthScale;
+      const dU = Math.max(allocated[e], 1e-6);
+      const required = (2 * length * Math.abs(state.I[e]) * (1 + ALPHA20 * (state.T[e] - 20))) / (GAMMA20 * dU);
+      let a = normUp(Math.max(required, A_NORM[0]));
+      for (const cand of A_NORM) {
+        if (cand >= a - 1e-12 && effectiveAmpacity(cand, edge, options.ambientC) >= Math.abs(state.I[e]) - 1e-9) {
+          a = cand;
+          break;
+        }
+      }
+      propAreas[e] = a;
+    }
+    const propDrops = (arr) =>
+      topo.sinks.map((v) => {
+        let d = 0;
+        for (const e of topo.pathEdges[v]) {
+          const length = network.edges[e].lengthM * options.lengthScale;
+          d += Math.abs(state.I[e]) * ((2 * RHO20 * length) / arr[e] + state.contactR[e]);
+        }
+        return d;
+      });
+    let propMax = Math.max(...propDrops(propAreas));
+    let guard2 = 0;
+    while (propMax > budgetV + 1e-9 && guard2 < 200) {
+      guard2 += 1;
+      const drops = propDrops(propAreas);
+      let worst = -1;
+      let excess = 1e-12;
+      topo.sinks.forEach((v, li) => {
+        if (drops[li] > budgetV + 1e-9 && drops[li] - budgetV > excess) {
+          excess = drops[li] - budgetV;
+          worst = v;
+        }
+      });
+      if (worst < 0) break;
+      let pick = -1;
+      let pickDrop = -1;
+      for (const e of topo.pathEdges[worst]) {
+        const length = network.edges[e].lengthM * options.lengthScale;
+        const d = (2 * RHO20 * length * Math.abs(state.I[e])) / propAreas[e];
+        if (d > pickDrop && A_NORM.indexOf(propAreas[e]) < A_NORM.length - 1) {
+          pickDrop = d;
+          pick = e;
+        }
+      }
+      if (pick < 0) break;
+      propAreas[pick] = A_NORM[A_NORM.indexOf(propAreas[pick]) + 1];
+      propMax = Math.max(...propDrops(propAreas));
+    }
+
+    return {
+      areas,
+      currents,
+      massG: massOf(areas),
+      repairedMassG: massOf(repaired),
+      repairedAreas: repaired,
+      maxDropV: Math.max(...dropOf(areas)),
+      maxDropPct: (Math.max(...dropOf(areas)) / U_NOMINAL) * 100,
+      repairedMaxDropPct: (Math.max(...dropOf(repaired)) / U_NOMINAL) * 100,
+      violations: dropOf(areas).filter((d) => d > budgetV + 1e-9).length,
+      actualMassG: massOf(actual),
+      proportional: {
+        areas: propAreas,
+        massG: massOf(propAreas),
+        maxDropPct: (propMax / U_NOMINAL) * 100,
+        feasible: propMax <= budgetV + 1e-9,
+      },
+    };
+  }
+
+  // ===========================================================================
+  // §10 Öffentliche API
+  // ===========================================================================
+
+  return {
+    version: '1.0.0',
+    // Daten
+    A_NORM,
+    AMPACITY,
+    AMPACITY_VERIFIED,
+    GROUP_FACTORS,
+    RHO20,
+    GAMMA20,
+    ALPHA20,
+    CU_DENSITY,
+    K_INSULATION,
+    T_MAX_INSULATION,
+    FUSE_TYPES,
+    FUSE_SIZES,
+    U_NOMINAL,
+    VOLTAGE_DROP_PCT_PLAN,
+    DEFAULT_NETWORK,
+    DEEP_CHAIN_NETWORK,
+    PAPER_NETWORK,
+    SCENARIOS,
+    DEFAULT_OPTIONS,
+    // Numerik
+    solve,
+    discreteOptimize,
+    buildTopology,
+    solveElectrical,
+    solveElectroThermal,
+    continuousRelaxation,
+    buildConstraintData,
+    // Helfer
+    ampacityOf,
+    effectiveAmpacity,
+    groupFactor,
+    ambientDerating,
+    normUp,
+    round,
+  };
+})();
+
+window.CampEngine = CAMPEngine;
+
+    </script>
+    <script>
+      /* =============================================================================
+ * UI-Schicht: Layout, SVG-Renderer, Panels, Interaktion
+ * ========================================================================== */
+(() => {
+  'use strict';
+
+  const E = CAMPEngine;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  const state = {
+    scenarioId: E.SCENARIOS[0].id,
+    dropPct: 3,
+    ambientC: 25,
+    lengthScale: 1,
+    contactScale: 1,
+    insulation: 'PVC',
+    showReturn: false,
+    heatmap: true,
+    selected: null,
+    tab: 'edges',
+    result: null,
+    layout: null,
+    view: { k: 1, tx: 0, ty: 0 },
+    pending: false,
+    solveMs: 0,
+  };
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+  const clamp = (x, lo, hi) => (x < lo ? lo : x > hi ? hi : x);
+  const numFmt = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+  const nf = (x, d = 2) => {
+    if (!Number.isFinite(x)) return '—';
+    return new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: d,
+      maximumFractionDigits: d,
+    }).format(x);
+  };
+  const nf0 = (x) => numFmt.format(Math.round(x));
+  const esc = (s) =>
+    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+
+  function hexToRgba(hex, a) {
+    const h = hex.replace('#', '');
+    const v = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+    const num = parseInt(v, 16);
+    return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${a})`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Netz, Lösen, Layout
+  // ---------------------------------------------------------------------------
+
+  function cloneNetwork(base) {
+    const net = JSON.parse(JSON.stringify(base));
+    net.nodes = net.nodes.map((node) => ({
+      ...node,
+      contactMilliohm: (node.contactMilliohm || 0) * state.contactScale,
+    }));
+    net.edges = net.edges.map((edge) => ({ ...edge, insulation: state.insulation }));
+    return net;
+  }
+
+  function solveNow() {
+    const t0 = performance.now();
+    const scenario = E.SCENARIOS.find((s) => s.id === state.scenarioId) || E.SCENARIOS[0];
+    const net = cloneNetwork(scenario.network);
+    let res;
+    try {
+      res = E.solve(net, {
+        dropPct: state.dropPct,
+        ambientC: state.ambientC,
+        lengthScale: state.lengthScale,
+      });
+    } catch (err) {
+      showFatal(err);
+      return;
+    }
+    state.result = res;
+    state.layout = buildLayout(res);
+    state.solveMs = performance.now() - t0;
+    renderAll();
+  }
+
+  function scheduleSolve() {
+    if (state.pending) return;
+    state.pending = true;
+    requestAnimationFrame(() => {
+      state.pending = false;
+      solveNow();
+    });
+  }
+
+  const NODE_W = 176;
+  const NODE_H = 76;
+  const CANVAS_W = 1240;
+  const TOP = 62;
+  const DY = 152;
+  const SIDE = 60;
+  const KIND_COLOR = {
+    battery: '#d98e58',
+    busbar: '#35d6e8',
+    distributor: '#a78bfa',
+    load: '#3ddc97',
+  };
+  const KIND_LABEL = {
+    battery: 'QUELLE',
+    busbar: 'HAUPT-BUS',
+    distributor: 'VERTEILER',
+    load: 'LAST',
+  };
+
+  /**
+   * Sugiyama-Layering mit Barycenter-Kreuzungsminimierung und anschließender
+   * äquidistanter Achsenzuweisung. Deterministisch (Tie-Break = Knoten-ID).
+   */
+  function buildLayout(res) {
+    const net = res.network;
+    const topo = res.topology;
+    const layerCount = Math.max(...net.nodes.map((n) => n.layer)) + 1;
+    const height = TOP + (layerCount - 1) * DY + NODE_H + 74;
+    const layers = Array.from({ length: layerCount }, () => []);
+    net.nodes.forEach((node, i) => layers[node.layer].push(i));
+    layers.forEach((arr) => arr.sort((a, b) => net.nodes[a].id.localeCompare(net.nodes[b].id)));
+
+    const pos = new Map();
+    const assign = (arr, k) => {
+      const usable = CANVAS_W - 2 * SIDE;
+      arr.forEach((v, i) => {
+        const x = arr.length === 1 ? CANVAS_W / 2 : SIDE + (i + 0.5) * (usable / arr.length);
+        pos.set(v, { x, y: TOP + k * DY + NODE_H / 2 });
+      });
+    };
+    layers.forEach((arr, k) => assign(arr, k));
+
+    const barycenter = (v, useParents) => {
+      const nb = useParents ? [topo.parentNode[v]] : topo.children[v];
+      const xs = nb.filter((x) => x >= 0).map((x) => pos.get(x).x);
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : pos.get(v).x;
+    };
+
+    for (let sweep = 0; sweep < 8; sweep += 1) {
+      const down = sweep % 2 === 0;
+      const order = down
+        ? Array.from({ length: layerCount - 1 }, (_, i) => i + 1)
+        : Array.from({ length: layerCount - 1 }, (_, i) => layerCount - 1 - i);
+      for (const k of order) {
+        const arr = layers[k];
+        const keyed = arr.map((v) => ({ v, b: barycenter(v, down) }));
+        keyed.sort((p, q) => p.b - q.b || net.nodes[p.v].id.localeCompare(net.nodes[q.v].id));
+        layers[k] = keyed.map((o) => o.v);
+        assign(layers[k], k);
+      }
+    }
+
+    // Ports: Ausgänge eines Knotens fächern in x auf (Manhattan-Fan-out).
+    const outEdges = new Map();
+    net.edges.forEach((edge, e) => {
+      const a = topo.index.get(edge.from);
+      if (!outEdges.has(a)) outEdges.set(a, []);
+      outEdges.get(a).push(e);
+    });
+    const portX = new Map();
+    outEdges.forEach((list, a) => {
+      const px = pos.get(a).x;
+      const sorted = list
+        .slice()
+        .sort((e1, e2) => pos.get(topo.index.get(net.edges[e1].to)).x - pos.get(topo.index.get(net.edges[e2].to)).x || e1 - e2);
+      const step = Math.min(20, 96 / Math.max(sorted.length, 1));
+      sorted.forEach((e, i) => {
+        portX.set(e, px + (i - (sorted.length - 1) / 2) * step);
+      });
+    });
+
+    // Kanalrouting: je Kanaltiefe werden überlappende Intervalle auf getrennte
+    // Spuren gelegt (Intervallgraph-Färbung, greedy = optimal für Intervalle).
+    const channels = new Map();
+    net.edges.forEach((edge, e) => {
+      const a = topo.index.get(edge.from);
+      const b = topo.index.get(edge.to);
+      const key = Math.min(net.nodes[a].layer, net.nodes[b].layer);
+      if (!channels.has(key)) channels.set(key, []);
+      channels.get(key).push(e);
+    });
+
+    const edgeGeom = new Map();
+    const channelStats = [];
+    let maxTrack = 0;
+    channels.forEach((list, key) => {
+      const items = list.map((e) => {
+        const edge = net.edges[e];
+        const a = topo.index.get(edge.from);
+        const b = topo.index.get(edge.to);
+        const x1 = portX.get(e) ?? pos.get(a).x;
+        const x2 = pos.get(b).x;
+        return { e, x1, x2, start: Math.min(x1, x2), end: Math.max(x1, x2), track: -1 };
+      });
+      items.sort((p, q) => p.start - q.start || p.end - q.end || p.e - q.e);
+
+      const trackEnds = [];
+      items.forEach((item) => {
+        let t = 0;
+        while (t < trackEnds.length && trackEnds[t] > item.start + 2) t += 1;
+        trackEnds[t] = item.end;
+        item.track = t;
+      });
+      const trackCount = Math.max(...items.map((i) => i.track)) + 1;
+      maxTrack = Math.max(maxTrack, trackCount);
+
+      const topY = TOP + key * DY + NODE_H;
+      const bottomY = TOP + (key + 1) * DY;
+      const gap = Math.max(bottomY - topY, 24);
+      const dTrack = clamp(gap / (trackCount + 1.6), 8, 16);
+      const mid = (topY + bottomY) / 2;
+      channelStats.push({ depth: key, tracks: trackCount, dTrack });
+
+      items.forEach((item) => {
+        const yTrack = mid + (item.track - (trackCount - 1) / 2) * dTrack;
+        const y1 = pos.get(topo.index.get(net.edges[item.e].from)).y + NODE_H / 2;
+        const y2 = pos.get(topo.index.get(net.edges[item.e].to)).y - NODE_H / 2;
+        const points = [
+          [item.x1, y1],
+          [item.x1, yTrack],
+          [item.x2, yTrack],
+          [item.x2, y2],
+        ];
+        edgeGeom.set(item.e, {
+          points,
+          track: item.track,
+          trackCount,
+          dTrack,
+          channel: key,
+          midY: yTrack,
+          fromX: item.x1,
+          toX: item.x2,
+        });
+      });
+    });
+
+    return { pos, edgeGeom, height, layers, channelStats, maxTrack, layerCount };
+  }
+
+  // ---------------------------------------------------------------------------
+  // SVG
+  // ---------------------------------------------------------------------------
+
+  function pointsToPath(points) {
+    return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  }
+
+  function parallelPath(points, offset) {
+    const out = [];
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const a = points[i];
+      const b = points[i + 1];
+      const horizontal = Math.abs(a[1] - b[1]) < 1e-6;
+      out.push([a[0] + (horizontal ? 0 : offset), a[1] + (horizontal ? offset : 0)]);
+      out.push([b[0] + (horizontal ? 0 : offset), b[1] + (horizontal ? offset : 0)]);
+    }
+    return out;
+  }
+
+  function voltageColor(dropPct, budgetPct) {
+    if (!state.heatmap) return '#6f8ea8';
+    const ratio = dropPct / Math.max(budgetPct, 0.5);
+    if (ratio < 0.45) return '#3ddc97';
+    if (ratio < 0.75) return '#7ee0b8';
+    if (ratio < 0.93) return '#f4b860';
+    if (ratio <= 1.001) return '#fb923c';
+    return '#fb7185';
+  }
+
+  function severityClass(dropPct, budgetPct) {
+    if (dropPct > budgetPct + 1e-9) return 'err';
+    if (dropPct > budgetPct * 0.9) return 'warn';
+    return 'ok';
+  }
+
+  function renderSvg() {
+    const res = state.result;
+    const layout = state.layout;
+    const net = res.network;
+    const topo = res.topology;
+    const svg = $('#canvas');
+    if (!svg || !layout) return;
+
+    const budgetPct = res.kkt.budgetPct;
+    const selected = state.selected;
+    const isSelectedEdge = (e) => selected && selected.type === 'edge' && selected.id === net.edges[e].id;
+    const isAdjacentEdge = (e) => {
+      if (!selected || selected.type !== 'node') return false;
+      return net.edges[e].from === selected.id || net.edges[e].to === selected.id;
+    };
+
+    // Ebenenbezeichnung aus der Netzsemantik (erster Knoten der Ebene), nicht aus
+    // dem Index — sonst heißt eine reine Last-Ebene fälschlich „SUB“.
+    const LAYER_LABEL = { battery: 'QUELLE', busbar: 'BUS', distributor: 'VERT.', load: 'LAST' };
+    const layerNames = Array.from({ length: layout.layerCount }, (_, k) => {
+      const first = net.nodes.find((nd) => nd.layer === k);
+      return first ? LAYER_LABEL[first.kind] || 'LAST' : 'LAST';
+    });
+    let guides = '';
+    for (let k = 0; k < layout.layerCount; k += 1) {
+      const y = TOP + k * DY + NODE_H / 2;
+      guides += `<line class="layer-line" x1="18" y1="${y}" x2="${CANVAS_W - 18}" y2="${y}"/>`;
+      guides += `<text class="layer-tag" x="10" y="${y + 3}">${String(k + 1).padStart(2, '0')} ${esc(
+        layerNames[k] || 'LAST'
+      )}</text>`;
+    }
+
+    let edgeMarkup = '';
+    net.edges.forEach((edge, e) => {
+      const geom = layout.edgeGeom.get(e);
+      const rep = res.edges[e];
+      const color = voltageColor(rep.dU / 12 * 100, budgetPct);
+      const width = clamp(1.4 + rep.area / 22, 1.4, 5.6);
+      const selectedEdge = isSelectedEdge(e);
+      const adjacent = isAdjacentEdge(e);
+      const dim = selected && !selectedEdge && !adjacent;
+      const path = pointsToPath(geom.points);
+      const points = geom.points;
+
+      const mid = points[1];
+      const labelX = clamp((points[1][0] + points[2][0]) / 2, 70, CANVAS_W - 70);
+      const labelY = geom.midY - 10;
+      const showFuse = selectedEdge;
+      const label = `${nf(rep.area, rep.area < 10 ? 1 : 0)} mm²`;
+      const fuseLabel = `${rep.fuse.typeLabel} ${nf(rep.fuse.ratedA, 0)} A`;
+
+      const returnPath = state.showReturn
+        ? `<path class="return-line" d="${pointsToPath(parallelPath(points, 5 + width))}" stroke-width="${Math.max(
+            1,
+            width * 0.55
+          )}"/>`
+        : '';
+
+      const fuseX = points[1][0] + (points[2][0] - points[1][0]) * 0.24;
+      const fuseY = geom.midY;
+
+      edgeMarkup += `
+        <g class="edge ${selectedEdge ? 'is-selected' : ''} ${dim ? 'is-dim' : ''}" data-edge="${esc(edge.id)}">
+          ${returnPath}
+          <path class="edge-glow" d="${path}" stroke="${color}" stroke-width="${width + 7}"/>
+          <path class="edge-line" d="${path}" stroke="${color}" stroke-width="${width}"/>
+          <path class="edge-hit" d="${path}" stroke-width="18"/>
+          <g class="fuse-glyph" transform="translate(${fuseX.toFixed(1)}, ${fuseY.toFixed(1)})">
+            <rect x="-8" y="-4.5" width="16" height="9" rx="2.5"/>
+            <line x1="-5" y1="0" x2="5" y2="0"/>
+          </g>
+          <g class="cable-label ${selectedEdge ? 'is-strong' : ''}" transform="translate(${labelX.toFixed(1)}, ${labelY.toFixed(
+        1
+      )})">
+            <rect x="${-34}" y="-9" width="68" height="${showFuse ? 27 : 15}" rx="3.5"/>
+            <text y="0" class="cl-area">${esc(label)}</text>
+            ${showFuse ? `<text y="12" class="cl-fuse">${esc(fuseLabel)}</text>` : ''}
+          </g>
+          <title>${esc(rep.id)} ${esc(rep.fromLabel)} → ${esc(rep.toLabel)} · ${nf(rep.area, 1)} mm² · ${nf(
+        rep.current,
+        1
+      )} A · ΔU ${nf(rep.dU, 3)} V · ${nf(rep.temperatureC, 1)} °C</title>
+        </g>`;
+    });
+
+    let nodeMarkup = '';
+    net.nodes.forEach((node, v) => {
+      const p = layout.pos.get(v);
+      const rep = res.nodes[v];
+      const color = KIND_COLOR[node.kind] || '#7f95a9';
+      const selectedNode = selected && selected.type === 'node' && selected.id === node.id;
+      const selectedEdge = selected && selected.type === 'edge' ? net.edges.find((ed) => ed.id === selected.id) : null;
+      const adjacentNode = selectedEdge ? selectedEdge.from === node.id || selectedEdge.to === node.id : false;
+      const dim = selected && !selectedNode && !adjacentNode;
+      const sev = severityClass(rep.dropPct, budgetPct);
+      const sub =
+        node.kind === 'load'
+          ? `${nf0(node.load.powerW)} W · ${nf(rep.current, 1)} A`
+          : node.kind === 'battery'
+            ? `Quelle · ${nf(res.metrics.batteryCurrentA, 1)} A`
+            : (() => {
+                const out = topo.outgoingEdge[v].reduce((acc, e) => acc + Math.abs(res.edges[e].current), 0);
+                const n = topo.children[v].length;
+                return `${n} ${n === 1 ? 'Abgang' : 'Abgänge'} · ${nf(out, 1)} A`;
+              })();
+
+      nodeMarkup += `
+        <g class="node ${selectedNode ? 'is-selected' : ''} ${dim ? 'is-dim' : ''}" data-node="${esc(node.id)}" transform="translate(${(
+          p.x - NODE_W / 2
+        ).toFixed(1)}, ${(p.y - NODE_H / 2).toFixed(1)})">
+          <rect class="node-card" width="${NODE_W}" height="${NODE_H}" rx="11"/>
+          <rect class="node-accent" width="4.5" height="${NODE_H}" rx="2.2" fill="${color}"/>
+          <text class="node-kind" x="14" y="16" fill="${color}">${esc(KIND_LABEL[node.kind] || node.kind)}</text>
+          <text class="node-title" x="14" y="36">${esc(truncate(node.label, 21))}</text>
+          <text class="node-sub" x="14" y="51">${esc(sub)}</text>
+          <line class="node-sep" x1="13" y1="59" x2="${NODE_W - 13}" y2="59"/>
+          <text class="node-drop ${sev}" x="14" y="71">ΔU ${rep.dropPct > 0.005 ? '−' : ''}${nf(
+            rep.dropPct,
+            2
+          )} %</text>
+          <text class="node-volt ${sev}" x="${NODE_W - 13}" y="71" text-anchor="end">${nf(rep.u, 3)} V</text>
+          <circle class="node-led" cx="${NODE_W - 13}" cy="13" r="3" fill="${color}"/>
+          <title>${esc(node.label)} · U = ${nf(rep.u, 3)} V · ΔU = ${nf(rep.dropPct, 2)} % · I_k,max = ${nf(
+        rep.ikMaxA / 1000,
+        2
+      )} kA</title>
+        </g>`;
+    });
+
+    const transform = `translate(${state.view.tx.toFixed(2)} ${state.view.ty.toFixed(2)}) scale(${state.view.k.toFixed(4)})`;
+
+    svg.setAttribute('viewBox', `0 0 ${CANVAS_W} ${layout.height}`);
+    svg.innerHTML = `
+      <defs>
+        <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.2" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <linearGradient id="cardBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#101a26"/>
+          <stop offset="1" stop-color="#0b131d"/>
+        </linearGradient>
+        <linearGradient id="cardBgSel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#12242f"/>
+          <stop offset="1" stop-color="#0d1a24"/>
+        </linearGradient>
+        <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+          <path d="M26 0H0V26" fill="none" stroke="#12202e" stroke-width="0.7"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" opacity="0.55"/>
+      <g transform="${transform}">
+        <g class="guides">${guides}</g>
+        <g class="edges">${edgeMarkup}</g>
+        <g class="nodes">${nodeMarkup}</g>
+      </g>
+    `;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Panels
+  // ---------------------------------------------------------------------------
+
+  function kpi(label, value, unit, sub, tone) {
+    return `<div class="kpi ${tone || ''}">
+      <div class="kpi-label">${esc(label)}</div>
+      <div class="kpi-value">${value}<span class="kpi-unit">${esc(unit || '')}</span></div>
+      <div class="kpi-sub">${sub}</div>
+    </div>`;
+  }
+
+  function renderKpis() {
+    const m = state.result.metrics;
+    const kkt = state.result.kkt;
+    const main = m.mainFuse;
+    const host = $('#kpis');
+    if (!host) return;
+    host.innerHTML = [
+      kpi(
+        'Kupfermasse (diskret)',
+        nf(m.copperMassKg, 2),
+        'kg',
+        `Relaxation ${nf(kkt.continuousMassG / 1000, 2)} kg · Kopplungsprämie +${nf(kkt.couplingPremiumPct, 1)} %`,
+        'copper'
+      ),
+      kpi(
+        'Spannungsfall max.',
+        nf(m.maxDropPct, 2),
+        '%',
+        `Budget ${nf(m.budgetV, 3)} V (${nf(state.result.kkt.budgetPct, 1)} %) · ${m.violations} Verstöße`,
+        m.violations ? 'bad' : 'good'
+      ),
+      kpi(
+        'I k,max',
+        nf(m.ikMaxA / 1000, 2),
+        'kA',
+        `${esc(m.mainFuseLabel)} · Abschaltvermögen ${nf(main.breakingA / 1000, 0)} kA`,
+        'cyan'
+      ),
+      kpi(
+        'I²t-Reserve min.',
+        nf(m.minI2tReservePct, 0),
+        '%',
+        `k²A²-Grenze ≥ Durchlassenergie · ${m.fuseFails} Schutzfehler`,
+        m.minI2tReservePct < 25 ? 'bad' : 'good'
+      ),
+      kpi(
+        'Thermischer Fixpunkt',
+        nf(m.thermalIterations, 0),
+        'Iter.',
+        `‖ΔT‖∞ ${nf(m.thermalResidual, 6)} K · Kontraktion ${nf(m.contraction, 2)}`,
+        'violet'
+      ),
+      kpi(
+        'Ersparnis vs. Heuristik',
+        nf(m.heuristicSavingsPct, 1),
+        '%',
+        `${nf(m.heuristicMassG / 1000, 2)} kg längenproportional → ${nf(m.copperMassKg, 2)} kg`,
+        m.heuristicSavingsPct > 0 ? 'good' : 'warn'
+      ),
+    ].join('');
+  }
+
+  function renderFlags() {
+    const host = $('#flags');
+    if (!host) return;
+    host.innerHTML = state.result.flags
+      .map(
+        (f) => `<li class="flag ${esc(f.level)}">
+          <span class="flag-dot"></span>
+          <span class="flag-code">${esc(f.code)}</span>
+          <span class="flag-text">${esc(f.text)}</span>
+        </li>`
+      )
+      .join('');
+  }
+
+  function renderStatus() {
+    const m = state.result.metrics;
+    const pill = $('#statusPill');
+    if (!pill) return;
+    const ok = m.violations === 0 && m.fuseFails === 0 && m.degraded.length === 0;
+    pill.className = 'status-pill ' + (ok ? 'ok' : 'warn');
+    pill.innerHTML = `<span class="pulse"></span>${ok ? 'SOLVER KONVERGIERT' : 'PRÜFHINWEISE'}`;
+    const rt = $('#runtime');
+    if (rt) rt.textContent = nf(state.solveMs, 0) + ' ms';
+    const scenarioTag = $('#scenarioTag');
+    if (scenarioTag) scenarioTag.textContent = state.result.network.name;
+  }
+
+  function renderEdgesTable() {
+    const host = $('#panel-edges');
+    if (!host) return;
+    const rows = state.result.edges
+      .map((e) => {
+        const sel = state.selected && state.selected.type === 'edge' && state.selected.id === e.id;
+        const loadPct = e.loading * 100;
+        return `<tr data-edge="${esc(e.id)}" class="${sel ? 'is-selected' : ''}">
+          <td class="mono strong">${esc(e.id)}</td>
+          <td class="dim">${esc(e.fromLabel)} → ${esc(e.toLabel)}</td>
+          <td class="mono">${nf(e.lengthM, 2)}</td>
+          <td class="mono strong">${nf(e.area, e.area < 10 ? 1 : 0)}${e.areaVerified ? '' : '<span class="model-mark" title="außerhalb des Repo-Normankers (MODEL)">*</span>'}</td>
+          <td class="mono">${nf(e.current, 1)}</td>
+          <td class="mono">${nf(e.currentDensity, 2)}</td>
+          <td class="mono">${nf(e.temperatureC, 1)}</td>
+          <td class="mono">${nf(e.dU, 3)}</td>
+          <td class="mono">${nf(e.shareOfDrop, 1)}</td>
+          <td class="mono"><div class="bar"><i style="width:${clamp(loadPct, 0, 100).toFixed(0)}%;background:${
+            loadPct > 100 ? '#fb7185' : loadPct > 85 ? '#f4b860' : '#3ddc97'
+          }"></i></div>${nf(loadPct, 0)} %</td>
+          <td class="mono">${nf(e.massG, 0)}</td>
+          <td class="mono ${e.i2tReservePct < 25 ? 'warn-text' : ''}">${nf(e.i2tReservePct, 0)}</td>
+          <td class="mono">${esc(e.fuse.typeLabel)} ${nf(e.fuse.ratedA, 0)} A</td>
+        </tr>`;
+      })
+      .join('');
+    host.innerHTML = `<div class="table-scroll"><table class="data-table">
+      <thead><tr>
+        <th>Kante</th><th>Verbindung</th><th>l / m</th><th>A / mm²</th><th>I / A</th><th>J / A/mm²</th>
+        <th>T / °C</th><th>ΔU / V</th><th>Anteil %</th><th>Last</th><th>m / g</th><th>I²t %</th><th>Schutz</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="table-note">* Querschnitt außerhalb des belegten Repo-Normankers (1,5…70 mm²) — Belastbarkeit als MODEL ausgewiesen. Anteil = Beitrag zum Spannungsabfall des ungünstigsten Blattes.</p>`;
+  }
+
+  function renderNodesTable() {
+    const host = $('#panel-nodes');
+    if (!host) return;
+    const budget = state.result.kkt.budgetPct;
+    const rows = state.result.nodes
+      .map((n) => {
+        const sel = state.selected && state.selected.type === 'node' && state.selected.id === n.id;
+        const sev = severityClass(n.dropPct, budget);
+        return `<tr data-node="${esc(n.id)}" class="${sel ? 'is-selected' : ''}">
+          <td class="mono strong">${esc(n.id)}</td>
+          <td>${esc(n.label)}</td>
+          <td class="dim">${esc(n.kind)}</td>
+          <td class="mono">${nf(n.power, 0)}</td>
+          <td class="mono">${nf(n.current, 2)}</td>
+          <td class="mono strong ${sev === 'err' ? 'warn-text' : ''}">${nf(n.u, 3)}</td>
+          <td class="mono">${nf(n.dropV, 3)}</td>
+          <td class="mono ${sev === 'err' ? 'warn-text' : ''}">${nf(n.dropPct, 2)}</td>
+          <td class="mono">${nf(n.zLoopColdMilliohm, 1)}</td>
+          <td class="mono">${nf(n.ikMaxA / 1000, 2)}</td>
+          <td class="mono">${nf(n.ikMinA / 1000, 2)}</td>
+        </tr>`;
+      })
+      .join('');
+    host.innerHTML = `<div class="table-scroll"><table class="data-table">
+      <thead><tr>
+        <th>Knoten</th><th>Bezeichnung</th><th>Typ</th><th>P / W</th><th>I / A</th>
+        <th>U / V</th><th>ΔU / V</th><th>ΔU / %</th><th>Z Schleife / mΩ</th><th>I k,max / kA</th><th>I k,min / kA</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="table-note">Z Schleife = R i + R Shunt + Σ (R Leiter,20 °C + R Kontakt) auf dem Pfad. I k,max bei U max = ${nf(
+        state.result.network.battery.uMax,
+        1
+      )} V und 20 °C, I k,min bei U min = ${nf(state.result.network.battery.uMin, 1)} V und Leitertemperatur T e.</p>`;
+  }
+
+  function renderProtection() {
+    const host = $('#panel-protection');
+    if (!host) return;
+    const res = state.result;
+    const opts = res.options;
+    const rows = res.edges
+      .map(
+        (e) => `<tr>
+          <td class="mono strong">${esc(e.id)}</td>
+          <td class="mono">${nf(e.current, 1)}</td>
+          <td class="mono">${nf(e.izEff, 1)}</td>
+          <td class="mono">${esc(e.fuse.typeLabel)} ${nf(e.fuse.ratedA, 0)} A</td>
+          <td class="mono">${nf(e.ikFuseA / 1000, 2)}</td>
+          <td class="mono">${nf(e.fuse.breakingA / 1000, 1)}</td>
+          <td class="mono ${e.fuse.breakingOk ? 'ok-text' : 'warn-text'}">${e.fuse.breakingOk ? 'OK' : 'ZU KLEIN'}</td>
+          <td class="mono">${nf(e.fuse.totalI2t / 1000, 1)}</td>
+          <td class="mono">${nf(e.i2tLimit / 1000, 1)}</td>
+          <td class="mono ${e.i2tReservePct < 25 ? 'warn-text' : 'ok-text'}">${nf(e.i2tReservePct, 0)}</td>
+          <td class="mono">${nf(e.fuse.tripCurrentAt5s, 0)}</td>
+          <td class="mono">${nf(e.ikMinA, 0)}</td>
+          <td class="mono ${e.tripOk ? 'ok-text' : 'warn-text'}">${e.tripOk ? 'OK' : 'LÖST NICHT'}</td>
+        </tr>`
+      )
+      .join('');
+
+    const selRows = res.selectivity
+      .map(
+        (s) => `<tr>
+          <td class="mono">${esc(s.parentEdge)} · ${nf(s.parentFuse.ratedA, 0)} A</td>
+          <td class="mono">${esc(s.childEdge)} · ${nf(s.childFuse.ratedA, 0)} A</td>
+          <td class="mono">${nf(s.parentFuse.preArcI2t / 1000, 1)}</td>
+          <td class="mono">${nf(s.childFuse.totalI2t / 1000, 1)}</td>
+          <td class="mono ${s.ok ? 'ok-text' : 'warn-text'}">${nf(s.ratio, 2)}</td>
+          <td class="mono ${s.ok ? 'ok-text' : 'warn-text'}">${s.ok ? 'selektiv' : 'nicht selektiv'}</td>
+        </tr>`
+      )
+      .join('');
+
+    host.innerHTML = `
+      <div class="table-scroll"><table class="data-table">
+        <thead><tr>
+          <th>Kante</th><th>I B / A</th><th>I z,eff / A</th><th>Schutzorgan</th><th>I k / kA</th><th>AIC / kA</th>
+          <th>Abschaltvermögen</th><th>I²t total / kA²s</th><th>k²A² / kA²s</th><th>Reserve %</th>
+          <th>I Auslöse @ 5 s</th><th>I k,min / A</th><th>Abschaltung</th>
+        </tr></thead><tbody>${rows}</tbody></table></div>
+      <h4 class="panel-subtitle">Selektivitätskaskade · I²t<sub>pre-arc</sub>(Eltern) / I²t<sub>total</sub>(Kind) &gt; 1</h4>
+      <div class="table-scroll"><table class="data-table compact">
+        <thead><tr><th>Eltern-Sicherung</th><th>Kind-Sicherung</th><th>I²t pre-arc / kA²s</th><th>I²t total / kA²s</th><th>Verhältnis</th><th>Bewertung</th></tr></thead>
+        <tbody>${selRows}</tbody></table></div>
+      <p class="table-note">Abschaltvermögen = Repo-Anker (Datenblattwerte ≤ 32 V DC). Auslösestrom bei t a = ${nf(
+        opts.faultClearingTimeS,
+        0
+      )} s aus dem Vorlichtbogen-I²t: I = √(I²t / t a). t2x-Zeiten der Bauformen sind Modellparameter (UNVERIFIED).</p>`;
+  }
+
+  function renderKkt() {
+    const host = $('#panel-kkt');
+    if (!host) return;
+    const res = state.result;
+    const kkt = res.kkt;
+    const m = res.metrics;
+    const sinks = kkt.perSink;
+    const rows = sinks
+      .map((s, i) => {
+        const leaf = res.leaves[i];
+        return `<tr>
+          <td class="mono strong">${esc(s.id)}</td>
+          <td>${esc(s.label)}</td>
+          <td class="mono">${nf(s.lambda, 0)}</td>
+          <td class="mono">${nf(leaf ? leaf.dropV : 0, 4)}</td>
+          <td class="mono">${nf(kkt.budgetV, 4)}</td>
+          <td class="mono">${nf(leaf ? (leaf.dropV / kkt.budgetV) * 100 : 0, 1)} %</td>
+          <td class="mono">${nf(leaf ? leaf.ikMaxA / 1000 : 0, 2)}</td>
+        </tr>`;
+      })
+      .join('');
+
+    const marginRows = res.edges
+      .map(
+        (e) => `<tr>
+          <td class="mono strong">${esc(e.id)}</td>
+          <td class="mono">${nf(e.area, e.area < 10 ? 1 : 0)}</td>
+          <td class="mono">${nf(e.dUModel, 4)}</td>
+          <td class="mono">${nf((e.dUModel / kkt.budgetV) * 100, 1)} %</td>
+          <td class="mono">${nf(e.shareOfDrop, 1)} %</td>
+          <td class="mono">${nf(e.massG, 0)}</td>
+          <td class="mono">${nf(e.rCu20Milliohm, 2)}</td>
+        </tr>`
+      )
+      .join('');
+
+    host.innerHTML = `
+      <div class="kkt-grid">
+        <div class="kkt-card">
+          <div class="kkt-card-title">Kontinuierliches Optimum</div>
+          <div class="kkt-big">${nf(kkt.continuousMassG / 1000, 3)}<span>kg</span></div>
+          <p>Exakte Lösung der konvexen Relaxation über die duale Koordinaten-Aszension. Untere Schranke für jede diskrete Lösung.</p>
+          <div class="kkt-mini"><span>Sweeps</span><b>${nf(kkt.sweeps, 0)}</b></div>
+        </div>
+        <div class="kkt-card">
+          <div class="kkt-card-title">B&amp;B-Optimum (Fixpunkt)</div>
+          <div class="kkt-big">${nf(kkt.linearDiscreteMassG / 1000, 3)}<span>kg</span></div>
+          <p>Branch-and-Bound über A<sub>norm</sub> bei eingefrorenen Temperaturen. Die thermische Rückkopplung liegt außerhalb dieser Schranke; die Politur verifiziert jede Reduktion am vollen Modell.</p>
+          <div class="kkt-mini"><span>Knoten / Relax.</span><b>${nf(kkt.nodes, 0)} / ${nf(kkt.relaxations, 0)}</b></div>
+          <div class="kkt-mini"><span>Optimalität</span><b class="${kkt.proven ? 'ok-text' : 'warn-text'}">${kkt.proven ? 'bewiesen' : 'nicht bewiesen'}</b></div>
+          <div class="kkt-mini"><span>Politur</span><b>${nf(m.polishSteps, 0)} ΔA</b></div>
+        </div>
+        <div class="kkt-card">
+          <div class="kkt-card-title">Ganzzahligkeitslücke</div>
+          <div class="kkt-big">${nf(kkt.gapPct, 1)}<span>%</span></div>
+          <p>Preis der Normreihe: diskretes B&amp;B-Optimum gegen die kontinuierliche Relaxation. Die Kopplungsprämie (thermische Rückkopplung) beträgt +${nf(kkt.couplingPremiumPct, 1)} %.</p>
+          <div class="kkt-mini"><span>Prüfungen</span><b>${nf(kkt.evaluations, 0)}</b></div>
+        </div>
+        <div class="kkt-card">
+          <div class="kkt-card-title">Budget-Aufteilung (KKT)</div>
+          <div class="kkt-big">${nf(kkt.budgetV, 3)}<span>V</span></div>
+          <p>Schattenpreise λ<sub>v</sub> je Blatt; Stammleitungen erhalten den größten Λ-Anteil und damit den kleinsten ΔU-Beitrag pro Kante.</p>
+          <div class="kkt-mini"><span>Stamm ΔU-Anteil</span><b>${nf(
+            res.edges[0].shareOfDrop + (res.edges[2] ? res.edges[2].shareOfDrop : 0),
+            1
+          )} %</b></div>
+        </div>
+      </div>
+
+      <h4 class="panel-subtitle">Schattenpreise λ<sub>v</sub> = ∂M<sub>Cu</sub>/∂ΔU<sub>zul,v</sub> — Grenzkosten des Spannungsbudgets</h4>
+      <div class="table-scroll"><table class="data-table compact">
+        <thead><tr><th>Blatt</th><th>Bezeichnung</th><th>λ / (g/V)</th><th>ΔU<sub>Pfad</sub> / V</th><th>Budget / V</th><th>Auslastung</th><th>I k,max / kA</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+
+      <h4 class="panel-subtitle">Kantenbeiträge zur Kaskade (Modell ohne Kontaktwiderstände)</h4>
+      <div class="table-scroll"><table class="data-table compact">
+        <thead><tr><th>Kante</th><th>A / mm²</th><th>ΔU<sub>e</sub> Modell / V</th><th>Anteil am Budget</th><th>Anteil am Blattabfall</th><th>Masse / g</th><th>R<sub>20</sub> / mΩ</th></tr></thead>
+        <tbody>${marginRows}</tbody></table></div>
+
+      <h4 class="panel-subtitle">Vergleich der Dimensionierungsstrategien</h4>
+      <div class="table-scroll"><table class="data-table compact">
+        <thead><tr><th>Methode</th><th>Masse / kg</th><th>max. ΔU / %</th><th>zulässig</th><th>Δ zur Engine</th></tr></thead>
+        <tbody>
+          <tr><td>Einzelstrang (jede Leitung erhält das volle Budget)</td><td class="mono">${nf(
+            res.naive.massG / 1000,
+            3
+          )}</td><td class="mono warn-text">${nf(res.naive.maxDropPct, 2)}</td><td class="warn-text">nein · ${
+            res.naive.violations
+          } Verstöße</td><td class="mono">${nf(((res.naive.massG - kkt.discreteMassG) / kkt.discreteMassG) * 100, 1)} %</td></tr>
+          <tr><td>Längenproportionale Budgetteilung (Heuristik)</td><td class="mono">${nf(
+            res.naive.proportional.massG / 1000,
+            3
+          )}</td><td class="mono">${nf(res.naive.proportional.maxDropPct, 2)}</td><td class="${
+            res.naive.proportional.feasible ? 'ok-text' : 'warn-text'
+          }">${res.naive.proportional.feasible ? 'ja' : 'nein'}</td><td class="mono">${nf(
+            ((res.naive.proportional.massG - kkt.discreteMassG) / kkt.discreteMassG) * 100,
+            1
+          )} %</td></tr>
+          <tr><td>Naiv + greedy Reparatur (Praxis-Workaround)</td><td class="mono">${nf(
+            res.naive.repairedMassG / 1000,
+            3
+          )}</td><td class="mono">${nf(res.naive.repairedMaxDropPct, 2)}</td><td class="ok-text">ja</td><td class="mono">${nf(
+            ((res.naive.repairedMassG - kkt.discreteMassG) / kkt.discreteMassG) * 100,
+            1
+          )} %</td></tr>
+          <tr class="is-selected"><td><b>KKT-Kaskade + Branch-and-Bound</b></td><td class="mono strong">${nf(
+            kkt.discreteMassG / 1000,
+            3
+          )}</td><td class="mono strong">${nf(res.metrics.maxDropPct, 2)}</td><td class="ok-text">ja</td><td class="mono">—</td></tr>
+        </tbody></table></div>
+      <p class="table-note">Die Einzelstrang-Rechnung ist leichter, weil sie das Budget je Leitung vergibt und den Pfad nicht prüft — sie ist um den Faktor ${nf(
+        res.naive.maxDropPct / res.kkt.budgetPct,
+        2
+      )} über dem zulässigen Spannungsfall. Die prozentuale Ersparnis der Engine bezieht sich auf zulässige Strategien.</p>`;
+  }
+
+  function renderSolverPanel() {
+    const host = $('#solverPanel');
+    if (!host) return;
+    const res = state.result;
+    const m = res.metrics;
+    const history = m.thermalHistory;
+    const logMax = Math.log10(Math.max(...history, 1e-6));
+    const bars = history
+      .map((v, i) => {
+        const h = clamp((Math.log10(Math.max(v, 1e-7)) + 7) / (logMax + 7), 0.04, 1) * 46;
+        return `<rect x="${i * 13}" y="${52 - h}" width="7" height="${h}" rx="1.5" class="${
+          i === history.length - 1 ? 'bar-last' : 'bar'
+        }"><title>Iteration ${i + 1}: ${v.toExponential(2)} K</title></rect>`;
+      })
+      .join('');
+    const width = Math.max(history.length * 13, 60);
+
+    host.innerHTML = `
+      <div class="conv-head">
+        <span>‖ΔT‖∞ je Iteration</span>
+        <span class="dim">${history.length} Schritte</span>
+      </div>
+      <svg class="spark" viewBox="0 0 ${width} 56" preserveAspectRatio="none">${bars}</svg>
+      <div class="solver-grid">
+        <div><span>MNA-Fixpunkt</span><b>${nf(m.electricalIterations, 0)} Iter.</b></div>
+        <div><span>MNA-Residuum</span><b>${m.electricalResidual.toExponential(1)} V</b></div>
+        <div><span>Thermik-Iterationen</span><b>${nf(m.thermalIterations, 0)}</b></div>
+        <div><span>Rest ‖ΔT‖∞</span><b>${m.thermalResidual.toExponential(1)} K</b></div>
+        <div><span>Kontraktionsrate</span><b>${nf(m.contraction, 3)}</b></div>
+        <div><span>Äußere Schleifen</span><b>${nf(m.outerIterations, 0)}</b></div>
+        <div><span>B&amp;B-Knoten</span><b>${nf(m.kktNodes, 0)}</b></div>
+        <div><span>Optimalität</span><b class="${m.kktProven ? 'ok-text' : 'warn-text'}">${
+          m.kktProven ? 'bewiesen' : 'offen'
+        }</b></div>
+        <div><span>Laufzeit</span><b>${nf(m.runtimeMs, 0)} ms</b></div>
+        <div><span>Reparaturen</span><b>${nf(m.repairs, 0)}</b></div>
+      </div>
+      <div class="legend">
+        <div><span class="swatch" style="background:#3ddc97"></span>&lt; 45 % Budget</div>
+        <div><span class="swatch" style="background:#f4b860"></span>75–93 %</div>
+        <div><span class="swatch" style="background:#fb7185"></span>&gt; 100 % (Verstoß)</div>
+        <div><span class="swatch-line"></span>Rückleiter (Paar)</div>
+      </div>`;
+  }
+
+  function renderInspector() {
+    const host = $('#inspector');
+    if (!host) return;
+    const sel = state.selected;
+    const res = state.result;
+    if (!sel) {
+      host.innerHTML = `<div class="empty-inspector">
+        <div class="empty-glyph">⌖</div>
+        <p>Knoten oder Leitung im Plan wählen — Details, Schleifenimpedanz und Schutzorgan erscheinen hier.</p>
+      </div>`;
+      return;
+    }
+    if (sel.type === 'edge') {
+      const e = res.edges.find((x) => x.id === sel.id);
+      if (!e) return;
+      host.innerHTML = `
+        <div class="insp-head"><span class="mono">${esc(e.id)}</span><b>${esc(e.fromLabel)} → ${esc(e.toLabel)}</b></div>
+        <div class="insp-rows">
+          <div><span>Querschnitt</span><b>${nf(e.area, 1)} mm²</b></div>
+          <div><span>Länge (2 Adern)</span><b>${nf(e.lengthM, 2)} m</b></div>
+          <div><span>Strom</span><b>${nf(e.current, 2)} A</b></div>
+          <div><span>Stromdichte</span><b>${nf(e.currentDensity, 2)} A/mm²</b></div>
+          <div><span>Leitertemperatur</span><b>${nf(e.temperatureC, 1)} °C</b></div>
+          <div><span>R Leiter (T)</span><b>${nf(e.rHotMilliohm, 2)} mΩ</b></div>
+          <div><span>R Kontakt/Crimp</span><b>${nf(e.rContactMilliohm, 2)} mΩ</b></div>
+          <div><span>ΔU Kante</span><b>${nf(e.dU, 4)} V</b></div>
+          <div><span>Anteil am Blatt</span><b>${nf(e.shareOfDrop, 1)} %</b></div>
+          <div><span>I z,eff</span><b>${nf(e.izEff, 1)} A</b></div>
+          <div><span>Auslastung</span><b>${nf(e.loading * 100, 0)} %</b></div>
+          <div><span>Kupfermasse</span><b>${nf(e.massG, 0)} g</b></div>
+          <div><span>Schutzorgan</span><b>${esc(e.fuse.typeLabel)} ${nf(e.fuse.ratedA, 0)} A</b></div>
+          <div><span>Abschaltvermögen</span><b class="${e.fuse.breakingOk ? 'ok-text' : 'warn-text'}">${nf(
+            e.fuse.breakingA / 1000,
+            0
+          )} kA</b></div>
+          <div><span>I²t Durchlass</span><b>${nf(e.fuse.totalI2t / 1000, 1)} kA²s</b></div>
+          <div><span>I²t Grenze k²A²</span><b>${nf(e.i2tLimit / 1000, 1)} kA²s</b></div>
+          <div><span>I²t-Reserve</span><b class="${e.i2tReservePct < 25 ? 'warn-text' : 'ok-text'}">${nf(
+            e.i2tReservePct,
+            0
+          )} %</b></div>
+          <div><span>Auslösung @ 5 s</span><b>${nf(e.fuse.tripCurrentAt5s, 0)} A / I k,min ${nf(e.ikMinA, 0)} A</b></div>
+        </div>`;
+      return;
+    }
+    const n = res.nodes.find((x) => x.id === sel.id);
+    if (!n) return;
+    const outgoing = res.edges.filter((e) => e.from === n.id);
+    host.innerHTML = `
+      <div class="insp-head"><span class="mono">${esc(n.id)}</span><b>${esc(n.label)}</b></div>
+      <div class="insp-rows">
+        <div><span>Knotenspannung</span><b>${nf(n.u, 3)} V</b></div>
+        <div><span>ΔU ab Quelle</span><b>${nf(n.dropPct, 2)} %</b></div>
+        <div><span>Last</span><b>${nf(n.power, 0)} W · ${nf(n.current, 2)} A</b></div>
+        <div><span>Z Schleife kalt</span><b>${nf(n.zLoopColdMilliohm, 1)} mΩ</b></div>
+        <div><span>Z Schleife heiß</span><b>${nf(n.zLoopHotMilliohm, 1)} mΩ</b></div>
+        <div><span>I k,max</span><b>${nf(n.ikMaxA / 1000, 2)} kA</b></div>
+        <div><span>I k,min</span><b>${nf(n.ikMinA / 1000, 2)} kA</b></div>
+        <div><span>Abgänge</span><b>${outgoing.length}</b></div>
+      </div>`;
+  }
+
+  function renderLegendNote() {
+    const host = $('#modelNote');
+    if (!host) return;
+    const metal = state.insulation;
+    const k = E.K_INSULATION[metal];
+    host.innerHTML = `ρ<sub>Cu,20</sub> = 0,0175 Ω·mm²/m (κ<sub>eff</sub> = 57,143) · k = ${k} A√s/mm² (${metal}) · T<sub>max</sub> = ${
+      E.T_MAX_INSULATION[metal]
+    } °C · f<sub>T</sub> = √((T<sub>max</sub>−T<sub>amb</sub>)/(T<sub>max</sub>−30 °C)) = ${nf(
+      E.ambientDerating(metal, state.ambientC),
+      3
+    )}`;
+  }
+
+  function renderAll() {
+    renderStatus();
+    renderKpis();
+    renderFlags();
+    renderSvg();
+    renderEdgesTable();
+    renderNodesTable();
+    renderProtection();
+    renderKkt();
+    renderSolverPanel();
+    renderInspector();
+    renderLegendNote();
+    syncControls();
+  }
+
+  function syncControls() {
+    const set = (id, value) => {
+      const el = $(id);
+      if (el && el.value !== String(value)) el.value = value;
+    };
+    set('#dropPct', state.dropPct);
+    set('#ambient', state.ambientC);
+    set('#lengthScale', state.lengthScale);
+    set('#contactScale', state.contactScale);
+    set('#insulation', state.insulation);
+    set('#scenario', state.scenarioId);
+    const out = (id, text) => {
+      const el = $(id);
+      if (el) el.textContent = text;
+    };
+    out('#dropPctOut', nf(state.dropPct, 1) + ' %');
+    out('#ambientOut', nf(state.ambientC, 0) + ' °C');
+    out('#lengthScaleOut', '× ' + nf(state.lengthScale, 2));
+    out('#contactScaleOut', '× ' + nf(state.contactScale, 1));
+    const ret = $('#toggleReturn');
+    if (ret) ret.checked = state.showReturn;
+    const heat = $('#toggleHeat');
+    if (heat) heat.checked = state.heatmap;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Interaktion
+  // ---------------------------------------------------------------------------
+
+  function setupTabHandlers() {
+    $$('[data-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.tab = btn.dataset.tab;
+        $$('[data-tab]').forEach((b) => b.classList.toggle('is-active', b === btn));
+        $$('[data-panel]').forEach((p) => p.classList.toggle('is-active', p.dataset.panel === state.tab));
+      });
+    });
+  }
+
+  function setupControls() {
+    const bindRange = (id, key, formatter) => {
+      const input = $(id);
+      if (!input) return;
+      input.addEventListener('input', () => {
+        state[key] = Number(input.value);
+        formatter();
+        scheduleSolve();
+      });
+    };
+    bindRange('#dropPct', 'dropPct', () => {
+      const out = $('#dropPctOut');
+      if (out) out.textContent = nf(state.dropPct, 1) + ' %';
+    });
+    bindRange('#ambient', 'ambientC', () => {
+      const out = $('#ambientOut');
+      if (out) out.textContent = nf(state.ambientC, 0) + ' °C';
+    });
+    bindRange('#lengthScale', 'lengthScale', () => {
+      const out = $('#lengthScaleOut');
+      if (out) out.textContent = '× ' + nf(state.lengthScale, 2);
+    });
+    bindRange('#contactScale', 'contactScale', () => {
+      const out = $('#contactScaleOut');
+      if (out) out.textContent = '× ' + nf(state.contactScale, 1);
+    });
+
+    const scenario = $('#scenario');
+    if (scenario) {
+      scenario.innerHTML = E.SCENARIOS.map(
+        (s) => `<option value="${esc(s.id)}">${esc(s.label)}</option>`
+      ).join('');
+      scenario.addEventListener('change', () => {
+        state.scenarioId = scenario.value;
+        state.selected = null;
+        scheduleSolve();
+      });
+    }
+
+    const insulation = $('#insulation');
+    if (insulation) {
+      insulation.addEventListener('change', () => {
+        state.insulation = insulation.value;
+        scheduleSolve();
+      });
+    }
+
+    const ret = $('#toggleReturn');
+    if (ret) {
+      ret.addEventListener('change', () => {
+        state.showReturn = ret.checked;
+        renderSvg();
+      });
+    }
+    const heat = $('#toggleHeat');
+    if (heat) {
+      heat.addEventListener('change', () => {
+        state.heatmap = heat.checked;
+        renderSvg();
+      });
+    }
+
+    const reset = $('#btnReset');
+    if (reset) {
+      reset.addEventListener('click', () => {
+        state.dropPct = 3;
+        state.ambientC = 25;
+        state.lengthScale = 1;
+        state.contactScale = 1;
+        state.insulation = 'PVC';
+        state.showReturn = false;
+        state.heatmap = true;
+        state.selected = null;
+        state.view = { k: 1, tx: 0, ty: 0 };
+        scheduleSolve();
+      });
+    }
+
+    const zoomIn = $('#btnZoomIn');
+    const zoomOut = $('#btnZoomOut');
+    const zoomFit = $('#btnZoomFit');
+    if (zoomIn) zoomIn.addEventListener('click', () => zoomBy(1.25));
+    if (zoomOut) zoomOut.addEventListener('click', () => zoomBy(0.8));
+    if (zoomFit)
+      zoomFit.addEventListener('click', () => {
+        state.view = { k: 1, tx: 0, ty: 0 };
+        applyView();
+      });
+
+  }
+
+  function zoomBy(factor) {
+    const svg = $('#canvas');
+    if (!svg) return;
+    const cx = CANVAS_W / 2;
+    const cy = state.layout ? state.layout.height / 2 : 300;
+    const k = clamp(state.view.k * factor, 0.5, 3.2);
+    const ratio = k / state.view.k;
+    state.view = {
+      k,
+      tx: cx - (cx - state.view.tx) * ratio,
+      ty: cy - (cy - state.view.ty) * ratio,
+    };
+    applyView();
+  }
+
+  function applyView() {
+    const g = $('#canvas g[transform^="translate"]');
+    if (g) {
+      g.setAttribute(
+        'transform',
+        `translate(${state.view.tx.toFixed(2)} ${state.view.ty.toFixed(2)}) scale(${state.view.k.toFixed(4)})`
+      );
+    }
+    const zoomLabel = $('#zoomLabel');
+    if (zoomLabel) zoomLabel.textContent = nf(state.view.k * 100, 0) + ' %';
+  }
+
+  function setupCanvasInteraction() {
+    const svg = $('#canvas');
+    if (!svg) return;
+
+    let drag = null;
+    const toSvg = (evt) => {
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      const ctm = svg.getScreenCTM();
+      return ctm ? pt.matrixTransform(ctm.inverse()) : { x: 0, y: 0 };
+    };
+
+    svg.addEventListener(
+      'wheel',
+      (evt) => {
+        evt.preventDefault();
+        const p = toSvg(evt);
+        const factor = evt.deltaY < 0 ? 1.12 : 0.89;
+        const k = clamp(state.view.k * factor, 0.5, 3.2);
+        const ratio = k / state.view.k;
+        state.view = {
+          k,
+          tx: p.x - (p.x - state.view.tx) * ratio,
+          ty: p.y - (p.y - state.view.ty) * ratio,
+        };
+        applyView();
+      },
+      { passive: false }
+    );
+
+    svg.addEventListener('pointerdown', (evt) => {
+      if (evt.button !== 0) return;
+      drag = { start: toSvg(evt), tx: state.view.tx, ty: state.view.ty, moved: 0, evt };
+      svg.setPointerCapture(evt.pointerId);
+    });
+
+    svg.addEventListener('pointermove', (evt) => {
+      if (!drag) return;
+      const p = toSvg(evt);
+      const dx = p.x - drag.start.x;
+      const dy = p.y - drag.start.y;
+      drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
+      if (drag.moved > 4) {
+        state.view.tx = drag.tx + dx;
+        state.view.ty = drag.ty + dy;
+        applyView();
+        svg.classList.add('is-panning');
+      }
+    });
+
+    const endDrag = () => {
+      if (!drag) return;
+      svg.classList.remove('is-panning');
+      drag = null;
+    };
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+
+    svg.addEventListener('click', (evt) => {
+      if (drag && drag.moved > 4) return;
+      const nodeEl = evt.target.closest('[data-node]');
+      const edgeEl = evt.target.closest('[data-edge]');
+      if (nodeEl) {
+        state.selected = { type: 'node', id: nodeEl.dataset.node };
+        renderAll();
+        return;
+      }
+      if (edgeEl) {
+        state.selected = { type: 'edge', id: edgeEl.dataset.edge };
+        renderAll();
+        return;
+      }
+      state.selected = null;
+      renderAll();
+    });
+
+    document.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Escape') {
+        state.selected = null;
+        renderAll();
+      }
+    });
+  }
+
+  function setupTableRowSelection() {
+    document.addEventListener('click', (evt) => {
+      const row = evt.target.closest('tr[data-edge], tr[data-node]');
+      if (!row) return;
+      if (row.dataset.edge) state.selected = { type: 'edge', id: row.dataset.edge };
+      else if (row.dataset.node) state.selected = { type: 'node', id: row.dataset.node };
+      renderAll();
+      const inspector = $('#inspector');
+      if (inspector && inspector.scrollIntoView) inspector.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  }
+
+  function showFatal(err) {
+    const host = $('#flags');
+    if (host) {
+      host.innerHTML = `<li class="flag error"><span class="flag-dot"></span><span class="flag-code">FATAL</span><span class="flag-text">${esc(
+        err && err.message ? err.message : 'Solver-Fehler'
+      )}</span></li>`;
+    }
+  }
+
+  function boot() {
+    setupTabHandlers();
+    setupControls();
+    setupCanvasInteraction();
+    setupTableRowSelection();
+    solveNow();
+    applyView();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+    </script>
+  </body>
+</html>
