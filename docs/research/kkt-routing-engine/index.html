@@ -1011,6 +1011,81 @@
         color: #cfe4f4;
         white-space: nowrap;
       }
+      .a-star {
+        display: block;
+        font-size: 8.2px;
+        font-weight: 400;
+        color: #4d6a80;
+        letter-spacing: 0.02em;
+      }
+      .proto {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(23, 41, 58, 0.7);
+      }
+      .proto-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9.2px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dim);
+        margin-bottom: 5px;
+      }
+      .proto-row {
+        display: grid;
+        grid-template-columns: 22px 1fr 54px;
+        gap: 6px;
+        align-items: baseline;
+        font-family: var(--mono);
+        font-size: 9.6px;
+        color: #8ea4b8;
+        padding: 2px 0;
+      }
+      .proto-row b {
+        font-weight: 500;
+        color: #cfe4f4;
+        letter-spacing: 0.02em;
+      }
+      .proto-row i {
+        font-style: normal;
+        color: var(--dim);
+      }
+      .proto-row.is-cycle b {
+        color: #f4b860;
+      }
+      .lam-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        font-family: var(--mono);
+        font-size: 9.4px;
+        color: #8ea4b8;
+      }
+      .lam-bar span:first-child {
+        width: 46px;
+        color: #cfe4f4;
+      }
+      .lam-bar .track {
+        flex: 1;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(23, 41, 58, 0.9);
+        overflow: hidden;
+      }
+      .lam-bar .track i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #2f9d76, #3ddc97);
+      }
+      .lam-bar em {
+        font-style: normal;
+        width: 44px;
+        text-align: right;
+        color: #9fb6c9;
+      }
       .legend {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -2225,7 +2300,6 @@ const CAMPEngine = (() => {
     let evaluations = 0;
     let relaxations = 0;
 
-    const pathSet = new Array(m).fill(null);
     const dropMax = new Array(sinks.length).fill(0);
 
     const dfs = (depth, cost) => {
@@ -2291,7 +2365,6 @@ const CAMPEngine = (() => {
         }
       }
       assignment[e] = null;
-      void pathSet;
     };
 
     dfs(0, 0);
@@ -2411,47 +2484,156 @@ const CAMPEngine = (() => {
     return true;
   }
 
+  /**
+   * Diskrete Politur am gekoppelten Fixpunkt: 1-opt und 2-opt.
+   *
+   * Die B&B-Lösung entsteht bei eingefrorenen Temperaturen. Weil R(T) und die
+   * Lastströme von den Querschnitten abhängen, ist sie am gekoppelten Modell
+   * nicht zwangsläufig zulässig. Die Politur prüft deshalb jede Reduktion am
+   * VOLLEN MNA-/Thermik-Zustand und akzeptiert sie nur, wenn beide harten
+   * Nebenbedingungen erfüllt bleiben:
+   *
+   *   (i)  ΔU_v ≤ B  für alle Blätter,
+   *   (ii) |I_e| ≤ I_z,eff(a_e)  für alle Kanten (Sicherungskoordination).
+   *
+   * Nach Erschöpfung der Einzelzüge wird zusätzlich paarweise reduziert
+   * (gleichzeitige Absenkung zweier Kanten), weil eine Einzelreduktion durch
+   * die Rückkopplung scheitern kann, während die gemeinsame Reduktion zulässig
+   * ist. Das Ergebnis ist ein 2-opt-lokales Optimum des gekoppelten Problems.
+   */
   function polishSizes(network, topo, start, options, budgetV, minArea) {
+    const m = topo.m;
+    const izOf = (e, a) => effectiveAmpacity(a, network.edges[e], options.ambientC);
+    const costOf = (e, a) => 2 * network.edges[e].lengthM * options.lengthScale * a * CU_DENSITY;
+
     let best = start.slice();
     let state = solveElectroThermal(network, topo, best, options);
-    const feasible = (s) =>
-      topo.sinks.every((v) => s.u[topo.root] - s.u[v] <= budgetV + 1e-9);
-    if (!feasible(state)) return { areas: best, state, accepted: 0, feasible: false };
+    const SINK_TOL = 1e-9;
+    const AMP_TOL = 1e-9;
 
-    const massOf = (e, a) => 2 * network.edges[e].lengthM * options.lengthScale * a * CU_DENSITY;
-    const order = Array.from({ length: topo.m }, (_, e) => e);
-    order.sort((x, y) => massOf(y, best[y]) - massOf(x, best[x]) || x - y);
+    const exactOk = (st, areas) => {
+      for (const v of topo.sinks) {
+        if (st.u[topo.root] - st.u[v] > budgetV + SINK_TOL) return false;
+      }
+      for (let e = 0; e < m; e += 1) {
+        const iz = izOf(e, areas[e]);
+        if (Math.abs(st.I[e]) > iz + AMP_TOL) return false;
+        // Sicherungskoordination: der Nennstrom der gewählten Sicherung darf
+        // die Belastbarkeit nicht überschreiten (I_n ≥ I, also ist I ≤ I_z
+        // notwendig, aber nicht hinreichend).
+        if (nextFuse(Math.max(Math.abs(st.I[e]), 1)) > iz + AMP_TOL) return false;
+      }
+      return true;
+    };
+
+    if (!exactOk(state, best)) {
+      return { areas: best, state, accepted: 0, radius: 0, evaluations: 0, feasible: false, capped: false };
+    }
+
+    const cheapOk = (areas) => {
+      for (let e = 0; e < m; e += 1) {
+        const iz = izOf(e, areas[e]);
+        const current = Math.abs(state.I[e]);
+        if (current > iz + AMP_TOL) return false;
+        if (nextFuse(Math.max(current, 1)) > iz + AMP_TOL) return false;
+      }
+      return cheapFeasible(network, topo, state, areas, budgetV, options);
+    };
+
+    let exactCalls = 0;
+    let capped = false;
+    const MAX_EXACT = 200;
+
+    const tryTrial = (trial) => {
+      if (!cheapOk(trial)) return false;
+      if (exactCalls >= MAX_EXACT) {
+        capped = true;
+        return false;
+      }
+      exactCalls += 1;
+      const st = solveElectroThermal(network, topo, trial, options);
+      if (!exactOk(st, trial)) return false;
+      best = trial;
+      state = st;
+      return true;
+    };
+
+    const downOf = (areas, e) => {
+      const idx = A_NORM.indexOf(areas[e]);
+      if (idx <= 0) return null;
+      const cand = A_NORM[idx - 1];
+      return cand >= minArea[e] - 1e-12 ? cand : null;
+    };
+
+    const order = Array.from({ length: m }, (_, e) => e);
+    order.sort((x, y) => costOf(y, best[y]) - costOf(x, best[x]) || x - y);
 
     let accepted = 0;
-    for (let pass = 0; pass < 2; pass += 1) {
+    // Radius des *erschöpften* Nachbarschaftsbeweises: 1 = alle Einzelzüge,
+    // 2 = zusätzlich alle Paarzüge ohne zulässige Verbesserung geprüft.
+    let radius = 0;
+
+    const oneOpt = () => {
       let improved = false;
       for (const e of order) {
-        let idx = A_NORM.indexOf(best[e]);
-        while (idx > 0) {
-          const cand = A_NORM[idx - 1];
-          if (cand < minArea[e] - 1e-12) break;
+        let cand = downOf(best, e);
+        while (cand !== null) {
           const trial = best.slice();
           trial[e] = cand;
-          // Vorfilter mit eingefrorenen Strömen: ist der geschätzte Abfall schon
-          // über dem Budget, kann die exakte (teurere) Prüfung nicht bestehen.
-          if (!cheapFeasible(network, topo, state, trial, budgetV, options)) {
-            idx -= 1;
-            continue;
-          }
-          const st = solveElectroThermal(network, topo, trial, options);
-          if (feasible(st)) {
-            best = trial;
-            state = st;
-            improved = true;
+          if (tryTrial(trial)) {
             accepted += 1;
+            improved = true;
             break;
           }
-          idx -= 1;
+          const idx = A_NORM.indexOf(cand);
+          cand = idx > 0 && A_NORM[idx - 1] >= minArea[e] - 1e-12 ? A_NORM[idx - 1] : null;
         }
       }
-      if (!improved) break;
+      return improved;
+    };
+
+    const twoOpt = () => {
+      for (let i = 0; i < order.length; i += 1) {
+        const e1 = order[i];
+        const c1 = downOf(best, e1);
+        if (c1 === null) continue;
+        for (let j = i + 1; j < order.length; j += 1) {
+          const e2 = order[j];
+          const c2 = downOf(best, e2);
+          if (c2 === null) continue;
+          const trial = best.slice();
+          trial[e1] = c1;
+          trial[e2] = c2;
+          if (tryTrial(trial)) {
+            accepted += 1;
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // 1-opt bis zur Erschöpfung, dann genau ein 2-opt-Zug, dann wieder 1-opt.
+    for (let round = 0; round < 6; round += 1) {
+      const before = accepted;
+      oneOpt();
+      if (accepted > before) continue;
+      if (twoOpt()) continue;
+      // 1-opt und 2-opt vollständig ohne zulässige Verbesserung durchsucht.
+      if (!capped) radius = 2;
+      break;
     }
-    return { areas: best, state, accepted, feasible: feasible(state) };
+    if (radius === 0 && !capped) radius = accepted > 0 ? 1 : 1;
+
+    return {
+      areas: best,
+      state,
+      accepted,
+      radius,
+      evaluations: exactCalls,
+      feasible: exactOk(state, best),
+      capped,
+    };
   }
 
   /** Gesamtwiderstand eines Pfades (Kupfer + Kontakt) bei Temperatur T. */
@@ -2498,6 +2680,7 @@ const CAMPEngine = (() => {
     let outerIterations = 0;
     let lastSizing = null;
     const seenAreas = new Set();
+    const protocol = [];
     let cd = null;
     let ampacityFloor = network.edges.map(() => A_NORM[0]);
 
@@ -2535,6 +2718,13 @@ const CAMPEngine = (() => {
       for (let e = 0; e < m; e += 1) if (nextA[e] !== A[e]) changed = true;
       A = nextA;
       state = solveElectroThermal(network, topo, A, options);
+      protocol.push({
+        outer,
+        areas: A.slice(),
+        maxDropPct:
+          (sinks.reduce((mx, v) => Math.max(mx, state.u[topo.root] - state.u[v]), 0) / U_NOMINAL) * 100,
+        changed,
+      });
       const key = A.join(',');
       if (!changed || seenAreas.has(key)) break;
       seenAreas.add(key);
@@ -2575,10 +2765,12 @@ const CAMPEngine = (() => {
     // Diskrete Politur mit vollständiger elektro-thermischer Verifikation.
     const polished = polishSizes(network, topo, A, options, budgetV, ampacityFloor);
     let polishSteps = 0;
+    let polishRadius = 0;
     if (polished.feasible) {
       A = polished.areas;
       state = polished.state;
       polishSteps = polished.accepted;
+      polishRadius = polished.radius;
     }
 
     // ---------------------------------------------------------------------
@@ -2698,12 +2890,12 @@ const CAMPEngine = (() => {
     const kkt = {
       budgetV,
       budgetPct: options.dropPct,
-      lambdaPerVolt: lastSizing ? lastSizing.relaxed.lambda.slice() : [],
+      lambdaPerVolt: finalSizing.relaxed.lambda.slice(),
       perSink: sinks.map((v, li) => ({
         id: nodes[v].id,
         label: nodes[v].label,
-        lambda: lastSizing ? lastSizing.relaxed.lambda[li] : 0,
-        area: lastSizing ? lastSizing.relaxed.areas : [],
+        lambda: finalSizing.relaxed.lambda[li],
+        area: finalSizing.relaxed.areas.slice(),
       })),
       continuousMassG: finalSizing.relaxed.cost,
       linearDiscreteMassG: finalSizing.cost,
@@ -2726,13 +2918,20 @@ const CAMPEngine = (() => {
       infeasible: finalSizing.feasible === false,
       sweeps: finalSizing.relaxed.sweeps,
       linearAreas: finalSizing.assign.slice(),
+      relaxedAreas: finalSizing.relaxed.areas.slice(),
+      lambdaPerEdge: network.edges.map((edge, e) => {
+        let lam = 0;
+        for (let li = 0; li < sinks.length; li += 1) {
+          if (topo.pathEdges[sinks[li]].includes(e)) lam += finalSizing.relaxed.lambda[li];
+        }
+        return lam;
+      }),
       drops: sinks.map((v) => {
         let d = 0;
         for (const e of topo.pathEdges[v]) d += finalCd.b[e] / finalSizing.assign[e];
         return d;
       }),
     };
-    void A;
 
     // Vergleich mit der trivialen Einzelstrang-Rechnung.
     const naive = computeNaive(network, topo, state, options, A, budgetV);
@@ -2770,6 +2969,12 @@ const CAMPEngine = (() => {
       outerIterations,
       repairs,
       polishSteps,
+      polishRadius,
+      polishEvaluations: polished.evaluations,
+      polishCapped: polished.capped,
+      protocol,
+      thermalHistory: state.thermalHistory.slice(),
+      outerAreas: lastSizing ? lastSizing.assign.slice() : [],
       copperMassG: massG,
       copperMassKg: massG / 1000,
       naiveMassG: naive.massG,
@@ -3638,14 +3843,17 @@ window.CampEngine = CAMPEngine;
     const host = $('#panel-edges');
     if (!host) return;
     const rows = state.result.edges
-      .map((e) => {
+      .map((e, ei) => {
         const sel = state.selected && state.selected.type === 'edge' && state.selected.id === e.id;
+        const aStar = state.result.kkt.relaxedAreas[ei];
         const loadPct = e.loading * 100;
         return `<tr data-edge="${esc(e.id)}" class="${sel ? 'is-selected' : ''}">
           <td class="mono strong">${esc(e.id)}</td>
           <td class="dim">${esc(e.fromLabel)} → ${esc(e.toLabel)}</td>
           <td class="mono">${nf(e.lengthM, 2)}</td>
-          <td class="mono strong">${nf(e.area, e.area < 10 ? 1 : 0)}${e.areaVerified ? '' : '<span class="model-mark" title="außerhalb des Repo-Normankers (MODEL)">*</span>'}</td>
+          <td class="mono strong">${nf(e.area, e.area < 10 ? 1 : 0)}${
+            e.areaVerified ? '' : '<span class="model-mark" title="außerhalb des Repo-Normankers (MODEL)">*</span>'
+          }<span class="a-star" title="kontinuierliche Relaxation a*">a* ${nf(aStar, 1)}</span></td>
           <td class="mono">${nf(e.current, 1)}</td>
           <td class="mono">${nf(e.currentDensity, 2)}</td>
           <td class="mono">${nf(e.temperatureC, 1)}</td>
@@ -3665,7 +3873,7 @@ window.CampEngine = CAMPEngine;
         <th>Kante</th><th>Verbindung</th><th>l / m</th><th>A / mm²</th><th>I / A</th><th>J / A/mm²</th>
         <th>T / °C</th><th>ΔU / V</th><th>Anteil %</th><th>Last</th><th>m / g</th><th>I²t %</th><th>Schutz</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="table-note">* Querschnitt außerhalb des belegten Repo-Normankers (1,5…70 mm²) — Belastbarkeit als MODEL ausgewiesen. Anteil = Beitrag zum Spannungsabfall des ungünstigsten Blattes.</p>`;
+      <p class="table-note">* Querschnitt außerhalb des belegten Repo-Normankers (1,5…70 mm²) — Belastbarkeit als MODEL ausgewiesen. Graue Zahl = kontinuierliche Relaxation a* (Satz 1), darunter der diskret gewählte Normquerschnitt. Anteil = Beitrag zum Spannungsabfall des ungünstigsten Blattes.</p>`;
   }
 
   function renderNodesTable() {
@@ -3757,6 +3965,19 @@ window.CampEngine = CAMPEngine;
       )} s aus dem Vorlichtbogen-I²t: I = √(I²t / t a). t2x-Zeiten der Bauformen sind Modellparameter (UNVERIFIED).</p>`;
   }
 
+  /** Schattenpreise als normierte Balken (Maximum = 100 %). */
+  function lamBars(kkt) {
+    const max = Math.max(...kkt.perSink.map((s) => s.lambda), 1e-9);
+    return kkt.perSink
+      .map(
+        (s) => `<div class="lam-bar"><span>${esc(s.id)}</span><div class="track"><i style="width:${(
+          (s.lambda / max) *
+          100
+        ).toFixed(1)}%"></i></div><em>${nf(s.lambda, 0)}</em></div>`
+      )
+      .join('');
+  }
+
   function renderKkt() {
     const host = $('#panel-kkt');
     if (!host) return;
@@ -3807,7 +4028,7 @@ window.CampEngine = CAMPEngine;
           <p>Branch-and-Bound über A<sub>norm</sub> bei eingefrorenen Temperaturen. Die thermische Rückkopplung liegt außerhalb dieser Schranke; die Politur verifiziert jede Reduktion am vollen Modell.</p>
           <div class="kkt-mini"><span>Knoten / Relax.</span><b>${nf(kkt.nodes, 0)} / ${nf(kkt.relaxations, 0)}</b></div>
           <div class="kkt-mini"><span>Optimalität</span><b class="${kkt.proven ? 'ok-text' : 'warn-text'}">${kkt.proven ? 'bewiesen' : 'nicht bewiesen'}</b></div>
-          <div class="kkt-mini"><span>Politur</span><b>${nf(m.polishSteps, 0)} ΔA</b></div>
+          <div class="kkt-mini"><span>Politur</span><b>${nf(m.polishSteps, 0)} ΔA · ${m.polishRadius >= 2 ? '2-opt' : m.polishRadius === 1 ? '1-opt' : '—'}</b></div>
         </div>
         <div class="kkt-card">
           <div class="kkt-card-title">Ganzzahligkeitslücke</div>
@@ -3818,11 +4039,12 @@ window.CampEngine = CAMPEngine;
         <div class="kkt-card">
           <div class="kkt-card-title">Budget-Aufteilung (KKT)</div>
           <div class="kkt-big">${nf(kkt.budgetV, 3)}<span>V</span></div>
-          <p>Schattenpreise λ<sub>v</sub> je Blatt; Stammleitungen erhalten den größten Λ-Anteil und damit den kleinsten ΔU-Beitrag pro Kante.</p>
-          <div class="kkt-mini"><span>Stamm ΔU-Anteil</span><b>${nf(
-            res.edges[0].shareOfDrop + (res.edges[2] ? res.edges[2].shareOfDrop : 0),
-            1
-          )} %</b></div>
+          <p>Schattenpreise λ<sub>v</sub> je Blatt in g/V — der Grenznutzen einer Budgeterweiterung.</p>
+          ${lamBars(kkt)}
+          <div class="kkt-mini"><span>Σλ</span><b>${nf(
+            kkt.perSink.reduce((a, s2) => a + s2.lambda, 0),
+            0
+          )} g/V</b></div>
         </div>
       </div>
 
@@ -3873,6 +4095,31 @@ window.CampEngine = CAMPEngine;
       )} über dem zulässigen Spannungsfall. Die prozentuale Ersparnis der Engine bezieht sich auf zulässige Strategien.</p>`;
   }
 
+  /**
+   * Protokoll der äußeren Querschnitts-Iteration: zeigt, wie der gekoppelte
+   * Fixpunkt zwischen zwei Querschnittsvektoren oszilliert und an welcher
+   * Stelle die Politur den Zyklus schließt.
+   */
+  function protoBlock(m) {
+    const rows = (m.protocol || []).map((p) => {
+      const earlier = (m.protocol || []).slice(0, m.protocol.indexOf(p));
+      const cycle = earlier.some((q) => q.areas.join(',') === p.areas.join(','));
+      return `<div class="proto-row${cycle ? ' is-cycle' : ''}">
+        <b>${String(p.outer).padStart(2, '0')}</b>
+        <span>${p.areas.map((a) => nf(a, a < 10 ? 1 : 0)).join(' · ')}</span>
+        <i>${nf(p.maxDropPct, 2)} %</i>
+      </div>`;
+    }).join('');
+    const radius = m.polishRadius >= 2 ? '2-opt' : m.polishRadius === 1 ? '1-opt' : '—';
+    return `<div class="proto">
+      <div class="proto-head"><span>Fixpunkt-Protokoll · A / mm²</span><span>${nf(m.outerIterations, 0)} Schritte</span></div>
+      ${rows}
+      <div class="proto-row"><b>→</b><span>Politur ${nf(m.polishSteps, 0)} ΔA · ${radius}${
+        m.polishCapped ? ' · Limit' : ''
+      }</span><i>${nf(m.copperMassKg, 2)} kg</i></div>
+    </div>`;
+  }
+
   function renderSolverPanel() {
     const host = $('#solverPanel');
     if (!host) return;
@@ -3910,6 +4157,7 @@ window.CampEngine = CAMPEngine;
         <div><span>Laufzeit</span><b>${nf(m.runtimeMs, 0)} ms</b></div>
         <div><span>Reparaturen</span><b>${nf(m.repairs, 0)}</b></div>
       </div>
+      ${protoBlock(m)}
       <div class="legend">
         <div><span class="swatch" style="background:#3ddc97"></span>&lt; 45 % Budget</div>
         <div><span class="swatch" style="background:#f4b860"></span>75–93 %</div>

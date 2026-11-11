@@ -425,6 +425,8 @@ notwendig: die Abbildung ist auf dem betrachteten Bereich Lipschitz mit $L<1$).
 
 ### 3.3 Verschachtelung der beiden Fixpunkte
 
+
+
 Der gekoppelte Zustand ist ein Fixpunkt auf **drei** Ebenen:
 
 $$
@@ -438,29 +440,75 @@ $$
 Wir lösen hierarchisch:
 
 ```
-Algorithmus 2: äußere Querschnitts-Iteration
+Algorithmus 2: äußere Querschnitts-Iteration mit gekoppelter Politur
   a⁰ ← Normierung des Nennstroms (12 V, η)        # entartungsfreier Start
   T⁰ ← Φ(a⁰)
   for outer = 1..5:
      (b, B, a̲) ← buildConstraintData(a, T)          # §2.1
      a ← B&B(c, b, B, a̲)                            # §2.5
      T ← Φ(a)                                        # §3.2
+     protokolliere (outer, a, ΔU_max)
      if a unverändert oder Zyklus: break
-  # Zulässigkeit am VOLLEN Modell herstellen
+  # (1) Zulässigkeit am VOLLEN Modell monoton herstellen
   while ∃v: ΔU_v > B_v:
      a_e ← nächstgrößere Norm für die Kante mit max I_e·R_e auf dem verletzten Pfad
-  # Politur: exakt verifizierte Einzelschritt-Reduktion
-  for pass = 1..2, Kanten nach Masse absteigend:
-     für jede kleinere Norm a' ≥ a̲:
-        wenn MNA(a') das Budget einhält: übernehmen
+  # (2) Politur: 1-opt, dann 2-opt, jeweils exakt verifiziert
+  repeat bis 6 Runden:
+     repeat: für jede Kante (Masse absteigend), jede kleinere Norm a' ≥ a̲
+                wenn MNA(a') (i) und (ii) erfüllt: übernehmen
+     wenn 1-opt nichts fand:
+        für jedes Kantenpaar (e1,e2): beide eine Stufe kleiner
+                wenn MNA(a') (i) und (ii) erfüllt: übernehmen, weiter mit 1-opt
+        sonst: 2-opt-Nachbarschaft erschöpft → Ende
+  # (3) Pillar-1-Auswertung am endgültigen Fixpunkt (eingefrorene Temperaturen)
+  (a*, λ) ← Relaxation(a, T);  a^B&B ← B&B(a, T);  Π ← (M − M^B&B)/M
 ```
+
+Der Vorfilter prüft jede Kandidatenreduktion zunächst mit **eingefrorenen** Strömen
+($\mathcal{O}(E)$ statt $\mathcal{O}(E^3)$); nur Kandidaten, die den Vorfilter passieren, werden
+exakt nachgerechnet. Da der Vorfilter den Strom nicht anpaßt, ist er **optimistisch** — er kann
+eine zulässige Reduktion übersehen, aber keine unzulässige durchlassen. Die Gültigkeit hängt
+damit allein an der exakten Prüfung.
 
 **Warum die Nachbesserung nötig ist.** Das B&B arbeitet mit **eingefrorenen** Temperaturen.
 Wird ein Querschnitt reduziert, steigt $T_e$, damit $R_e$, damit der Spannungsabfall — die
-lineare Schranke ist am neuen Punkt **nicht mehr gültig**. Der äußere Fixpunkt erkennt das
-(Verletzung), die Reparatur stellt Zulässigkeit monoton her (nur Vergrößerungen), die Politur
-gewinnt anschließend durch exakt verifizierte Reduktionen zurück. Ergebnis: ein **zulässiger,
-einzelschritt-optimaler** Entwurf.
+lineare Schranke ist am neuen Punkt **nicht mehr gültig**.
+
+**Die Linearisierungsabbildung hat im diskreten Fall im allgemeinen keinen Fixpunkt.** Das ist
+kein numerisches Artefakt, sondern strukturell: weil das Optimum der Relaxation auf der
+Budgetschranke liegt ($\lambda_v>0$ für alle $v$), genügt eine beliebig kleine
+Temperaturverschiebung, um die diskrete Projektion auf einen anderen Normquerschnitt springen
+zu lassen. Die Iteration oszilliert dann zwischen zwei Vektoren. Das Protokoll des
+Papierbeispiels zeigt das unverkürzt:
+
+| Außenschritt | Querschnitte / mm² | $\Delta U_{\max}$ |
+|---|---|---|
+| 01 | 50 · 16 · 10 · 16 · 16 | 2,62 % |
+| 02 | 50 · 16 · 10 · **10** · **10** | 3,00 % (Verletzung) |
+| 03 | **35** · 16 · 10 · 16 · 16 | 2,96 % |
+| 04 | 50 · 16 · 10 · 10 · 10 | 3,00 % (Zyklus erkannt) |
+
+Zykluserkennung bricht nach Schritt 04 ab; die Reparatur hebt `b3`/`b4` auf 16 mm² an; die
+**Politur** senkt den Trunk von 50 auf 35 mm², weil bei 16-mm²-Zweigen der Trunk nicht mehr der
+Engpaß ist. Ergebnis: $35/16/10/16/16$, $2{,}96\,\%$.
+
+**Politur als 2-opt-Abstieg.** Die Zulässigkeit einer Reduktion wird **exakt** am vollen
+MNA-/Thermik-Zustand geprüft, mit zwei harten Nebenbedingungen:
+
+$$
+\text{(i)}\ \Delta U_v\le B_v\ \ \forall v,
+\qquad
+\text{(ii)}\ I_{\mathrm n}\!\left(|I_e|\right)\le I_{z,\mathrm{eff}}(a_e)\ \ \forall e .
+$$
+
+Bedingung (ii) ist die Sicherungskoordination; sie ist **nicht** durch $|I_e|\le I_z$ impliziert,
+weil $I_{\mathrm n}=\text{nextFuse}(|I_e|)\ge |I_e|$ gilt (Beispiel: $I=17$ A, $I_{\mathrm n}=20$ A,
+$I_z=18$ A). Nach Erschöpfung aller Einzelzüge wird zusätzlich **paarweise** reduziert
+(gleichzeitige Absenkung zweier Kanten), weil eine Einzelreduktion durch die Rückkopplung
+scheitern kann, während die gemeinsame zulässig ist. Das Ergebnis ist ein **2-opt-lokales
+Optimum** des gekoppelten Problems: in der 1-opt- *und* 2-opt-Nachbarschaft existiert keine
+zulässige Verbesserung. Für alle drei Referenznetze wird dieser Radius tatsächlich erschöpft
+(`radius = 2`), ohne das Abbruchlimit zu berühren.
 
 **Kopplungsprämie.** Der Abstand zwischen dem B&B-Optimum bei eingefrorenen Temperaturen und
 dem verifizierten Entwurf ist die physikalische Kopplungsprämie:
@@ -790,9 +838,12 @@ Kopplung deutlich.
 
 | Szenario | $m$ | $a$ / mm² | Masse / kg | $\Delta U_{\max}$ | $I_{k,\max}$ / kA | $I_{k,\min}$ / A | I²t-Reserve | Relax. / kg | B&B / kg | Lücke | Kopplung | Laufzeit |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Kastenwagen (4-stufig) | 9 | 70,10,50,6,4,2.5,16,25,16 | **6,487** | 2,93 % | 11,08 | 113,9 | 99,78 % | 4,877 | 5,344 | 8,7 % | +17,6 % | 148 ms |
-| Tiefe Kette (5-stufig) | 8 | 70,70,35,6,6,16,10,16 | **10,877** | 2,97 % | 7,58 | 194,3 | 99,76 % | 8,247 | 8,924 | 7,6 % | +18,0 % | 73 ms |
-| Papierbeispiel | 5 | 35,16,10,16,16 | **6,451** | 2,96 % | 6,86 | 495,5 | 99,89 % | 5,335 | 5,914 | 9,8 % | +8,3 % | 17 ms |
+| Kastenwagen (4-stufig) | 9 | 70,10,50,6,4,2.5,16,25,16 | **6,487** | 2,93 % | 11,08 | 113,9 | 99,78 % | 4,877 | 5,344 | 8,7 % | +17,6 % | 118 ms |
+| Tiefe Kette (5-stufig) | 8 | 70,70,35,6,6,16,10,16 | **10,877** | 2,97 % | 7,58 | 194,3 | 99,76 % | 8,247 | 8,924 | 7,6 % | +18,0 % | 68 ms |
+| Papierbeispiel | 5 | 35,16,10,16,16 | **6,451** | 2,96 % | 6,86 | 495,5 | 99,89 % | 5,335 | 5,914 | 9,8 % | +8,3 % | 11 ms |
+
+Laufzeiten: Mittel aus zehn Läufen im Browser (single thread, jsdom-Vergleichsmessung);
+Streuung ±30 %. Die Politur meldet in allen drei Fällen `radius = 2`.
 
 Die Spalten „Relax.“ und „B&B“ beziehen sich auf das **eingefrorene** Problem (§2.1):
 „Relax.“ ist das kontinuierliche Optimum $M^\star$, „B&B“ das diskrete Optimum bei festen
@@ -820,23 +871,45 @@ Ersparnis.
 100 Zufallsnetze, $12^{5}$ Enumeration, **100/100 Übereinstimmung**, alle Optima bewiesen
 (§2.7).
 
-### 8.2 Duale Schranke und Schattenpreis
+### 8.2 Betriebsbereich (Regressionslauf)
+
+14 Parametersätze je Szenario, 42 Läufe: Budget $1/2/3/5\,\%$, Umgebung $15/45/55\,^\circ$C,
+Längenskalierung $\times1{,}5/\times2$, Kontaktskalierung $\times0{,}5/\times2$, Isolation XLPE
+sowie drei Kombinationen. Geprüft wird für **jeden** Lauf:
+
+* $\Delta U_{\max}\le$ Budget (kein zulässiger Entwurf wird verworfen),
+* $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ (Sicherungskoordination),
+* Abschaltvermögen $\ge I_{k,\max}$, Auslösung bei $I_{k,\min}$, I²t-Reserve $\ge0$,
+* Auslastung $I/I_{z,\mathrm{eff}}\le1$.
+
+Ergebnis: **42/42 zulässig**, langsamster Lauf 158 ms. Der Test ist als
+`sweep2.mjs`-Äquivalent Teil des Abnahmeprotokolls.
+
+### 8.3 2-opt-Lokalität
+
+Für alle drei Referenznetze meldet die Politur `radius = 2`: die 1-opt- **und** die
+2-opt-Nachbarschaft wurden vollständig durchsucht, ohne eine zulässige Verbesserung zu finden.
+Das ist eine **hinreichende Zulässigkeits- und Lokalitätsaussage**, keine globale Optimalität —
+diese wird für das gekoppelte Problem nicht behauptet (und ist mit dem linearen B&B auch nicht
+beweisbar, §3.3).
+
+### 8.4 Duale Schranke und Schattenpreis
 
 * KKT-Residuum $c_ea_e^2/(b_e\Lambda_e)=1{,}000$ auf allen Kanten.
 * Numerischer Schattenpreis $-14777{,}1$ g/V gegen $-\sum\lambda=-14815{,}9$ g/V
   ($0{,}26\,\%$ Abweichung, endliche Differenz).
 
-### 8.3 Numerische Restfehler
+### 8.5 Numerische Restfehler
 
 * MNA: $\|\Delta u\|_\infty<10^{-9}$ V (Abbruchkriterium), Iterationen 7–9, Restresiduum $<8{,}4\cdot10^{-10}$ V.
 * Thermik: Restfehler $5{,}6\cdot10^{-5}\ldots7{,}8\cdot10^{-5}$ K, Kontraktion $0{,}300$–$0{,}302$.
 
-### 8.4 Geometrie-Audit
+### 8.6 Geometrie-Audit
 
 Headless (jsdom + SVG-Pfade): 0 Kartenkollisionen, 0 kollineare Überlappungen für alle drei
 Szenarien.
 
-### 8.5 DOM-Assertions
+### 8.7 DOM-Assertions
 
 Für jedes Szenario werden geprüft: 6 KPI-Kacheln, Knoten-/Kantenzahl im SVG und in den
 Tabellen, $\ge1$ Flag, 4 KKT-Karten, 10 Solver-Zellen, Status-Pill, keine Konsolenfehler.

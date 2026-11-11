@@ -23,6 +23,8 @@ sowie Isolierklasse lösen das Netz neu.
 | KKT-Residuum $c_e a_e^2/(b_e\Lambda_e)$ | $1{,}000$ auf allen Kanten |
 | Schattenpreis gegen Finite Differenzen | Abweichung $0{,}26\,\%$ |
 | Thermischer Fixpunkt | Restfehler $<10^{-4}$ K, Kontraktion $\approx0{,}30$ |
+| Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft, 42/42 Läufe im Betriebsbereich zulässig |
+| Sicherungskoordination nach Politur | $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ für jede Kante geprüft |
 | Geometrie (Kartenkollision, kollineare Überlappung) | 0 / 0 in allen drei Szenarien |
 | DOM-Assertions (KPIs, Tabellen, Flags, Status, Konsole) | alle bestanden, 0 Konsolenfehler |
 
