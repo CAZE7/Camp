@@ -1018,6 +1018,42 @@
         color: #4d6a80;
         letter-spacing: 0.02em;
       }
+      .selftest {
+        margin-top: 9px;
+        padding-top: 8px;
+        border-top: 1px dashed rgba(33, 58, 81, 0.5);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .mini-btn {
+        font-family: var(--mono);
+        font-size: 9.2px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #cfe4f4;
+        background: rgba(23, 41, 58, 0.9);
+        border: 1px solid rgba(61, 220, 151, 0.35);
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .mini-btn:hover:not(:disabled) {
+        background: rgba(35, 66, 52, 0.9);
+        border-color: rgba(61, 220, 151, 0.7);
+      }
+      .mini-btn:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      .selftest-out {
+        font-family: var(--mono);
+        font-size: 9.2px;
+        color: var(--dim);
+        flex: 1 1 160px;
+      }
       .proto {
         margin-top: 10px;
         padding-top: 8px;
@@ -3664,7 +3700,27 @@ window.CampEngine = CAMPEngine;
       }
       const trackCount = Math.max(...items.map((i2) => i2.track)) + 1;
       maxTrack = Math.max(maxTrack, trackCount);
-      channelData.set(key, { items, trackCount, cyclic, key });
+
+      // Untere Schranke: maximale Zahl gleichzeitig überdeckter Intervalle
+      // (Cliquenzahl des Intervallgraphen). Linke-Kante ist für reine
+      // Intervallfärbung optimal, unter Ordnungsbedingungen gilt T >= omega.
+      // Sweep mit Start-vor-Ende bei gleicher Koordinate: ein Punktintervall
+      // (Port = Klemme) zählt an seinem Punkt mit, und zwei nur berührende
+      // Intervalle gelten konservativ als überlappend (nie unterschätzen).
+      const events = [];
+      items.forEach((i2) => {
+        events.push([i2.lo, 0]);
+        events.push([i2.hi, 1]);
+      });
+      events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      let cur = 0;
+      let omega = 0;
+      for (const [, typ] of events) {
+        cur += typ === 0 ? 1 : -1;
+        if (cur > omega) omega = cur;
+      }
+
+      channelData.set(key, { items, trackCount, cyclic, key, omega });
     });
 
     // ---- Pass 2: vertikale Ebenenabstände aus den Spurenzahlen --------
@@ -3694,7 +3750,17 @@ window.CampEngine = CAMPEngine;
       const topY = layerY[net.nodes[topo.index.get(net.edges[items[0].e].from)].layer] + NODE_H / 2;
       const mid = topY + gap / 2;
       const dTrack = clamp(gap / (T + 1.6), 8, 16);
-      channelStats.push({ depth: ch.key, tracks: T, dTrack, cyclic: ch.cyclic, gap });
+      channelStats.push({
+        depth: ch.key,
+        tracks: T,
+        omega: ch.omega,
+        minimal: T === ch.omega,
+        dTrack,
+        cyclic: ch.cyclic,
+        gap,
+        bends: items.length * 2,
+        wireLength: items.reduce((a2, it) => a2 + Math.abs(it.x1 - it.x2), 0),
+      });
       items.forEach((item) => {
         const yTrack = mid + (item.track - (T - 1) / 2) * dTrack;
         const yTop = layerY[net.nodes[topo.index.get(net.edges[item.e].from)].layer] + NODE_H / 2;
@@ -3766,7 +3832,26 @@ window.CampEngine = CAMPEngine;
       }
     }
 
-    return { pos, edgeGeom, height, layers, channelStats, maxTrack, layerCount, crossings, doglegs, crossingList };
+    const trackLowerBound = channelStats.reduce((a2, c) => Math.max(a2, c.omega), 0);
+    const tracksMinimal = channelStats.every((c) => c.minimal);
+    const totalBends = channelStats.reduce((a2, c) => a2 + c.bends, 0);
+    const totalWire = channelStats.reduce((a2, c) => a2 + c.wireLength, 0);
+    return {
+      pos,
+      edgeGeom,
+      height,
+      layers,
+      channelStats,
+      maxTrack,
+      layerCount,
+      crossings,
+      doglegs,
+      crossingList,
+      trackLowerBound,
+      tracksMinimal,
+      totalBends,
+      totalWire,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -3783,6 +3868,8 @@ window.CampEngine = CAMPEngine;
       crossings: layout.crossings,
       doglegs: layout.doglegs,
       maxTrack: layout.maxTrack,
+      trackLowerBound: layout.trackLowerBound,
+      tracksMinimal: layout.tracksMinimal,
       crossingList: layout.crossingList.slice(0, 6),
       edges: [...layout.edgeGeom.entries()].map(([e, g]) => ({
         id: e,
@@ -4103,7 +4190,18 @@ window.CampEngine = CAMPEngine;
   function renderFlags() {
     const host = $('#flags');
     if (!host) return;
-    host.innerHTML = state.result.flags
+    // Fail loud: eine verletzte Routing-Invariante ist ein Fehlerzustand, kein
+    // Hinweis. Sie wird als Flag vorangestellt, nicht nur als Zahl geführt.
+    const routingFlags = [];
+    if (state.layout && state.layout.crossings > 0) {
+      routingFlags.push({
+        level: 'error',
+        code: 'ROUTING',
+        text: `${state.layout.crossings} Leitungskreuzung(en) im Layout — Zeichnung nicht freigabefähig`,
+      });
+    }
+    host.innerHTML = routingFlags
+      .concat(state.result.flags)
       .map(
         (f) => `<li class="flag ${esc(f.level)}">
           <span class="flag-dot"></span>
@@ -4251,6 +4349,88 @@ window.CampEngine = CAMPEngine;
         opts.faultClearingTimeS,
         0
       )} s aus dem Vorlichtbogen-I²t: I = √(I²t / t a). t2x-Zeiten der Bauformen sind Modellparameter (UNVERIFIED).</p>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Selbsttest: Property-based Prüfung der Routing-Invarianten
+  // ---------------------------------------------------------------------------
+
+  /** Deterministischer Zufallsgenerator (LCG) — reproduzierbare Testläufe. */
+  function seededRandom(seed) {
+    let state2 = seed >>> 0;
+    return () => {
+      state2 = (Math.imul(state2, 1664525) + 1013904223) >>> 0;
+      return state2 / 4294967296;
+    };
+  }
+
+  /** Zufälliger Baum mit 2–6 Ebenen, 0–3 Kindern und gemischten Lasten. */
+  function randomTree(rnd, index) {
+    const ri = (k) => Math.floor(rnd() * k);
+    const layers = 2 + ri(5);
+    const nodes = [{ id: 'n0', label: 'Quelle', kind: 'battery', layer: 0, contactMilliohm: 0 }];
+    const edges = [];
+    const byLayer = [[0]];
+    for (let k = 1; k < layers; k += 1) {
+      byLayer[k] = [];
+      for (const p of byLayer[k - 1]) {
+        const kids = ri(4);
+        for (let c = 0; c < kids; c += 1) {
+          const id = `n${nodes.length}`;
+          const last = k === layers - 1;
+          nodes.push({
+            id,
+            label: last ? `Last ${id} ${'x'.repeat(ri(16))}` : `Verteiler ${id}`,
+            kind: last ? 'load' : 'distributor',
+            layer: k,
+            contactMilliohm: 0.2,
+            ...(last ? { load: { powerW: 20 + ri(400), efficiency: 0.9, mode: rnd() > 0.5 ? 'cp' : 'cc' } } : {}),
+          });
+          edges.push({
+            id: `e${edges.length}`,
+            from: nodes[p].id,
+            to: id,
+            lengthM: 0.5 + rnd() * 8,
+            bundle: 1 + ri(3),
+            insulation: 'PVC',
+          });
+          byLayer[k].push(nodes.length - 1);
+        }
+      }
+      if (!byLayer[k].length) break;
+    }
+    return {
+      name: `Zufallsnetz ${index}`,
+      battery: { label: 'B', uoc: 13.2, uMax: 14.4, uMin: 11, riMilliohm: 2, shuntMilliohm: 0.1 },
+      ambientC: 25,
+      nodes,
+      edges,
+    };
+  }
+
+  /** Führt den Selbsttest aus (synchron, ~0,3 s für 200 Netze). */
+  function runSelfTest(count = 200) {
+    const rnd = seededRandom(0x5eed1234);
+    const result = { total: 0, clean: 0, doglegs: 0, minimal: 0, worstTrack: 0, failures: [], count };
+    for (let i = 0; i < count; i += 1) {
+      const net = randomTree(rnd, i);
+      if (!net.edges.length) continue;
+      result.total += 1;
+      const r = routeOnly(net);
+      if (r.crossings === 0) result.clean += 1;
+      else result.failures.push({ i, edges: net.edges.length, crossings: r.crossings });
+      if (r.doglegs) result.doglegs += 1;
+      if (r.tracksMinimal) result.minimal += 1;
+      result.worstTrack = Math.max(result.worstTrack, r.maxTrack);
+    }
+    return result;
+  }
+
+  function selfTestText() {
+    const r = state.selfTest;
+    if (!r) return 'nicht ausgeführt';
+    const ok = r.clean === r.total;
+    return `<b class="${ok ? 'ok-text' : 'warn-text'}">${r.clean}/${r.total}</b> kreuzungsfrei · ${r.minimal}/${r.total} spurenminimal · ${r.doglegs} Jogs · max. ${r.worstTrack} Spuren`;
   }
 
   /** Schattenpreise als normierte Balken (Maximum = 100 %). */
@@ -4449,13 +4629,14 @@ window.CampEngine = CAMPEngine;
         <div><span>Reparaturen</span><b>${nf(m.repairs, 0)}</b></div>
       </div>
       <div class="solver-grid" style="margin-top:8px">
-        <div><span>Kanäle / Spuren max.</span><b>${nf(lay.channelStats.length, 0)} / ${nf(lay.maxTrack, 0)}</b></div>
+        <div><span>Spuren / untere Schranke</span><b class="${lay.tracksMinimal ? 'ok-text' : ''}">${nf(lay.maxTrack, 0)} / ω ${nf(lay.trackLowerBound, 0)}${lay.tracksMinimal ? ' ✓' : ''}</b></div>
         <div><span>Kreuzungen</span><b class="${lay.crossings === 0 ? 'ok-text' : 'warn-text'}">${nf(lay.crossings, 0)}</b></div>
         <div><span>Jogs (Doglegs)</span><b>${nf(lay.doglegs, 0)}</b></div>
-        <div><span>Biegungen</span><b>${nf(
-          [...lay.edgeGeom.values()].reduce((a, g) => a + g.points.length - 2, 0),
-          0
-        )}</b></div>
+        <div><span>Biegungen</span><b>${nf(lay.totalBends, 0)}</b></div>
+      </div>
+      <div class="selftest">
+        <button type="button" class="mini-btn" id="selftestBtn">Selbsttest · 200 Zufallsbäume</button>
+        <span class="selftest-out" id="selftestOut">${selfTestText()}</span>
       </div>
       ${protoBlock(m)}
       <div class="legend">
@@ -4584,6 +4765,21 @@ window.CampEngine = CAMPEngine;
   // ---------------------------------------------------------------------------
   // Interaktion
   // ---------------------------------------------------------------------------
+
+  function setupSelfTest() {
+    const panel = $('#solverPanel');
+    if (!panel) return;
+    panel.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('#selftestBtn');
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = 'Selbsttest läuft …';
+      setTimeout(() => {
+        state.selfTest = runSelfTest(200);
+        renderSolverPanel();
+      }, 0);
+    });
+  }
 
   function setupTabHandlers() {
     $$('[data-tab]').forEach((btn) => {
@@ -4821,6 +5017,7 @@ window.CampEngine = CAMPEngine;
 
   function boot() {
     setupTabHandlers();
+    setupSelfTest();
     setupControls();
     setupCanvasInteraction();
     setupTableRowSelection();
@@ -4828,8 +5025,12 @@ window.CampEngine = CAMPEngine;
     applyView();
   }
 
-  // Öffentlicher Prüfhaken für den Routing-Stresstest (kein Einfluß auf die UI).
+  // Öffentliche Prüfhaken für den Routing-Stresstest (kein Einfluß auf die UI).
   window.__route = routeOnly;
+  window.__selftest = () => {
+    state.selfTest = runSelfTest(200);
+    return state.selfTest;
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

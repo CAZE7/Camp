@@ -33,7 +33,7 @@ Gültigkeitsnachweis führt:
 | **1** | Querschnittsoptimierung | konvexe Relaxation, KKT-System, duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$ | 100/100 Zufallsnetze gegen $12^{m}$-Brute-Force exakt |
 | **2** | Elektro-Thermik | Banach-Fixpunkt $T \mapsto \Phi(T)$, Newton-/MNA-Innenschritt, Kontaktwiderstände, CP-Lasten | Kontraktionsfaktor $\approx 0{,}30$, Restfehler $<10^{-4}$ K |
 | **3** | Schutz | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$-Bedingung, I²t-Selektivitätskaskade | Residuum $c_eA_e^2/(b_e\Lambda_e)=1{,}000$, Schattenpreis gegen Finite Differenzen |
-| **4** | Layout | planare Ebenenordnung durch DFS-Intervallschlüssel, VCG-Kanalrouting, Zwei-Pass-Höhenlayout | 0 Kreuzungen in 3/3 Referenznetzen und 144/144 Zufallsbäumen |
+| **4** | Layout | planare Ebenenordnung durch DFS-Intervallschlüssel, VCG-Kanalrouting, Zwei-Pass-Höhenlayout | 0 Kreuzungen in 3/3 Referenznetzen und 144/144 Zufallsbäumen; $T=\omega$ (beweisbar spurenminimal) |
 
 Kernaussage: **Die diskrete B&B-Lösung des linearisierten Problems ist am gekoppelten Modell
 nicht ohne Nachbesserung zulässig.** Der äußere Fixpunkt muß Querschnitte anheben
@@ -748,7 +748,49 @@ Kanten, deterministischer Seed), davon 144 mit Kanten: **144/144 kreuzungsfrei**
 Spurenzahl 1–15. Der Test läuft über den reinen Routing-Haken `window.__route(network)` ohne
 Netzberechnung (< 2 s für alle Netze).
 
-### 5.6 Grenzen
+### 5.6 Minimalitätszertifikat für die Spurenzahl
+
+Die Spurenzahl $T$ eines Kanals ist nach unten durch die **Cliquenzahl** $\omega$ des
+Intervallgraphen beschränkt: $\omega$ ist die maximale Zahl gleichzeitig überdeckter
+Intervallpunkte, und $\omega$ Intervalle, die einen gemeinsamen Punkt enthalten, benötigen
+paarweise verschiedene Spuren. Also gilt stets
+
+$$
+\omega\;\le\;T .
+	ag{5.3}
+$$
+
+$\omega$ wird per Sweep bestimmt (Start-vor-Ende bei gleicher Koordinate, damit Punktintervalle
+— Port exakt über der Klemme — korrekt mitzählen und nie unterschätzt werden). Gilt $T=\omega$,
+ist die Zuordnung **beweisbar spurenminimal**; gilt $T>\omega$, kosten die Ordnungsbedingungen
+(5.2) zusätzliche Spuren — das wird ausgewiesen, nicht verdeckt.
+
+| Szenario | $T$ je Kanal | $\omega$ je Kanal | Zertifikat |
+|---|---|---|---|
+| Kastenwagen | 1, 1, 1 | 1, 1, 1 | **minimal** |
+| Tiefe Kette | 1, 1, 1, 3 | 1, 1, 1, 3 | **minimal** |
+| Papierbeispiel | 1, 2 | 1, 2 | **minimal** |
+
+Im Stresstest sind 126 von 160 Netzen in allen Kanälen spurenminimal; bei den übrigen kostet die
+Kreuzungsfreiheit eine Zusatzspur. Das ist der ehrliche Preis der Invariante aus §5.3 — und er
+wird beziffert, nicht verschwiegen.
+
+### 5.7 Selbsttest im Artefakt
+
+Die Prüfung ist nicht nur externen Skripten überlassen: die Anwendung bringt einen
+**Property-based Self-Test** mit (Schaltfläche „Selbsttest · 200 Zufallsbäume“ im Solver-Panel,
+Haken `window.__selftest()`).
+
+* Deterministischer Generator (LCG, fester Seed) → reproduzierbare Läufe.
+* 200 zufällige Bäume, 2–6 Ebenen, 0–3 Kinder je Knoten, gemischte CP/CC-Lasten.
+* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl.
+* Ergebnis (gemessen): **160/160 kreuzungsfrei**, 0 Jogs, 126/160 spurenminimal,
+  maximale Spurenzahl 16, Laufzeit **203 ms**.
+
+Damit ist die Invariante im ausgelieferten Artefakt selbst überprüfbar — ohne Testframework,
+ohne Build-Schritt.
+
+### 5.8 Grenzen
 
 * Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
 * Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft, aber nicht als
@@ -910,6 +952,48 @@ Kopplung deutlich.
 | Proportional | 50,16,10,16,16 | 6,989 | 2,52 % | ja | **7,7 %** |
 | **KKT + B&B + Politur** | **35,16,10,16,16** | **6,451** | **2,96 %** | **ja** | — |
 
+### 6.7 Abgrenzung zum Referenzplaner (12V-Planer)
+
+Der Vergleichsmaßstab dieser Arbeit ist der **12V-Planer** (https://12v-planer.de/planer/,
+abgerufen am 11.11.2026). Die Abgrenzung stützt sich ausschließlich auf das, was die Seite
+selbst über ihr Verfahren und ihren Prüfbericht aussagt — nicht auf Vermutungen über den Code.
+
+**Was der Referenzplaner nach eigenen Angaben tut**
+
+* „Kabelquerschnitt berechnen aus Spannungsabfall und Strombelastbarkeit (DIN VDE 0298-4)“ —
+  also eine **strangweise** Bemessung gegen das Spannungsfallbudget und die Belastbarkeit.
+* „Die Sicherung folgt der Leitung, nie umgekehrt“ — die Sicherung wird nach dem gewählten
+  Querschnitt gewählt, nicht als Koordinationsaufgabe behandelt.
+* Das Routing ist **manuell bzw. „Automatisch verbinden“**; die Zeichnung wird anschließend
+  geprüft. Der mitgelieferte Beispielplan meldet in seinem eigenen Prüfbericht
+  „1 Kreuzung(en)“ auf mindestens zwei Leitungen, mehrere Abstandshinweise
+  („Leitung liegt zu nah an einem Bauteil“) sowie „3 Prüfhinweise im Plan, davon 1 kritisch,
+  56 im Kabelrouting“.
+
+**Konsequenz.** Kreuzungen und Abstandsverletzungen sind dort ein **meldbares Prüfergebnis**,
+kein Konstruktionsausschluss: der Plan wird gezeichnet, geprüft und ggf. beanstandet. In dieser
+Arbeit ist die Kreuzungsfreiheit dagegen eine **Konstruktionsinvariante** (§5): der Router
+erzeugt sie, prüft sie im selben Lauf und führt sie als Flag, wenn sie verletzt wäre.
+
+**Gegenüberstellung**
+
+| Dimension | 12V-Planer (nach eigenen Angaben) | diese Arbeit |
+|---|---|---|
+| Querschnitt | strangweise aus $\Delta U$ und Belastbarkeit | diskretes **Globaloptimum über den Baum** (KKT-Relaxation + B&B, 100/100 gegen Brute-Force) |
+| Kopplung | keine Temperaturrückkopplung genannt | elektro-thermischer Fixpunkt mit Kontaktwiderständen und CP-Lasten |
+| Sicherung | folgt der Leitung | Eskalationsleiter + Abschaltvermögen + I²t-**Selektivitätskaskade** |
+| Kurzschluss | nicht genannt | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$ je Knoten, adiabatische $k^2A^2$ |
+| Routing | manuell/Auto-Verbinden, Kreuzungen werden **gemeldet** | planare Ordnung + VCG-Kanalrouting, **0 Kreuzungen** garantiert und geprüft |
+| Nachweis | regelbasierter Prüfbericht | Beweise: Brute-Force, Dualschranke, Schattenpreis, 2-opt, 144/144-Stresstest |
+| Nicht enthalten | — | 230-V-AC-Kreis, PV-Ertrag, Batteriechemie, Stückliste, Export |
+
+Das ist **keine** Aussage „besser oder schlechter“, sondern eine Aufgabenabgrenzung: der
+Referenzplaner ist ein Zeichen- und Prüfwerkzeug mit breitem Anlagenumfang (230 V, PV, Chemie,
+Stückliste); diese Arbeit ist ein **Optimierungs- und Nachweiskern** für den 12-V-Gleichstromteil,
+der bewusst nur das rechnet, was er beweisen kann. Die Punkte, die der Referenzplaner abdeckt und
+diese Arbeit nicht, sind in §9 als Nicht-Ziele aufgeführt — sie werden nicht als „gelöst“
+ausgegeben.
+
 ---
 
 ## 7 Ergebnisse der drei Referenznetze
@@ -989,6 +1073,8 @@ Headless (jsdom, **gerenderte SVG-Pfade** statt Layout-Interna): 0 Kartenkollisi
 
 Zusätzlich randomisierter Stresstest über `window.__route(network)`:
 **144/144 zufällige Bäume kreuzungsfrei** (2–6 Ebenen, bis 80 Kanten, 1–15 Spuren, 0 Jogs).
+Der eingebaute Selbsttest (§5.7) meldet **160/160 kreuzungsfrei, 126/160 spurenminimal** und
+bestätigt für alle drei Referenznetze $T=\omega$ (§5.6).
 Der Stresstest deckte zwei echte Router-Fehler auf, die im Festnetz nicht sichtbar waren:
 vertikal kollineare Stichleitungen (Port auf fremder Klemme) und ein Spurenband, das bei
 $T>8$ den festen Ebenenabstand sprengte und Stichleitungen rückwärts laufen ließ. Beide sind
@@ -1024,7 +1110,9 @@ Ergebnis: **alle Prüfungen bestanden**.
   500 ms, dann `proven=false`).
 
 **Nicht-Ziele:** Kabelbaumgeometrie im 3D-Raum, Bündelungswärmestau über die reine
-$f_H$-Tabelle hinaus, Batterie-Alterung.
+$f_H$-Tabelle hinaus, Batterie-Alterung, 230-V-AC-Kreise, PV-Ertragsrechnung, Batteriechemie,
+Stückliste und Export — diese Punkte deckt der Referenzplaner ab (§6.7) und sie werden hier
+bewußt **nicht** beansprucht.
 
 ---
 

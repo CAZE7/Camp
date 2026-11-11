@@ -26,6 +26,8 @@ sowie Isolierklasse lösen das Netz neu.
 | Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft, 42/42 Läufe im Betriebsbereich zulässig |
 | Sicherungskoordination nach Politur | $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ für jede Kante geprüft |
 | Routing | 0 Kreuzungen, 0 Jogs, 0 Karten-/Labelkollisionen in allen Szenarien; **144/144 zufällige Bäume kreuzungsfrei** |
+| Spurenminimalität | $T=\omega$ (Cliquenzahl) in allen Kanälen der drei Referenznetze — bewiesen minimal |
+| Selbsttest im Artefakt | 160/160 kreuzungsfrei, 126/160 spurenminimal, 0 Jogs (Schaltfläche im Solver-Panel) |
 | DOM-Assertions (KPIs, Tabellen, Flags, Status, Konsole) | alle bestanden, 0 Konsolenfehler |
 
 ## Deklarationen
