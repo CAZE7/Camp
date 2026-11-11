@@ -81,8 +81,17 @@ export async function showSidebar(page: Page): Promise<void> {
   const nav = page.getByTestId('nav-tab-bauteile');
   if (await nav.isVisible()) {
     await nav.click();
+    // Zwei Einstiege, je nach Planinhalt: Ist der Plan leer, zeigt die
+    // Ansicht „Bauteile“ den Einstieg über die Batterie (`phone-add-battery`);
+    // sonst steht „Hinzufügen“ in der Kopfzeile der Liste (`phone-add`).
+    // Nur `phone-add` zu suchen ließ jede Suite mit leerem Plan scheitern.
     const add = page.getByTestId('phone-add');
-    if (await add.isVisible()) await add.click();
+    const addBattery = page.getByTestId('phone-add-battery');
+    if (await add.isVisible()) {
+      await add.click();
+    } else if (await addBattery.isVisible()) {
+      await addBattery.click();
+    }
   }
   await expect(page.getByTestId('sidebar')).toBeVisible();
 }

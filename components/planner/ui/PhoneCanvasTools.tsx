@@ -75,7 +75,15 @@ export function PhoneCanvasTools({
       // von der Fensterhöhe abhängt (33dvh, nie bis zur Fußleiste).
       className="planner-phone-toolbar flex shrink-0 flex-col overflow-y-auto overscroll-contain border-b border-border bg-surface-panel"
     >
-      <div className="flex items-center gap-1 overflow-x-auto overscroll-x-contain px-2 py-1">
+      {/*
+        Hochformat: Die Zeile BRICHT UM, statt seitlich zu scrollen (Spec §6.2
+        sieht Scrollen nur im flachen Querformat vor). Bei 320 px passen neun
+        Knöpfe à 44 px nicht in eine Zeile; „Übersicht“ und „Darstellung“
+        lagen hinter dem rechten Rand (gemessen: rechte Kante 339 bzw. 494 px
+        im 320-px-Fenster) und waren damit unerreichbar. Im Querformat bleibt
+        es bei EINER Zeile, dort scrollt sie waagerecht.
+      */}
+      <div className="flex flex-wrap items-center gap-1 overflow-x-auto overscroll-x-contain px-2 py-1">
         <button
           type="button"
           data-testid="mobile-undo"

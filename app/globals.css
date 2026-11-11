@@ -5244,11 +5244,85 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
    Zone bleibt auf ein Drittel der Fensterhöhe begrenzt, der Rest scrollt in
    ihr. Gemessen 852×393: 197 px Zone ließen 19 px Fläche übrig. */
 @media (orientation: landscape) and (max-height: 500px) {
+  /* Meldungsplatz: Bei 320 px Fensterhöhe fraß die vierzeilige
+     Einstiegsmeldung 84 px — ein Viertel des Bildes, die Zeichenfläche
+     behielt 38 px. Deshalb sind es hier höchstens zwei Zeilen; der Rest
+     bleibt über den Scroll im Meldungstext erreichbar (Spec §5.3: „danach
+     scrollt der Text in der Meldung“). */
+  .planner-message-slot--phone > * {
+    max-height: 3rem;
+  }
+
   .planner-phone-toolbar {
-    /* Ein Drittel der Fensterhöhe: genug für die drei Knopfzeilen, wenig genug,
-       dass die Zeichenfläche (der Zweck der Ansicht) sichtbar bleibt. Was
-       nicht hineinpasst, scrollt in der Zone. Gemessen 852×393: ungebremst
-       372 px Zone → 0 px Fläche. */
-    max-height: 33dvh;
+    /* Spec §6.2: Im flachen Querformat ist die Werkzeugzone EINE Zeile,
+       waagerecht scrollbar. Gestapelt (drei Zeilen à 48/57/9 px) fraß sie bei
+       640×320 114 px von 320 — die Zeichenfläche behielt 66 px. Als eine Zeile
+       bleiben ihr 48 px, die Fläche bekommt den Rest (AT-13: > 96 px). */
+    flex-direction: row;
+    align-items: center;
+    max-height: none;
+  }
+
+  /* Die Zeilen behalten ihre Knopfhöhe. Ohne `flex-shrink: 0` verteilt der
+     Flex-Container den knappen Platz auf die Zeilen: Bei 640×320 wurde die
+     Knopfzeile 29 px hoch, die 44-px-Knöpfe ragten oben aus der Zeile
+     (y = 41 statt 49) und lagen hinter der Kopfzeile. */
+  .planner-phone-toolbar > div {
+    flex-shrink: 0;
+  }
+
+  /* In der einen Zeile stehen die Bausteine nebeneinander: Knopfzeile,
+     Modus-Zeile, Erklärung. Die Trennlinien wandern von oben nach links.
+     `overflow-x: auto` ist geerbt — die Zeile scrollt waagerecht (Spec §6.2
+     und AT-13: „Werkzeugzeile scrollbar“); Ziele dürfen außerhalb des ersten
+     Blickfelds liegen. */
+  .planner-phone-toolbar > * {
+    flex-shrink: 0;
+    border-top: 0;
+    border-left: 1px solid var(--rule, rgb(0 0 0 / 0.1));
+  }
+
+  .planner-phone-toolbar > *:first-child {
+    border-left: 0;
+  }
+
+  /* Der Modus-Satz soll nicht über den Rand hinausragen, wenn man ihn
+     erreicht: Er bleibt am Stück, die Zeile scrollt. */
+  .planner-phone-toolbar > div:has([role='group'][aria-label='Arbeitsmodus']) {
+    scroll-margin-right: 0.5rem;
+  }
+
+  /* Der aufgeklappte Bereich „Darstellung“ bleibt in der Zone: Er bekommt
+     eine eigene Spalte mit begrenzter Höhe und scrollt in sich, statt die
+     eine Zeile beliebig hoch zu machen. */
+  .planner-phone-toolbar > [data-testid='phone-display-options'] {
+    max-height: calc(6.5rem - 8px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Kopf und Fuß der Hülle schrumpfen auf 40 px. Der Desktop geht im flachen
+     Querformat denselben Weg (Werkzeugleiste 36 px, dokumentierte Abweichung
+     unter der 44-px-Kante, WCAG 2.5.8 verlangt 24 px); hier ist es der
+     einzige Hebel, der die Zeichenfläche über 96 px (AT-13) hält: Bei
+     640×320 waren es mit 48+44 px nur 62 px. */
+  .planner-phone-header {
+    min-height: 40px;
+  }
+
+  /* Der Heim-Knopf trägt `min-h-11` (44 px) im Markup; `min-height` allein
+     reicht deshalb nicht, er gibt die Höhe der Kopfzeile vor. Die Ziele der
+     Werkzeugzone bleiben bei 44 px — Spec §8 verlangt sie dort ausdrücklich
+     (die 36-px-Ausnahme gilt nur für die alte Desktop-Leiste). */
+  .planner-phone-header .cad-btn {
+    min-height: 40px;
+  }
+}
+
+/* Flaches Querformat: EINE Zeile, waagerecht scrollbar (Spec §6.2). Im
+   Hochformat bricht die Zeile um — dort ist Scrollen nicht vorgesehen. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .planner-phone-toolbar > div:first-child {
+    flex-wrap: nowrap;
   }
 }

@@ -100,7 +100,22 @@ async function measure(page: Page): Promise<Measurement> {
       return element;
     };
 
-    const toolbar = must('.cad-toolbar');
+    // Handy-Hülle (Spec §5/§6.2): `.cad-toolbar` und `.cad-toolbar__status`
+    // gehören zur Desktop-Leiste und werden unter der Handy-Grenze nicht
+    // gerendert — dort ist die Werkzeugzone `phone-canvas-toolbar` die
+    // Entsprechung. Die Messung nimmt deshalb die vorhandene Leiste.
+    const phoneChrome = !!document.querySelector('[data-testid="planner-phone-header"]');
+    // Die Werkzeugzone gibt es nur in der Ansicht „Schaltplan“ (Spec §6.2) —
+    // in den übrigen Ansichten gibt es keine Leiste zu vermessen. Dann tritt
+    // die Kopfzeile der Hülle an ihre Stelle (sie rahmt wie die Leiste).
+    const phoneToolbar = document.querySelector('[data-testid="phone-canvas-toolbar"]');
+    const toolbar = must(
+      phoneChrome
+        ? phoneToolbar
+          ? '[data-testid="phone-canvas-toolbar"]'
+          : '[data-testid="planner-phone-header"]'
+        : '.cad-toolbar'
+    );
     const toolbarRect = toolbar.getBoundingClientRect();
     const clippedButtons = Array.from(toolbar.querySelectorAll('button'))
       .filter((button) => {
@@ -114,8 +129,9 @@ async function measure(page: Page): Promise<Measurement> {
       })
       .map((button) => button.getAttribute('aria-label') ?? button.textContent?.trim() ?? '?');
 
-    const status = must('.cad-toolbar__status');
-    const inner = toolbar.clientWidth - status.clientWidth;
+    // Statusgruppe der Werkzeugleiste: nur am Desktop vorhanden.
+    const status = phoneChrome ? null : must('.cad-toolbar__status');
+    const inner = status ? toolbar.clientWidth - status.clientWidth : 0;
     void inner;
 
     return {
@@ -123,14 +139,21 @@ async function measure(page: Page): Promise<Measurement> {
       documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       bodyOverflow: document.body.scrollWidth - document.documentElement.clientWidth,
       toolbar: { ...rect(toolbar), scrollWidth: toolbar.scrollWidth, clientWidth: toolbar.clientWidth },
-      status: { ...rect(status), scrollWidth: status.scrollWidth, clientWidth: status.clientWidth },
+      status: status
+        ? { ...rect(status), scrollWidth: status.scrollWidth, clientWidth: status.clientWidth }
+        : { ...rect(toolbar), scrollWidth: 0, clientWidth: 0 },
       clippedButtons,
       workspace: rect(must('[data-testid="planner-workspace"]')),
       canvas: rect(must('[data-testid="planner-canvas-column"]')),
       // Die eigentliche Zeichenfläche ist der React-Flow-Kasten INNERHALB der
       // Spalte (die Spalte trägt zusätzlich die Statuszeile).
       canvasPane: rect(must('.react-flow')),
-      menubar: rect(must('.cad-menubar')),
+      // Menüleiste gibt es in der Handy-Hülle nicht (Spec §5.1); dann tritt
+      // die Kopfzeile der Hülle an ihre Stelle — sie ist die obere Kante.
+      menubar: rect(
+        document.querySelector('.cad-menubar') ??
+          (document.querySelector('[data-testid="planner-phone-header"]') as Element)
+      ),
       // Im flachen Querformat entfällt die Statuszeile bewusst (Platz für die
       // Zeichenfläche) — dann ist sie nicht da und wird auch nicht geprüft.
       statusbar: optional('.cad-statusbar')
@@ -143,8 +166,16 @@ async function measure(page: Page): Promise<Measurement> {
       nav: optional('[data-testid="planner-bottom-nav"]')
         ? rect(optional('[data-testid="planner-bottom-nav"]') as Element)
         : null,
-      palette: rect(must('#component-palette-panel')),
-      inspector: rect(must('#inspector-panel')),
+      // Katalog und Eigenschaften liegen in der Hülle hinter den Ansichten
+      // bzw. sind nicht montiert; ihre Fläche wird dort nicht vermessen.
+      palette: rect(
+        (document.querySelector('#component-palette-panel') ??
+          document.querySelector('[data-testid="planner-canvas-column"]')) as Element
+      ),
+      inspector: rect(
+        (document.querySelector('#inspector-panel') ??
+          document.querySelector('[data-testid="planner-canvas-column"]')) as Element
+      ),
     };
   });
 }
@@ -443,7 +474,10 @@ test.describe('M12 Geometrie', () => {
       await page.setViewportSize({ width: size.width, height: size.height });
       await openPlanner(page);
       // Handy: Katalog aus der Ansicht Bauteile; Tablet/Desktop: er ist da.
+      // Ist der Plan leer, führt der Einstieg über die Batterie
+      // (`phone-add-battery`), sonst über „Hinzufügen“ (`phone-add`).
       const addButton = page.getByTestId('phone-add');
+      const addBattery = page.getByTestId('phone-add-battery');
       if (
         await page
           .getByTestId('nav-tab-bauteile')
@@ -452,6 +486,7 @@ test.describe('M12 Geometrie', () => {
       ) {
         await page.getByTestId('nav-tab-bauteile').click();
         if (await addButton.isVisible().catch(() => false)) await addButton.click();
+        else if (await addBattery.isVisible().catch(() => false)) await addBattery.click();
       }
       await expect(page.getByTestId('sidebar')).toBeVisible();
       const palette = (await measure(page)).palette;
@@ -473,7 +508,18 @@ test.describe('M12 Geometrie', () => {
     await openPlanner(page);
     const view = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
 
-    await page.getByTestId('action-more').click();
+    // Desktop: die ⋯-Leiste. Handy-Hülle: die Ansicht „Mehr“ (Spec §6.4) —
+    // `action-more` gibt es dort nicht.
+    if (
+      await page
+        .getByTestId('nav-tab-mehr')
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await page.getByTestId('nav-tab-mehr').click();
+    } else {
+      await page.getByTestId('action-more').click();
+    }
     await page.getByTestId('action-bom').click();
 
     const dialog = page.getByRole('dialog');

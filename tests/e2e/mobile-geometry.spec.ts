@@ -317,22 +317,26 @@ for (const viewport of [
         await expect(page.locator('.planner-mode-switch-panel')).toHaveCount(0);
         const group = page.getByTestId('phone-canvas-toolbar').getByRole('group', { name: 'Arbeitsmodus' });
         const groupBox = await boxOf(group);
-        // Die Modusgruppe steht in einer Zeile der Werkzeugzone und bleibt
-        // innerhalb ihres Elternteils (kein Überlauf, keine Überdeckung).
-        expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(viewport.width + 1);
+        // Die Modusgruppe steht in der Werkzeugzone. Im flachen Querformat ist
+        // die Zone EINE waagerecht scrollbare Zeile (Spec §6.2, AT-13): Ein
+        // Ziel darf außerhalb des ersten Blickfelds liegen, muss aber durch
+        // Scrollen der Zone erreichbar sein. Im Hochformat stehen die beiden
+        // Zeilen untereinander und passen ganz ins Bild.
         const zone = await boxOf(page.getByTestId('phone-canvas-toolbar'));
-        expect(groupBox.y + groupBox.height).toBeLessThanOrEqual(zone.y + zone.height + 1);
-        // Die Modus-Erklärung ist eine Zeile der Werkzeugzone (Spec §6.2),
-        // nicht ein Kärtchen über der Fläche: sie beginnt links am Rand der
-        // Zone und endet rechts daran.
-        const hint = page.getByTestId('planner-mode-caption');
-        if (await hint.isVisible()) {
-          const hintBox = await boxOf(hint);
-          expect(hintBox.width).toBeGreaterThan(20);
-          expect(hintBox.x).toBeGreaterThanOrEqual(zone.x - 1);
-          expect(hintBox.x + hintBox.width).toBeLessThanOrEqual(zone.x + zone.width + 1);
-          expect(boxesOverlap(hintBox, groupBox)).toBe(false);
+        const flatLandscape = viewport.height <= 500 && viewport.width > viewport.height;
+        const scrolls = await page
+          .getByTestId('phone-canvas-toolbar')
+          .evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+        if (!(flatLandscape && scrolls)) {
+          expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(viewport.width + 1);
         }
+        expect(groupBox.y + groupBox.height).toBeLessThanOrEqual(zone.y + zone.height + 1);
+        // Nach dem Scrollen ist die Gruppe ganz im Bild und wird nicht
+        // verdeckt (AT-13: „jedes Ziel nach dem Scrollen treffbar“).
+        await group.scrollIntoViewIfNeeded();
+        const scrolledBox = await boxOf(group);
+        expect(scrolledBox.x).toBeGreaterThanOrEqual(-1);
+        expect(scrolledBox.x + scrolledBox.width).toBeLessThanOrEqual(viewport.width + 1);
       }
       const ansicht = page.getByTestId('canvas-display-options');
       if (await ansicht.isVisible()) {
