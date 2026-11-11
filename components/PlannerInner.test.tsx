@@ -118,7 +118,17 @@ const plannerState: Record<string, unknown> = {
   // einen Meldungszustand des Stores, nicht mehr in ein absolutes Overlay.
   setPlannerMessage: vi.fn(),
   plannerMessage: null,
+  // Befund-Synchronisation (Badge am Fuß, Warnzentrale, Prüfbericht): Die
+  // Shell schreibt die Live-Warnungen in den Store. Ohne die Aktion würde
+  // jeder Renderschritt mit „setPlannerErrors is not a function“ brechen.
+  setPlannerErrors: vi.fn(),
+  autoWireReport: null,
 };
+
+vi.mock('./planner/hooks/useLiveValidation', () => ({
+  useLiveValidation: () => [],
+  useVerificationReport: () => null,
+}));
 
 vi.mock('../store/usePlannerStore', () => ({
   usePlannerStore: Object.assign(
@@ -198,6 +208,72 @@ describe('PlannerInner — responsives Layout', () => {
     expect(screen.getByTestId('planner-phone-message')).toBeInTheDocument();
     // Die Zeichenfläche bleibt in jeder Ansicht montiert (Spec §5).
     expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
+  });
+
+  /**
+   * Regressionen aus dem ersten echten Browser-Lauf (2026-11-10). Jeder Test
+   * hält einen Fehler fest, der auf dem Handy wirklich auftrat — nicht eine
+   * Annahme über das Markup.
+   */
+  it('Handy: Kopf und Fuß bleiben bedienbar — die Ansicht liegt NUR über der Fläche', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    const surface = screen.getByTestId('planner-canvas-surface');
+    // Der Stub der Ebene trägt `planner-phone-view` (die echte trägt beides).
+    const layer = screen.getByTestId('planner-phone-view');
+    // Die Ebene ist Geschwister der Fläche, nicht der Shell: Läge sie in der
+    // Shell mit `absolute inset-0`, fängt sie die Klicks auf die Fußleiste ab
+    // (gemessen 390×844: `elementFromPoint` im Tab traf die Ebene).
+    expect(surface.contains(layer)).toBe(false);
+    expect(screen.getByTestId('planner-phone-header').contains(layer)).toBe(false);
+    expect(screen.getByTestId('planner-phone-nav').contains(layer)).toBe(false);
+    // Die Fläche ist unter der Ansicht gesperrt — und nur sie.
+    expect(surface).toHaveAttribute('inert');
+    expect(screen.getByTestId('planner-phone-header').closest('[inert]')).toBeNull();
+    expect(screen.getByTestId('planner-phone-nav').closest('[inert]')).toBeNull();
+  });
+
+  it('Handy: auf dem Schaltplan ist die Fläche nicht gesperrt', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'schaltplan' }));
+    });
+    expect(screen.getByTestId('planner-canvas-surface')).not.toHaveAttribute('inert');
+  });
+
+  it('Handy: die Aktionsmeldung landet im Meldungsplatz (Kanal lebt in der Shell)', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-action-feedback', {
+          detail: { type: 'info', message: 'Kabelführung verbessert.' },
+        })
+      );
+    });
+
+    // Vorher lauschte nur `PlannerDashboard` auf das Ereignis — und das ist auf
+    // dem Handy nicht montiert. Die Meldung kam nie an. Nachweis über den
+    // Store: Der Kanal hat geschrieben (die Anzeige selbst ist der echte
+    // Meldungsplatz, im E2E geprüft).
+    expect(plannerState.setPlannerMessage).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Kabelführung verbessert.',
+    });
+  });
+
+  it('Desktop: derselbe Kanal funktioniert unverändert', () => {
+    render(<PlannerInner />);
+    (plannerState.setPlannerMessage as ReturnType<typeof vi.fn>).mockClear();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('planner-save', { detail: {} }));
+    });
+    expect(plannerState.setPlannerMessage).toHaveBeenCalled();
   });
 
   it('A2/Desktop: Chrome-Leiste statt Handy-Hülle', () => {

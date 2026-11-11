@@ -27,6 +27,13 @@ async function openFreshExample(page: Page): Promise<void> {
     await expect(dialog).toBeHidden();
   }
   await expect(page.locator('[data-designator]').first()).toBeAttached({ timeout: 15_000 });
+  // Diese Datei misst Geometrie AUF DER FLÄCHE (Knoten, Kanten, Werkzeugzone).
+  // In der Handy-Hülle liegt beim Öffnen die Ansicht „Bauteile“ davor und die
+  // Fläche ist `inert` (Spec §5/§6.1) — Klicks und Messungen liefen deshalb
+  // gegen eine unsichtbare Ebene. Der Wechsel ist Teil der Vorbereitung, nicht
+  // der Prüfung: Messbar ist die Fläche in der Ansicht „Schaltplan“.
+  const canvasTab = page.getByTestId('nav-tab-schaltplan');
+  if (await canvasTab.isVisible()) await canvasTab.click();
 }
 
 function boxesOverlap(
@@ -161,7 +168,7 @@ test.describe('Frischstart nach geleertem Speicher', () => {
       );
     });
     await page.reload();
-    await expect(page.getByText('QA-FREMD')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('QA-FREMD').first()).toBeVisible({ timeout: 15_000 });
 
     await page.evaluate(async () => {
       localStorage.clear();
@@ -304,16 +311,27 @@ for (const viewport of [
       expect(boxesOverlap(boxes[0]!, boxes[1]!)).toBe(false);
       expect(boxesOverlap(boxes[1]!, boxes[2]!)).toBe(false);
       if (viewport.width < 768 || viewport.height <= 500) {
-        const panel = page.locator('.planner-mode-switch-panel');
-        const group = page.getByRole('group', { name: 'Arbeitsmodus' });
-        const panelBox = await boxOf(panel);
+        // In der Hülle liefert die Werkzeugzone die Gruppe (Spec §6.2); das
+        // Panel auf der Fläche gibt es dort nicht mehr (sonst zwei Sätze
+        // Knöpfe mit derselben Kennung).
+        await expect(page.locator('.planner-mode-switch-panel')).toHaveCount(0);
+        const group = page.getByTestId('phone-canvas-toolbar').getByRole('group', { name: 'Arbeitsmodus' });
         const groupBox = await boxOf(group);
-        expect(panelBox.width).toBeLessThanOrEqual(groupBox.width + 4);
+        // Die Modusgruppe steht in einer Zeile der Werkzeugzone und bleibt
+        // innerhalb ihres Elternteils (kein Überlauf, keine Überdeckung).
+        expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(viewport.width + 1);
+        const zone = await boxOf(page.getByTestId('phone-canvas-toolbar'));
+        expect(groupBox.y + groupBox.height).toBeLessThanOrEqual(zone.y + zone.height + 1);
+        // Die Modus-Erklärung ist eine Zeile der Werkzeugzone (Spec §6.2),
+        // nicht ein Kärtchen über der Fläche: sie beginnt links am Rand der
+        // Zone und endet rechts daran.
         const hint = page.getByTestId('planner-mode-caption');
         if (await hint.isVisible()) {
           const hintBox = await boxOf(hint);
           expect(hintBox.width).toBeGreaterThan(20);
-          expect(hintBox.width).toBeLessThanOrEqual(groupBox.width + 4);
+          expect(hintBox.x).toBeGreaterThanOrEqual(zone.x - 1);
+          expect(hintBox.x + hintBox.width).toBeLessThanOrEqual(zone.x + zone.width + 1);
+          expect(boxesOverlap(hintBox, groupBox)).toBe(false);
         }
       }
       const ansicht = page.getByTestId('canvas-display-options');
@@ -347,7 +365,9 @@ for (const viewport of [
 
     test('zweiter Zoom-Tipp vergrößert, die Karte lässt sich am Körper ziehen', async ({ page }) => {
       await openFreshExample(page);
-      const zoomIn = page.locator('.react-flow__controls-zoomin');
+      // Handy-Hülle: Zoom steht in der Werkzeugzone (Spec §6.2); die
+      // React-Flow-`Controls` werden dort nicht gerendert.
+      const zoomIn = page.getByTestId('phone-zoom-in');
       const before = await zoomPercent(page);
       expect(before).toBeGreaterThan(0);
       await zoomIn.click();
@@ -437,6 +457,10 @@ for (const viewport of [
       }
       await bom.getByRole('button', { name: 'Dialog schließen' }).click();
 
+      // Nach dem Bericht steht die Ansicht „Mehr“ wieder da (das Blatt war
+      // über ihr). Für den Klick auf ein Bauteil erst zurück auf den
+      // Schaltplan — dort liegt die Fläche.
+      await page.getByTestId('nav-tab-schaltplan').click();
       await clickVisiblePart(page, viewport);
       // Hilfe liegt auf dem Handy in „Mehr“ (Spec §6.4), nicht in einem Menü.
       await page.getByTestId('nav-tab-mehr').click();
@@ -484,12 +508,34 @@ for (const viewport of [
       await expect(page.getByTestId('canvas-display-options')).toHaveCount(0);
 
       // Aufklappen vergrößert die Zone und verkleinert die Fläche — sie
-      // überdeckt sie nicht (Spec §6.2).
+      // überdeckt sie nicht (Spec §6.2). Gemessen wird die FLÄCHE selbst
+      // (`planner-canvas-surface`), nicht die Spalte: Die ist `flex-1` und
+      // behält ihre Höhe, während die Fläche darin schrumpft.
+      const surface = () => boxOf(page.getByTestId('planner-canvas-surface'));
+      const surfaceBefore = await surface();
       await displayToggle.click();
       await expect(page.getByTestId('phone-display-options')).toBeVisible();
-      const canvasWithPanel = await boxOf(page.getByTestId('planner-canvas-column'));
-      expect(canvasWithPanel.height).toBeLessThan(canvas.height);
-      expect(insideViewport(await boxOf(page.getByTestId('phone-display-options')), viewport)).toBe(true);
+      const surfaceWithPanel = await surface();
+      const zone = page.getByTestId('phone-canvas-toolbar');
+      const zoneBox = await boxOf(zone);
+      // Zwei zulässige Ausgänge, beide „im Fluss“ (Spec §6.2):
+      //  · es ist Platz → die Zone wächst und die Fläche schrumpft;
+      //  · die Zone ist am Höhendeckel (flaches Querformat) → der Rest
+      //    scrollt IN der Zone, die Fläche bleibt nutzbar.
+      const grewAndPushed = surfaceWithPanel.height < surfaceBefore.height;
+      const cappedAndScrolls =
+        zoneBox.height <= Math.round(viewport.height / 3) + 2 &&
+        (await zone.evaluate((element) => element.scrollHeight > element.clientHeight + 1)) &&
+        surfaceWithPanel.height > 0;
+      expect(
+        grewAndPushed || cappedAndScrolls,
+        `Zone ${zoneBox.height} px, Fläche ${surfaceWithPanel.height} px`
+      ).toBe(true);
+      // Kein `fixed`-Popover: Der Bereich liegt innerhalb der Zone.
+      const optionsInsideZone = await page
+        .getByTestId('phone-display-options')
+        .evaluate((element) => element.closest('[data-testid="phone-canvas-toolbar"]') !== null);
+      expect(optionsInsideZone).toBe(true);
       await displayToggle.click();
       await expect(page.getByTestId('phone-display-options')).toHaveCount(0);
 
@@ -669,7 +715,8 @@ test.describe('Bauteil aus der Bibliothek im Querformat', () => {
 
     // Nach dem Hinzufügen liegt das DETAIL des neuen Bauteils offen
     // (Spec §6.1, Schritt 2) — nicht wieder der Katalog, kein schwebender
-    // Toast über der Zeichenfläche.
+    // Toast über der Zeichenfläche. Der Knoten zählt im DOM, auch wenn die
+    // Ebene ihn gerade verdeckt (die Fläche bleibt montiert, Spec §5).
     await expect(page.getByTestId('inspector-panel')).toBeVisible({ timeout: 8_000 });
     await expect(page.locator('.planner-mobile-feedback')).toHaveCount(0);
     await expect(page.locator('.react-flow__node')).toHaveCount(before + 1);
@@ -689,11 +736,16 @@ test.describe('Bauteil aus der Bibliothek im Querformat', () => {
     await expect(slot).toBeVisible();
     const slotBox = await boxOf(slot);
     expect(insideViewport(slotBox, { width: 852, height: 393 })).toBe(true);
-    expect(boxesOverlap(slotBox, addedBox)).toBe(false);
+    // Spec §5.3: Der Meldungsplatz schneidet BEDIENUNG nicht — Werkzeugzone,
+    // Fußleiste und Zoom. Plan-Knoten darf er berühren (er schiebt die Ansicht
+    // nach oben; bei 393 px Höhe bleibt daneben wenig Fläche).
     const toolbar = page.getByTestId('phone-canvas-toolbar');
     expect(boxesOverlap(slotBox, await boxOf(toolbar))).toBe(false);
     const nav = page.getByTestId('planner-bottom-nav');
     expect(boxesOverlap(slotBox, await boxOf(nav))).toBe(false);
+    for (const id of ['phone-zoom-in', 'phone-zoom-out', 'mobile-undo', 'mobile-overview']) {
+      expect(boxesOverlap(slotBox, await boxOf(page.getByTestId(id))), id).toBe(false);
+    }
   });
 });
 
@@ -775,17 +827,26 @@ test.describe('Auto-verbinden abbrechen', () => {
 
   test('der Dialog spricht Klartext und Abbrechen ändert die Befunde nicht', async ({ page }) => {
     await openFreshExample(page);
-    const probe = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    // Der Prüfplaketten-Knopf („Planungsprüfung öffnen“) ist Bedienung der
+    // Desktop-Menüleiste. Auf dem Handy ist die Prüfung die eigene Ansicht
+    // „Prüfung“ (Spec §6.3) — dort steht dieselbe Zahl.
+    await page.getByTestId('nav-tab-pruefung').click();
+    const probe = page.getByTestId('phone-check-verdict');
     await expect(probe).toBeVisible();
-    const before = await probe.getAttribute('aria-label');
-    await page.getByTestId('action-more').click();
-    await page.getByTestId('action-autowire-menu').click();
+    const before = await probe.innerText();
+    await page.getByTestId('nav-tab-schaltplan').click();
+    // Auf dem Handy gibt es kein `action-more` (das ist die Werkzeugleiste der
+    // Desktop-Chrome): Die Aktionen stehen direkt in „Mehr“ (Spec §6.4).
+    await page.getByTestId('nav-tab-mehr').click();
+    await page.getByTestId('action-autowire').click();
     const dialog = page.getByRole('dialog', { name: /Vorschlag prüfen/ });
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     const text = await dialog.innerText();
     expect(text).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/);
     await dialog.getByRole('button', { name: 'Vorschlag verwerfen' }).click();
     await expect(dialog).toBeHidden();
-    await expect(probe).toHaveAttribute('aria-label', before ?? '');
+    // Zurück in die Prüfansicht: dieselbe Zahl wie vor dem Abbruch.
+    await page.getByTestId('nav-tab-pruefung').click();
+    await expect(probe).toHaveText(before);
   });
 });

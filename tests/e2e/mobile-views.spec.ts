@@ -85,6 +85,25 @@ async function openFreshPlanner(page: Page): Promise<void> {
   await expect(page.locator('[data-designator]').first()).toBeAttached({ timeout: 15_000 });
 }
 
+/**
+ * Ist die Zeichenfläche `inert`?
+ *
+ * `inert` ist ein BOOLESCHES Attribut: im DOM steht `inert=""`. Ein Vergleich
+ * gegen den String `'true'` schlägt deshalb fehl, obwohl das Attribut gesetzt
+ * ist. Geprüft wird die Präsenz des Attributs — das ist die Aussage, die die
+ * Spezifikation macht („dann ist sie inert“).
+ */
+async function expectInert(page: Page, expected: boolean): Promise<void> {
+  await expect
+    .poll(
+      () => page.getByTestId('planner-canvas-surface').evaluate((element) => element.matches('[inert]')),
+      {
+        message: expected ? 'Zeichenfläche muss inert sein' : 'Zeichenfläche darf nicht inert sein',
+      }
+    )
+    .toBe(expected);
+}
+
 /** Liegt der Punkt in der Mitte des Ziels auf dem Ziel selbst? */
 async function hitsSelf(locator: Locator): Promise<boolean> {
   return locator.evaluate((element) => {
@@ -160,7 +179,7 @@ for (const size of SIZES) {
       // 4) Die Zeichenfläche bleibt montiert, ist aber nicht bedienbar.
       const canvas = page.getByTestId('planner-canvas-column');
       await expect(canvas).toHaveCount(1);
-      await expect(page.getByTestId('planner-workspace')).toHaveAttribute('inert', 'true');
+      await expectInert(page, true);
 
       // 5) Kein Dokument-Scroll, kein waagerechter Überlauf.
       await expectNoHorizontalOverflow(page);
@@ -190,15 +209,23 @@ for (const size of SIZES) {
       await page.getByTestId('nav-tab-schaltplan').click();
       await expect(view).toHaveCount(0);
       await expect(page.getByTestId('planner-canvas-column')).toBeVisible();
-      await expect(page.getByTestId('planner-workspace')).not.toHaveAttribute('inert', 'true');
+      // Gegenprobe zu oben: Auf dem Schaltplan IST die Fläche die Ansicht —
+      // keine Ebene darüber, also nicht `inert`.
+      await expectInert(page, false);
       const tools = page.getByTestId('phone-canvas-toolbar');
       await expect(tools).toBeVisible();
-      for (const id of ['mobile-undo', 'mobile-redo', 'phone-zoom-in', 'phone-zoom-out', 'phone-zoom']) {
+      for (const id of ['mobile-undo', 'mobile-redo', 'phone-zoom-in', 'phone-zoom-out', 'mobile-overview']) {
         const control = page.getByTestId(id);
         await expect(control, id).toBeVisible();
         const box = await boxOf(control);
         expect(box.height, `${id} zu flach`).toBeGreaterThanOrEqual(44);
       }
+      // Prozentwert ist eine Anzeige, kein Ziel: sichtbar und lesbar, aber
+      // bewusst keine 44-px-Trefferfläche (Spec §6.2 nennt ihn als Ausgabe
+      // des React-Flow-Transforms).
+      const zoomLabel = page.getByTestId('phone-zoom');
+      await expect(zoomLabel).toBeVisible();
+      await expect(zoomLabel).toHaveText(/^\d+\s%$/);
       // Die Werkzeugzone liegt IM Fluss über der Fläche, nicht darüber.
       const toolsBox = await boxOf(tools);
       const canvasBox = await boxOf(page.getByTestId('planner-canvas-column'));
@@ -250,7 +277,7 @@ for (const size of SIZES) {
       const sidebarBox = await boxOf(sidebar);
       expect(sidebarBox.y).toBeGreaterThanOrEqual(-1);
       expect(sidebarBox.bottom).toBeLessThanOrEqual(size.height + 1);
-      await expect(page.getByTestId('planner-workspace')).toHaveAttribute('inert', 'true');
+      await expectInert(page, true);
 
       // Ein Bauteil hinzufügen → Detail des neuen Bauteils (Spec §6.1).
       const tile = page.getByTestId('sidebar-item').first();
@@ -264,7 +291,11 @@ for (const size of SIZES) {
       await page.getByTestId('nav-tab-bauteile').click();
       await expect(inspector).toBeHidden();
       await expect(view).toHaveAttribute('data-phone-view', 'bauteile');
-      await expect(page.getByTestId('planner-workspace')).not.toHaveAttribute('inert', 'true');
+      // Das Blatt ist zu (`data-panel-open` steuert den Blattzustand der
+      // Hülle) — und die Zeichenfläche bleibt `inert`, weil die Ansicht
+      // „Bauteile“ sie weiterhin überdeckt. Genau eine Ebene ist bedienbar.
+      await expect(page.getByTestId('planner-shell')).toHaveAttribute('data-panel-open', 'false');
+      await expectInert(page, true);
       await expectNoHorizontalOverflow(page);
     });
 

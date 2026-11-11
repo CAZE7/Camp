@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils';
 import { type Node, type Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../edges/CableEdge';
+import { PHONE_EXPERT_OPEN_ATTRIBUTE } from './ui/breakpoints';
 
 /* ─── Knowledge Database ─── */
 
@@ -527,6 +528,10 @@ export function ExpertPanel() {
     <div
       data-testid="expert-panel"
       data-open={isOpen ? 'true' : 'false'}
+      // Die Shell liest diesen Zustand: Auf dem Handy ersetzt das offene
+      // Expertenblatt die Ansicht (Spec §7, „genau eine Ebene“) — sonst bliebe
+      // die Ansicht darunter sichtbar und zwei Ebenen stünden nebeneinander.
+      {...{ [PHONE_EXPERT_OPEN_ATTRIBUTE]: isOpen ? 'true' : 'false' }}
       className={cn(
         // Kein `transition-all`: Ein Blatt, das seine Breite animiert, wirkt wie
         // eine Karte aus einer Marketing-Oberfläche. Bewegung gibt es nur als

@@ -17,3 +17,13 @@ export const MD_BREAKPOINT = 768;
 
 /** Kurzform für Kommentare und Tests. */
 export const PHONE_BREAKPOINT = { maxWidth: 767, maxHeight: 500 } as const;
+
+/**
+ * DOM-Merkmal des offenen Expertenblatts (`ExpertPanel`).
+ *
+ * Auf dem Handy ist „Hilfe & Fachwissen“ eine eigene volle Ebene (Spec §7):
+ * Solange sie offen ist, schweigt die Ansicht darunter. Das Merkmal steht am
+ * Panel selbst, weil dessen `isOpen` lokaler Zustand ist — die Shell liest es
+ * über einen Selektor, statt denselben Zustand ein zweites Mal zu halten.
+ */
+export const PHONE_EXPERT_OPEN_ATTRIBUTE = 'data-phone-expert-open';

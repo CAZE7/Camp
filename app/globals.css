@@ -1635,6 +1635,11 @@ body:has(.de-warning-center [role='dialog']) .planner-action-feedback {
 .planner-shell--focus [data-testid='inspector-backdrop'],
 .planner-shell--focus .planner-statusbar,
 .planner-shell--focus .planner-bottom-nav,
+/* Die Handy-Kopfzeile gehört zum ablenkungsfreien Modus wie der Fuß: Beide
+   verschwinden. Der sichtbare Ausstieg ist der Fokus-Knopf auf der Fläche
+   (`planner-focus-exit`) — ein Kopf ohne Ansichten darunter wäre ein Ziel
+   ohne Wirkung. */
+.planner-shell--focus .planner-phone-header,
 .planner-shell--focus .planner-mobile-history,
 .planner-shell--focus .planner-expert-panel,
 .planner-shell--focus .de-hud-card,
@@ -3796,9 +3801,13 @@ html.planner-root-active body {
     padding-block: 0;
   }
 
-  /* Die Modus-Erklärung ist zwei Zeilen hoch und liegt bei 150 px
-     Zeichenfläche auf den Zoom-Griffen. Die drei Modus-Knöpfe bleiben. */
-  [data-testid='planner-mode-caption'] {
+  /* Die Modus-Erklärung ist zwei Zeilen hoch und lag als schwebende Karte bei
+     150 px Zeichenfläche auf den Zoom-Griffen. In der Handy-Hülle steht sie
+     dagegen IM FLUSS in der Werkzeugzone (Spec §6.2) und überdeckt nichts —
+     dort bleibt sie sichtbar. Ausgeblendet wird nur die schwebende Karte der
+     Zeichenfläche (`.planner-mode-switch-panel`), und die gibt es in der
+     Hülle nicht mehr. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     display: none;
   }
 
@@ -4189,7 +4198,10 @@ html.planner-root-active body {
     --planner-phone-sheet-top: 7.25rem;
   }
 
-  [data-testid='planner-mode-caption'] {
+  /* Ebenso im flachen Querformat: Die Erklärung steht in der Werkzeugzone im
+     Fluss (Spec §6.2, „eine Zeile, gekürzt mit ellipsis“), nicht mehr als
+     Karte über den Zoom-Griffen. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     display: none;
   }
 
@@ -4987,7 +4999,10 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
     right: auto !important;
     transform: none !important;
   }
-  [data-testid='planner-mode-caption'] {
+  /* Nur die schwebende Karte auf der Fläche: Sie muss die Karte rechts
+     freihalten. In der Werkzeugzone der Handy-Hülle ist die Erklärung eine
+     Zeile der Zone (Spec §6.2) und nutzt die volle Breite. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     max-width: min(22rem, calc(100vw - 30rem));
     text-align: left;
   }
@@ -5148,10 +5163,14 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 .planner-shell[data-phone-shell='true'] .planner-mode-switch-panel,
 .planner-shell[data-phone-shell='true'] .planner-display-options-panel,
 .planner-shell[data-phone-shell='true'] .planner-mobile-history,
-.planner-shell[data-phone-shell='true'] .planner-expert-panel,
-.planner-shell[data-phone-shell='true'] .planner-focus-exit {
+.planner-shell[data-phone-shell='true'] .planner-expert-panel {
   display: none !important;
 }
+
+/* Der Fokus-Ausstieg bleibt AUCH auf dem Handy sichtbar (Spec §6.2): Dort gibt
+   es keinen `Controls`-Block und keine Werkzeugzone im Fokus, also wäre ein
+   verdeckter Ausstieg ein Fokusmodus ohne Rückweg — nur die Escape-Taste
+   hätte ihn beendet. Im Normalzustand ist der Knopf gar nicht gerendert. */
 
 /* Kopf und Fuß der Hülle: 48 px plus Safe-Area (Spec §5.1/§5.2). Der
    Home-Indicator darf nichts überdecken. */
@@ -5188,5 +5207,48 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 @media (prefers-reduced-motion: reduce) {
   .planner-phone-view {
     animation: none;
+  }
+}
+
+/*…… aber das OFFENE Expertenblatt („Hilfe & Fachwissen“ aus „Mehr“) ist auf
+   dem Handy eine eigene volle Ebene wie Katalog und Detail (Spec §7): Es
+   beginnt unter der Kopfzeile, endet über der Fußleiste und füllt die Breite.
+   Die Desktop-Karte (`bottom-28`, `w-11/12`) ließe in der 346-px-Fläche
+   0×0 px übrig — gemessen 375×667. */
+.planner-shell[data-phone-shell='true'] .planner-expert-panel--open {
+  display: flex !important;
+  /* Eine Stufe über der Ansicht. Ein bloßes `z-index` am Panel genügt nicht:
+     Es sitzt in einem eigenen Stapelkontext der Canvas-Spalte, die Ansicht
+     daneben in einem anderen — deshalb wird die Ansicht hier aktiv
+     zurückgesetzt, solange das Expertenblatt offen ist (gemessen 375×667:
+     das Blatt lag unter der Ansicht und war nicht bedienbar). */
+  z-index: calc(var(--z-sheet) + 1);
+  top: calc(3rem + env(safe-area-inset-top) + 0.25rem) !important;
+  right: 0.25rem !important;
+  bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.25rem) !important;
+  left: 0.25rem !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.planner-shell[data-phone-shell='true'] .planner-expert-panel--open > div {
+  max-height: 100%;
+}
+
+.planner-shell[data-phone-shell='true']:has(.planner-expert-panel--open) [data-testid='planner-phone-layer'] {
+  z-index: calc(var(--z-sheet) - 1);
+}
+
+/* Im flachen Querformat ist die Höhe das knappe Gut (393 px). Der aufgeklappte
+   Bereich „Darstellung“ darf die Zeichenfläche nicht auf null drücken: Die
+   Zone bleibt auf ein Drittel der Fensterhöhe begrenzt, der Rest scrollt in
+   ihr. Gemessen 852×393: 197 px Zone ließen 19 px Fläche übrig. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .planner-phone-toolbar {
+    /* Ein Drittel der Fensterhöhe: genug für die drei Knopfzeilen, wenig genug,
+       dass die Zeichenfläche (der Zweck der Ansicht) sichtbar bleibt. Was
+       nicht hineinpasst, scrollt in der Zone. Gemessen 852×393: ungebremst
+       372 px Zone → 0 px Fläche. */
+    max-height: 33dvh;
   }
 }

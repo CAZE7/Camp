@@ -39,6 +39,7 @@ import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer, useMediaQuery } from './hooks/useMediaCapabilities';
+import { PHONE_CHROME_QUERY } from './ui/breakpoints';
 import { usePlannerDarkMode } from './hooks/usePlannerTheme';
 import { useSaveFailure } from './hooks/useSaveFailure';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
@@ -356,6 +357,10 @@ export function FlowCanvas() {
   // trotzdem Touch. Alle Interaktions-Props hängen hieran, nicht am Layout.
   const coarsePointer = useCoarsePointer();
   const compactViewport = useMediaQuery('(max-width: 1023.98px)');
+  // Handy-Hülle: Zoom und Übersicht stehen in der Werkzeugzone im Fluss
+  // (Spec §6.2). Die React-Flow-`Controls` und die `MiniMap` werden dort nicht
+  // gerendert — eine Bedienung, ein Ort, keine zwei Zoom-Knöpfe übereinander.
+  const phoneChrome = useMediaQuery(PHONE_CHROME_QUERY);
   const isDarkPlanner = usePlannerDarkMode();
   const fitMinZoom = coarsePointer || compactViewport ? 0.5 : PLANNER_INITIAL_FIT_MIN_ZOOM;
   // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht/Attribution)
@@ -1184,12 +1189,14 @@ export function FlowCanvas() {
               Canvas) und mit !left-16 neben den 44-px-Zoom-Controls.
               Bei leerem Plan blendet sie sonst als leere Schwarze/Weiße
               Kachel — sie wird nur mit Inhalt gerendert. */}
-            <Controls
-              showInteractive={false}
-              className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
-            />
+            {!phoneChrome && (
+              <Controls
+                showInteractive={false}
+                className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
+              />
+            )}
             <TouchZoomFix />
-            {rawNodes.length > 0 && (
+            {!phoneChrome && rawNodes.length > 0 && (
               <MiniMap
                 position="bottom-left"
                 className={`planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block ${minimapOpen ? 'planner-minimap--open' : ''}`}
@@ -1212,8 +1219,11 @@ export function FlowCanvas() {
             )}
 
             {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
-              beantwortet, welche Frage gerade bearbeitet wird. */}
-            {viewMode === 'electric' && (
+              beantwortet, welche Frage gerade bearbeitet wird.
+              In der Handy-Hülle liegt er in der Werkzeugzone im Fluss
+              (Spec §6.2). Hier wäre er ein zweiter Satz Knöpfe über derselben
+              Fläche — und mit doppelten `data-testid`s. */}
+            {!phoneChrome && viewMode === 'electric' && (
               <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
                 <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
                 {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
@@ -1238,7 +1248,10 @@ export function FlowCanvas() {
               </Panel>
             )}
 
-            {viewMode === 'electric' && (
+            {/* Wie der Modusschalter: In der Handy-Hülle liegt „Darstellung“
+                in der Werkzeugzone (Spec §6.2), im Fluss über der Fläche.
+                Hier wäre sie ein zweites Klapp-Popover mit derselben Kennung. */}
+            {!phoneChrome && viewMode === 'electric' && (
               <Panel
                 position="top-right"
                 className="planner-display-options-panel pointer-events-none m-2 flex flex-col items-end gap-2 sm:m-3"

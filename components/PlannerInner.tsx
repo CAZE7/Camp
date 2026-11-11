@@ -20,6 +20,7 @@ import {
   type PhoneView,
 } from './planner/ui/PlannerPhoneShell';
 import { PhoneCanvasTools } from './planner/ui/PhoneCanvasTools';
+import { PHONE_EXPERT_OPEN_ATTRIBUTE } from './planner/ui/breakpoints';
 
 import { ErrorBoundary } from './ErrorBoundary';
 import { PlannerCrashFallback } from './planner/ui/PlannerCrashFallback';
@@ -33,6 +34,8 @@ import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 import { forgetAuxiliaryBrowserStorage, hasPlannerStorage, restoreFirstVisit } from '../store/freshVisit';
 import { subscribePlannerStorageCleared } from '../store/storage';
+import { useLiveValidation, useVerificationReport } from './planner/hooks/useLiveValidation';
+import { warningToPlannerError } from './planner/PlannerDashboard';
 
 /**
  * Layout-Container des Planers — drei Geräteklassen, ein DOM-Baum.
@@ -107,6 +110,26 @@ function PlannerShell() {
     query.addEventListener('change', apply);
     return () => query.removeEventListener('change', apply);
   }, []);
+  /**
+   * Befunde → Store (`plannerErrors`) — EINE Quelle für Badge am Fuß,
+   * Warnzentrale und Prüfbericht.
+   *
+   * Die Synchronisation stand in `PlannerDashboard`; das wird in der Handy-Hülle
+   * nicht gerendert. Auf dem Handy fehlte deshalb nicht nur die Zahl am
+   * „Prüfung“-Knopf, sondern der ganze Bestand (im Browser gemessen
+   * 2026-11-10: `aria-label` ohne Zahl, obwohl die Ansicht „Prüfung“
+   * Befunde zeigte). Die Shell lebt auf beiden Geräteklassen.
+   */
+  const plannerNodes = usePlannerStore((state) => state.nodes);
+  const plannerEdges = usePlannerStore((state) => state.edges);
+  const autoWireReport = usePlannerStore((state) => state.autoWireReport);
+  const setPlannerErrors = usePlannerStore((state) => state.setPlannerErrors);
+  const verificationReport = useVerificationReport(plannerNodes, plannerEdges);
+  const liveWarnings = useLiveValidation(plannerNodes, plannerEdges, verificationReport, autoWireReport);
+  useEffect(() => {
+    setPlannerErrors(liveWarnings.map((warning) => warningToPlannerError(warning)));
+  }, [liveWarnings, setPlannerErrors]);
+
   const hasOnboarded = useAppStore((state) => state.hasOnboarded);
   const viewMode = usePlannerStore((state) => state.viewMode);
   const isInspectorOpen = usePlannerStore((state) => state.isInspectorOpen);
@@ -131,6 +154,33 @@ function PlannerShell() {
    * den aktuellen Plan gebunden (der Hook verwirft ihn beim Leeren).
    */
   const setPlannerMessage = usePlannerStore((state) => state.setPlannerMessage);
+
+  /**
+   * Der eine Kanal für Aktionsmeldungen (`planner-action-feedback`) und für
+   * „Plan gespeichert“ (`planner-save`).
+   *
+   * Der Listener stand in `PlannerDashboard` — und das wird in der Handy-Hülle
+   * gar nicht gerendert. Auf dem Handy kam deshalb KEINE Aktionsmeldung im
+   * Meldungsplatz an (im Browser gemessen 2026-11-10: „Kabel optimieren“
+   * feuerte das Ereignis, im Platz stand weiter die Einstiegsmeldung). Die
+   * Shell lebt auf beiden Geräteklassen; hier ist der Kanal für beide.
+   */
+  useEffect(() => {
+    const onActionFeedback = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: 'success' | 'error' | 'info'; message?: string }>).detail;
+      if (!detail?.message) return;
+      setPlannerMessage({ type: detail.type ?? 'info', message: detail.message });
+    };
+    const onSave = () =>
+      setPlannerMessage({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
+    window.addEventListener('planner-action-feedback', onActionFeedback);
+    window.addEventListener('planner-save', onSave);
+    return () => {
+      window.removeEventListener('planner-action-feedback', onActionFeedback);
+      window.removeEventListener('planner-save', onSave);
+    };
+  }, [setPlannerMessage]);
+
   useEffect(() => {
     if (!entryNotice) return;
     setPlannerMessage({
@@ -335,6 +385,27 @@ function PlannerShell() {
   const entryMessage = entryNotice ? { type: entryNotice.type, message: entryNotice.message } : null;
   /** Katalog/Detail sind auf dem Handy volle Ebenen (Spec §7) — dann schweigt die Ansicht. */
   const sheetOpen = activeTab !== 'canvas';
+  /**
+   * Ist das Expertenblatt offen? Auf dem Handy ist es eine eigene volle Ebene
+   * (Spec §7) — dann schweigt die Ansicht darunter. Der Zustand liegt im
+   * `ExpertPanel` selbst; beobachtet wird sein DOM-Merkmal, statt denselben
+   * Zustand ein zweites Mal zu halten.
+   */
+  const [expertOpen, setExpertOpen] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const sync = () =>
+      setExpertOpen(document.querySelector(`[${PHONE_EXPERT_OPEN_ATTRIBUTE}='true']`) !== null);
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [PHONE_EXPERT_OPEN_ATTRIBUTE],
+    });
+    return () => observer.disconnect();
+  }, []);
   const activeDomainList = usePlannerStore((state) => state.activeDomains);
   const toggleDomain = usePlannerStore((state) => state.toggleDomain);
   const activeDomains = useMemo(() => new Set(activeDomainList), [activeDomainList]);
@@ -400,13 +471,6 @@ function PlannerShell() {
         // Panelkante sitzen. Bezug ist damit der Arbeitsbereich — nicht die
         // Anwendungsshell, sonst lägen sie unter der Menüleiste.
         className="planner-workspace relative flex min-h-0 min-w-0 flex-1 flex-col md:flex-row"
-        // Handy: Liegt eine Ansicht über der Fläche, ist die Fläche darunter
-        // unsichtbar und NICHT bedienbar (Spec §5/§7). `inert` nimmt sie
-        // gleichzeitig aus der Tastatur-Reihenfolge und dem Baum der
-        // Screenreader — ohne sie auszuhängen (React Flow behält seine
-        // gemessene Pane-Größe).
-        inert={phoneChrome && phoneView !== 'schaltplan' && !sheetOpen ? true : undefined}
-        aria-hidden={phoneChrome && phoneView !== 'schaltplan' && !sheetOpen ? true : undefined}
       >
         {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 248 px
             Desktop) setzt das einklappbare Panel selbst, damit „eingeklappt“
@@ -445,25 +509,63 @@ function PlannerShell() {
               onToggleDomain={toggleDomain}
             />
           )}
+          {/*
+            `inert` + `aria-hidden` gehören auf DIE FLÄCHE, nicht auf den
+            Workspace und nicht auf die Shell: Liegt eine Handy-Ansicht ODER
+            eine volle Ebene (Katalog, Detail) darüber, ist die Zeichenfläche
+            unsichtbar und nicht bedienbar (Spec §5/§7) — die Ebene selbst bleibt Geschwister dieses Blocks
+            und damit anklickbar. (Lag `inert` auf dem Workspace, ignorierte
+            der Browser jeden Klick in der Ebene; `pointer-events: none` auf
+            `<main>` nahm zusätzlich der ganzen Seite die Klicks — beides im
+            Browser gemessen 2026-11-10.)
+          */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <React.Suspense fallback={<CanvasSkeleton />}>
-              {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
+            <div
+              data-testid="planner-canvas-surface"
+              className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+              inert={phoneChrome && (phoneView !== 'schaltplan' || sheetOpen) ? true : undefined}
+              aria-hidden={phoneChrome && (phoneView !== 'schaltplan' || sheetOpen) ? true : undefined}
+            >
+              <React.Suspense fallback={<CanvasSkeleton />}>
+                {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
                   reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
                   Store/localStorage und bleibt über Katalog und Export
                   erreichbar. */}
-              <ErrorBoundary
-                fallback={(reset) => (
-                  <PlannerCrashFallback
-                    title="Die Planansicht konnte nicht dargestellt werden."
-                    description="Dein Plan ist nicht verloren — sichere die gespeicherten Rohdaten als Backup oder setze den Plan zurück."
-                    onRetry={reset}
-                  />
-                )}
-              >
-                <FlowCanvas />
-              </ErrorBoundary>
-            </React.Suspense>
+                <ErrorBoundary
+                  fallback={(reset) => (
+                    <PlannerCrashFallback
+                      title="Die Planansicht konnte nicht dargestellt werden."
+                      description="Dein Plan ist nicht verloren — sichere die gespeicherten Rohdaten als Backup oder setze den Plan zurück."
+                      onRetry={reset}
+                    />
+                  )}
+                >
+                  <FlowCanvas />
+                </ErrorBoundary>
+              </React.Suspense>
+            </div>
+            {/*
+              Handy-Ansichten über der FLÄCHE (Spec §5, §7) — nicht über der
+              ganzen Shell: Der Bezug ist dieser relative Block, also bleiben
+              Kopfzeile und Fußleiste sichtbar und bedienbar. (Vorher lag die
+              Ebene `absolute inset-0` in der Shell und fing die Klicks auf die
+              Fußleiste ab — im Browser gemessen 2026-11-10.)
+            */}
+            {/* Expertenwissen („Hilfe & Fachwissen“ aus „Mehr“): Auf dem Handy
+                liegt es als EIGENE EBENE über der Fläche wie Katalog und
+                Detail — läge es im `inert`-Block der Fläche, wäre es
+                unsichtbar und nicht bedienbar; als Karte in der 346-px-Fläche
+                blieb davon 0×0 px (im Browser gemessen 2026-11-10). */}
             <ExpertPanel />
+            {phoneChrome && !expertOpen && phoneView !== 'schaltplan' && !sheetOpen && (
+              <PlannerPhoneLayer
+                view={phoneView}
+                onSelectView={setPhoneView}
+                entryMessage={entryMessage}
+                onOpenCatalog={openPhoneCatalog}
+                onOpenDetail={openPhoneDetail}
+              />
+            )}
           </div>
 
           {/* Statuszeile unter der Zeichenfläche: Cursor, Zoom, Raster,
@@ -520,16 +622,6 @@ function PlannerShell() {
         Ansicht sichtbar ist — genau eine Ebene ist bedienbar. „Schaltplan“
         braucht keine eigene Ansicht: Dort IST die Fläche die Ansicht.
       */}
-      {phoneChrome && phoneView !== 'schaltplan' && !sheetOpen && (
-        <PlannerPhoneLayer
-          view={phoneView}
-          onSelectView={setPhoneView}
-          entryMessage={entryMessage}
-          onOpenCatalog={openPhoneCatalog}
-          onOpenDetail={openPhoneDetail}
-        />
-      )}
-
       {/* Auf dem Schaltplan ist die Fläche selbst die Ansicht — der
           Meldungsplatz steht dann im Fluss darunter, nicht in einer Ebene
           darüber (Spec §5.3). */}

@@ -38,7 +38,7 @@ import { isRouteLocked } from '../../lib/electricalGraph/intent';
 type ActionFeedback = PlannerMessage;
 
 /** Übersetzt einen Prüfbefund in den Store-Typ (eine Quelle für Zählung und Liste). */
-function warningToPlannerError(w: ValidationWarning) {
+export function warningToPlannerError(w: ValidationWarning) {
   return createPlannerError({
     code: plannerErrorCodeFromRuleId(w.ruleId),
     severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
@@ -143,7 +143,6 @@ export function PlannerDashboard() {
   // V2-CONFLICT-001: Der Auto-Wire-Bericht ist Teil derselben Liste — offene
   // Entscheidungen und Regelkonflikte stehen dort, wo der Nutzer Befunde sucht.
   const autoWireReport = usePlannerStore((state) => state.autoWireReport);
-  const setPlannerErrors = usePlannerStore((state) => state.setPlannerErrors);
   const lockedMutationErrors = usePlannerStore((state) => state.lockedMutationErrors);
   const liveWarnings = useLiveValidation(nodes, edges, verificationReport, autoWireReport);
   const lockedMutationWarnings = useMemo<ValidationWarning[]>(
@@ -242,48 +241,21 @@ export function PlannerDashboard() {
     });
   }, [viewMode, liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
-  /**
-   * Die Warnzentrale zeigt genau die Befunde, die das Dashboard bewertet hat:
-   * Der Store bekommt dieselbe Liste (Meldungen an einer Quelle, Anzeige an
-   * einer anderen wären zwei Wahrheiten).
-   */
-  useEffect(() => {
-    const errors = warnings.map((w) => warningToPlannerError(w));
-    setPlannerErrors(errors);
-  }, [warnings, setPlannerErrors]);
-
   const handleFix = useCallback((warning: ValidationWarning) => {
     if (warning.focusId && warning.focusType) {
       usePlannerStore.getState().focusElement(warning.focusId, warning.focusType);
     }
   }, []);
 
+  // Der Kanal für `planner-action-feedback` / `planner-save` und die
+  // Befund-Synchronisation (`plannerErrors`) liegen in `PlannerInner` — die
+  // Shell lebt auf beiden Geräteklassen, diese Leiste nicht (Handy-Hülle,
+  // Spec §5). Zweite Kopien hier würden dieselbe Meldung doppelt schreiben.
   const actions = usePlannerActions({
     warnings,
     onFeedback: (next) => setFeedback(next),
     onRequestReset: () => setResetOpen(true),
   });
-
-  // Ctrl+S wird in PlannerInner abgefangen (kein Browser-Speichern-Dialog) und
-  // hier sichtbar bestätigt — der Plan liegt ohnehin laufend im Local Storage.
-  useEffect(() => {
-    const onSave = () =>
-      setFeedback({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
-    const onActionFeedback = (event: Event) => {
-      const detail = (event as CustomEvent<{ type?: 'success' | 'error' | 'info'; message?: string }>).detail;
-      if (!detail?.message) return;
-      setFeedback({ type: detail.type ?? 'info', message: detail.message });
-    };
-    window.addEventListener('planner-save', onSave);
-    window.addEventListener('planner-action-feedback', onActionFeedback);
-    return () => {
-      window.removeEventListener('planner-save', onSave);
-      window.removeEventListener('planner-action-feedback', onActionFeedback);
-    };
-    // `setFeedback` ist die Store-Aktion (stabile Referenz) — sie steht hier,
-    // weil sie nicht mehr aus `useState` kommt und die Regel sie sonst
-    // vermisst.
-  }, [setFeedback]);
 
   useEffect(() => {
     if (!feedback) return;

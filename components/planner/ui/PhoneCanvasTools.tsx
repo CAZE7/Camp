@@ -67,7 +67,13 @@ export function PhoneCanvasTools({
   return (
     <div
       data-testid="phone-canvas-toolbar"
-      className="planner-phone-toolbar shrink-0 border-b border-border bg-surface-panel"
+      // Die Zone liegt IM Fluss und darf die Fläche nicht auffressen. Im
+      // flachen Querformat (393 px hoch) schob der aufgeklappte Bereich
+      // „Darstellung“ die Zeichenfläche auf 0 px und lief unter die Fußleiste
+      // (gemessen 852×393). Deshalb scrollt die Zone ab einer Höhengrenze in
+      // sich (`overscroll-behavior: contain`) — der Deckel setzt CSS, weil er
+      // von der Fensterhöhe abhängt (33dvh, nie bis zur Fußleiste).
+      className="planner-phone-toolbar flex shrink-0 flex-col overflow-y-auto overscroll-contain border-b border-border bg-surface-panel"
     >
       <div className="flex items-center gap-1 overflow-x-auto overscroll-x-contain px-2 py-1">
         <button

@@ -53,7 +53,19 @@ export async function dismissOnboarding(page: Page): Promise<void> {
   });
   if ((await close.count()) > 0) {
     await close.first().click();
-    await expect(dialog).toBeHidden();
+    // „Mit leerem Plan beginnen“ fragt bei gefülltem Plan zurück („Der
+    // aktuelle Plan wird geleert …“). Diese Rückfrage ist Teil des Ablaufs,
+    // nicht ein zweites Onboarding: Sie wird bestätigt, sonst bleibt der
+    // Dialog offen und jede folgende Messung läuft gegen eine modale Ebene.
+    const confirm = page.getByRole('dialog').getByRole('button', { name: /^Fortfahren$/i });
+    await confirm
+      .first()
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .then(async () => {
+        await confirm.first().click();
+      })
+      .catch(() => undefined);
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 });
   }
 }
 

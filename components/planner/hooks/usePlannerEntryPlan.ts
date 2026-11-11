@@ -250,6 +250,20 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       return true;
     };
 
+    /**
+     * „Lag beim Öffnen schon ein Plan im Speicher?“ — VOR jedem `await`
+     * gemessen.
+     *
+     * Die Zustand-Persistenz schreibt den (noch leeren) Plan in derselben
+     * Mikrotask-Kette nach `localStorage`, sobald der erste `await` den
+     * Einstieg verlässt. Ein späteres `hasPersistedPlan()` sieht dann diesen
+     * frisch geschriebenen Leerstand und hält den Starter für „schon
+     * vorhanden“ — der Beispielplan lädt nie (Ist-Befund 2026-11-10, im
+     * Browser gemessen: `persisted: true, nodes: 0`). Der Wert wird deshalb
+     * hier einmal festgehalten und unten nur noch gelesen.
+     */
+    const persistedAtEntry = hasPersistedPlan();
+
     void (async () => {
       // Der Starter-Fingerprint braucht den strukturierten Graphen (AutoWire +
       // ELK). Er wird hier EINMAL im Hintergrund gebaut, damit die Prüfung
@@ -281,7 +295,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         const current = usePlannerStore.getState();
         if (
           shouldLoadStarterPlan({
-            hasPersistedPlan: hasPersistedPlan(),
+            hasPersistedPlan: persistedAtEntry,
             nodeCount: current.nodes.length,
             waterNodeCount: current.waterNodes.length,
             hasEntryPlan: false,
@@ -305,7 +319,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       const current = usePlannerStore.getState();
       if (
         shouldLoadStarterPlan({
-          hasPersistedPlan: hasPersistedPlan(),
+          hasPersistedPlan: persistedAtEntry,
           nodeCount: current.nodes.length,
           waterNodeCount: current.waterNodes.length,
           hasEntryPlan: false,
