@@ -42,10 +42,10 @@ vi.mock('./planner/ui/PlannerPhoneShell', () => ({
   // Der Schaltplan ist die Fläche selbst — die echte Ebene rendert dafür
   // Der Schaltplan ist die Fläche selbst — die echte Ebene rendert dafür
   // keine Ansicht. Der Stub hält denselben Vertrag.
-  PlannerPhoneLayer: ({ view, entryMessage }: { view: string; entryMessage: unknown }) => (
-    <div data-testid="planner-phone-view" data-phone-view={view}>
-      <div data-testid="planner-phone-message" data-entry={entryMessage ? 'yes' : 'no'} />
-    </div>
+  // Die echte Ebene rendert NUR die Ansicht — den Meldungsplatz nicht mehr
+  // (er liegt einmal in der Hülle). Der Stub hält denselben Vertrag.
+  PlannerPhoneLayer: ({ view }: { view: string }) => (
+    <div data-testid="planner-phone-view" data-phone-view={view} />
   ),
   PlannerPhoneMessageBar: ({ entryMessage }: { entryMessage: unknown }) => (
     <div data-testid="planner-phone-message" data-entry={entryMessage ? 'yes' : 'no'} />

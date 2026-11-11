@@ -199,7 +199,6 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
         onSelectView={vi.fn()}
         onOpenCatalog={vi.fn()}
         onOpenDetail={vi.fn()}
-        entryMessage={null}
       />
     );
     expect(screen.getByRole('heading', { name: 'Fang mit deiner Batterie an' })).toBeInTheDocument();
@@ -219,7 +218,6 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
         onSelectView={vi.fn()}
         onOpenCatalog={vi.fn()}
         onOpenDetail={onOpenDetail}
-        entryMessage={null}
       />
     );
 
@@ -243,7 +241,6 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
         onSelectView={vi.fn()}
         onOpenCatalog={vi.fn()}
         onOpenDetail={vi.fn()}
-        entryMessage={null}
       />
     );
     expect(screen.getByTestId('phone-part-tank-1')).toBeInTheDocument();
@@ -258,7 +255,6 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
         onSelectView={onSelectView}
         onOpenCatalog={vi.fn()}
         onOpenDetail={vi.fn()}
-        entryMessage={null}
       />
     );
 
@@ -273,13 +269,7 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
 
   it('Mehr: jede Aktion genau einmal, mit den Kennungen des Desktops', () => {
     render(
-      <PlannerPhoneLayer
-        view="mehr"
-        onSelectView={vi.fn()}
-        onOpenCatalog={vi.fn()}
-        onOpenDetail={vi.fn()}
-        entryMessage={null}
-      />
+      <PlannerPhoneLayer view="mehr" onSelectView={vi.fn()} onOpenCatalog={vi.fn()} onOpenDetail={vi.fn()} />
     );
 
     const expected = [
@@ -307,13 +297,7 @@ describe('PlannerPhoneShell — Handy-Hülle', () => {
 
   it('Mehr: nennt die Desktop-Funktionen, die hier fehlen („Am Desktop verfügbar“)', () => {
     render(
-      <PlannerPhoneLayer
-        view="mehr"
-        onSelectView={vi.fn()}
-        onOpenCatalog={vi.fn()}
-        onOpenDetail={vi.fn()}
-        entryMessage={null}
-      />
+      <PlannerPhoneLayer view="mehr" onSelectView={vi.fn()} onOpenCatalog={vi.fn()} onOpenDetail={vi.fn()} />
     );
     const section = screen.getByRole('region', { name: 'Am Desktop verfügbar' });
     expect(section).toHaveTextContent('MiniMap');

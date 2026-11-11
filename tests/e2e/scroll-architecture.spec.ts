@@ -1,12 +1,14 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import {
+  addComponent,
   expandAllCategories,
   isPhoneShell,
   openMenubar,
   openPlanner,
   showCanvas,
   showSidebar,
+  sidebarItem,
 } from './helpers';
 
 /**
@@ -37,6 +39,19 @@ async function boxOf(page: Page, testId: string): Promise<Box> {
   const box = await page.getByTestId(testId).boundingBox();
   expect(box, `${testId} hat keine Box`).not.toBeNull();
   return roundBox(box as { x: number; y: number; width: number; height: number });
+}
+
+/**
+ * Die obere Leiste — Desktop `planner-toolbar`, Handy-Hülle die Werkzeugzone
+ * des Schaltplans, sonst die Kopfzeile. Die Hülle hat keine Werkzeugleiste
+ * (Spec §5.1), deshalb wird nicht blind auf `planner-toolbar` gewartet.
+ */
+async function topBarOf(page: Page): Promise<Box> {
+  for (const testId of ['planner-toolbar', 'phone-canvas-toolbar', 'planner-phone-header']) {
+    const locator = page.getByTestId(testId);
+    if ((await locator.count()) > 0) return boxOf(page, testId);
+  }
+  throw new Error('keine obere Leiste gefunden');
 }
 
 function roundBox(box: { x: number; y: number; width: number; height: number }): Box {
@@ -147,6 +162,15 @@ test.describe('M12 Scroll-Architektur', () => {
     const navInspector = page.getByTestId('phone-open-detail');
     const panel = page.getByTestId('inspector-panel');
     if (await navInspector.isVisible()) {
+      // Der Knopf ist ohne Auswahl absichtlich deaktiviert. Mit leerem Plan
+      // gibt es keine Liste zum Auswählen — dann den Weg über den Katalog:
+      // Batterie hinzufügen; das Detail des neuen Bauteils ist danach offen
+      // (Spec §6.1).
+      if (!(await navInspector.isEnabled())) {
+        // Leerer Plan: erst ein Bauteil setzen (über denselben Helfer wie die
+        // übrigen Suiten), dann existiert eine Auswahl.
+        await addComponent(page, 'battery');
+      }
       await page.getByTestId('nav-tab-schaltplan').click();
       await navInspector.click();
       await expect(panel).toBeVisible();
@@ -201,13 +225,32 @@ test.describe('M12 Scroll-Architektur', () => {
     const view = await viewport(page);
     test.skip(view.width >= 768, 'Gilt für die Blatt-Darstellung des Handys.');
 
+    // Die Einstiegsmeldung kommt asynchron (Beispielplan wird geladen) und
+    // schiebt die Ansicht nach oben, sobald sie da ist (Spec §5.3). Erst
+    // messen, wenn der Platz belegt ist — sonst vergleicht der Test einen
+    // Zwischenstand ohne Meldung mit einem Endstand mit Meldung. Gemessen
+    // wird in der Schaltplan-Ansicht: Die Ansicht „Bauteile“ lässt den
+    // Meldungsplatz erst beim Öffnen ihrerseits erscheinen (375×667:
+    // 567 px ohne, 483 px mit Meldung).
+    await page.getByTestId('nav-tab-schaltplan').click();
+    await expect
+      .poll(
+        async () =>
+          page.getByTestId('planner-message-slot').evaluate((e) => e.getBoundingClientRect().height),
+        {
+          timeout: 15_000,
+        }
+      )
+      .toBeGreaterThan(0);
+
     const before = await boxOf(page, 'planner-canvas-column');
     expect(before.height, 'Zeichenfläche zu klein').toBeGreaterThanOrEqual(240);
 
     // Die Zeichenfläche bleibt montiert; die Ansicht „Bauteile“ liegt als
     // Ebene darüber (Spec §5). Gemessen wird die Geometrie der Fläche.
     await page.getByTestId('nav-tab-bauteile').click();
-    await page.getByTestId('phone-add').click();
+    // Leerer Plan: Der Einstieg heißt „Batterie hinzufügen“; sonst „Hinzufügen“.
+    await page.getByTestId('phone-add').or(page.getByTestId('phone-add-battery')).first().click();
     await expect(page.getByTestId('sidebar')).toBeVisible();
     expect(await boxOf(page, 'planner-canvas-column'), 'Katalogeebene hat den Canvas verschoben').toEqual(
       before
@@ -227,9 +270,15 @@ test.describe('M12 Scroll-Architektur', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openPlanner(page);
 
+    // Gemessen wird die Geometrie, die beim Umschalten stabil bleiben muss:
+    // obere Leiste, ihre Höhe und die Scrollachse. Die HÖHE der Spalte hängt
+    // am Meldungsplatz (Spec §5.3) — und der Text wechselt beim Umschalten
+    // („Beispiel geladen…“ → „Batterie wurde hinzugefügt…“), also auch seine
+    // Zeilenzahl (84 → 74 px bei 375×667). Die Spaltenhöhe ist deshalb kein
+    // Stabilitätsmaß; ihre Oberkante schon.
     const snapshot = async () => ({
-      toolbar: await boxOf(page, 'planner-toolbar'),
-      canvas: await boxOf(page, 'planner-canvas-column'),
+      toolbar: await topBarOf(page),
+      canvasTop: (await boxOf(page, 'planner-canvas-column')).y,
       scrollWidth: (await documentScroll(page)).width,
     });
 
@@ -240,14 +289,50 @@ test.describe('M12 Scroll-Architektur', () => {
     const sidebarHandle = page.getByRole('button', { name: /Linke Sidebar (ein|aus)klappen/ });
     const inspectorHandle = page.getByRole('button', { name: /Rechte Sidebar (ein|aus)klappen/ });
 
+    // Ausgangszustand ist der Schaltplan: Nur dort gibt es die Werkzeugzone,
+    // und jede Runde endet dort. Startet der Test in „Bauteile“, vergleicht er
+    // Kopfzeile (49 px) mit Werkzeugzone (185 px) — gemessen 375×667.
+    const startTab = page.getByTestId('nav-tab-schaltplan');
+    if (await startTab.isVisible().catch(() => false)) await startTab.click();
+    // Erst messen, wenn der Aufbau steht: Die Einstiegsmeldung kommt
+    // asynchron und schiebt die Fläche um ihre Höhe nach oben (Spec §5.3) —
+    // die Ausgangsmessung davor wäre ein anderer Zustand als jede folgende.
+    await expect
+      .poll(
+        async () =>
+          page.getByTestId('planner-message-slot').evaluate((e) => e.getBoundingClientRect().height),
+        { timeout: 15_000 }
+      )
+      .toBeGreaterThan(0);
+
     const before = await snapshot();
     for (let round = 0; round < 10; round += 1) {
       if (useNav) {
         await navBauteile.click();
-        await page.getByTestId('phone-add').click();
+        await page.getByTestId('phone-add').or(page.getByTestId('phone-add-battery')).first().click();
         await expect(page.getByTestId('sidebar')).toBeVisible();
-        await page.getByTestId('nav-tab-schaltplan').click();
+        // Ein Bauteil setzen, damit die Liste eine Zeile hat. Die AUSWAHL
+        // setzt erst die Zeile in „Bauteile“ (Spec §7) — „Details“ ist ohne
+        // Auswahl absichtlich deaktiviert.
+        await expandAllCategories(page);
+        await sidebarItem(page, 'battery').click();
+        // Der Katalog schließt sich beim Setzen selbst (Handy) — nur schließen,
+        // wenn er noch offen ist.
+        if (
+          await page
+            .getByTestId('sidebar')
+            .isVisible()
+            .catch(() => false)
+        ) {
+          await page.getByTestId('sidebar-close').click();
+        }
         await expect(page.getByTestId('sidebar')).toBeHidden();
+        // Die Liste gibt es nur in der Ansicht „Bauteile“.
+        await navBauteile.click();
+        await page.getByTestId('phone-parts-list').getByRole('button').first().click();
+        await expect(page.getByTestId('sidebar')).toBeHidden();
+        await page.getByTestId('nav-tab-schaltplan').click();
+        await expect(page.getByTestId('phone-open-detail')).toBeEnabled();
         await page.getByTestId('phone-open-detail').click();
         await expect(page.getByTestId('inspector-panel')).toBeVisible();
         await page.getByTestId('nav-tab-schaltplan').click();
@@ -295,7 +380,7 @@ test.describe('M12 Scroll-Architektur', () => {
     await expect(page.getByTestId('sidebar')).toBeVisible();
 
     const view = await viewport(page);
-    const toolbar = await boxOf(page, 'planner-toolbar');
+    const toolbar = await topBarOf(page);
     const workspace = await boxOf(page, 'planner-workspace');
     const canvas = await boxOf(page, 'planner-canvas-column');
 
@@ -319,7 +404,13 @@ test.describe('M12 Scroll-Architektur', () => {
 
     // Kein Knopf der Leiste ist abgeschnitten (die Statusgruppe ist genagelt).
     const clipped = await page.evaluate(() => {
-      const bar = document.querySelector('.cad-toolbar');
+      // Desktop: `.cad-toolbar`. Handy-Hülle: die Werkzeugzone des Schaltplans
+      // bzw. — auf anderen Ansichten — die Kopfzeile (Spec §5.1: eine
+      // Kopfzeile statt Menü- und Werkzeugleiste).
+      const bar =
+        document.querySelector('.cad-toolbar') ??
+        document.querySelector('[data-testid="phone-canvas-toolbar"]') ??
+        document.querySelector('[data-testid="planner-phone-header"]');
       if (!bar) return ['keine Werkzeugleiste'];
       const rect = bar.getBoundingClientRect();
       return Array.from(bar.querySelectorAll('button'))
@@ -338,14 +429,12 @@ test.describe('M12 Scroll-Architektur', () => {
     await showSidebar(page);
     await expandAllCategories(page);
 
-    const before = await boxOf(page, 'planner-toolbar');
+    const before = await topBarOf(page);
     const list = await boxOf(page, 'sidebar-scroll');
     await page.mouse.move(list.x + list.width / 2, list.y + Math.min(60, list.height / 2));
     await page.mouse.wheel(0, 500);
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-    expect(await boxOf(page, 'planner-toolbar'), 'die Werkzeugleiste hat sich beim Scrollen bewegt').toEqual(
-      before
-    );
+    expect(await topBarOf(page), 'die Werkzeugleiste hat sich beim Scrollen bewegt').toEqual(before);
   });
 });

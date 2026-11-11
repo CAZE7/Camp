@@ -239,13 +239,18 @@ for (const viewport of MOBILE_VIEWPORTS) {
       if (await isPhoneShell(page)) {
         await revealMainMenus(page);
         await expectWithinViewport(page, page.getByTestId('planner-phone-view'), 'Ansicht Mehr');
-        // Jede sichtbare Zeile liegt im Bild und ist antippbar.
+        // Jede Zeile ist antippbar und — nach dem Scrollen der Liste — ganz im
+        // Bild. „Mehr“ ist eine scrollende Liste (Spec §6.4): Bei ~20 Zeilen
+        // und 393 px Höhe können nicht alle gleichzeitig sichtbar sein; die
+        // Prüfung „ohne Scrollen im Bild“ wäre eine Anforderung, die die
+        // Ansicht selbst verbietet.
         const rows = page.getByTestId('planner-phone-view').locator('section button');
         const rowCount = await rows.count();
         expect(rowCount).toBeGreaterThan(8);
         for (let index = 0; index < rowCount; index += 1) {
           const row = rows.nth(index);
           if (!(await row.isVisible())) continue;
+          await row.scrollIntoViewIfNeeded();
           await expectWithinViewport(page, row, `Mehr-Zeile ${index}`);
         }
         await page.getByTestId('nav-tab-schaltplan').click();
@@ -374,7 +379,17 @@ for (const viewport of MOBILE_VIEWPORTS) {
       if ((await toolbarAutoWire.count()) > 0 && (await toolbarAutoWire.isVisible())) {
         await toolbarAutoWire.click();
       } else {
-        await openMoreMenuItem(page, 'action-autowire-menu');
+        // Handy-Hülle: „Automatisch verbinden“ steht direkt in „Mehr“
+        // (`action-autowire`), nicht im ⋯-Menü (`action-autowire-menu`).
+        await openMoreMenuItem(
+          page,
+          (await page
+            .getByTestId('nav-tab-mehr')
+            .isVisible()
+            .catch(() => false))
+            ? 'action-autowire'
+            : 'action-autowire-menu'
+        );
       }
       const preview = page.getByRole('dialog', { name: /Automatisch verbinden/ });
       await expect(preview).toBeVisible();
@@ -385,23 +400,41 @@ for (const viewport of MOBILE_VIEWPORTS) {
       await showCanvas(page);
 
       // Bug 21: Prüfhinweise öffnen als sichtbares, unverdecktes Panel.
-      const warnToggle = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
-      await expect(warnToggle).toBeVisible();
-      await expectTapTarget(warnToggle, 'Prüfhinweise-Knopf');
-      await warnToggle.click();
-      const warnPanel = page.getByRole('dialog', { name: 'Planungsprüfung' });
-      await expect(warnPanel).toBeVisible();
-      await expectWithinViewport(page, warnPanel, 'Prüfhinweise-Panel');
-      await expectNotCovered(warnPanel, 'Prüfhinweise-Panel');
-      await page.keyboard.press('Escape');
-      await expect(warnPanel).toBeHidden();
+      // Handy-Hülle: „Prüfung“ ist eine eigene Ansicht (Spec §6.3), kein
+      // Dialog über der Fläche — `Planungsprüfung öffnen` gibt es dort nicht.
+      if (await isPhoneShell(page)) {
+        const checkTab = page.getByTestId('nav-tab-pruefung');
+        await expectTapTarget(checkTab, 'Prüfung-Fußziel');
+        await checkTab.click();
+        const checkView = page.getByTestId('planner-phone-view');
+        await expectWithinViewport(page, checkView, 'Prüfansicht');
+        await expect(page.getByTestId('phone-check-verdict')).toBeVisible();
+        await expect(page.getByTestId('phone-check-list')).toBeVisible();
+        await page.getByTestId('nav-tab-schaltplan').click();
+      } else {
+        const warnToggle = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+        await expect(warnToggle).toBeVisible();
+        await expectTapTarget(warnToggle, 'Prüfhinweise-Knopf');
+        await warnToggle.click();
+        const warnPanel = page.getByRole('dialog', { name: 'Planungsprüfung' });
+        await expect(warnPanel).toBeVisible();
+        await expectWithinViewport(page, warnPanel, 'Prüfhinweise-Panel');
+        await expectNotCovered(warnPanel, 'Prüfhinweise-Panel');
+        await page.keyboard.press('Escape');
+        await expect(warnPanel).toBeHidden();
+      }
 
-      // Bug 18/22: Fachwissen öffnen (Knopf oder Hilfe-Menü), Panel im Bild.
+      // Bug 18/22: Fachwissen öffnen (Knopf, Hilfe-Menü oder „Mehr“), Panel im Bild.
       const fab = page.getByRole('button', { name: 'Hilfe und Fachwissen öffnen' });
       if ((await fab.count()) > 0 && (await fab.isVisible())) {
         await expectTapTarget(fab, 'Fachwissen-Knopf');
         await expectNotCovered(fab, 'Fachwissen-Knopf');
         await fab.click();
+      } else if (await isPhoneShell(page)) {
+        // Handy-Hülle: Die Hilfe steht in „Mehr“ (Spec §6.4) — es gibt keine
+        // Menüleiste mit „Hilfe & Fachwissen“.
+        await page.getByTestId('nav-tab-mehr').click();
+        await page.getByTestId('action-help').click();
       } else {
         await openMenubar(page, 'hilfe');
         await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
@@ -435,13 +468,25 @@ for (const viewport of MOBILE_VIEWPORTS) {
     test('Stückliste aus dem Details-Tab öffnet über dem Blatt (Bug 29)', async ({ page }) => {
       await openPlanner(page);
       await addComponent(page, 'battery');
+      // Handy-Hülle: Der Weg zu den Eigenschaften ist der Knopf „Details“ in
+      // der Werkzeugzone — er ist ohne Auswahl absichtlich deaktiviert
+      // (`disabled`), also wird zuerst ein Bauteil ausgewählt.
       const inspectorTab = page.getByTestId('phone-open-detail');
       if ((await inspectorTab.count()) > 0 && (await inspectorTab.isVisible())) {
         await page.getByTestId('nav-tab-schaltplan').click();
-        await inspectorTab.click();
+        await page.getByTestId('nav-tab-bauteile').click();
+        await page.getByTestId('phone-parts-list').getByRole('button').first().click();
+        await page.getByTestId('nav-tab-schaltplan').click();
+        if (await inspectorTab.isEnabled()) await inspectorTab.click();
       }
-      await openMenubar(page, 'datei');
-      await page.getByTestId('action-bom').click();
+      if (await isPhoneShell(page)) {
+        // Stückliste: „Mehr“ statt Menüleiste (Spec §6.4).
+        await page.getByTestId('nav-tab-mehr').click();
+        await page.getByTestId('action-bom').click();
+      } else {
+        await openMenubar(page, 'datei');
+        await page.getByTestId('action-bom').click();
+      }
       const dialog = page.getByRole('dialog', { name: 'Stückliste' });
       await expect(dialog).toBeVisible();
       await expectNotCovered(dialog, 'Stückliste über Details');

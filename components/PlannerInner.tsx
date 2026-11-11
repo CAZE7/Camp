@@ -561,7 +561,6 @@ function PlannerShell() {
               <PlannerPhoneLayer
                 view={phoneView}
                 onSelectView={setPhoneView}
-                entryMessage={entryMessage}
                 onOpenCatalog={openPhoneCatalog}
                 onOpenDetail={openPhoneDetail}
               />
@@ -625,9 +624,12 @@ function PlannerShell() {
       {/* Auf dem Schaltplan ist die Fläche selbst die Ansicht — der
           Meldungsplatz steht dann im Fluss darunter, nicht in einer Ebene
           darüber (Spec §5.3). */}
-      {phoneChrome && (phoneView === 'schaltplan' || sheetOpen) && (
-        <PlannerPhoneMessageBar entryMessage={entryMessage} />
-      )}
+      {/* Genau EIN Meldungsplatz, immer in der Hülle: Auf dem Schaltplan
+          zwischen Fläche und Fußleiste, unter den anderen Ansichten unter der
+          Ansicht — in beiden Fällen schiebt er den Inhalt nach oben, statt ihn
+          zu überdecken (Spec §5.3). Vorher lag er zusätzlich im Layer, und
+          nach dem Schließen eines Blattes fehlte er in der Hülle. */}
+      {phoneChrome && <PlannerPhoneMessageBar entryMessage={entryMessage} />}
 
       {phoneChrome && (
         <PlannerPhoneNav

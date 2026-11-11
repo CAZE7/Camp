@@ -215,6 +215,15 @@ export async function autoWire(page: Page): Promise<void> {
   if ((await toolbarButton.count()) > 0 && (await toolbarButton.isVisible())) {
     await expect(toolbarButton).toBeEnabled();
     await toolbarButton.click();
+  } else if (
+    await page
+      .getByTestId('nav-tab-mehr')
+      .isVisible()
+      .catch(() => false)
+  ) {
+    // Handy-Hülle: „Automatisch verbinden“ steht in „Mehr“ (§6.4) — dort
+    // heißt die Kennung `action-autowire`, nicht `action-autowire-menu`.
+    await openMoreMenuItem(page, 'action-autowire');
   } else {
     await openMoreMenuItem(page, 'action-autowire-menu');
   }

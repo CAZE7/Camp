@@ -186,14 +186,16 @@ export interface PlannerPhoneLayerProps {
   onSelectView: (view: PhoneView) => void;
   onOpenCatalog: () => void;
   onOpenDetail: () => void;
-  /** Einstiegsmeldung (Vorlage/Share-Link) — eine Quelle pro Plan. */
-  entryMessage: PlannerMessage | null;
 }
 
 /**
- * Handy-Ebene: Ansicht (falls ≠ Schaltplan) und Meldungsplatz.
+ * Handy-Ebene: die Ansicht (falls ≠ Schaltplan).
  *
- * Beides liegt HIER, weil der Platz unter JEDER Ansicht stehen muss — auch
+ * Der Meldungsplatz liegt NICHT hier, sondern in der Hülle (`PlannerInner`):
+ * Er muss unter jeder Ansicht im Fluss stehen und die Ansicht nach oben
+ * schieben; im Layer schwebte er über der Zeichenfläche (gemessen 375×667).
+ *
+ * Beides lag einmal HIER, weil der Platz unter JEDER Ansicht stehen muss — auch
  * unter dem Schaltplan (Spec §5.3: Verbindungshinweise benutzen denselben
  * Platz). Auf dem Desktop sitzt derselbe Platz unter der Werkzeugleiste.
  */
@@ -202,7 +204,6 @@ export function PlannerPhoneLayer({
   onSelectView,
   onOpenCatalog,
   onOpenDetail,
-  entryMessage,
 }: PlannerPhoneLayerProps) {
   const actions = usePhoneActions();
   return (
@@ -220,7 +221,11 @@ export function PlannerPhoneLayer({
         onOpenCatalog={onOpenCatalog}
         onOpenDetail={onOpenDetail}
       />
-      <PlannerPhoneMessageBar entryMessage={entryMessage} />
+      {/* Der Meldungsplatz steht NICHT hier, sondern einmal in der Hülle
+          (`PlannerInner`): Er muss die Ansicht nach oben schieben (Spec §5.3).
+          Im Layer schwebte er über der Zeichenfläche — nach dem Schließen des
+          Katalogs lag er dort bei y = 532, während der Arbeitsbereich bis
+          616 px wuchs und ihn verdeckte (gemessen 375×667). */}
     </div>
   );
 }
