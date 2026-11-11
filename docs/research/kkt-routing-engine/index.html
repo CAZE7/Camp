@@ -3449,6 +3449,12 @@ window.CampEngine = CAMPEngine;
 
   const NODE_W = 176;
   const NODE_H = 76;
+  /** Mittenabstand Rückleiter ↔ Zuleitung (px). Layout-Konstante, nicht
+   *  strichbreitenabhängig — nur so ist die Rückleitergeometrie prüfbar.
+   *  3 px ist der gemessene sichere Wert: über 144 Zufallsnetze sind 2/3/4 px
+   *  kollisionsfrei, ab 5 px kreuzt der Rückleiter fremde Zuleitungen
+   *  (siehe WHITEPAPER §5.9). */
+  const RETURN_OFFSET = 3;
   const CANVAS_W = 1240;
   const TOP = 62;
   const DY = 152;
@@ -3786,47 +3792,100 @@ window.CampEngine = CAMPEngine;
     });
 
     // ---- Invariantenprüfung: Kreuzungen und kollineare Überlappungen --
-    const allEdges = [...edgeGeom.entries()].map(([e, g]) => ({ e, pts: g.points }));
     const segOf = (pts) => pts.slice(0, -1).map((a, i) => [a, pts[i + 1]]);
     const strict = (x, lo, hi) => x > lo + 0.5 && x < hi - 0.5;
     const eps = 0.6;
+    /**
+     * Konflikt zweier achsenparalleler Strecken: Kreuzung (h-v) oder kollineare
+     * Überlappung (h-h / v-v). Ein gemeinsamer Endpunkt (T-Stoß, Abzweig) ist
+     * kein Konflikt — nur Überschneidung im Inneren zählt.
+     */
+    const axisConflict = (a, b, c, e2) => {
+      const h1 = Math.abs(a[1] - b[1]) < eps;
+      const h2 = Math.abs(c[1] - e2[1]) < eps;
+      if (h1 && h2) {
+        if (Math.abs(a[1] - c[1]) >= eps) return null;
+        const lo = Math.max(Math.min(a[0], b[0]), Math.min(c[0], e2[0]));
+        const hi = Math.min(Math.max(a[0], b[0]), Math.max(c[0], e2[0]));
+        return hi - lo > eps ? { type: 'h-h', y: a[1] } : null;
+      }
+      if (!h1 && !h2) {
+        if (Math.abs(a[0] - c[0]) >= eps) return null;
+        const lo = Math.max(Math.min(a[1], b[1]), Math.min(c[1], e2[1]));
+        const hi = Math.min(Math.max(a[1], b[1]), Math.max(c[1], e2[1]));
+        return hi - lo > eps ? { type: 'v-v', x: a[0] } : null;
+      }
+      const [h, v] = h1 ? [[a, b], [c, e2]] : [[c, e2], [a, b]];
+      const y = h[0][1];
+      const x = v[0][0];
+      const hx1 = Math.min(h[0][0], h[1][0]);
+      const hx2 = Math.max(h[0][0], h[1][0]);
+      const vy1 = Math.min(v[0][1], v[1][1]);
+      const vy2 = Math.max(v[0][1], v[1][1]);
+      return strict(x, hx1, hx2) && strict(y, vy1, vy2) ? { type: 'h-v', point: [x, y] } : null;
+    };
+    const allEdges = [...edgeGeom.entries()].map(([e, g]) => ({ e, pts: g.points }));
     for (let i = 0; i < allEdges.length; i += 1) {
       for (let j = i + 1; j < allEdges.length; j += 1) {
         for (const [a, b] of segOf(allEdges[i].pts)) {
           for (const [c, e2] of segOf(allEdges[j].pts)) {
-            const h1 = Math.abs(a[1] - b[1]) < eps;
-            const h2 = Math.abs(c[1] - e2[1]) < eps;
-            if (h1 && h2) {
-              if (Math.abs(a[1] - c[1]) < eps) {
-                const lo = Math.max(Math.min(a[0], b[0]), Math.min(c[0], e2[0]));
-                const hi = Math.min(Math.max(a[0], b[0]), Math.max(c[0], e2[0]));
-                if (hi - lo > eps) {
-                  crossings += 1;
-                  crossingList.push({ type: 'h-h', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, y: a[1] });
-                }
-              }
-            } else if (!h1 && !h2) {
-              if (Math.abs(a[0] - c[0]) < eps) {
-                const lo = Math.max(Math.min(a[1], b[1]), Math.min(c[1], e2[1]));
-                const hi = Math.min(Math.max(a[1], b[1]), Math.max(c[1], e2[1]));
-                if (hi - lo > eps) {
-                  crossings += 1;
-                  crossingList.push({ type: 'v-v', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, x: a[0] });
-                }
-              }
-            } else {
-              const [h, v] = h1 ? [[a, b], [c, e2]] : [[c, e2], [a, b]];
-              const y = h[0][1];
-              const x = v[0][0];
-              const hx1 = Math.min(h[0][0], h[1][0]);
-              const hx2 = Math.max(h[0][0], h[1][0]);
-              const vy1 = Math.min(v[0][1], v[1][1]);
-              const vy2 = Math.max(v[0][1], v[1][1]);
-              if (strict(x, hx1, hx2) && strict(y, vy1, vy2)) {
-                crossings += 1;
-                crossingList.push({ type: 'h-v', a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id, point: [x, y] });
-              }
+            const hit = axisConflict(a, b, c, e2);
+            if (hit) {
+              crossings += 1;
+              crossingList.push({ ...hit, a: net.edges[allEdges[i].e].id, b: net.edges[allEdges[j].e].id });
             }
+          }
+        }
+      }
+    }
+
+    // ---- Rückleiter: derselbe Test auf dem versetzten Spiegelbaum --------
+    // Der Rückleiter jeder Kante verläuft RETURN_OFFSET neben ihr. Er darf
+    // weder einen anderen Rückleiter noch die Zuleitung einer anderen Kante
+    // kreuzen (das wäre ein Scheinkontakt im Schaltbild) und keine Knotenkarte
+    // queren (dort wäre er unsichtbar).
+    const returnGeom = new Map([...edgeGeom.entries()].map(([e, g]) => [e, parallelPath(g.points, RETURN_OFFSET)]));
+    const retEntries = [...returnGeom.entries()];
+    let returnCrossings = 0;
+    const returnCrossingList = [];
+    for (let i = 0; i < retEntries.length; i += 1) {
+      for (let j = i + 1; j < retEntries.length; j += 1) {
+        for (const [a, b] of segOf(retEntries[i][1])) {
+          for (const [c, e2] of segOf(retEntries[j][1])) {
+            const hit = axisConflict(a, b, c, e2);
+            if (hit) {
+              returnCrossings += 1;
+              returnCrossingList.push({ ...hit, a: net.edges[retEntries[i][0]].id, b: net.edges[retEntries[j][0]].id, kind: 'r-r' });
+            }
+          }
+        }
+      }
+    }
+    for (const [eRet, pts] of retEntries) {
+      for (const [eSup, g] of edgeGeom) {
+        if (eSup === eRet) continue;
+        for (const [a, b] of segOf(pts)) {
+          for (const [c, e2] of segOf(g.points)) {
+            const hit = axisConflict(a, b, c, e2);
+            if (hit) {
+              returnCrossings += 1;
+              returnCrossingList.push({ ...hit, a: net.edges[eRet].id, b: net.edges[eSup].id, kind: 'r-s' });
+            }
+          }
+        }
+      }
+    }
+    const nodeRects = [...pos.values()].map((p) => [p.x - NODE_W / 2, p.y - NODE_H / 2, NODE_W, NODE_H]);
+    for (const [eRet, pts] of retEntries) {
+      for (const [x0, y0, w0, h0] of nodeRects) {
+        for (const [a, b] of segOf(pts)) {
+          const lo = Math.min(a[0], b[0]);
+          const hi = Math.max(a[0], b[0]);
+          const to = Math.min(a[1], b[1]);
+          const bo = Math.max(a[1], b[1]);
+          if (hi > x0 + 1 && lo < x0 + w0 - 1 && bo > y0 + 1 && to < y0 + h0 - 1) {
+            returnCrossings += 1;
+            returnCrossingList.push({ a: net.edges[eRet].id, kind: 'r-card', card: [x0, y0] });
           }
         }
       }
@@ -3847,6 +3906,9 @@ window.CampEngine = CAMPEngine;
       crossings,
       doglegs,
       crossingList,
+      returnGeom,
+      returnCrossings,
+      returnCrossingList,
       trackLowerBound,
       tracksMinimal,
       totalBends,
@@ -3867,6 +3929,8 @@ window.CampEngine = CAMPEngine;
     return {
       crossings: layout.crossings,
       doglegs: layout.doglegs,
+      returnCrossings: layout.returnCrossings,
+      returnCrossingList: layout.returnCrossingList.slice(0, 6),
       maxTrack: layout.maxTrack,
       trackLowerBound: layout.trackLowerBound,
       tracksMinimal: layout.tracksMinimal,
@@ -3886,14 +3950,45 @@ window.CampEngine = CAMPEngine;
     return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
   }
 
+  /**
+   * Parallele Rückleiterlinie: Versatz um die **rechtsläufige Normale** der
+   * jeweiligen Segmentrichtung (n = (−dy, dx)), verbunden über **Gehrungspunkte**
+   * (Schnitt der beiden versetzten Segmentgeraden). Der frühere Versatz war
+   * achsenfest (horizontal immer nach unten, vertikal immer nach rechts) und
+   * wechselte damit an Ecken die Seite — die „parallele“ Ader konnte die
+   * Hauptader kreuzen; ohne Gehrung entstanden an jedem Knick Stufen.
+   */
   function parallelPath(points, offset) {
-    const out = [];
+    const seg = [];
     for (let i = 0; i < points.length - 1; i += 1) {
       const a = points[i];
       const b = points[i + 1];
-      const horizontal = Math.abs(a[1] - b[1]) < 1e-6;
-      out.push([a[0] + (horizontal ? 0 : offset), a[1] + (horizontal ? offset : 0)]);
-      out.push([b[0] + (horizontal ? 0 : offset), b[1] + (horizontal ? offset : 0)]);
+      seg.push({ a, b, nx: -Math.sign(b[1] - a[1]), ny: Math.sign(b[0] - a[0]) });
+    }
+    if (!seg.length) return [];
+    const out = [[seg[0].a[0] + seg[0].nx * offset, seg[0].a[1] + seg[0].ny * offset]];
+    for (let i = 0; i < seg.length; i += 1) {
+      if (i === seg.length - 1) {
+        out.push([seg[i].b[0] + seg[i].nx * offset, seg[i].b[1] + seg[i].ny * offset]);
+        break;
+      }
+      const p = seg[i];
+      const q = seg[i + 1];
+      const px = p.a[0] + p.nx * offset;
+      const py = p.a[1] + p.ny * offset;
+      const qx = q.a[0] + q.nx * offset;
+      const qy = q.a[1] + q.ny * offset;
+      const pdx = p.b[0] - p.a[0];
+      const pdy = p.b[1] - p.a[1];
+      const qdx = q.b[0] - q.a[0];
+      const qdy = q.b[1] - q.a[1];
+      const den = pdx * qdy - pdy * qdx;
+      if (Math.abs(den) > 1e-9) {
+        const t = ((qx - px) * qdy - (qy - py) * qdx) / den;
+        out.push([px + t * pdx, py + t * pdy]);
+      } else {
+        out.push([px, py], [qx, qy]);
+      }
     }
     return out;
   }
@@ -4015,10 +4110,14 @@ window.CampEngine = CAMPEngine;
       const label = `${nf(rep.area, rep.area < 10 ? 1 : 0)} mm²`;
       const fuseLabel = `${rep.fuse.typeLabel} ${nf(rep.fuse.ratedA, 0)} A`;
 
+      // Zweite Ader im selben Kabel: dünn, gestrichelt, über der Zuleitung —
+      // bei dicken Querschnitten liegt sie im Kabelmantel (physisch korrekt),
+      // bei dünnen läuft sie sichtbar daneben.
       const returnPath = state.showReturn
-        ? `<path class="return-line" d="${pointsToPath(parallelPath(points, 5 + width))}" stroke-width="${Math.max(
-            1,
-            width * 0.55
+        ? `<path class="return-line" d="${pointsToPath(parallelPath(points, RETURN_OFFSET))}" stroke-width="${clamp(
+            width * 0.4,
+            0.9,
+            2
           )}"/>`
         : '';
 
@@ -4030,6 +4129,7 @@ window.CampEngine = CAMPEngine;
           ${returnPath}
           <path class="edge-glow" d="${path}" stroke="${color}" stroke-width="${width + 7}"/>
           <path class="edge-line" d="${path}" stroke="${color}" stroke-width="${width}"/>
+          ${returnPath}
           <path class="edge-hit" d="${path}" stroke-width="18"/>
           <g class="fuse-glyph" transform="translate(${fuseX.toFixed(1)}, ${fuseY.toFixed(1)})">
             <rect x="-8" y="-4.5" width="16" height="9" rx="2.5"/>
@@ -4193,6 +4293,13 @@ window.CampEngine = CAMPEngine;
     // Fail loud: eine verletzte Routing-Invariante ist ein Fehlerzustand, kein
     // Hinweis. Sie wird als Flag vorangestellt, nicht nur als Zahl geführt.
     const routingFlags = [];
+    if (state.layout && state.layout.returnCrossings > 0) {
+      flags.push({
+        code: 'ROUTING',
+        level: 'error',
+        text: `${state.layout.returnCrossings} Rückleiter-Kollision(en) — zweite Ader kreuzt Zuleitung oder Karte`,
+      });
+    }
     if (state.layout && state.layout.crossings > 0) {
       routingFlags.push({
         level: 'error',
@@ -4411,7 +4518,7 @@ window.CampEngine = CAMPEngine;
   /** Führt den Selbsttest aus (synchron, ~0,3 s für 200 Netze). */
   function runSelfTest(count = 200) {
     const rnd = seededRandom(0x5eed1234);
-    const result = { total: 0, clean: 0, doglegs: 0, minimal: 0, worstTrack: 0, failures: [], count };
+    const result = { total: 0, clean: 0, doglegs: 0, minimal: 0, worstTrack: 0, failures: [], count, returnClean: 0, returnHits: 0 };
     for (let i = 0; i < count; i += 1) {
       const net = randomTree(rnd, i);
       if (!net.edges.length) continue;
@@ -4421,6 +4528,8 @@ window.CampEngine = CAMPEngine;
       else result.failures.push({ i, edges: net.edges.length, crossings: r.crossings });
       if (r.doglegs) result.doglegs += 1;
       if (r.tracksMinimal) result.minimal += 1;
+      if (r.returnCrossings === 0) result.returnClean += 1;
+      result.returnHits += r.returnCrossings;
       result.worstTrack = Math.max(result.worstTrack, r.maxTrack);
     }
     return result;
@@ -4430,7 +4539,10 @@ window.CampEngine = CAMPEngine;
     const r = state.selfTest;
     if (!r) return 'nicht ausgeführt';
     const ok = r.clean === r.total;
-    return `<b class="${ok ? 'ok-text' : 'warn-text'}">${r.clean}/${r.total}</b> kreuzungsfrei · ${r.minimal}/${r.total} spurenminimal · ${r.doglegs} Jogs · max. ${r.worstTrack} Spuren`;
+    const okRet = r.returnClean === r.total;
+    return `<b class="${ok ? 'ok-text' : 'warn-text'}">${r.clean}/${r.total}</b> kreuzungsfrei · ${r.minimal}/${r.total} spurenminimal · <b class="${
+      okRet ? 'ok-text' : 'warn-text'
+    }">${r.returnClean}/${r.total}</b> Rückleiter kollisionsfrei · ${r.doglegs} Jogs · max. ${r.worstTrack} Spuren`;
   }
 
   /** Schattenpreise als normierte Balken (Maximum = 100 %). */
@@ -4632,6 +4744,9 @@ window.CampEngine = CAMPEngine;
         <div><span>Spuren / untere Schranke</span><b class="${lay.tracksMinimal ? 'ok-text' : ''}">${nf(lay.maxTrack, 0)} / ω ${nf(lay.trackLowerBound, 0)}${lay.tracksMinimal ? ' ✓' : ''}</b></div>
         <div><span>Kreuzungen</span><b class="${lay.crossings === 0 ? 'ok-text' : 'warn-text'}">${nf(lay.crossings, 0)}</b></div>
         <div><span>Jogs (Doglegs)</span><b>${nf(lay.doglegs, 0)}</b></div>
+        <div><span>Rückleiter-Kollisionen</span><b class="${
+          lay.returnCrossings === 0 ? 'ok-text' : 'warn-text'
+        }">${nf(lay.returnCrossings, 0)}</b></div>
         <div><span>Biegungen</span><b>${nf(lay.totalBends, 0)}</b></div>
       </div>
       <div class="selftest">

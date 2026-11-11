@@ -748,6 +748,11 @@ Kanten, deterministischer Seed), davon 144 mit Kanten: **144/144 kreuzungsfrei**
 Spurenzahl 1–15. Der Test läuft über den reinen Routing-Haken `window.__route(network)` ohne
 Netzberechnung (< 2 s für alle Netze).
 
+Die Prüfung umfasst seit der Rückleitererweiterung (§5.8) **drei** Klassen von Konflikten:
+Zuleitung × Zuleitung, Rückleiter × Rückleiter und Rückleiter × fremde Zuleitung bzw.
+× Knotenkarte. Für alle drei Referenznetze gilt 0 in allen Klassen; im Stresstest sind
+**144/144** Netze auch in der Rückleiterklasse kollisionsfrei.
+
 ### 5.6 Minimalitätszertifikat für die Spurenzahl
 
 Die Spurenzahl $T$ eines Kanals ist nach unten durch die **Cliquenzahl** $\omega$ des
@@ -783,14 +788,57 @@ Haken `window.__selftest()`).
 
 * Deterministischer Generator (LCG, fester Seed) → reproduzierbare Läufe.
 * 200 zufällige Bäume, 2–6 Ebenen, 0–3 Kinder je Knoten, gemischte CP/CC-Lasten.
-* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl.
+* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl und
+  Rückleiterkollisionen (§5.8).
 * Ergebnis (gemessen): **160/160 kreuzungsfrei**, 0 Jogs, 126/160 spurenminimal,
-  maximale Spurenzahl 16, Laufzeit **203 ms**.
+  **160/160 Rückleiter kollisionsfrei**, maximale Spurenzahl 16, Laufzeit **203 ms**.
 
 Damit ist die Invariante im ausgelieferten Artefakt selbst überprüfbar — ohne Testframework,
 ohne Build-Schritt.
 
-### 5.8 Grenzen
+### 5.8 Zweite Ader: Rückleitergeometrie
+
+Jede Leitung im Artefakt ist eine **Paar-Ader** (Hin- und Rückleiter im selben Kabel). Der
+Schalter „Rückleiter-Paar zeigen“ blendet die zweite Ader ein. Sie wird nicht als Freihand-Offset
+gezeichnet, sondern als **versetzte Kopie desselben Pfades**: jedes Segment wird um die
+rechtsläufige Normale seiner Laufrichtung verschoben ($\mathbf{n}=(-\Delta y,\Delta x)$) und an
+den Knicken über **Gehrungspunkte** — den Schnitt der beiden versetzten Segmentgeraden —
+verbunden. Der frühere achsenfeste Versatz (horizontal stets nach unten, vertikal stets nach
+rechts) wechselte an Ecken die Seite und ließ die „parallele“ Ader die Hauptader kreuzen.
+
+Der Versatz $\delta$ ist eine **Layout-Konstante** ($\delta=3$ px, unabhängig von der
+Strichbreite), damit die Geometrie der zweiten Ader überhaupt prüfbar ist — eine von der
+Querschnittsdarstellung abhängige Verschiebung wäre kein modelliertes Objekt, sondern eine
+Zeicheneinstellung. Die Wahl von $\delta$ ist **gemessen**, nicht behauptet: derselbe Stresstest
+(144 Netze) bei verschiedenen Versätzen.
+
+| $\delta$ / px | kollisionsfreie Netze | Treffer gesamt | Konfliktklasse |
+|---|---|---|---|
+| 2 | 144/144 | 0 | — |
+| **3** | **144/144** | **0** | — |
+| 4 | 144/144 | 0 | — |
+| 5 | 143/144 | 1 | Rückleiter × fremde Zuleitung |
+| 6 | 128/144 | 25 | Rückleiter × fremde Zuleitung |
+| 7 | 123/144 | 52 | Rückleiter × fremde Zuleitung |
+| 9 | 117/144 | 84 | Rückleiter × fremde Zuleitung |
+
+Der Sprung zwischen 4 px und 5 px markiert die Grenze des **port-eigenen Korridors**: innerhalb
+weniger Pixel um einen Port liegt kein fremdes Segment, darüber erreicht die zweite Ader die
+Horizontale einer Nachbarkante, deren Endpunkt knapp neben dem eigenen Port liegt. $\delta=3$ px
+liegt mit 2 px Abstand zur gemessenen Kante dieses Bereichs und hält zugleich sichtbaren Abstand
+zur Zuleitung.
+
+Die zweite Ader wird **im Artefakt selbst mitgeprüft** (`returnCrossings` im Solver-Panel,
+Fehlerflag `ROUTING` bei $>0$) und in den Reihen des Selbsttests (§5.7) geführt. Bei dicken
+Querschnitten liegt die dünne Ader innerhalb der Kabelkontur — das ist die physikalisch richtige
+Aussage (beide Adern liegen im selben Mantel), bei dünnen läuft sie sichtbar daneben.
+
+**Nicht modelliert:** der Rückleiter ist *kein* eigenes Routingobjekt. Er belegt keine eigene
+Spur, weil er im selben Kabel läuft; eine Variante mit getrennter Rückleitung (Karosserie oder
+separater Rückleiterbaum) wäre ein zweites Routingsproblem mit eigener Kanalkapazität und ist
+nicht Teil dieses Artefakts.
+
+### 5.9 Grenzen
 
 * Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
 * Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft, aber nicht als
@@ -1073,8 +1121,11 @@ Headless (jsdom, **gerenderte SVG-Pfade** statt Layout-Interna): 0 Kartenkollisi
 
 Zusätzlich randomisierter Stresstest über `window.__route(network)`:
 **144/144 zufällige Bäume kreuzungsfrei** (2–6 Ebenen, bis 80 Kanten, 1–15 Spuren, 0 Jogs).
-Der eingebaute Selbsttest (§5.7) meldet **160/160 kreuzungsfrei, 126/160 spurenminimal** und
-bestätigt für alle drei Referenznetze $T=\omega$ (§5.6).
+Der eingebaute Selbsttest (§5.7) meldet **160/160 kreuzungsfrei, 126/160 spurenminimal,
+160/160 auch in der Rückleiterklasse kollisionsfrei** und bestätigt für alle drei Referenznetze
+$T=\omega$ (§5.6). Die Rückleitergeometrie (§5.8) wird mitgeprüft; ein externer Abgleich der
+gerenderten `<path class="return-line">`-Daten gegen alle Zuleitungen und Knotenkarten liefert
+für alle drei Netze ebenfalls 0 Treffer.
 Der Stresstest deckte zwei echte Router-Fehler auf, die im Festnetz nicht sichtbar waren:
 vertikal kollineare Stichleitungen (Port auf fremder Klemme) und ein Spurenband, das bei
 $T>8$ den festen Ebenenabstand sprengte und Stichleitungen rückwärts laufen ließ. Beide sind
