@@ -17,15 +17,15 @@ Der Bericht enthält beide Seiten, auch die Niederlagen.
 
 Beide Seiten laufen auf **identischen** Eingaben, in einem Prozess, nacheinander:
 
-| Schritt | Bestandsrouter | Kern |
-| --- | --- | --- |
-| Eingabe | `knownPlans/*.json` → `performAutoWiring` | dieselbe Ausgabe → `adaptPlan` |
-| Router | `routeAllCables(nodes, edges)` | `routeCore(CoreInput)` |
-| Länge | `pathLength` über alle Routen | identisch |
-| Knicke | `countBends` | identisch |
-| Kreuzungen | `crossingPairs` paarweise | identisch |
-| Invarianten | `checkInvariants` (I1/I2/I3) | identisch |
-| Determinismus | zwei Läufe, Byte-Vergleich | zwei Läufe, Byte-Vergleich |
+| Schritt       | Bestandsrouter                            | Kern                           |
+| ------------- | ----------------------------------------- | ------------------------------ |
+| Eingabe       | `knownPlans/*.json` → `performAutoWiring` | dieselbe Ausgabe → `adaptPlan` |
+| Router        | `routeAllCables(nodes, edges)`            | `routeCore(CoreInput)`         |
+| Länge         | `pathLength` über alle Routen             | identisch                      |
+| Knicke        | `countBends`                              | identisch                      |
+| Kreuzungen    | `crossingPairs` paarweise                 | identisch                      |
+| Invarianten   | `checkInvariants` (I1/I2/I3)              | identisch                      |
+| Determinismus | zwei Läufe, Byte-Vergleich                | zwei Läufe, Byte-Vergleich     |
 
 Beide Seiten werden zweimal gerechnet. Der Determinismus-Nachweis (I9) ist damit
 kein Versprechen, sondern ein Messwert im Lauf (Spalte `deterministic` im JSON).
@@ -34,15 +34,15 @@ kein Versprechen, sondern ein Messwert im Lauf (Spalte `deterministic` im JSON).
 
 ## 2. Messwerte (Länge px / Knicke / Kreuzungspaare)
 
-| Plan | Bestand | Kern | Δ Länge | Δ Knicke | Δ Kreuz | I1/I2/I3 Bestand | I1/I2/I3 Kern | ms Bestand/Kern |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| simple | 2 665 / 26 / 1 | **0 / 0 / 0** | −100 % | −100 % | −1 | 0/0/0 | 0/0/0 | 72 / 146 |
-| camper | 3 677 / 28 / 4 | **0 / 0 / 0** | −100 % | −100 % | −4 | 0/0/0 | 0/0/0 | 89 / 103 |
-| solar | 3 200 / 18 / 2 | 4 823 / 28 / 2 | **+50,7 %** | **+55,6 %** | ±0 | 0/0/0 | **0/6/27** | 15 / 106 |
-| inverter | 3 710 / 22 / 2 | 4 789 / 30 / 3 | **+29,1 %** | **+36,4 %** | +1 | 0/0/0 | **0/6/17** | 47 / 68 |
-| acdc | 5 591 / 30 / 5 | 6 793 / 46 / 1 | **+21,5 %** | **+53,3 %** | −4 | 0/0/0 | **0/11/36** | 84 / 94 |
-| complex | 8 646 / 53 / 25 | **0 / 0 / 0** | −100 % | −100 % | −25 | 0/0/0 | 0/0/0 | 104 / 2 |
-| **Σ** | **27 489 / 177 / 39** | **16 405 / 104 / 6** | | | | | | |
+| Plan     | Bestand               | Kern                 | Δ Länge     | Δ Knicke    | Δ Kreuz | I1/I2/I3 Bestand | I1/I2/I3 Kern | ms Bestand/Kern |
+| -------- | --------------------- | -------------------- | ----------- | ----------- | ------- | ---------------- | ------------- | --------------- |
+| simple   | 2 665 / 26 / 1        | **0 / 0 / 0**        | −100 %      | −100 %      | −1      | 0/0/0            | 0/0/0         | 72 / 146        |
+| camper   | 3 677 / 28 / 4        | **0 / 0 / 0**        | −100 %      | −100 %      | −4      | 0/0/0            | 0/0/0         | 89 / 103        |
+| solar    | 3 200 / 18 / 2        | 4 823 / 28 / 2       | **+50,7 %** | **+55,6 %** | ±0      | 0/0/0            | **0/6/27**    | 15 / 106        |
+| inverter | 3 710 / 22 / 2        | 4 789 / 30 / 3       | **+29,1 %** | **+36,4 %** | +1      | 0/0/0            | **0/6/17**    | 47 / 68         |
+| acdc     | 5 591 / 30 / 5        | 6 793 / 46 / 1       | **+21,5 %** | **+53,3 %** | −4      | 0/0/0            | **0/11/36**   | 84 / 94         |
+| complex  | 8 646 / 53 / 25       | **0 / 0 / 0**        | −100 %      | −100 %      | −25     | 0/0/0            | 0/0/0         | 104 / 2         |
+| **Σ**    | **27 489 / 177 / 39** | **16 405 / 104 / 6** |             |             |         |                  |               |                 |
 
 Die Σ-Zeile des Kerns ist **kein Vorteil**, sondern ein Artefakt: sie enthält nur
 die drei Pläne, auf denen überhaupt etwas geroutet wurde, und diese drei sind
@@ -96,15 +96,15 @@ akzeptierend. Der Bestandsrouter hat einen Katalog (gerade/ ein Knick/ Zwei-Knic
 
 ## 4. Bewertung gegen die P3-Schwellen
 
-| Kriterium | Schwelle | Kern | erfüllt |
-| --- | --- | --- | --- |
-| I1/I2/I3 | je 0 | 0 / 23 / 80 (Σ) | **nein** |
-| Kreuzungspaare | ≤ 39 | 6 (nur 3 Pläne) | nicht vergleichbar |
-| Σ Länge | ≤ 28 039 px (+2 %) | 16 405 (nur 3 Pläne) | nicht vergleichbar |
-| Σ Knicke | ≤ 186 (+5 %) | 104 (nur 3 Pläne) | nicht vergleichbar |
-| Byte-identischer Doppellauf | ja | ja (beide Seiten) | **ja** |
-| Laufzeit | ≤ 300 ms/Plan | 68–146 ms | **ja** |
-| `data.locked` unverändert | ja | keine Sperren im Kern verwendet | offen |
+| Kriterium                   | Schwelle           | Kern                            | erfüllt            |
+| --------------------------- | ------------------ | ------------------------------- | ------------------ |
+| I1/I2/I3                    | je 0               | 0 / 23 / 80 (Σ)                 | **nein**           |
+| Kreuzungspaare              | ≤ 39               | 6 (nur 3 Pläne)                 | nicht vergleichbar |
+| Σ Länge                     | ≤ 28 039 px (+2 %) | 16 405 (nur 3 Pläne)            | nicht vergleichbar |
+| Σ Knicke                    | ≤ 186 (+5 %)       | 104 (nur 3 Pläne)               | nicht vergleichbar |
+| Byte-identischer Doppellauf | ja                 | ja (beide Seiten)               | **ja**             |
+| Laufzeit                    | ≤ 300 ms/Plan      | 68–146 ms                       | **ja**             |
+| `data.locked` unverändert   | ja                 | keine Sperren im Kern verwendet | offen              |
 
 Zwei Kriterien sind erfüllt (Determinismus, Laufzeit), die harten
 Invarianz-Kriterien nicht. Nach der Regel „Integration nur nach messbarem Sieg“
@@ -117,16 +117,16 @@ ist Phase 4 damit **geschlossen**.
 Diese Teile sind geprüft und wiederverwendbar, auch wenn der Kern so nicht
 integriert wird:
 
-* **Determinismus-Bausteine**: vollständige Ordnung im Heap
+- **Determinismus-Bausteine**: vollständige Ordnung im Heap
   `(f, h, x, y, Richtung)`, sortierte Lane-Vergabe über `compareIds`, keine
   Zufallsquelle, keine Zeitabhängigkeit. Zwei Läufe sind byte-identisch.
-* **Gitterschnitt (Hanan)** mit Korridorlinien aus drei Freigabe-Stufen.
-* **Richtungsbewusster A\*** mit Kreuzungsbepreisung am Durchfahrtsknoten
+- **Gitterschnitt (Hanan)** mit Korridorlinien aus drei Freigabe-Stufen.
+- **Richtungsbewusster A\*** mit Kreuzungsbepreisung am Durchfahrtsknoten
   (Kreuzung ist Preis, nicht Verbot — Regel L).
-* **Verhandlungslauf** (Rip-up-and-Reroute mit History), der formal
+- **Verhandlungslauf** (Rip-up-and-Reroute mit History), der formal
   deterministisch abbricht (max. 8 Iterationen, bestes Ergebnis wird behalten).
-* **Prüfinstanz** `validateCore` mit I1–I3 + J2/J3/J6, unabhängig vom Router.
-* **A/B-Harness**, das beide Seiten auf identischen Eingaben mit identischen
+- **Prüfinstanz** `validateCore` mit I1–I3 + J2/J3/J6, unabhängig vom Router.
+- **A/B-Harness**, das beide Seiten auf identischen Eingaben mit identischen
   Maßfunktionen misst und die Baseline exakt reproduziert.
 
 Der Fehler, den diese Arbeit gefunden hat, ist selbst ein Ergebnis: das

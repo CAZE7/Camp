@@ -7,6 +7,11 @@ Produktivpfad. Abweichungen davon sind in [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.m
 Verifiziert am 2026-09-28 mit `npm run routing:audit` über die sechs Referenzpläne:
 **I1–I7 = 0, Fallback-Quote = 0, deterministisch, 79 Kanten, 44 Kreuzungen.**
 
+> **Verbindliche Prüf- und Freigaberegeln:**
+> [../ROUTING-QUALITY-AND-VERIFICATION.md](../ROUTING-QUALITY-AND-VERIFICATION.md).
+> Sie gelten für diesen Produktivpfad unverändert; dieses Dokument beschreibt
+> die Umsetzung, jene Datei das Urteil.
+
 ---
 
 ## 4.1 Routing-Datenmodell

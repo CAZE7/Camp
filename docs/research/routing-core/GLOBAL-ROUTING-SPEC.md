@@ -2,6 +2,10 @@
 
 Stand: 2026-11-11 · Status: **Phase 1 (Spezifikation) abgeschlossen, Phase 2 (Kern) implementiert, Phase 3 (A/B) gemessen**
 
+**Untergeordnet:** [ROUTING-QUALITY-AND-VERIFICATION.md](../../ROUTING-QUALITY-AND-VERIFICATION.md)
+ist die verbindliche Spezifikation für Prüfung und Freigabe. Sie gilt für diesen
+Kern genauso wie für den Bestandsrouter; bei Widerspruch gewinnt sie.
+
 Dieses Dokument ist der Bauplan für einen Routing-Kern, der den bestehenden
 Produktiv-Router (`components/edges/utils/routeAll.ts`) **nicht** ersetzt, sondern
 neben ihm existiert und gegen ihn gemessen wird. Es beschreibt zuerst den
@@ -15,11 +19,11 @@ Abnahmekriterien. Zahlen behaupten wir nur, wo ein Skript sie reproduziert.
 **Zweck.** Ein deterministischer, global optimierender, orthogonaler Kabelrouter für
 reale Camper-Elektrikpläne:
 
-* betrachtet das **gesamte** Netz gleichzeitig (nicht Kante für Kante),
-* darf bereits verlegte Leitungen **wieder aufnehmen** und das Konfliktgebiet neu lösen,
-* liefert **null** harte Verstöße (Bauteildurchdringung, Überdeckung, Clearance),
-* minimiert Länge, Knicke und Kreuzungen **gegen untere Schranken**, nicht gegen einen Vorgänger,
-* ist **byte-deterministisch**: gleicher Plan ⇒ gleiches Ergebnis, ohne Zufallsquelle.
+- betrachtet das **gesamte** Netz gleichzeitig (nicht Kante für Kante),
+- darf bereits verlegte Leitungen **wieder aufnehmen** und das Konfliktgebiet neu lösen,
+- liefert **null** harte Verstöße (Bauteildurchdringung, Überdeckung, Clearance),
+- minimiert Länge, Knicke und Kreuzungen **gegen untere Schranken**, nicht gegen einen Vorgänger,
+- ist **byte-deterministisch**: gleicher Plan ⇒ gleiches Ergebnis, ohne Zufallsquelle.
 
 **Nicht-Ziele (bewusst).**
 
@@ -40,15 +44,15 @@ Reproduzierbar mit `npm run routing:audit` (Repo-Stand dieses Commits) über die
 sechs Referenzpläne. „Kreuzungen“ = kreuzende **Segment-Paare** (nicht die
 per-Kante-Summe, die jedes Paar doppelt zählt).
 
-| Plan     | Kanten | I1 | I2 | I3 | I4–I7 | Fallback | deterministisch | Kreuzungspaare | Kabelweg | längste Kante |
-| -------- | -----: | -: | -: | -: | ----: | -------: | --------------- | -------------: | -------: | ------------: |
-| simple   |      9 |  0 |  0 |  0 |     0 |        0 | ja              |              1 |  2 665 px |        569 px |
-| camper   |     12 |  0 |  0 |  0 |     0 |        0 | ja              |              4 |  3 677 px |        593 px |
-| solar    |     11 |  0 |  0 |  0 |     0 |        0 | ja              |              2 |  3 200 px |        832 px |
-| inverter |     10 |  0 |  0 |  0 |     0 |        0 | ja              |              2 |  3 710 px |        831 px |
-| acdc     |     14 |  0 |  0 |  0 |     0 |        0 | ja              |              5 |  5 591 px |      1 120 px |
-| complex  |     23 |  0 |  0 |  0 |     0 |        0 | ja              |             25 |  8 646 px |      1 108 px |
-| **Σ**    | **79** |  0 |  0 |  0 |     0 |        0 | ja              |         **39** | **27 489 px** |               |
+| Plan     | Kanten |  I1 |  I2 |  I3 | I4–I7 | Fallback | deterministisch | Kreuzungspaare |      Kabelweg | längste Kante |
+| -------- | -----: | --: | --: | --: | ----: | -------: | --------------- | -------------: | ------------: | ------------: |
+| simple   |      9 |   0 |   0 |   0 |     0 |        0 | ja              |              1 |      2 665 px |        569 px |
+| camper   |     12 |   0 |   0 |   0 |     0 |        0 | ja              |              4 |      3 677 px |        593 px |
+| solar    |     11 |   0 |   0 |   0 |     0 |        0 | ja              |              2 |      3 200 px |        832 px |
+| inverter |     10 |   0 |   0 |   0 |     0 |        0 | ja              |              2 |      3 710 px |        831 px |
+| acdc     |     14 |   0 |   0 |   0 |     0 |        0 | ja              |              5 |      5 591 px |      1 120 px |
+| complex  |     23 |   0 |   0 |   0 |     0 |        0 | ja              |             25 |      8 646 px |      1 108 px |
+| **Σ**    | **79** |   0 |   0 |   0 |     0 |        0 | ja              |         **39** | **27 489 px** |               |
 
 Knicke (Summe `PathResult.bends`): **177**. Laufzeit über alle sechs Pläne: ~300 ms
 (`routeAllCables`, Node, kalter Cache).
@@ -121,9 +125,9 @@ nicht wegwerfen** — deshalb ist der Katalog Teil der Spezifikation (§5.1, Stu
 Der Kern (Schichten 1–6) lebt in `lib/routing-core/` und importiert **kein** React,
 **kein** App-Modul und **kein** Bestandsrouting. Er benutzt ausschließlich:
 
-* `lib/routing/tokens.ts` (Abstände),
-* `lib/routing/geometry/*` (Segmente, Rechtecke, Polyline),
-* `lib/routing/invariants.ts` **als Prüfinstanz** (Schicht 6) — bewusst dieselbe, die
+- `lib/routing/tokens.ts` (Abstände),
+- `lib/routing/geometry/*` (Segmente, Rechtecke, Polyline),
+- `lib/routing/invariants.ts` **als Prüfinstanz** (Schicht 6) — bewusst dieselbe, die
   auch den Bestandsrouter prüft. Ein eigener Checker wäre Selbstbetrug.
 
 ---
@@ -194,13 +198,13 @@ für it = 1 … ITER:
 
 Eigenschaften, die wir ausnutzen:
 
-* **Zulässigkeit entsteht durch Preise, nicht durch Verbote.** Ein Verbot (Tubes)
+- **Zulässigkeit entsteht durch Preise, nicht durch Verbote.** Ein Verbot (Tubes)
   macht späte Kanten chancenlos; ein Preis lässt sie bieten — und die frühe Kante
   weicht, wenn ihr Ausweichen billiger ist als der Preis.
-* **Monotonie.** $\lambda^{\text{hist}}$ wächst nur, also kann eine überlastete Kante
+- **Monotonie.** $\lambda^{\text{hist}}$ wächst nur, also kann eine überlastete Kante
   nicht dauerhaft billig bleiben; das Verfahren terminiert praktisch in $O(\log)$
   Iterationen (gemessen: §8).
-* **Dualität.** $\sum_e \lambda_e \mu_e$ ist der Preis, den der Entwurf für Engstellen
+- **Dualität.** $\sum_e \lambda_e \mu_e$ ist der Preis, den der Entwurf für Engstellen
   zahlt — analog zu $\sum_v \lambda_v B_v$ in der Querschnitts-Kaskade. Ein Plan mit
   hohem $\sum \lambda$ ist ein Plan mit zu wenig Korridor, nicht mit schlechtem Router.
 
@@ -234,12 +238,12 @@ einen Verstoß meldet. Damit kann Nachbearbeitung nie verschlechtern.
 
 ### 5.6 Determinismus
 
-* Keine Zufallsquelle, keine Zeitabhängigkeit, keine Iteration über `Map`/`Set` in
+- Keine Zufallsquelle, keine Zeitabhängigkeit, keine Iteration über `Map`/`Set` in
   Einfügereihenfolge, die von außen kommt: alle Mengen werden vor der Iteration mit
   `compareIds` (bzw. numerisch) sortiert.
-* A\*-Tie-Break: $(f, h, x, y, d)$ — vollständige Ordnung, kein „erster Treffer“.
-* Rip-up-Reihenfolge: absteigend nach (Kreuzungsanzahl, Länge, ID) — reproduzierbar.
-* Das Ergebnis wird als `Map` in sortierter ID-Reihenfolge zurückgegeben.
+- A\*-Tie-Break: $(f, h, x, y, d)$ — vollständige Ordnung, kein „erster Treffer“.
+- Rip-up-Reihenfolge: absteigend nach (Kreuzungsanzahl, Länge, ID) — reproduzierbar.
+- Das Ergebnis wird als `Map` in sortierter ID-Reihenfolge zurückgegeben.
 
 ---
 
@@ -253,27 +257,27 @@ I8 Lane-Determinismus · I9 Gesamt-Determinismus · I10 Kreuzungen minimieren.
 
 ### 6.2 Neu (Routing-Kern)
 
-| ID  | Aussage | Prüfung |
-| --- | ------- | ------- |
-| J1 | **Globale Zulässigkeit**: I1 = I2 = I3 = 0 über den ganzen Plan, nicht je Plan-Ratchet | `checkInvariants` + Gate in `engine.test.ts` |
-| J2 | **Korridor-Konsistenz**: keine zwei parallelen Segmente näher als `laneGrid` ohne gemeinsamen Port | Segmentabstands-Prüfung über den Spatial-Index |
-| J3 | **Längen-Schranke**: $\ell(P) \le \ell_{\text{Manhattan}}(s,t) + 2\cdot\texttt{laneGrid}\cdot(\text{Lanes})$ | `engine.test.ts` je Kante |
-| J4 | **Konvergenz-Protokoll**: Iterationszahl, $\max \mu_e$, $\sum\lambda$ werden publiziert und sind monoton fallend in $\mu$ | `metrics.iterations`, `metrics.congestion` |
-| J5 | **Locked Routes**: Kanten mit `data.locked` werden nicht verändert (bitgleich) | Vergleich der Waypoints vor/nach |
-| J6 | **Kein Fallback**: der Kern liefert nie eine Route ohne Freigabe-Garantie; ist keine existent, meldet er `unroutable` mit Grund | `usedSearch`-Feld entfällt |
-| J7 | **Reproduzierbarkeit der Güte**: zwei Läufe liefern identische Metriken und identische Waypoints | Doppellauf im Test |
+| ID  | Aussage                                                                                                                         | Prüfung                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| J1  | **Globale Zulässigkeit**: I1 = I2 = I3 = 0 über den ganzen Plan, nicht je Plan-Ratchet                                          | `checkInvariants` + Gate in `engine.test.ts`   |
+| J2  | **Korridor-Konsistenz**: keine zwei parallelen Segmente näher als `laneGrid` ohne gemeinsamen Port                              | Segmentabstands-Prüfung über den Spatial-Index |
+| J3  | **Längen-Schranke**: $\ell(P) \le \ell_{\text{Manhattan}}(s,t) + 2\cdot\texttt{laneGrid}\cdot(\text{Lanes})$                    | `engine.test.ts` je Kante                      |
+| J4  | **Konvergenz-Protokoll**: Iterationszahl, $\max \mu_e$, $\sum\lambda$ werden publiziert und sind monoton fallend in $\mu$       | `metrics.iterations`, `metrics.congestion`     |
+| J5  | **Locked Routes**: Kanten mit `data.locked` werden nicht verändert (bitgleich)                                                  | Vergleich der Waypoints vor/nach               |
+| J6  | **Kein Fallback**: der Kern liefert nie eine Route ohne Freigabe-Garantie; ist keine existent, meldet er `unroutable` mit Grund | `usedSearch`-Feld entfällt                     |
+| J7  | **Reproduzierbarkeit der Güte**: zwei Läufe liefern identische Metriken und identische Waypoints                                | Doppellauf im Test                             |
 
 ---
 
 ## 7. Komplexität und Budget
 
-| Schritt | Aufwand | Anmerkung |
-| ------- | ------- | --------- |
-| Hanan-Gitter | $O((n+k)^2)$ Knoten | $n$ = Bauteile, $k$ = Ports; bei 15/23 → ~2 500 Knoten |
-| A\* je Kante | $O(V \log V)$ | V = Gitterknoten × 4 Richtungen |
-| Congestion | $O(\text{ITER} \cdot E \cdot V \log V)$ | ITER ≤ 8, gemessen 2–4 |
-| Refinement | $O(\sum |P|)$ | linear |
-| Validierung | $O(E^2)$ | bewusst **nicht** im Render-Pfad |
+| Schritt      | Aufwand                                 | Anmerkung                                              |
+| ------------ | --------------------------------------- | ------------------------------------------------------ |
+| Hanan-Gitter | $O((n+k)^2)$ Knoten                     | $n$ = Bauteile, $k$ = Ports; bei 15/23 → ~2 500 Knoten |
+| A\* je Kante | $O(V \log V)$                           | V = Gitterknoten × 4 Richtungen                        |
+| Congestion   | $O(\text{ITER} \cdot E \cdot V \log V)$ | ITER ≤ 8, gemessen 2–4                                 |
+| Refinement   | $O(\sum                                 | P                                                      | )$  | linear |
+| Validierung  | $O(E^2)$                                | bewusst **nicht** im Render-Pfad                       |
 
 **Budget:** ≤ 300 ms für 23 Kanten (Live-Pfad-Ratchet des Repos), ≤ 16 ms nicht
 gefordert (der Kern ist kein Render-Pfad). Gemessene Werte: §8.
@@ -291,15 +295,15 @@ Geometrie-Auswertung benutzt (Länge, Knicke, Kreuzungspaare, Segmentabstände).
 
 Abnahmekriterien für eine spätere Integration (alle gleichzeitig):
 
-| Kriterium | Schwelle |
-| --------- | -------- |
-| I1, I2, I3 | **0** in allen sechs Plänen |
-| Kreuzungspaare | ≤ Baseline (39 Σ) |
-| Kabellänge | ≤ Baseline + 2 % (27 489 px → ≤ 28 039 px) |
-| Knicke | ≤ Baseline + 5 % (177 → ≤ 186) |
-| Determinismus | Doppellauf byte-identisch |
-| Laufzeit | ≤ 300 ms je Plan |
-| Locked Routes | unverändert |
+| Kriterium      | Schwelle                                   |
+| -------------- | ------------------------------------------ |
+| I1, I2, I3     | **0** in allen sechs Plänen                |
+| Kreuzungspaare | ≤ Baseline (39 Σ)                          |
+| Kabellänge     | ≤ Baseline + 2 % (27 489 px → ≤ 28 039 px) |
+| Knicke         | ≤ Baseline + 5 % (177 → ≤ 186)             |
+| Determinismus  | Doppellauf byte-identisch                  |
+| Laufzeit       | ≤ 300 ms je Plan                           |
+| Locked Routes  | unverändert                                |
 
 ### 8.2 Messung (dieser Commit)
 
@@ -310,13 +314,13 @@ Die Zahlen stehen im Abschnitt 8.3 des Ergebnisberichts am Dateiende — bewusst
 
 ## 9. Migrationsplan
 
-| Phase | Inhalt | Berührung des Bestands |
-| ----- | ------ | ---------------------- |
-| 1 | Diese Spezifikation + Baseline-Messung | keine |
-| 2 | `lib/routing-core/` implementiert, Unit-Tests | keine (neues Verzeichnis) |
-| 3 | `scripts/routing-core/ab.ts` misst beide Engines auf sechs Plänen | keine (Skript) |
-| 4 | Adapter `components/edges/utils/coreRoutingAdapter.ts` + Feature-Flag | nur lesend |
-| 5 | Umschalten je Plan, Regressions-SVGs neu erfassen **nur** bei belegter Besserung | Golden Master |
+| Phase | Inhalt                                                                           | Berührung des Bestands    |
+| ----- | -------------------------------------------------------------------------------- | ------------------------- |
+| 1     | Diese Spezifikation + Baseline-Messung                                           | keine                     |
+| 2     | `lib/routing-core/` implementiert, Unit-Tests                                    | keine (neues Verzeichnis) |
+| 3     | `scripts/routing-core/ab.ts` misst beide Engines auf sechs Plänen                | keine (Skript)            |
+| 4     | Adapter `components/edges/utils/coreRoutingAdapter.ts` + Feature-Flag            | nur lesend                |
+| 5     | Umschalten je Plan, Regressions-SVGs neu erfassen **nur** bei belegter Besserung | Golden Master             |
 
 **Rollback:** Der Kern ist additiv. Solange kein Adapter im Render-Pfad hängt,
 ist ein Rückschritt ein `git revert` ohne Datenverlust.
