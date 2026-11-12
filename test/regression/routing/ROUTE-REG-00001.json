@@ -83,12 +83,12 @@
   "expect": {
     "kind": "invariant",
     "invariant": "I3",
-    "atLeast": 1
+    "atLeast": 0
   },
   "firstSeen": "2026-11-11",
   "routingVersion": "routing-core@bd83847",
   "inputHash": "sha256:5bdf72d62b602c410515dba310ab6e8de43bf8324715e4d3e8f33a677f007fb3",
   "minimized": true,
   "reproducible": true,
-  "notes": "Neuer Kern (Phase 2) verletzt die Freigabe: die Rand-Lockerung nearPort gilt pfadweit statt stub-lokal (AB-REPORT §3.2). Bestandsrouter haelt I3 auf demselben Plan mit 0."
+  "notes": "Neuer Kern (Phase 2) verletzt die Freigabe: die Rand-Lockerung nearPort gilt pfadweit statt stub-lokal (AB-REPORT §3.2). Bestandsrouter haelt I3 auf demselben Plan mit 0.\nBehoben am 2026-11-11 (Phase 2); Akte bleibt als Wächter stehen: der Fehler muss 0 bleiben."
 }

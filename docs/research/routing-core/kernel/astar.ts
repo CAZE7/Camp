@@ -44,6 +44,8 @@ export type AStarRequest = {
   readonly ownHandleKeys: ReadonlySet<string>;
   /** Freigabe-Stufe dieses Versuchs (px Rand um fremde Bauteile). */
   readonly margin: number;
+  /** Eigene Identität im Klarheitsfeld: Kanten-ID plus die beiden Anschluss-Gruppen. */
+  readonly owners: ReadonlySet<string>;
 };
 
 export type AStarResult = {
@@ -208,6 +210,13 @@ export function gridAStar(request: AStarRequest): AStarResult | null {
         : request.margin;
       if (obstacles.blocked(segment, ownNodeIds, effectiveMargin)) continue;
       if (stubBlocks(segment, reservations, ownHandleKeys)) continue;
+      // Klarheit (I3): paralleles Nebeneinanderlaufen unter `cableClearance`.
+      // Hoch bepreist, nicht gesperrt: eine Sperre macht die Verhandlung
+      // unfähig, Konflikte zu tauschen (der erste Lauf gewinnt alles), und
+      // ließ ganze Pläne unroutbar werden.
+      const proximity = occupancy.proximityBlocked(here.x, here.y, target.x, target.y, request.owners)
+        ? CORE_TOKENS.proximityPenalty
+        : 0;
 
       const turn = step.dir === current.dir ? 0 : CORE_TOKENS.bendCost;
       const congestion =
@@ -219,7 +228,7 @@ export function gridAStar(request: AStarRequest): AStarResult | null {
         : occupancy.throughVertical(here.x, here.y);
       const crossing = step.dir === current.dir && through > 0 ? CORE_TOKENS.crossingCost * through : 0;
       const length = Math.abs(target.x - here.x) + Math.abs(target.y - here.y);
-      const g = current.g + length + turn + congestion + crossing;
+      const g = current.g + length + turn + congestion + crossing + proximity;
       const key = keyOf(nextX, nextY, step.dir);
       const previous = bestG.get(key);
       if (previous !== undefined && g >= previous - 1e-9) continue;

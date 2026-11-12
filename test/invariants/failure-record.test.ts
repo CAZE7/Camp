@@ -120,7 +120,14 @@ describe('3 — Schema-Gegenprobe: verstümmelte Akten werden abgelehnt', () => 
 });
 
 describe('4 — Urteilsfunktion', () => {
-  const record = loadRecord(FILES[0] as string);
+  // Bewusst eine **eigene** Erwartung statt der ersten Akte aus dem Verzeichnis:
+  // seit 2026-11-11 stehen dort auch behobene Akten mit Schwelle 0, und ein
+  // Test, der davon abhängt, welche Datei alphabetisch zuerst kommt, prüft die
+  // Sortierung statt das Urteil.
+  const record = {
+    ...loadRecord(FILES[0] as string),
+    expect: { kind: 'invariant' as const, invariant: 'I3' as const, atLeast: 1 },
+  };
 
   it('fehlende Reproduktion ergibt fixed', () => {
     const outcome = judgeRecord(
@@ -129,6 +136,33 @@ describe('4 — Urteilsfunktion', () => {
       true
     );
     expect(outcome.status).toBe('fixed');
+  });
+
+  it('behobene Akte (Schwelle 0) bleibt grün, solange der Fehler 0 ist', () => {
+    const settled = {
+      ...loadRecord(FILES[0] as string),
+      expect: { kind: 'invariant' as const, invariant: 'I3' as const, atLeast: 0 },
+    };
+    const outcome = judgeRecord(
+      settled,
+      { becauseOfInvariant: 0, unroutableWithoutBlocker: 0, unreachableButUnrouted: 0 },
+      true
+    );
+    expect(outcome.status).toBe('reproduces');
+    expect(outcome.expected).toContain('behoben');
+  });
+
+  it('Rückfall in eine behobene Akte ergibt regressed', () => {
+    const settled = {
+      ...loadRecord(FILES[0] as string),
+      expect: { kind: 'invariant' as const, invariant: 'I3' as const, atLeast: 0 },
+    };
+    const outcome = judgeRecord(
+      settled,
+      { becauseOfInvariant: 2, unroutableWithoutBlocker: 0, unreachableButUnrouted: 0 },
+      true
+    );
+    expect(outcome.status).toBe('regressed');
   });
 
   it('Reproduktion mit abweichendem Hash ergibt input-drift', () => {

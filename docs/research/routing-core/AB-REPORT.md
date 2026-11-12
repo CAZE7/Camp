@@ -202,3 +202,46 @@ Der Kern verliert weiterhin (§4). Die neue Prüfinstanz ändert daran nichts �
 sie macht die Niederlage nur **nachprüfbar** statt behauptet. Nach Regel P1
 (`ROUTING-QUALITY-AND-VERIFICATION.md` §14) wird der Kern nicht weitergebaut,
 bevor V4–V5 stehen.
+
+---
+
+## 8. Nachtrag 2026-11-11 (abends): Kern unter Freigabekette, Phase 2 begonnen
+
+### 8.1 Was sich geändert hat
+
+Der Bericht oben verglich `routeCore()` direkt. Seit heute läuft der Vergleich
+**durch die Freigabekette** (`scripts/verification/routing/coreGate.ts`): was als
+Kern-Ergebnis erscheint, ist genau das, was veröffentlicht werden dürfte. Die
+Tabelle hat dafür eine Spalte `Gate`.
+
+Zusätzlich sind sieben Defekte im Kern behoben (Details und Ursachen:
+`ROUTING-QUALITY-AND-VERIFICATION.md` §21.3). Der wichtigste: der Kern routete
+auf `simple`, `camper` und `complex` **keine einzige Kante** — nicht wegen
+fehlender Wege, sondern weil der Lane-Versatz in den Stub-Punkt gerechnet wurde
+und die Strecke Handle→Stub damit diagonal war (kein Gitterschritt).
+
+### 8.2 Neue Messung (unveränderte Eingaben, gleiche Prüfinstanz)
+
+| Plan     | Kern Kanten | I1  | I2  | I3  | Länge    | Knicke | Laufzeit | Gate |
+| -------- | ----------- | --- | --- | --- | -------- | ------ | -------- | ---- |
+| simple   | 9/9         | 0   | 5   | 8   | 3 978 px | 33     | 1,0 s    | FAIL |
+| camper   | 12/12       | 0   | 10  | 8   | 5 874 px | 51     | 6,3 s    | FAIL |
+| solar    | 11/11       | 0   | 0   | 27  | 4 528 px | 43     | 0,8 s    | FAIL |
+| inverter | 10/10       | 0   | 0   | 15  | 4 677 px | 33     | 0,7 s    | FAIL |
+| acdc     | 14/14       | 0   | 1   | 33  | 6 528 px | 56     | 1,6 s    | FAIL |
+| complex  | 0/23        | 0   | 0   | 0   | —        | —      | 103 s    | FAIL |
+
+Bestand auf denselben Plänen: 27 489 px, 177 Knicke, 39 Kreuzungen, I1/I2/I3 =
+0/0/0, 12–124 ms je Plan.
+
+### 8.3 Fazit bleibt negativ, aber schärfer
+
+Der Kern ist **nicht** besser geworden im Vergleich — er ist ehrlicher geworden:
+vorher veröffentlichte er auf drei Plänen still nichts und auf drei Plänen
+ungültige Geometrie; jetzt fällt beides als `FAIL` auf, und er routet auf fünf
+von sechs Plänen überhaupt erst vollständig.
+
+Die drei Ursachen sind benannt (§21.4): Klarheit ist ein **Preis** statt einer
+Bedingung, die Bündel-Ausnahme greift nach dem Fächer nicht, und `complex`
+konvergiert mit einfachem Rip-up-and-reroute nicht. Phase 4 (Integration) bleibt
+geschlossen.

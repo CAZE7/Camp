@@ -117,12 +117,12 @@
   },
   "expect": {
     "kind": "unroutable_without_blocker",
-    "atLeast": 1
+    "atLeast": 0
   },
   "firstSeen": "2026-11-11",
   "routingVersion": "routing-core@bd83847",
   "inputHash": "sha256:1e1a3e58dd669c72c58978089c1cc8c9a8822eb7b5df6efddceb4c1ae6ff3b0c",
   "minimized": true,
   "reproducible": true,
-  "notes": "R-ERR-3: der Kern meldet 'keine kollisionsfreie Route im Gitter (55x70)' ohne Bauteil oder Anschluss zu benennen. Genau diese Formulierung hat den A*-Indexfehler kaschiert (AB-REPORT §5)."
+  "notes": "R-ERR-3: der Kern meldet 'keine kollisionsfreie Route im Gitter (55x70)' ohne Bauteil oder Anschluss zu benennen. Genau diese Formulierung hat den A*-Indexfehler kaschiert (AB-REPORT §5).\nBehoben am 2026-11-11 (Phase 2); Akte bleibt als Wächter stehen: der Fehler muss 0 bleiben."
 }

@@ -23,7 +23,8 @@ import type { RoutableNode } from '../../components/edges/utils/nodeGeometry';
 import { checkInvariants, type NodeRect } from '../../lib/routing/invariants';
 import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth } from '../../components/edges/utils/nodeGeometry';
 import { countBends, pathLength, type Point } from '../../lib/routing/geometry';
-import { routeCore, crossingPairs } from '../../docs/research/routing-core/kernel';
+import { crossingPairs } from '../../docs/research/routing-core/kernel';
+import { routeAndValidate } from '../verification/routing/coreGate';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 import { adaptPlan } from './adapt';
 
@@ -44,6 +45,9 @@ type Side = {
 };
 
 type Row = { plan: string; legacy: Side; core: Side };
+
+/** Urteil der Freigabekette je Plan (PASS/FAIL) — gehört in den Bericht. */
+const coreVerdicts = new Map<string, string>();
 
 const nodeRects = (nodes: readonly RoutableNode[]): NodeRect[] =>
   nodes.map((node) => ({
@@ -149,22 +153,30 @@ export function runAb(): Row[] {
         deterministic: true,
       };
     } else {
+      // **Über die Freigabekette**, nicht am Kern vorbei: was hier als
+      // Kern-Ergebnis erscheint, ist genau das, was veröffentlicht werden
+      // dürfte. Ohne diese Zeile verglich der Bericht Geometrie, die das Gate
+      // in §21 abgelehnt hat.
       const c0 = performance.now();
-      const result = routeCore(adapted.input);
+      const verdict = routeAndValidate(adapted.input);
+      const result = verdict.result;
       const coreMs = performance.now() - c0;
+      coreVerdicts.set(name, verdict.status);
       const coreWaypoints = new Map<string, Point[]>();
       for (const [id, route] of result.routes)
         coreWaypoints.set(
           id,
           route.waypoints.map((p) => ({ x: p.x, y: p.y }))
         );
-      // Doppellauf: identische Metriken?
-      const again = routeCore(adapted.input);
+      // Doppellauf: identische Metriken? Der Gate-Lauf enthält bereits einen
+      // Determinismus-Doppellauf über die Waypoints; hier bleibt der
+      // Metrik-Vergleich als zweite, unabhängige Zusicherung.
+      const again = routeAndValidate(adapted.input);
       const deterministic =
-        again.metrics.totalLength === result.metrics.totalLength &&
-        again.metrics.totalBends === result.metrics.totalBends &&
-        again.metrics.totalCrossings === result.metrics.totalCrossings &&
-        again.routes.size === result.routes.size;
+        again.result.metrics.totalLength === result.metrics.totalLength &&
+        again.result.metrics.totalBends === result.metrics.totalBends &&
+        again.result.metrics.totalCrossings === result.metrics.totalCrossings &&
+        again.result.routes.size === result.routes.size;
       // Kern: die Boxen stammen aus dem Adapter — genau die, die der Kern als
       // Hindernis benutzt (inklusive seiner Freigabe-Logik).
       const coreRects: NodeRect[] = adapted.input.nodes.map((node) => ({
@@ -187,7 +199,7 @@ const fmt = (value: number): string => String(Math.round(value));
 const table = (rows: Row[]): string => {
   const lines: string[] = [];
   lines.push(
-    'Plan       |        Bestand (Länge/Knicke/Kreuzungen) |           Kern (Länge/Knicke/Kreuzungen) | I1/I2/I3 Bestand | I1/I2/I3 Kern | Δ Länge | Δ Knicke | Δ Kreuz | ms Bestand/Kern'
+    'Plan       |        Bestand (Länge/Knicke/Kreuzungen) |           Kern (Länge/Knicke/Kreuzungen) | I1/I2/I3 Bestand | I1/I2/I3 Kern | Gate | Δ Länge | Δ Knicke | Δ Kreuz | ms Bestand/Kern'
   );
   lines.push('-'.repeat(150));
   for (const row of rows) {
@@ -205,7 +217,7 @@ const table = (rows: Row[]): string => {
         c.crossings
       ).padStart(
         3
-      )}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${
+      )}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${coreVerdicts.get(row.plan) ?? '—'} | ${
         dLength >= 0 ? '+' : ''
       }${dLength.toFixed(1).padStart(6)} % | ${dBends >= 0 ? '+' : ''}${dBends.toFixed(1).padStart(6)} % | ${String(
         dCross >= 0 ? '+' + dCross : dCross

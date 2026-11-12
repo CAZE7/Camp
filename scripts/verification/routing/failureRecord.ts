@@ -69,7 +69,17 @@ export type FailurePlanRef =
 
 export type FailureExpectation =
   /** Mindestens `atLeast` Verletzungen dieser Invariante müssen auftreten. */
-  | { kind: 'invariant'; invariant: 'I1' | 'I2' | 'I3' | 'I4' | 'I5' | 'I6' | 'I7'; atLeast: number }
+  | {
+      kind: 'invariant';
+      invariant: 'I1' | 'I2' | 'I3' | 'I4' | 'I5' | 'I6' | 'I7';
+      /**
+       * Schwelle. `>= 1` beschreibt einen offenen Fehler, `0` einen
+       * **behobenen**: die Akte bleibt als Wächter stehen und wird rot, sobald
+       * der Fehler zurückkommt. Eine Akte, die man löscht, sobald sie grün ist,
+       * verschwindet genau dann, wenn sie anfängt zu wirken.
+       */
+      atLeast: number;
+    }
   /** Mindestens `atLeast` Kanten ohne Route UND ohne benannten Blocker (R-ERR-3). */
   | { kind: 'unroutable_without_blocker'; atLeast: number }
   /** Mindestens `atLeast` Kanten ohne Route, obwohl das Ziel erreichbar ist (R-ERR-1). */
@@ -158,12 +168,12 @@ export function validateRecord(
     if (!['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7'].includes(expect.invariant)) {
       problems.push({ field: 'expect.invariant', message: 'erwartet I1–I7' });
     }
-    if (!Number.isInteger(expect.atLeast) || expect.atLeast < 1) {
-      problems.push({ field: 'expect.atLeast', message: 'erwartet ganze Zahl ≥ 1' });
+    if (!Number.isInteger(expect.atLeast) || expect.atLeast < 0) {
+      problems.push({ field: 'expect.atLeast', message: 'erwartet ganze Zahl ≥ 0 (0 = behoben)' });
     }
   } else if (expect.kind === 'unroutable_without_blocker' || expect.kind === 'unreachable_but_unrouted') {
-    if (!Number.isInteger(expect.atLeast) || expect.atLeast < 1) {
-      problems.push({ field: 'expect.atLeast', message: 'erwartet ganze Zahl ≥ 1' });
+    if (!Number.isInteger(expect.atLeast) || expect.atLeast < 0) {
+      problems.push({ field: 'expect.atLeast', message: 'erwartet ganze Zahl ≥ 0 (0 = behoben)' });
     }
   } else {
     problems.push({ field: 'expect.kind', message: 'unbekannte Erwartungsart' });
@@ -205,7 +215,12 @@ export type ReplayStatus =
   /** Fehler tritt nicht mehr auf — Akte schließen, nicht löschen. */
   | 'fixed'
   /** Der Plan hat sich geändert (Hash-Abweichung) — Akte neu vermessen. */
-  | 'input-drift';
+  | 'input-drift'
+  /**
+   * Ein **behobener** Fehler ist zurück (`atLeast === 0`, beobachtet > 0).
+   * Die Akte steht als Wächter da; sie ist rot, sobald der Fehler wieder da ist.
+   */
+  | 'regressed';
 
 export type ReplayOutcome = {
   failureId: string;
@@ -242,8 +257,18 @@ export function judgeRecord(
         ? observed.unroutableWithoutBlocker
         : observed.unreachableButUnrouted;
 
-  const reproduced = observedValue >= record.expect.atLeast;
-  const status: ReplayStatus = reproduced ? (hashMatches ? 'reproduces' : 'input-drift') : 'fixed';
+  // `atLeast === 0` heißt: behoben, muss 0 bleiben. Die Bedingung ist dann
+  // **Gleichheit**, nicht „mindestens" — sonst wäre eine Akte mit Schwelle 0
+  // immer grün und würde einen Rückfall nicht bemerken.
+  const settled = record.expect.atLeast === 0;
+  const satisfied = settled ? observedValue === 0 : observedValue >= record.expect.atLeast;
+  const status: ReplayStatus = satisfied
+    ? hashMatches
+      ? 'reproduces'
+      : 'input-drift'
+    : settled
+      ? 'regressed'
+      : 'fixed';
 
   return {
     failureId: record.failureId,
@@ -256,13 +281,14 @@ export function judgeRecord(
 }
 
 export function describeExpectation(record: FailureRecord): string {
+  const suffix = (value: number): string => (value === 0 ? ' = 0 (behoben, muss 0 bleiben)' : ` ≥ ${value}`);
   switch (record.expect.kind) {
     case 'invariant':
-      return `${record.expect.invariant} ≥ ${record.expect.atLeast}`;
+      return `${record.expect.invariant}${suffix(record.expect.atLeast)}`;
     case 'unroutable_without_blocker':
-      return `unroutable ohne Blocker ≥ ${record.expect.atLeast}`;
+      return `unroutable ohne Blocker${suffix(record.expect.atLeast)}`;
     case 'unreachable_but_unrouted':
-      return `erreichbar, aber unrouted ≥ ${record.expect.atLeast}`;
+      return `erreichbar, aber unrouted${suffix(record.expect.atLeast)}`;
   }
 }
 

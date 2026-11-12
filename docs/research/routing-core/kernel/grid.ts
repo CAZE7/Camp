@@ -79,6 +79,14 @@ export function buildGrid(
       xs.push(x0 - level, x1 + level);
       ys.push(y0 - level, y1 + level);
     }
+    // Parallele Kanäle jenseits der Freigabe: Abstand `laneGrid` (16 px) ist
+    // ≥ Clearance (12 px), damit zwei Trassen nebeneinander legal laufen.
+    const first = CORE_TOKENS.marginLadder[0] as number;
+    for (let lane = 1; lane <= CORE_TOKENS.corridorLanes; lane += 1) {
+      const offset = first + lane * CORE_TOKENS.laneGrid;
+      xs.push(x0 - offset, x1 + offset);
+      ys.push(y0 - offset, y1 + offset);
+    }
     xs.push(x0, x1, (x0 + x1) / 2);
     ys.push(y0, y1, (y0 + y1) / 2);
     for (const handle of node.handles) {
@@ -200,10 +208,21 @@ export class ObstacleIndex {
  */
 export type StubReservation = {
   readonly handleKey: string;
-  readonly segment: Segment;
+  /** Der **ganze** Fächer (Handle → Stub → Lane-Punkt), nicht nur ein Segment. */
+  readonly path: readonly Point[];
 };
 
 export const handleKey = (nodeId: string, handleId: string): string => `${nodeId}\u0000${handleId}`;
+
+/** Kleinster Abstand eines Segments zu einer Polylinie. */
+const polylineDistance = (segment: Segment, path: readonly Point[]): number => {
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i + 1 < path.length; i += 1) {
+    const piece: Segment = [path[i] as Point, path[i + 1] as Point];
+    best = Math.min(best, segmentDistance(segment, piece));
+  }
+  return best;
+};
 
 export function stubBlocker(
   segment: Segment,
@@ -212,7 +231,7 @@ export function stubBlocker(
 ): string | null {
   for (const reservation of reservations) {
     if (ownHandleKeys.has(reservation.handleKey)) continue;
-    if (segmentDistance(segment, reservation.segment) < CORE_TOKENS.stubReserveMargin - EPS) {
+    if (polylineDistance(segment, reservation.path) < CORE_TOKENS.stubReserveMargin - EPS) {
       return reservation.handleKey;
     }
   }
@@ -231,7 +250,7 @@ export function stubBlocks(
   // Prüfinstanz (I3), die solche Nähe ehrlich meldet.
   for (const reservation of reservations) {
     if (ownHandleKeys.has(reservation.handleKey)) continue;
-    if (segmentDistance(segment, reservation.segment) < CORE_TOKENS.stubReserveMargin - EPS) return true;
+    if (polylineDistance(segment, reservation.path) < CORE_TOKENS.stubReserveMargin - EPS) return true;
   }
   return false;
 }
@@ -323,6 +342,48 @@ export class Occupancy {
     else map.set(key, next);
   }
 
+  // --- Klarheitsfeld ------------------------------------------------------
+  //
+  // `usage` zählt **Überdeckung** (gleicher Schritt). Zwei Trassen können sich
+  // aber auch *neben*einander mit 2 px Abstand bewegen — das ist keine
+  // Überdeckung, sondern ein Clearance-Verstoß (I3), und den konnte die
+  // Verhandlung bisher nicht sehen. Das Klarheitsfeld markiert jeden
+  // Gitterschritt, der einer verlegten Route **parallel** näher als die
+  // Clearance kommt, und merkt sich den Eigentümer. Eigene Schritte und
+  // Schritte, die nur demselben Anschluss-Bündel gehören, sind frei.
+  private readonly proximity = new Map<string, string | '*'>();
+
+  addProximity(ax: number, ay: number, bx: number, by: number, owner: string, delta: number): void {
+    const key = edgeKey(ax, ay, bx, by);
+    if (delta > 0) {
+      const current = this.proximity.get(key);
+      if (current === undefined) this.proximity.set(key, owner);
+      else if (current !== owner) this.proximity.set(key, '*');
+    } else {
+      const current = this.proximity.get(key);
+      if (current === undefined) return;
+      if (current === owner) this.proximity.delete(key);
+      // '*': mehrere Eigentümer — der Eintrag bleibt, bis die Route neu gebaut
+      // wird; ein veralteter Eintrag ist unschädlich (er blockt nur).
+    }
+  }
+
+  proximityOwner(ax: number, ay: number, bx: number, by: number): string | undefined {
+    return this.proximity.get(edgeKey(ax, ay, bx, by));
+  }
+
+  /** Ist der Schritt für `ownEdgeId` durch fremde Klarheit gesperrt? */
+  proximityBlocked(ax: number, ay: number, bx: number, by: number, ownOwners: ReadonlySet<string>): boolean {
+    const owner = this.proximity.get(edgeKey(ax, ay, bx, by));
+    if (owner === undefined) return false;
+    if (owner === '*') return true;
+    return !ownOwners.has(owner);
+  }
+
+  clearProximity(): void {
+    this.proximity.clear();
+  }
+
   /** Alle überbelegten Gitterkanten (für die History-Aktualisierung). */
   overloaded(): { a: { x: number; y: number }; b: { x: number; y: number }; count: number }[] {
     const out: { a: { x: number; y: number }; b: { x: number; y: number }; count: number }[] = [];
@@ -361,6 +422,45 @@ export class Occupancy {
  * Segments gesetzt (nicht nur für die Knicke): nur so ist eine Kreuzung
  * erkennbar, die mitten auf einem langen Segment liegt.
  */
+
+/**
+ * Stempelt das Klarheitsfeld entlang einer Route: jeder **parallele**
+ * Gitterschritt, der der Route näher als `clearance` kommt, wird markiert.
+ * Senkrechte Schritte (echte Kreuzungen) bleiben frei — Kreuzen ist erlaubt
+ * (I10), Nebeneinanderlaufen unter der Clearance nicht (I3).
+ */
+export function applyClearance(
+  occupancy: Occupancy,
+  grid: Grid,
+  waypoints: readonly Point[],
+  owner: string,
+  delta: 1 | -1
+): void {
+  const clearance = CORE_TOKENS.clearance;
+  for (let i = 0; i + 1 < waypoints.length; i += 1) {
+    const a = waypoints[i] as Point;
+    const b = waypoints[i + 1] as Point;
+    const horizontal = Math.abs(a.y - b.y) < EPS;
+    const line = horizontal ? a.y : a.x;
+    const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+    const hi = horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+    const crossCoords = horizontal ? grid.ys : grid.xs;
+    const alongCoords = horizontal ? grid.xs : grid.ys;
+    for (let r = 0; r < crossCoords.length; r += 1) {
+      const other = crossCoords[r] as number;
+      const gap = Math.abs(other - line);
+      if (gap <= EPS || gap >= clearance - EPS) continue;
+      for (let k = 0; k + 1 < alongCoords.length; k += 1) {
+        const from = alongCoords[k] as number;
+        const to = alongCoords[k + 1] as number;
+        if (to <= lo + EPS || from >= hi - EPS) continue;
+        if (horizontal) occupancy.addProximity(from, other, to, other, owner, delta);
+        else occupancy.addProximity(other, from, other, to, owner, delta);
+      }
+    }
+  }
+}
+
 export function applyRoute(
   occupancy: Occupancy,
   grid: Grid,
@@ -388,7 +488,25 @@ export function applyRoute(
     const a = waypoints[i] as Point;
     const b = waypoints[i + 1] as Point;
     const vertical = Math.abs(a.x - b.x) < EPS;
-    occupancy.add(a.x, a.y, b.x, b.y, delta);
+    // Belegung muss in **Gitterschritten** gezählt werden, nicht in
+    // Polylinien-Segmenten: der A* fragt `occupancy.get(nachbar, nachbar)` für
+    // einen einzelnen Schritt ab. Ein langes Segment als Ganzes zu zählen
+    // erzeugt einen Schlüssel, den die Suche nie abfragt — die Überlast war
+    // damit unsichtbar, und nur exakt gleiche Segmente (gemeinsame Stubs)
+    // wurden überhaupt als Konflikt erkannt.
+    const stairs = vertical ? grid.ys : grid.xs;
+    const index = vertical ? grid.yIndex : grid.xIndex;
+    const from = vertical ? a.y : a.x;
+    const to = vertical ? b.y : b.x;
+    const stops: number[] = [from];
+    for (const [value] of interiorIndices(stairs, index, from, to)) stops.push(value);
+    stops.push(to);
+    for (let k = 0; k + 1 < stops.length; k += 1) {
+      const lo = stops[k] as number;
+      const hi = stops[k + 1] as number;
+      if (vertical) occupancy.add(a.x, lo, a.x, hi, delta);
+      else occupancy.add(lo, a.y, hi, a.y, delta);
+    }
     if (vertical) {
       for (const [y] of interiorIndices(grid.ys, grid.yIndex, a.y, b.y)) {
         occupancy.addThrough(a.x, y, true, delta);
@@ -403,17 +521,70 @@ export function applyRoute(
 
 /** Stub-Punkt eines Anschlusses: Port + Normale × (stubMin + Lane-Versatz). */
 export function stubPoint(handle: CoreHandle, laneOffset: number): { x: number; y: number } {
-  const length = CORE_TOKENS.stubMin + Math.abs(laneOffset);
+  const point = fanoutPath(handle, laneOffset);
+  return point[point.length - 1] as Point;
+}
+
+/**
+ * Fächerung eines Anschlusses als **orthogonale** Polylinie:
+ *
+ *     Handle ──(stubMin senkrecht)──► Knick ──(|lane| seitlich)──► Lane-Punkt
+ *
+ * Bis hierher wurde der Lane-Versatz direkt in den Stub-Punkt gerechnet. Das
+ * erzeugte eine **diagonale** Handle→Stub-Strecke, die kein Gitterschritt ist
+ * und die der A\* deshalb nie verlassen konnte: auf Plänen mit mehreren
+ * Kanten an einem Anschluss (Busbars) fiel damit jede solche Kante aus,
+ * obwohl jede einzelne Kante allein eine Route hatte. Das ist genau das
+ * „Anschlüsse versperren sich gegenseitig", das die Fächerung lösen soll.
+ *
+ * Der Fächer ist damit auch die prüfbare Form von „gemeinsam genutzter
+ * Anschluss, individuelle Leitungsabgänge": gleicher Anfangspunkt, getrennte
+ * Lanes, definierter Abstand (`laneGrid`) zwischen den Abgängen.
+ */
+export function fanoutPath(handle: CoreHandle, laneOffset: number): Point[] {
+  // **Gestaffelt**: der senkrechte Austritt wird um den Lane-Versatz verlängert,
+  // erst dann wird seitlich auf die Lane gezogen. Dadurch liegt das Querstück
+  // jeder Lane auf einer eigenen Höhe bzw. Spalte; die Fächer überdecken sich
+  // nur auf ihrem gemeinsamen senkrechten Anfang — der dokumentierten
+  // Port-Bündelung (ADR 0009/0031), nicht auf den Querstücken. Die frühere
+  // Fassung legte alle Querstücke auf dieselbe Linie: die Trassen liefen dort
+  // kollinear übereinander (I2) und blockierten sich gegenseitig.
+  const outward = CORE_TOKENS.stubMin;
+  const base = pointAtDistance(handle, outward);
+  if (Math.abs(laneOffset) < EPS) return [{ x: handle.x, y: handle.y }, base];
+  const lateral =
+    handle.side === 'left' || handle.side === 'right' ? { x: 0, y: laneOffset } : { x: laneOffset, y: 0 };
+  return [{ x: handle.x, y: handle.y }, base, { x: base.x + lateral.x, y: base.y + lateral.y }];
+}
+
+/** Punkt senkrecht vor dem Anschluss in Abstand `distance`. */
+export function pointAtDistance(handle: CoreHandle, distance: number): Point {
   switch (handle.side) {
     case 'right':
-      return { x: handle.x + length, y: handle.y + laneOffset };
+      return { x: handle.x + distance, y: handle.y };
     case 'left':
-      return { x: handle.x - length, y: handle.y + laneOffset };
+      return { x: handle.x - distance, y: handle.y };
     case 'top':
-      return { x: handle.x + laneOffset, y: handle.y - length };
+      return { x: handle.x, y: handle.y - distance };
     case 'bottom':
     default:
-      return { x: handle.x + laneOffset, y: handle.y + length };
+      return { x: handle.x, y: handle.y + distance };
+  }
+}
+
+/** Senkrechter Stub-Punkt ohne Lane-Versatz. */
+export function stubBase(handle: CoreHandle): Point {
+  const length = CORE_TOKENS.stubMin;
+  switch (handle.side) {
+    case 'right':
+      return { x: handle.x + length, y: handle.y };
+    case 'left':
+      return { x: handle.x - length, y: handle.y };
+    case 'top':
+      return { x: handle.x, y: handle.y - length };
+    case 'bottom':
+    default:
+      return { x: handle.x, y: handle.y + length };
   }
 }
 

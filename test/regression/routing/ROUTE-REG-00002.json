@@ -111,12 +111,12 @@
   "expect": {
     "kind": "invariant",
     "invariant": "I2",
-    "atLeast": 1
+    "atLeast": 0
   },
   "firstSeen": "2026-11-11",
   "routingVersion": "routing-core@bd83847",
   "inputHash": "sha256:51afb3c74ff6f809558c48e83342c9e35f851a682f42c6389cd51d7fd91de1dd",
   "minimized": true,
   "reproducible": true,
-  "notes": "Ueberlappung im Kern: der Verhandlungslauf konvergiert nicht auf maxUsage <= 1, weil Ueberlappung bepreist statt gesperrt wird (AB-REPORT §3.2)."
+  "notes": "Ueberlappung im Kern: der Verhandlungslauf konvergiert nicht auf maxUsage <= 1, weil Ueberlappung bepreist statt gesperrt wird (AB-REPORT §3.2).\nBehoben am 2026-11-11 (Phase 2); Akte bleibt als Wächter stehen: der Fehler muss 0 bleiben."
 }

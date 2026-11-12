@@ -3,9 +3,13 @@
 **Status:** Verbindliche Spezifikation (Phase V0) · **Datum:** 2026-11-11 ·
 **Branch:** `arena/bbf610a1-camp`
 **Umsetzungsstand der Prüfpipeline: V1–V7 vollständig umgesetzt** (Nachweise in
-§17 und §18). Damit ist die Verifikationsseite gebaut; offen sind **Phase 3**
-(A/B auf echten Plannutzungen) und **Phase 4** (Produktionsintegration) — beides
-Vorhaben, die diese Datei _prüft_, nicht solche, die sie baut.
+§17 und §18). **Seit 2026-11-11 zusätzlich:** Freigabekette für den neuen Kern
+(`routeAndValidate`, §21) — der Kern kann nichts mehr veröffentlichen, was eine
+harte Prüfung nicht besteht.
+
+**Stand des neuen Kerns: Phase 1 teilweise, Phase 2 begonnen und offen.** Die
+sechs Referenzpläne bestehen das Gate **noch nicht** (§21.4). Es gibt keine
+Integration und keine Zahlen, die eine rechtfertigen würden.
 
 | Stufe | Bedeutung (§4)                  | Umsetzung                             | Nachweis                            |
 | ----- | ------------------------------- | ------------------------------------- | ----------------------------------- |
@@ -951,7 +955,19 @@ wird er gerissen, ist das ein Befund.
 Die JSON-Messung wird als Artefakt abgelegt (30 Tage), damit ein Trend
 entsteht und nicht nur ein Ja/Nein.
 
-### 19.3 Warum `fixed` ein rotes Gate ist
+### 19.3 Behobene Akten bleiben als Wächter stehen
+
+Eine Akte mit `expect.atLeast === 0` beschreibt einen **behobenen** Fehler. Sie
+wird nicht gelöscht, sondern geprüft: beobachtet 0 ⇒ `reproduces` (grün),
+beobachtet > 0 ⇒ **`regressed`** (rot). Die Bedingung ist dann Gleichheit, nicht
+„mindestens" — mit `≥ 0` wäre die Akte immer grün und würde den Rückfall genau
+dann nicht bemerken, wenn sie anfängt zu wirken.
+
+Drei Akten sind so seit 2026-11-11 geschlossen: `ROUTE-REG-00001` (I3 im Kern),
+`00002` (I2 im Kern), `00003` (unroutable ohne Blocker). Alle drei waren vorher
+`reproduces` — die Defekte aus §3 des AB-Reports sind weg (§21.3).
+
+### 19.4 Warum `fixed` ein rotes Gate ist
 
 Eine Fehlerakte, die nicht mehr reproduziert, heißt: der Fehler ist behoben.
 Das ist eine gute Nachricht und trotzdem ein rotes Gate — weil niemand die
@@ -1011,3 +1027,123 @@ im Coverage-Gate für `lib/**` (er ist Forschung, nicht Domänencode), er ist
 nicht mehr vom Produktions-Typecheck ausgeschlossen (er wird weiter geprüft),
 und ein Wiedereinbau in die Produktion erfordert jetzt eine bewusste Änderung
 an Regel G2 statt eines Import-Satzes.
+
+---
+
+## 21. Der neue Kern unter derselben Aufsicht (Phase 1/2, 2026-11-11)
+
+### 21.1 Warum das nötig war
+
+Die Prüfpipeline aus §4–§18 prüfte bisher **den Bestandsrouter**. Der Kern
+(`docs/research/routing-core/kernel`) hatte zwar `validateCore()`, aber niemand
+rief sie auf: die A/B-Tabelle las `result.routes` direkt. Damit galt für den
+Kern genau der Zustand, den diese Spezifikation für das Produkt verbietet —
+geometrisch ungültige Ergebnisse waren **sichtbar**, aber nicht **aufgehalten**.
+
+Zwei Fehler im Kern waren die Ursache:
+
+1. **Stille Freigabe bei erreichter Iterationsgrenze.** War
+   `maxNegotiationIterations` erreicht, wurde die letzte Lösung übernommen —
+   auch wenn `maxUsage() > 1` war, also Gitterkanten doppelt belegt waren. Das
+   ist eine eingebaute I2-Verletzung mit Ansage.
+2. **Freigabe-Leiter unter der Clearance.** `marginLadder = [14, 8, 2]` ließ
+   die Suche bis auf 2 px an fremde Bauteile heranrouten. Für die Prüfinstanz
+   ist alles unter 12 px ein Fehler; die Suche hielt es für eine legitime Stufe.
+   Eine Lockerung, die eine Invariante bricht, ist keine Lockerung.
+
+### 21.2 Die Freigabekette
+
+`scripts/verification/routing/coreGate.ts` — **die eine** Stelle, an der ein
+Kern-Ergebnis veröffentlichbar wird:
+
+```ts
+const verdict = routeAndValidate(input); // status: 'PASS' | 'FAIL', reasons: string[]
+verdict.publishable; // Map<edgeId, Point[]> | null
+publishableRoutes(input); // Kurzform: Routen oder null
+```
+
+| Prüfung             | Bedingung                                                  |
+| ------------------- | ---------------------------------------------------------- |
+| Vollständigkeit     | jede Kante hat eine Route **oder** einen Klartext-Grund    |
+| Geometrie           | I1 = 0, I2 = 0, I3 = 0 (eingefrorene Prüfinstanz)          |
+| Gegenprobe          | Orakel und Produktivprüfung stimmen überein (`crosscheck`) |
+| Gesperrte Leitungen | bitgenau unverändert                                       |
+| Determinismus       | zweiter Lauf liefert dieselben Waypoints                   |
+
+Eigenschaften, die bewusst so sind:
+
+- **Kein Teil-Ergebnis.** `publishable` ist entweder vollständig oder `null`.
+  Ein Aufrufer kann ein `FAIL` nicht „übersehen" — es gibt nichts zu holen.
+- **Divergenz ist ein FAIL**, unabhängig davon, welche Seite recht hat. Ein
+  Urteil, dessen Prüfungen sich widersprechen, ist kein Urteil.
+- **Gründe in Klartext.** Ein Gate, das nur „ungültig" sagt, wird abgeschaltet.
+- Der Kern bleibt frei von Selbstprüfung: die Kette liegt **außerhalb** des
+  Kerns und benutzt zwei unabhängige Prüfungen.
+
+Acht Tests in `test/invariants/core-gate.test.ts` prüfen **beide** Richtungen:
+gültiger Plan ⇒ `PASS` mit Routen; unvollständiger Plan ⇒ `FAIL`, `null`
+Routen, benannter Grund; gesperrte Route ⇒ bitgenau; zwei Läufe ⇒ gleiches
+Urteil.
+
+### 21.3 Phase 2: was repariert ist
+
+| Defekt                                                                 | Ursache                                                                                                                    | Behebung                                                                                                               |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Kern routete auf `simple`, `camper`, `complex` **keine einzige** Kante | Lane-Versatz wurde in den Stub-Punkt gerechnet: die Strecke Handle→Stub war **diagonal**, der A\* konnte sie nie verlassen | Fächer als orthogonale Polylinie (`fanoutPath`): Handle → Stub → Lane-Punkt                                            |
+| `simple`: Kante überdeckte sich **selbst** (I2)                        | Suche startete in Richtung des Lane-Versatzes und lief über die eigene Fächerstrecke zurück                                | Start-/Zielrichtung wieder senkrecht zum Port (vom Bauteil weg / auf es zu)                                            |
+| Belegung war für die Suche **unsichtbar**                              | `applyRoute` zählte ganze Polylinien-Segmente, der A\* fragt einzelne Gitterschritte ab — die Schlüssel trafen sich nie    | Belegung wird in **Gitterschritten** gebucht                                                                           |
+| Busbar mit k Kanten galt per Konstruktion als überlastet               | gemeinsamer Stub wurde je Kante gezählt (`usage = k`)                                                                      | gemeinsamer Anschlussbereich ist von der Überdeckungszählung ausgenommen; er ist modellierte Bündelung (ADR 0009/0031) |
+| Zähler liefen in der Kreuzungs-Nachbearbeitung auseinander             | dort wurde die volle Route abgezogen und addiert, in der Verhandlung nur ein Ausschnitt                                    | eine Buchungsfunktion (`book`) für alle Stellen                                                                        |
+| Verschönerung erzeugte Durchdringungen                                 | `dropShortDoglegs` formte um, ohne Hindernisse zu prüfen                                                                   | Nachbearbeitung nur akzeptierend: orthogonal, nicht länger, ohne Selbstüberdeckung, ohne Hindernis, Belegung ≤ 1       |
+| I3 war strukturell unvermeidbar                                        | Gitter bot nur Linien 14 px und 12 px an (2 px Abstand) — zwei Trassen hatten dort zwangsläufig < 12 px                    | parallele Korridorlinien im `laneGrid`-Abstand (16 px) + Klarheitsfeld                                                 |
+
+**Ergebnis dieser Reparaturen** (gemessen, Median nicht, Einzellauf):
+
+| Plan     | Kanten geroutet | I1  | I2  | I3  | Länge    | Knicke | Kern-Laufzeit | Gate     |
+| -------- | --------------- | --- | --- | --- | -------- | ------ | ------------- | -------- |
+| simple   | 9/9             | 0   | 5   | 8   | 3 978 px | 33     | 1,0 s         | **FAIL** |
+| camper   | 12/12           | 0   | 10  | 8   | 5 874 px | 51     | 6,3 s         | **FAIL** |
+| solar    | 11/11           | 0   | 0   | 27  | 4 528 px | 43     | 0,8 s         | **FAIL** |
+| inverter | 10/10           | 0   | 0   | 15  | 4 677 px | 33     | 0,7 s         | **FAIL** |
+| acdc     | 14/14           | 0   | 1   | 33  | 6 528 px | 56     | 1,6 s         | **FAIL** |
+| complex  | 0/23            | 0   | 0   | 0   | —        | —      | 103 s         | **FAIL** |
+
+Zum Vergleich der Bestand (gleiche Pläne, gleiche Prüfinstanz):
+27 489 px, 177 Knicke, 39 Kreuzungen, **I1/I2/I3 = 0/0/0** auf allen sechs.
+
+### 21.4 Was das heißt
+
+**Die Referenzpläne bestehen das Gate nicht. Phase 2 ist nicht abgeschlossen,
+Phase 4 bleibt geschlossen.** Drei Ursachen sind benannt und belegt:
+
+1. **I3 auf allen Plänen (8–33).** Das Klarheitsfeld bepreist paralleles
+   Nebeneinanderlaufen unter der Clearance, es **verbietet** es nicht. Der
+   Optimierer nimmt die Strafe in Kauf, wenn der Umweg teurer ist. Solange die
+   Klarheit ein Preis ist, ist sie verhandelbar — und damit keine Invariante.
+   Behebung: Klarheit als harte Bedingung **mit** ausreichendem Kanalangebot
+   (mehr Korridor-Lanes, Kanalplanung), nicht als Preis.
+2. **I2 auf `simple`, `camper`, `acdc`.** Zwei Kanten laufen nach dem Fächer
+   kollinear übereinander. Die Bündel-Ausnahme greift dort nicht, weil die
+   Überdeckung außerhalb der Stubs liegt. Behebung: Fächer so staffeln, dass
+   die Querstücke **verschiedene** Lanes haben (versucht, verschlechterte die
+   Erreichbarkeit — braucht Kanalplanung, nicht Staffelung allein).
+3. **`complex` konvergiert nicht.** 23 Kanten, dichte Lage: die Verhandlung
+   findet in 8 Iterationen keine überdeckungsfreie Lösung. Das ist kein
+   Zahlenfehler, sondern die Grenze des einfachen Rip-up-and-reroute. Behebung:
+   globale Kandidatenzuweisung vor der Verhandlung (§2 Problem B), nicht mehr
+   Iterationen.
+
+Der Kern verliert damit **deutlich** gegen den Bestand: 49 % länger, doppelt so
+viele Knicke, mehr Kreuzungen, und er ist bei `complex` um Größenordnungen
+langsamer. Das ist der ehrliche Stand — und genau der Grund, warum §19 keine
+Integration vorsieht.
+
+### 21.5 Was von diesem Schritt bleibt
+
+- Der Kern kann **nichts mehr still veröffentlichen**: das Gate ist da, es ist
+  getestet, und die A/B-Tabelle liest jetzt durch das Gate hindurch.
+- Sieben benannte Defekte sind behoben, jeder mit Ursache im Bericht — statt
+  „der Kern ist schlechter" jetzt „der Kern scheitert an I3, weil Klarheit ein
+  Preis ist".
+- Die Messung ist reproduzierbar: `npm run routing:core:ab` zeigt je Plan das
+  Gate-Urteil, `npm run test:invariants` prüft die Kette selbst.

@@ -16,10 +16,14 @@ export type CoreTokens = {
   /** Aufblähung der Hindernis-Rechtecke (px) — größte Freigabe-Stufe. */
   readonly obstacleMargin: number;
   /**
-   * Freigabe-Leiter (§5.1). Der Kern sucht zuerst mit vollem Rand, dann mit
-   * engerem, zuletzt mit Rohbox + 2 px — dieselbe Kaskade, die der
-   * Bestandsrouter als „gelockerte Freigabe" fährt. Die Stufen sind
-   * absteigend sortiert und enthalten `obstacleMargin` als erste.
+   * Freigabe-Leiter (§5.1). Der Kern sucht zuerst mit vollem Rand (14 px),
+   * dann mit genau der Clearance (12 px).
+   *
+   * **Keine Stufe unter `cableClearance`.** Die frühere Leiter endete bei
+   * 8 und 2 px und war damit eine eingebaute I3-Verletzung: was die Suche als
+   * „engere Freigabe" benutzte, war für die Prüfinstanz ein Fehler. Eine
+   * Lockerung, die eine Invariante bricht, ist keine Lockerung, sondern ein
+   * Fehler mit anderem Namen.
    */
   readonly marginLadder: readonly number[];
   /** Knickstrafe in px-Äquivalent. */
@@ -28,6 +32,15 @@ export type CoreTokens = {
   readonly crossingCost: number;
   /** Preis je Einheit Überlast im Verhandlungsverfahren. */
   readonly presentPenalty: number;
+  /**
+   * Preis für einen Schritt, der fremder Klarheit zu nah kommt (I3).
+   *
+   * Bewusst ein **Preis** und keine Sperre: eine Sperre kann eine Verhandlung
+   * nicht mehr auflösen — der erste Lauf gewinnt, alle folgenden müssen
+   * Umwege nehmen oder fallen aus. Mit einem hohen Preis bleibt jeder Pfad
+   * erreichbar, und die Verhandlung hat etwas zu tauschen.
+   */
+  readonly proximityPenalty: number;
   /** Zuwachs der History-Strafe je Konflikt-Iteration. */
   readonly historyIncrement: number;
   /** Obergrenze der Verhandlungs-Iterationen (Sicherheitsnetz). */
@@ -46,19 +59,36 @@ export type CoreTokens = {
   readonly laneGrid: number;
   /** Mindestabstand Kabel ↔ fremdes Bauteil/Kabel (px). */
   readonly clearance: number;
-  /** Sperrradius eines reservierten Stubs (px) — nur echte Berührung. */
+  /**
+   * Sperrradius eines reservierten Stubs (px) — nur echte Berührung.
+   *
+   * Die 12-px-Clearance wird für Anschlüsse **nicht** über Sperrflächen
+   * erzwungen, sondern über das Klarheitsfeld bepreist. Eine harte Sperre mit
+   * Clearance-Radius dichtet auf dichten Plänen jeden Korridor um jeden
+   * Anschluss ab; das Ergebnis war „nichts routebar" statt „eng geroutet".
+   */
   readonly stubReserveMargin: number;
+  /**
+   * Zahl der parallelen Korridorlinien je Bauteilseite jenseits der Clearance
+   * (Abstand `laneGrid`). Ohne sie bietet das Gitter nur die Linien 14 px und
+   * 12 px an — zwei Trassen hätten dort 2 px Abstand und damit eine
+   * I3-Verletzung, obwohl sie sich nicht überdecken. Parallele Kanäle sind die
+   * Voraussetzung dafür, dass „keine Überdeckung" und „Clearance 12" gleich-
+   * zeitig erfüllbar sind.
+   */
+  readonly corridorLanes: number;
 };
 
 export const CORE_TOKENS: CoreTokens = Object.freeze({
   obstacleMargin: LEGACY_ROUTING_TOKENS.obstacleMargin,
-  marginLadder: [14, 8, 2],
+  marginLadder: [14, 12],
   bendCost: 80,
   crossingCost: 120,
-  presentPenalty: 60,
-  historyIncrement: 40,
+  presentPenalty: 400,
+  proximityPenalty: 2500,
+  historyIncrement: 200,
   maxNegotiationIterations: 8,
-  maxCrossingPasses: 3,
+  maxCrossingPasses: 1,
   maxExpansions: 200_000,
   stubMin: ROUTING_TOKENS.stubMin,
   segmentMin: ROUTING_TOKENS.segmentMin,
@@ -66,4 +96,5 @@ export const CORE_TOKENS: CoreTokens = Object.freeze({
   laneGrid: ROUTING_TOKENS.laneGrid,
   clearance: ROUTING_TOKENS.cableClearance,
   stubReserveMargin: 2,
+  corridorLanes: 3,
 });
