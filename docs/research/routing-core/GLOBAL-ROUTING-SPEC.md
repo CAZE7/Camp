@@ -212,14 +212,24 @@ Port-Bündel sind die **einzige** Ausnahme: Kanten mit gemeinsamem Handle dürfe
 gemeinsamen Stub-Abschnitt mit $\mu = 2$ belegen (Regel: `isPortBundleOverlap`).
 Der Stub wird vorab reserviert, nicht im Gitter gesucht.
 
-### 5.4 Lane-Reservierung (Bündelung)
+### 5.4 Port-Bündelung und lokale Ausweichsuche (aktueller Kern)
 
-Kanten mit gleichem Start- oder Ziel-Handle erhalten einen Lane-Offset
-$k \cdot$ `laneGrid` senkrecht zur Port-Achse, $k$ aus der **sortierten** Kanten-ID
-(nicht aus der Laufreihenfolge) — das ist I8 (deterministische Lane-Vergabe).
-Parallele Trassen entstehen damit nicht zufällig, sondern als Reservierung:
-belegt eine Kante einen Korridor, ist der Nachbarkorridor genau `laneGrid` entfernt
-frei oder belegt.
+Der aktive Kern vergibt **keine** vorab geplanten Lane-Offsets (`lane = 0`).
+Alle Kanten starten am festen orthogonalen Stub; die Gittersuche wählt den
+weiteren Weg aus dem globalen `laneGrid`-Raster. Ein früher globaler Lane-Planer
+wurde verworfen, weil er I2/I3 erhöhte und Referenzpläne unroutebar machte.
+
+Für Portgruppen wird ein begrenzter lokaler Ausweichschritt verwendet:
+bezeichnet der günstigste A*-Pfad eine Gitterkante, die bereits von einer Route
+mit demselben Start- oder Ziel-Handle belegt ist, wird eine zweite Suche
+versucht, die diese Port-überlappenden Schritte meidet. Gibt es in derselben
+Freigabestufe keinen Alternativpfad, bleibt der erste Kandidat bestehen; die
+Negotiation und das externe Gate entscheiden unverändert über die Freigabe.
+Dies ist keine globale Lane-Zuweisung und keine Garantie auf Konfliktfreiheit.
+
+Der öffentliche `lane`-Wert bleibt vorerst 0. Eine deterministische,
+konfliktgeprüfte Lane-Reservierung ist ein offener Entwurfspunkt, kein im Kern
+implementiertes Versprechen.
 
 ### 5.5 Geometrische Nachbearbeitung
 
@@ -305,10 +315,12 @@ Abnahmekriterien für eine spätere Integration (alle gleichzeitig):
 | Laufzeit       | ≤ 300 ms je Plan                           |
 | Locked Routes  | unverändert                                |
 
-### 8.2 Messung (dieser Commit)
+### 8.2 Messung (aktueller Kernstand)
 
-Die Zahlen stehen im Abschnitt 8.3 des Ergebnisberichts am Dateiende — bewusst
-**nach** dem Lauf eingetragen, nicht vorher geschätzt.
+Die aktuelle, gategestützte Messung steht in Abschnitt 8.2 von
+[`AB-REPORT.md`](./AB-REPORT.md); der dortige JSON-Lauf wird mit
+`npm run routing:core:ab -- --json` reproduziert. Der Status und die
+Freigabeentscheidung werden in §11 aktualisiert.
 
 ---
 
@@ -333,8 +345,9 @@ ist ein Rückschritt ein `git revert` ohne Datenverlust.
    als jede A\*-Lösung. Der Kern erbt den Katalog (Stufe 0), sonst verliert er auf
    `simple`/`solar` per Konstruktion.
 2. **Congestion kann oszillieren.** Zwei Kanten können sich abwechselnd verdrängen.
-   Gegenmittel: monoton wachsende History + Iterationslimit + „beste zulässige
-   Lösung“ wird behalten (nicht die letzte).
+   Gegenmittel: monoton wachsende History, Iterationslimit und deterministischer
+   Stagnationsabbruch. Eine Lösung wird nur freigegeben, wenn sie vollständig und
+   zulässig ist; eine überlastete „beste“ Lösung wird nicht veröffentlicht.
 3. **Knickpreis vs. Länge.** Ein hoher Knickpreis erzeugt Umwege; ein niedriger
    Treppen. Der Wert 80 px ist vom Bestandsrouter übernommen, nicht neu erfunden.
 4. **Port-Bündel sind ein Sonderfall im Sonderfall.** Sie werden vorab reserviert;
@@ -352,9 +365,17 @@ Der Bericht wird von `npm run routing:core:ab` erzeugt und in
 [`AB-REPORT.md`](./AB-REPORT.md) eingetragen. Er enthält **beide** Seiten, auch die
 Niederlagen. Eine Zusammenfassung steht in der Commit-Nachricht.
 
-**Stand 2026-11-11 (erster vollständiger Lauf):** Der Kern **verliert**. Drei von
-sechs Plänen liefern null Routen (Stub-Kränze an dicht gepackten Busbar-Ports),
-die anderen drei verletzen I2 (6–11) und I3 (17–36) und sind 21–51 % länger.
-Determinismus und Laufzeit sind erfüllt, die harten Invarianten nicht.
-**Phase 4 (Adapter-Integration) bleibt geschlossen** — Begründung, Zahlen und
-Diagnose in [`AB-REPORT.md`](./AB-REPORT.md).
+**Erster vollständiger Lauf (historisch):** Drei von sechs Plänen lieferten keine
+Routen; die drei übrigen verletzten I2/I3. Der erste Messstand ist im
+[`AB-REPORT.md`](./AB-REPORT.md) dokumentiert.
+
+**Aktueller Stand (2026-11-11, nach Endpoint- und Port-Ausweichkorrektur):**
+Das harte Gate besteht `simple` und `inverter` (2/6); `camper`, `solar` und
+`acdc` scheitern an verbleibenden I2/I3-Verstößen, `complex` liefert 0/23 Routen.
+Der Stagnationsabbruch reduziert `complex` auf zwei Verhandlungsläufe, löst den
+Konflikt aber nicht. Die vollständigen Routen sind 17–49 % länger als der
+Bestand, und die Kernlaufzeiten überschreiten das 300-ms-Ziel. **Phase 4
+(Adapter-Integration) bleibt geschlossen.** Die aktuelle Messung und Diagnose
+stehen in [`AB-REPORT.md`](./AB-REPORT.md) §8 sowie
+[`ROUTING-QUALITY-AND-VERIFICATION.md`](../../ROUTING-QUALITY-AND-VERIFICATION.md)
+§22.

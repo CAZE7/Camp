@@ -34,6 +34,7 @@ import {
   applyClearance,
   applyRoute,
   buildGrid,
+  stubBlocks,
   fanoutPath,
   handleKey,
   ObstacleIndex,
@@ -58,10 +59,11 @@ const EPS = 1e-6;
 type ResolvedEnd = {
   readonly handle: CoreHandle;
   readonly nodeId: string;
-  /** Handle → Stub → Lane-Punkt; orthogonal und vollständig (siehe `fanoutPath`). */
+  /** Orthogonaler Portstub vom Handle zum festen Stub-Ende. */
   readonly fanout: readonly Point[];
-  /** Lane-Punkt = letzter Punkt des Fächers = Start/Ziel der Gittersuche. */
+  /** Stub-Ende = letzter Punkt des Portstubs = Start/Ziel der Gittersuche. */
   readonly stub: Point;
+  /** Currently fixed at zero; lane planning is not active in this kernel. */
   readonly lane: number;
   readonly handleKey: string;
 };
@@ -78,52 +80,6 @@ type ResolvedEdge = {
 const routeCost = (waypoints: readonly Point[], crossings: number): number =>
   pathLength(waypoints) + CORE_TOKENS.bendCost * countBends(waypoints) + CORE_TOKENS.crossingCost * crossings;
 
-/**
- * Lane-Vergabe: je (Bauteil, Anschluss) werden die beteiligten Kanten nach ID
- * sortiert und symmetrisch um die Portachse verteilt (I8: deterministisch,
- * unabhängig von der Laufreihenfolge).
- */
-function assignLanes(
-  input: CoreInput,
-  handleOf: (nodeId: string, handleId: string) => CoreHandle | undefined
-): Map<string, { sourceLane: number; targetLane: number }> {
-  const groups = new Map<string, { edgeId: string; end: 'source' | 'target'; side: CoreHandle['side'] }[]>();
-  for (const edge of input.edges) {
-    const source = handleOf(edge.source, edge.sourceHandle);
-    const target = handleOf(edge.target, edge.targetHandle);
-    if (source) {
-      const key = handleKey(edge.source, edge.sourceHandle);
-      const list = groups.get(key) ?? [];
-      list.push({ edgeId: edge.id, end: 'source', side: source.side });
-      groups.set(key, list);
-    }
-    if (target) {
-      const key = handleKey(edge.target, edge.targetHandle);
-      const list = groups.get(key) ?? [];
-      list.push({ edgeId: edge.id, end: 'target', side: target.side });
-      groups.set(key, list);
-    }
-  }
-  const lanes = new Map<string, { sourceLane: number; targetLane: number }>();
-  for (const edge of input.edges) lanes.set(edge.id, { sourceLane: 0, targetLane: 0 });
-  const keys = [...groups.keys()].sort();
-  for (const key of keys) {
-    const members = groups.get(key) as {
-      edgeId: string;
-      end: 'source' | 'target';
-      side: CoreHandle['side'];
-    }[];
-    members.sort((a, b) => compareIds(a.edgeId, b.edgeId));
-    members.forEach((member, i) => {
-      const offset = (i - (members.length - 1) / 2) * CORE_TOKENS.laneGrid;
-      const entry = lanes.get(member.edgeId) as { sourceLane: number; targetLane: number };
-      if (member.end === 'source') entry.sourceLane = offset;
-      else entry.targetLane = offset;
-    });
-  }
-  return lanes;
-}
-
 /** Baut die Geometrie einer Route: Handle → Stub → Gitterpfad → Stub → Handle. */
 function assemble(source: ResolvedEnd, target: ResolvedEnd, gridPath: readonly Point[]): Point[] {
   const points: Point[] = source.fanout.map((p) => ({ x: p.x, y: p.y }));
@@ -132,7 +88,7 @@ function assemble(source: ResolvedEnd, target: ResolvedEnd, gridPath: readonly P
     if (Math.abs(last.x - point.x) > EPS || Math.abs(last.y - point.y) > EPS)
       points.push({ x: point.x, y: point.y });
   }
-  // Zielfächer rückwärts: Lane-Punkt → Stub → Handle.
+  // Zielstub rückwärts: Stub-Ende → Handle.
   for (let i = target.fanout.length - 1; i >= 0; i -= 1) {
     const point = target.fanout[i] as Point;
     const last = points[points.length - 1] as Point;
@@ -151,14 +107,20 @@ function assemble(source: ResolvedEnd, target: ResolvedEnd, gridPath: readonly P
 function dropShortDoglegs(waypoints: readonly Point[]): Point[] {
   if (waypoints.length < 4) return [...waypoints];
   const out = waypoints.map((p) => ({ x: p.x, y: p.y }));
-  for (let i = 1; i + 1 < out.length - 0; i += 1) {
+  for (let i = 1; i + 1 < out.length; i += 1) {
     const a = out[i - 1] as Point;
     const b = out[i] as Point;
     const c = out[i + 1] as Point;
     const vertical = Math.abs(b.x - c.x) < EPS;
     const short = Math.abs(vertical ? c.y - b.y : c.x - b.x);
     if (short >= CORE_TOKENS.segmentMin - EPS) continue;
-    if (i + 2 >= out.length) continue;
+    // `d` darf kein Endpunkt sein: die Kandidatenkonstruktion zieht `d` auf die
+    // Achse von b→c — am Handle würde das den Anschluss verschieben und die
+    // Route endete nicht mehr am Port. Dann erkennt die Prüfinstanz den
+    // geteilten Port nicht (`sharesPort` vergleicht Endpunkte) und die
+    // Port-Bündel-Freigabe (ADR 0009/0031) greift nicht — I3-Vorstöße, die
+    // keine sind. Kurze Segmente direkt am Handle bleiben stehen.
+    if (i + 2 >= out.length - 1) continue;
     const d = out[i + 2] as Point;
     if (vertical) {
       // b→c ist senkrecht: a und d auf die x-Achse von b ziehen, b/c entfernen.
@@ -204,7 +166,7 @@ function book(
   delta: 1 | -1
 ): void {
   const portion = occupancyPortion(entry, waypoints, entry.source, entry.target);
-  applyRoute(occupancy, grid, portion, delta);
+  applyRoute(occupancy, grid, portion, delta, [entry.source.handleKey, entry.target.handleKey]);
   // Klarheit getrennt buchen: die Fächer gehören der **Anschluss-Gruppe**
   // (`port:<handleKey>`), nicht der einzelnen Kante. Kanten am selben Anschluss
   // teilen sich den Fächer; sie dürfen sich dort nicht aussperren. Fremde
@@ -281,9 +243,9 @@ export function routeCore(input: CoreInput): CoreResult {
   const handleOf = (nodeId: string, handleId: string): CoreHandle | undefined =>
     handleLookup.get(handleKey(nodeId, handleId));
 
-  const lanes = assignLanes({ nodes, edges }, handleOf);
   const unroutable: CoreUnroutable[] = [];
   const resolved: ResolvedEdge[] = [];
+  const obstacles = new ObstacleIndex(nodes);
 
   for (const edge of edges) {
     const sourceHandle = handleOf(edge.source, edge.sourceHandle);
@@ -296,9 +258,12 @@ export function routeCore(input: CoreInput): CoreResult {
       unroutable.push({ id: edge.id, reason: `Ziel-Anschluss ${edge.target}/${edge.targetHandle} fehlt` });
       continue;
     }
-    const lane = lanes.get(edge.id) ?? { sourceLane: 0, targetLane: 0 };
-    const sourceFanout = fanoutPath(sourceHandle, lane.sourceLane);
-    const targetFanout = fanoutPath(targetHandle, lane.targetLane);
+    // Kein vorab vergebener Lane-Versatz: mit dem globalen Kanalraster trennt
+    // die Suche selbst. Ein fest verdrahteter Versatz tat so, als wüsste er die
+    // Trasse schon vor der Suche, und erzeugte dabei Querstücke, die sich
+    // gegenseitig blockierten.
+    const sourceFanout = fanoutPath(sourceHandle);
+    const targetFanout = fanoutPath(targetHandle);
     resolved.push({
       edge,
       source: {
@@ -306,7 +271,7 @@ export function routeCore(input: CoreInput): CoreResult {
         nodeId: edge.source,
         fanout: sourceFanout,
         stub: sourceFanout[sourceFanout.length - 1] as Point,
-        lane: lane.sourceLane,
+        lane: 0,
         handleKey: handleKey(edge.source, edge.sourceHandle),
       },
       target: {
@@ -314,7 +279,7 @@ export function routeCore(input: CoreInput): CoreResult {
         nodeId: edge.target,
         fanout: targetFanout,
         stub: targetFanout[targetFanout.length - 1] as Point,
-        lane: lane.targetLane,
+        lane: 0,
         handleKey: handleKey(edge.target, edge.targetHandle),
       },
       ownNodeIds: new Set([edge.source, edge.target]),
@@ -329,7 +294,6 @@ export function routeCore(input: CoreInput): CoreResult {
     nodes,
     resolved.map((entry) => ({ source: entry.source.stub, target: entry.target.stub }))
   );
-  const obstacles = new ObstacleIndex(nodes);
   const reservations: StubReservation[] = [];
   for (const entry of resolved) {
     reservations.push({ handleKey: entry.source.handleKey, path: entry.source.fanout });
@@ -342,37 +306,65 @@ export function routeCore(input: CoreInput): CoreResult {
     if (entry.edge.locked && entry.edge.lockedWaypoints && entry.edge.lockedWaypoints.length >= 2) {
       const lockedWaypoints = entry.edge.lockedWaypoints.map((p) => ({ x: p.x, y: p.y }));
       locked.set(entry.edge.id, lockedWaypoints);
-      applyRoute(occupancy, grid, lockedWaypoints, 1);
+      applyRoute(occupancy, grid, lockedWaypoints, 1, [entry.source.handleKey, entry.target.handleKey]);
     }
   }
 
   const solveOne = (entry: ResolvedEdge): Point[] | null => {
+    let fallback: Point[] | null = null;
+    const portKeys = new Set([entry.source.handleKey, entry.target.handleKey]);
     // Freigabe-Leiter: volle Clearance zuerst, dann engere Stufen. Die erste
     // Stufe, die einen Pfad liefert, gewinnt — I1 (Rohbox) bleibt in jeder
     // Stufe garantiert, nur I3 (12 px) wird auf den engen Stufen weich.
     for (const margin of CORE_TOKENS.marginLadder) {
-      const result = gridAStar({
-        grid,
-        obstacles,
-        occupancy,
-        reservations,
-        start: entry.source.stub,
-        goal: entry.target.stub,
-        // Der Fächer wird am Port durchlaufen (Handle → Stub → Lane-Punkt);
-        // die Gittersuche beginnt und endet deshalb **senkrecht** zum Port:
-        // startend vom Bauteil weg, am Ziel auf das Bauteil zu. Die frühere
-        // Variante startete in Richtung des Lane-Versatzes und lief damit über
-        // die eigene Fächerstrecke zurück (Selbstüberdeckung, I2).
-        startDir: sideDir(entry.source.handle.side),
-        goalDir: ((sideDir(entry.target.handle.side) + 2) % 4) as 0 | 1 | 2 | 3,
-        ownNodeIds: entry.ownNodeIds,
-        ownHandleKeys: entry.ownHandleKeys,
-        margin,
-        owners: new Set([entry.edge.id, `port:${entry.source.handleKey}`, `port:${entry.target.handleKey}`]),
-      });
-      if (result) return assemble(entry.source, entry.target, result.waypoints);
+      for (const clearanceMode of CORE_TOKENS.clearanceModes) {
+        const request = {
+          grid,
+          obstacles,
+          occupancy,
+          reservations,
+          start: entry.source.stub,
+          goal: entry.target.stub,
+          // Der Fächer wird am Port durchlaufen (Handle → Stub → Lane-Punkt);
+          // die Gittersuche beginnt und endet deshalb **senkrecht** zum Port:
+          // startend vom Bauteil weg, am Ziel auf das Bauteil zu. Die frühere
+          // Variante startete in Richtung des Lane-Versatzes und lief damit über
+          // die eigene Fächerstrecke zurück (Selbstüberdeckung, I2).
+          startDir: sideDir(entry.source.handle.side),
+          goalDir: ((sideDir(entry.target.handle.side) + 2) % 4) as 0 | 1 | 2 | 3,
+          ownNodeIds: entry.ownNodeIds,
+          ownHandleKeys: entry.ownHandleKeys,
+          margin,
+          clearanceMode,
+          owners: new Set([
+            entry.edge.id,
+            `port:${entry.source.handleKey}`,
+            `port:${entry.target.handleKey}`,
+          ]),
+          portKeys,
+        } as const;
+        const result = gridAStar(request);
+        if (!result) continue;
+        const candidate = assemble(entry.source, entry.target, result.waypoints);
+        fallback ??= candidate;
+        const usesSharedPortEdge = result.waypoints.some((point, index) => {
+          if (index + 1 >= result.waypoints.length) return false;
+          const next = result.waypoints[index + 1] as Point;
+          return occupancy.overlapsPort(point.x, point.y, next.x, next.y, portKeys);
+        });
+        if (!usesSharedPortEdge) return candidate;
+
+        // Der normale A* findet zunächst den günstigsten Pfad für diese
+        // Freigabestufe. Falls er dafür einen bereits belegten Schritt mit
+        // einer gemeinsamen Port-Gruppe teilt, machen wir eine lokale
+        // Alternativsuche ohne genau diese I2-Konfliktklasse. Das ist ein
+        // Rip-up-Ausweichversuch, keine vorab vergebene Lane: wenn kein
+        // Alternativpfad existiert, bleibt der normale Kandidat erhalten.
+        const separated = gridAStar({ ...request, forbidPortOverlap: true });
+        if (separated) return assemble(entry.source, entry.target, separated.waypoints);
+      }
     }
-    return null;
+    return fallback;
   };
 
   // --- Verhandlung -------------------------------------------------------
@@ -386,6 +378,10 @@ export function routeCore(input: CoreInput): CoreResult {
   let bestSolution: Map<string, Point[]> | null = null;
   let iterations = 0;
   let lastMaxUsage = 0;
+  let stagnantIterations = 0;
+  let stagnated = false;
+  let bestConflictScore:
+    { complete: boolean; maxUsage: number; overloadCount: number; excess: number } | undefined;
   const failureReason = new Map<string, string>();
 
   const routable = resolved.filter((entry) => !locked.has(entry.edge.id));
@@ -395,8 +391,15 @@ export function routeCore(input: CoreInput): CoreResult {
     // Rip-up: nur die gesperrten Routen bleiben stehen.
     occupancy.clear();
     occupancy.clearProximity();
-    for (const waypoints of locked.values()) {
-      applyRoute(occupancy, grid, waypoints, 1);
+    for (const [id, waypoints] of locked) {
+      const entry = resolved.find((candidate) => candidate.edge.id === id);
+      applyRoute(
+        occupancy,
+        grid,
+        waypoints,
+        1,
+        entry ? [entry.source.handleKey, entry.target.handleKey] : undefined
+      );
     }
     const solution = new Map<string, Point[]>(locked);
     for (const entry of routable) {
@@ -415,12 +418,38 @@ export function routeCore(input: CoreInput): CoreResult {
     const maxUsage = occupancy.maxUsage();
     lastMaxUsage = maxUsage;
     const complete = routable.every((entry) => solution.has(entry.edge.id));
+    const overloads = occupancy.overloaded();
+    const conflictScore = {
+      complete,
+      maxUsage,
+      overloadCount: overloads.length,
+      excess: overloads.reduce((sum, overload) => sum + overload.count - 1, 0),
+    };
+    const improves =
+      bestConflictScore === undefined ||
+      Number(conflictScore.complete) > Number(bestConflictScore.complete) ||
+      (conflictScore.complete === bestConflictScore.complete &&
+        (conflictScore.maxUsage < bestConflictScore.maxUsage ||
+          (conflictScore.maxUsage === bestConflictScore.maxUsage &&
+            (conflictScore.overloadCount < bestConflictScore.overloadCount ||
+              (conflictScore.overloadCount === bestConflictScore.overloadCount &&
+                conflictScore.excess < bestConflictScore.excess)))));
+    if (improves) {
+      bestConflictScore = conflictScore;
+      stagnantIterations = 0;
+    } else {
+      stagnantIterations += 1;
+    }
     if (complete && maxUsage <= 1) {
       bestSolution = solution;
       break;
     }
     if (iteration === CORE_TOKENS.maxNegotiationIterations) break;
-    for (const overload of occupancy.overloaded()) {
+    if (stagnantIterations >= CORE_TOKENS.maxStagnantNegotiationIterations) {
+      stagnated = true;
+      break;
+    }
+    for (const overload of overloads) {
       occupancy.raiseHistory(
         overload.a.x,
         overload.a.y,
@@ -432,13 +461,21 @@ export function routeCore(input: CoreInput): CoreResult {
   }
 
   if (!bestSolution) {
+    // Gemeldet wird, was **wirklich** schiefging: die Kante ohne Route nennt
+    // ihren Grund, alle anderen nennen den Abbruch. Die frühere Fassung schrieb
+    // allen Kanten denselben Text („Gitterkante 1× belegt") — auch denen, die
+    // problemlos geroutet hatten, und mit einer Zahl, die Konvergenz bedeutet.
     for (const entry of routable) {
       const known = failureReason.get(entry.edge.id);
       unroutable.push({
         id: entry.edge.id,
         reason:
           known ??
-          `Verhandlung nicht konvergiert: Gitterkante ${lastMaxUsage}× belegt nach ${iterations} Iterationen`,
+          (stagnated
+            ? `Verhandlung vorzeitig abgebrochen: keine Verbesserung nach ${iterations + 1} Iterationen (Gitterkante ${lastMaxUsage}× belegt)`
+            : lastMaxUsage > 1
+              ? `Verhandlung nicht konvergiert: Gitterkante ${lastMaxUsage}× belegt nach ${iterations} Iterationen`
+              : `Verhandlung abgebrochen: andere Kante ohne Route, Überdeckung bereits 0 (${iterations} Iterationen)`),
       });
     }
     const metrics: CoreMetrics = {

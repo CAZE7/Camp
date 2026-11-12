@@ -44,10 +44,7 @@ type Side = {
   deterministic: boolean;
 };
 
-type Row = { plan: string; legacy: Side; core: Side };
-
-/** Urteil der Freigabekette je Plan (PASS/FAIL) — gehört in den Bericht. */
-const coreVerdicts = new Map<string, string>();
+type Row = { plan: string; legacy: Side; core: Side; gate: 'PASS' | 'FAIL' };
 
 const nodeRects = (nodes: readonly RoutableNode[]): NodeRect[] =>
   nodes.map((node) => ({
@@ -139,6 +136,7 @@ export function runAb(): Row[] {
     // --- Globaler Kern --------------------------------------------------
     const adapted = adaptPlan(nodes, edges);
     let coreSide: Side;
+    let gate: 'PASS' | 'FAIL' = 'FAIL';
     if (!adapted.ok) {
       coreSide = {
         edges: 0,
@@ -161,7 +159,7 @@ export function runAb(): Row[] {
       const verdict = routeAndValidate(adapted.input);
       const result = verdict.result;
       const coreMs = performance.now() - c0;
-      coreVerdicts.set(name, verdict.status);
+      gate = verdict.status;
       const coreWaypoints = new Map<string, Point[]>();
       for (const [id, route] of result.routes)
         coreWaypoints.set(
@@ -189,7 +187,7 @@ export function runAb(): Row[] {
       coreSide = measure(coreWaypoints, coreRects, edgeMeta, result.unroutable.length, coreMs);
       coreSide.deterministic = deterministic;
     }
-    rows.push({ plan: name, legacy: legacySide, core: coreSide });
+    rows.push({ plan: name, legacy: legacySide, core: coreSide, gate });
   }
   return rows;
 }
@@ -217,7 +215,7 @@ const table = (rows: Row[]): string => {
         c.crossings
       ).padStart(
         3
-      )}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${coreVerdicts.get(row.plan) ?? '—'} | ${
+      )}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${row.gate} | ${
         dLength >= 0 ? '+' : ''
       }${dLength.toFixed(1).padStart(6)} % | ${dBends >= 0 ? '+' : ''}${dBends.toFixed(1).padStart(6)} % | ${String(
         dCross >= 0 ? '+' + dCross : dCross

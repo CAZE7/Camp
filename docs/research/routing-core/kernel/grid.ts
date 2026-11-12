@@ -60,11 +60,27 @@ const sidesOf = (rect: Rect): { x0: number; x1: number; y0: number; y1: number }
 });
 
 /**
- * Gitterkoordinaten aus Bauteilen, Ports und Stub-Enden.
+ * Gitterkoordinaten: **ein globales Kanalraster** plus die exakten Anschluss-
+ * und Stub-Koordinaten.
  *
- * Zusätzlich zu den Rändern werden die **aufgeblähten** Ränder aufgenommen
- * (`obstacleMargin`): das sind die Korridore, auf denen der A\* laufen darf,
- * ohne ein Bauteil zu berühren.
+ * Warum ein globales Raster
+ * =========================
+ * Vorher kamen die Linien aus jedem Bauteil einzeln (Rand ± 14, ± 12, ± 16·k).
+ * Zwei Bauteile, die nicht auf demselben Vielfachen liegen, erzeugen dadurch
+ * Linien, die 2 px auseinander liegen. Zwei Trassen auf diesen Linien
+ * **überdecken sich nicht** — aber sie unterschreiten die Clearance, und das ist
+ * eine I3-Verletzung, die keine Suche mehr reparieren kann, weil das Angebot an
+ * legalen Nachbarlinien fehlt.
+ *
+ * Ein Raster mit `laneGrid`-Abstand (16 px ≥ Clearance 12 px) macht die
+ * Nachbarschaft **strukturell legal**: zwei Trassen sind entweder auf derselben
+ * Linie (dann überdecken sie sich, und die Verhandlung hat etwas zu tun) oder
+ * mindestens 16 px auseinander. Genau das ist der Unterschied zwischen
+ * „Kanäle gibt es zufällig" und „Kanäle sind geplant".
+ *
+ * Die Anschluss- und Stub-Koordinaten bleiben exakt: sie sind der Übergang
+ * zwischen Bauteil und Raster und dürfen nicht gerundet werden — ein gerundeter
+ * Anschluss ist ein falscher Anschluss.
  */
 export function buildGrid(
   nodes: readonly CoreNode[],
@@ -72,23 +88,42 @@ export function buildGrid(
 ): Grid {
   const xs: number[] = [];
   const ys: number[] = [];
+  const spacing = CORE_TOKENS.laneGrid;
+  const padding = spacing * 4;
+
+  const bounds = {
+    minX: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+  };
+  const track = (x: number, y: number): void => {
+    bounds.minX = Math.min(bounds.minX, x);
+    bounds.maxX = Math.max(bounds.maxX, x);
+    bounds.minY = Math.min(bounds.minY, y);
+    bounds.maxY = Math.max(bounds.maxY, y);
+  };
   for (const node of nodes) {
     const { x0, x1, y0, y1 } = sidesOf(node.rect);
-    // Drei Freigabe-Stufen als Korridorlinien: voller Rand, enger Rand, Rohbox+2.
-    for (const level of CORE_TOKENS.marginLadder) {
-      xs.push(x0 - level, x1 + level);
-      ys.push(y0 - level, y1 + level);
-    }
-    // Parallele Kanäle jenseits der Freigabe: Abstand `laneGrid` (16 px) ist
-    // ≥ Clearance (12 px), damit zwei Trassen nebeneinander legal laufen.
-    const first = CORE_TOKENS.marginLadder[0] as number;
-    for (let lane = 1; lane <= CORE_TOKENS.corridorLanes; lane += 1) {
-      const offset = first + lane * CORE_TOKENS.laneGrid;
-      xs.push(x0 - offset, x1 + offset);
-      ys.push(y0 - offset, y1 + offset);
-    }
-    xs.push(x0, x1, (x0 + x1) / 2);
-    ys.push(y0, y1, (y0 + y1) / 2);
+    track(x0, y0);
+    track(x1, y1);
+  }
+  for (const pair of stubPoints) {
+    track(pair.source.x, pair.source.y);
+    track(pair.target.x, pair.target.y);
+  }
+
+  if (Number.isFinite(bounds.minX)) {
+    const fromX = Math.floor((bounds.minX - padding) / spacing) * spacing;
+    const toX = Math.ceil((bounds.maxX + padding) / spacing) * spacing;
+    const fromY = Math.floor((bounds.minY - padding) / spacing) * spacing;
+    const toY = Math.ceil((bounds.maxY + padding) / spacing) * spacing;
+    for (let x = fromX; x <= toX; x += spacing) xs.push(x);
+    for (let y = fromY; y <= toY; y += spacing) ys.push(y);
+  }
+
+  // Exakte Verbindungspunkte — nur diese Linien dürfen vom Raster abweichen.
+  for (const node of nodes) {
     for (const handle of node.handles) {
       xs.push(handle.x);
       ys.push(handle.y);
@@ -98,11 +133,7 @@ export function buildGrid(
     xs.push(pair.source.x, pair.target.x);
     ys.push(pair.source.y, pair.target.y);
   }
-  // Außenraum: mindestens eine Gitterlinie jenseits aller Bauteile.
-  if (xs.length > 0) {
-    xs.push(Math.min(...xs) - CORE_TOKENS.laneGrid * 4, Math.max(...xs) + CORE_TOKENS.laneGrid * 4);
-    ys.push(Math.min(...ys) - CORE_TOKENS.laneGrid * 4, Math.max(...ys) + CORE_TOKENS.laneGrid * 4);
-  }
+
   const sortedXs = uniqueSorted(xs);
   const sortedYs = uniqueSorted(ys);
   return {
@@ -296,6 +327,8 @@ export const DIRS: readonly { dx: number; dy: number; dir: Dir }[] = [
  */
 export class Occupancy {
   private readonly usage = new Map<string, number>();
+  // Per edge and endpoint-port group: lets the local A* retry identify shared-port I2 conflicts.
+  private readonly portUsage = new Map<string, Map<string, number>>();
   private readonly history = new Map<string, number>();
   private readonly vThrough = new Map<string, number>();
   private readonly hThrough = new Map<string, number>();
@@ -309,6 +342,39 @@ export class Occupancy {
     const next = (this.usage.get(key) ?? 0) + delta;
     if (next <= 0) this.usage.delete(key);
     else this.usage.set(key, next);
+  }
+
+  /** Add one usage count and retain the endpoint port groups that own this route step. */
+  addWithPorts(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    portKeys: readonly string[],
+    delta: 1 | -1
+  ): void {
+    this.add(ax, ay, bx, by, delta);
+    const key = edgeKey(ax, ay, bx, by);
+    let owners = this.portUsage.get(key);
+    if (!owners) {
+      if (delta < 0) return;
+      owners = new Map<string, number>();
+      this.portUsage.set(key, owners);
+    }
+    for (const portKey of new Set(portKeys)) {
+      const next = (owners.get(portKey) ?? 0) + delta;
+      if (next <= 0) owners.delete(portKey);
+      else owners.set(portKey, next);
+    }
+    if (owners.size === 0) this.portUsage.delete(key);
+  }
+
+  /** Is this grid step already used by a route sharing any queried endpoint port? */
+  overlapsPort(ax: number, ay: number, bx: number, by: number, portKeys: ReadonlySet<string>): boolean {
+    const owners = this.portUsage.get(edgeKey(ax, ay, bx, by));
+    if (!owners) return false;
+    for (const portKey of portKeys) if ((owners.get(portKey) ?? 0) > 0) return true;
+    return false;
   }
 
   historyOf(ax: number, ay: number, bx: number, by: number): number {
@@ -411,6 +477,7 @@ export class Occupancy {
 
   clear(): void {
     this.usage.clear();
+    this.portUsage.clear();
   }
 }
 
@@ -461,12 +528,22 @@ export function applyClearance(
   }
 }
 
+/**
+ * `portKeys` is optional for geometric callers; the core supplies both endpoint
+ * groups so the local alternate search can distinguish a port-bundle conflict
+ * from ordinary negotiated congestion.
+ */
 export function applyRoute(
   occupancy: Occupancy,
   grid: Grid,
   waypoints: readonly { x: number; y: number }[],
-  delta: 1 | -1
+  delta: 1 | -1,
+  portKeys?: readonly string[]
 ): void {
+  const add = (ax: number, ay: number, bx: number, by: number): void => {
+    if (portKeys) occupancy.addWithPorts(ax, ay, bx, by, portKeys, delta);
+    else occupancy.add(ax, ay, bx, by, delta);
+  };
   const interiorIndices = (
     values: readonly number[],
     index: ReadonlyMap<number, number>,
@@ -504,8 +581,8 @@ export function applyRoute(
     for (let k = 0; k + 1 < stops.length; k += 1) {
       const lo = stops[k] as number;
       const hi = stops[k + 1] as number;
-      if (vertical) occupancy.add(a.x, lo, a.x, hi, delta);
-      else occupancy.add(lo, a.y, hi, a.y, delta);
+      if (vertical) add(a.x, lo, a.x, hi);
+      else add(lo, a.y, hi, a.y);
     }
     if (vertical) {
       for (const [y] of interiorIndices(grid.ys, grid.yIndex, a.y, b.y)) {
@@ -519,60 +596,7 @@ export function applyRoute(
   }
 }
 
-/** Stub-Punkt eines Anschlusses: Port + Normale × (stubMin + Lane-Versatz). */
-export function stubPoint(handle: CoreHandle, laneOffset: number): { x: number; y: number } {
-  const point = fanoutPath(handle, laneOffset);
-  return point[point.length - 1] as Point;
-}
-
-/**
- * Fächerung eines Anschlusses als **orthogonale** Polylinie:
- *
- *     Handle ──(stubMin senkrecht)──► Knick ──(|lane| seitlich)──► Lane-Punkt
- *
- * Bis hierher wurde der Lane-Versatz direkt in den Stub-Punkt gerechnet. Das
- * erzeugte eine **diagonale** Handle→Stub-Strecke, die kein Gitterschritt ist
- * und die der A\* deshalb nie verlassen konnte: auf Plänen mit mehreren
- * Kanten an einem Anschluss (Busbars) fiel damit jede solche Kante aus,
- * obwohl jede einzelne Kante allein eine Route hatte. Das ist genau das
- * „Anschlüsse versperren sich gegenseitig", das die Fächerung lösen soll.
- *
- * Der Fächer ist damit auch die prüfbare Form von „gemeinsam genutzter
- * Anschluss, individuelle Leitungsabgänge": gleicher Anfangspunkt, getrennte
- * Lanes, definierter Abstand (`laneGrid`) zwischen den Abgängen.
- */
-export function fanoutPath(handle: CoreHandle, laneOffset: number): Point[] {
-  // **Gestaffelt**: der senkrechte Austritt wird um den Lane-Versatz verlängert,
-  // erst dann wird seitlich auf die Lane gezogen. Dadurch liegt das Querstück
-  // jeder Lane auf einer eigenen Höhe bzw. Spalte; die Fächer überdecken sich
-  // nur auf ihrem gemeinsamen senkrechten Anfang — der dokumentierten
-  // Port-Bündelung (ADR 0009/0031), nicht auf den Querstücken. Die frühere
-  // Fassung legte alle Querstücke auf dieselbe Linie: die Trassen liefen dort
-  // kollinear übereinander (I2) und blockierten sich gegenseitig.
-  const outward = CORE_TOKENS.stubMin;
-  const base = pointAtDistance(handle, outward);
-  if (Math.abs(laneOffset) < EPS) return [{ x: handle.x, y: handle.y }, base];
-  const lateral =
-    handle.side === 'left' || handle.side === 'right' ? { x: 0, y: laneOffset } : { x: laneOffset, y: 0 };
-  return [{ x: handle.x, y: handle.y }, base, { x: base.x + lateral.x, y: base.y + lateral.y }];
-}
-
-/** Punkt senkrecht vor dem Anschluss in Abstand `distance`. */
-export function pointAtDistance(handle: CoreHandle, distance: number): Point {
-  switch (handle.side) {
-    case 'right':
-      return { x: handle.x + distance, y: handle.y };
-    case 'left':
-      return { x: handle.x - distance, y: handle.y };
-    case 'top':
-      return { x: handle.x, y: handle.y - distance };
-    case 'bottom':
-    default:
-      return { x: handle.x, y: handle.y + distance };
-  }
-}
-
-/** Senkrechter Stub-Punkt ohne Lane-Versatz. */
+/** Stub-Ende eines Anschlusses: Port plus `stubMin` in Austrittsrichtung. */
 export function stubBase(handle: CoreHandle): Point {
   const length = CORE_TOKENS.stubMin;
   switch (handle.side) {
@@ -586,6 +610,11 @@ export function stubBase(handle: CoreHandle): Point {
     default:
       return { x: handle.x, y: handle.y + length };
   }
+}
+
+/** Fester, orthogonaler Portstub vom Handle bis zum Stub-Ende. */
+export function fanoutPath(handle: CoreHandle): Point[] {
+  return [{ x: handle.x, y: handle.y }, stubBase(handle)];
 }
 
 /** Austrittsrichtung (als `Dir`) einer Portseite. */

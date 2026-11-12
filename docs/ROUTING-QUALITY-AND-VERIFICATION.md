@@ -1085,65 +1085,107 @@ gültiger Plan ⇒ `PASS` mit Routen; unvollständiger Plan ⇒ `FAIL`, `null`
 Routen, benannter Grund; gesperrte Route ⇒ bitgenau; zwei Läufe ⇒ gleiches
 Urteil.
 
-### 21.3 Phase 2: was repariert ist
+### 21.3 Phase 2: Korrekturen und aktueller Messstand
 
-| Defekt                                                                 | Ursache                                                                                                                    | Behebung                                                                                                               |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Kern routete auf `simple`, `camper`, `complex` **keine einzige** Kante | Lane-Versatz wurde in den Stub-Punkt gerechnet: die Strecke Handle→Stub war **diagonal**, der A\* konnte sie nie verlassen | Fächer als orthogonale Polylinie (`fanoutPath`): Handle → Stub → Lane-Punkt                                            |
-| `simple`: Kante überdeckte sich **selbst** (I2)                        | Suche startete in Richtung des Lane-Versatzes und lief über die eigene Fächerstrecke zurück                                | Start-/Zielrichtung wieder senkrecht zum Port (vom Bauteil weg / auf es zu)                                            |
-| Belegung war für die Suche **unsichtbar**                              | `applyRoute` zählte ganze Polylinien-Segmente, der A\* fragt einzelne Gitterschritte ab — die Schlüssel trafen sich nie    | Belegung wird in **Gitterschritten** gebucht                                                                           |
-| Busbar mit k Kanten galt per Konstruktion als überlastet               | gemeinsamer Stub wurde je Kante gezählt (`usage = k`)                                                                      | gemeinsamer Anschlussbereich ist von der Überdeckungszählung ausgenommen; er ist modellierte Bündelung (ADR 0009/0031) |
-| Zähler liefen in der Kreuzungs-Nachbearbeitung auseinander             | dort wurde die volle Route abgezogen und addiert, in der Verhandlung nur ein Ausschnitt                                    | eine Buchungsfunktion (`book`) für alle Stellen                                                                        |
-| Verschönerung erzeugte Durchdringungen                                 | `dropShortDoglegs` formte um, ohne Hindernisse zu prüfen                                                                   | Nachbearbeitung nur akzeptierend: orthogonal, nicht länger, ohne Selbstüberdeckung, ohne Hindernis, Belegung ≤ 1       |
-| I3 war strukturell unvermeidbar                                        | Gitter bot nur Linien 14 px und 12 px an (2 px Abstand) — zwei Trassen hatten dort zwangsläufig < 12 px                    | parallele Korridorlinien im `laneGrid`-Abstand (16 px) + Klarheitsfeld                                                 |
+Seit der ersten Messung wurden zusätzlich die folgenden Ursachen adressiert:
 
-**Ergebnis dieser Reparaturen** (gemessen, Median nicht, Einzellauf):
+| Defekt                                                                    | Ursache                                                                                                | Korrektur                                                                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Keine Route auf `simple`, `camper`, `complex`                             | Lane-Versatz lag diagonal im Stub, also außerhalb der Gitterschritte                                   | Fester orthogonaler Stub vom Handle nach außen                                                                         |
+| Selbstüberdeckung am Anschluss                                            | A* startete in Richtung des Lane-Versatzes und lief den eigenen Fächer zurück                          | Start-/Zielrichtung senkrecht zum Port                                                                                 |
+| Belegung für A* unsichtbar                                                | Ganze Polyliniensegmente statt einzelner Gitterschritte gezählt                                        | Belegung in benachbarte Gitterkanten zerlegt                                                                           |
+| Port-Stubs überlasteten die Verhandlung                                   | Gemeinsamer Stub wurde für jede Kante einzeln gezählt                                                  | Stub-/Fächerabschnitt aus der Überdeckungsbuchung entfernt; Portgruppe bleibt als Clearance-Eigentümer                 |
+| Verhandlungszähler liefen auseinander                                     | Refinement buchte andere Route-Abschnitte als die Negotiation                                          | Einheitliche Buchungsfunktion für Verhandlung und Refinement                                                           |
+| Nachbearbeitung erzeugte ungültige Geometrie                              | Dogleg-/Bend-Merge wurde nicht gegen Hindernisse und Belegung geprüft                                  | Nur akzeptierende Verfeinerung; der Ziel-Handle ist explizit vor Verschiebung geschützt                                |
+| Port-Ausnahme griff trotz gemeinsamem Port nicht                          | `dropShortDoglegs` konnte den letzten Handle entfernen; `sharesPort` verglich danach falsche Endpunkte | Dogleg-Kürzung überspringt Kandidaten, deren verschobener Punkt der Endpunkt wäre                                      |
+| Kanten derselben Portgruppe teilten einen belegten Gitterabschnitt        | A* bepreiste Überdeckung, hatte aber keine gezielte Port-Ausweichsuche                                 | Ein lokaler zweiter A*-Versuch meidet belegte Schritte derselben Portgruppe; globale Lanes werden nicht vorab vergeben |
+| `complex` verbrauchte das ganze Iterationslimit ohne bessere Konfliktlage | Überlast wanderte, ohne dass die Konfliktmetrik besser wurde                                           | Deterministischer Stagnationsabbruch nach einer erfolglosen Verbesserungssuche; kein Teilergebnis wird veröffentlicht  |
 
-| Plan     | Kanten geroutet | I1  | I2  | I3  | Länge    | Knicke | Kern-Laufzeit | Gate     |
-| -------- | --------------- | --- | --- | --- | -------- | ------ | ------------- | -------- |
-| simple   | 9/9             | 0   | 5   | 8   | 3 978 px | 33     | 1,0 s         | **FAIL** |
-| camper   | 12/12           | 0   | 10  | 8   | 5 874 px | 51     | 6,3 s         | **FAIL** |
-| solar    | 11/11           | 0   | 0   | 27  | 4 528 px | 43     | 0,8 s         | **FAIL** |
-| inverter | 10/10           | 0   | 0   | 15  | 4 677 px | 33     | 0,7 s         | **FAIL** |
-| acdc     | 14/14           | 0   | 1   | 33  | 6 528 px | 56     | 1,6 s         | **FAIL** |
-| complex  | 0/23            | 0   | 0   | 0   | —        | —      | 103 s         | **FAIL** |
+Die aktive Portgeometrie ist der feste 24-px-Stub. Die verworfene
+`rasterFanout`-Variante ist entfernt. Die lokale Port-Ausweichsuche ist ein
+best-effort Schritt: wenn sie keine Alternative findet, entscheidet weiterhin
+die vollständige Prüfinstanz, nicht eine gelockerte Ausnahme.
 
-Zum Vergleich der Bestand (gleiche Pläne, gleiche Prüfinstanz):
-27 489 px, 177 Knicke, 39 Kreuzungen, **I1/I2/I3 = 0/0/0** auf allen sechs.
+Aktuelle Messung mit `npm run routing:core:ab -- --json` (die Kernlaufzeit
+enthält `routeAndValidate` einschließlich Determinismus-Doppellauf):
+
+| Plan     | Kanten geroutet |  I1 |  I2 |  I3 |    Länge | Knicke | Kreuzungen | ms (Gate) | Gate |
+| -------- | --------------- | --: | --: | --: | -------: | -----: | ---------: | --------: | :--: |
+| simple   | 9/9             |   0 |   0 |   0 | 3 982 px |     27 |          3 |       421 | PASS |
+| camper   | 12/12           |   0 |   1 |   0 | 5 466 px |     39 |          8 |     1 100 | FAIL |
+| solar    | 11/11           |   0 |   1 |   2 | 4 368 px |     32 |         10 |     5 907 | FAIL |
+| inverter | 10/10           |   0 |   0 |   0 | 4 767 px |     29 |          7 |       479 | PASS |
+| acdc     | 14/14           |   0 |   0 |   3 | 6 544 px |     40 |         10 |     6 578 | FAIL |
+| complex  | 0/23            |   0 |   0 |   0 |        — |      — |          — |    15 628 | FAIL |
+
+Das Gate-Urteil betrifft Vollständigkeit, I1–I3, Orakel, gesperrte Routen und
+Determinismus. `PASS` ist **keine** Aussage, dass Länge und Laufzeit die
+separaten A/B-Zielwerte erfüllen.
 
 ### 21.4 Was das heißt
 
-**Die Referenzpläne bestehen das Gate nicht. Phase 2 ist nicht abgeschlossen,
-Phase 4 bleibt geschlossen.** Drei Ursachen sind benannt und belegt:
+**Nur zwei von sechs Referenzplänen bestehen die harte Freigabekette.** Die
+verbliebenen Befunde sind konkret:
 
-1. **I3 auf allen Plänen (8–33).** Das Klarheitsfeld bepreist paralleles
-   Nebeneinanderlaufen unter der Clearance, es **verbietet** es nicht. Der
-   Optimierer nimmt die Strafe in Kauf, wenn der Umweg teurer ist. Solange die
-   Klarheit ein Preis ist, ist sie verhandelbar — und damit keine Invariante.
-   Behebung: Klarheit als harte Bedingung **mit** ausreichendem Kanalangebot
-   (mehr Korridor-Lanes, Kanalplanung), nicht als Preis.
-2. **I2 auf `simple`, `camper`, `acdc`.** Zwei Kanten laufen nach dem Fächer
-   kollinear übereinander. Die Bündel-Ausnahme greift dort nicht, weil die
-   Überdeckung außerhalb der Stubs liegt. Behebung: Fächer so staffeln, dass
-   die Querstücke **verschiedene** Lanes haben (versucht, verschlechterte die
-   Erreichbarkeit — braucht Kanalplanung, nicht Staffelung allein).
-3. **`complex` konvergiert nicht.** 23 Kanten, dichte Lage: die Verhandlung
-   findet in 8 Iterationen keine überdeckungsfreie Lösung. Das ist kein
-   Zahlenfehler, sondern die Grenze des einfachen Rip-up-and-reroute. Behebung:
-   globale Kandidatenzuweisung vor der Verhandlung (§2 Problem B), nicht mehr
-   Iterationen.
+1. **`camper`: ein I2-Verstoß.** `e-fuse-light` und `e-fuse-usb` überdecken sich
+   kollinear außerhalb des Ports. Die lokale Alternativsuche findet für diese
+   Geometrie noch keine getrennten Wege.
+2. **`solar`: ein I2- und zwei I3-Verstöße.** `e-auto-1`/`e-auto-4` überdecken
+   sich bei y = 544; beide I3-Abstände zu `e-auto-4` betragen 6,4 px.
+3. **`acdc`: drei I3-Segmentpaare.** Ein Abstand ist 0 px, zwei weitere sind
+   9,6 px. Der I2-Verstoß des ersten Laufs ist durch die lokale Port-Ausweich-
+   suche verschwunden.
+4. **`complex`: keine Route wird freigegeben.** Nach zwei Verhandlungsläufen
+   bleibt die maximale Überdeckung 2. Der Fail-fast-Abbruch spart Laufzeit,
+   liefert aber keine zulässige Lösung.
+5. **Qualität bleibt schlechter als der Bestand.** Auf allen fünf vollständig
+   gerouteten Plänen ist die Kernroute länger; `simple` liegt rund 49 % und
+   `inverter` rund 29 % über der Baseline. Die Gate-Zeiten für beide PASS-Pläne
+   überschreiten außerdem das 300-ms-Ziel.
 
-Der Kern verliert damit **deutlich** gegen den Bestand: 49 % länger, doppelt so
-viele Knicke, mehr Kreuzungen, und er ist bei `complex` um Größenordnungen
-langsamer. Das ist der ehrliche Stand — und genau der Grund, warum §19 keine
-Integration vorsieht.
+`ROUTE-REG-00003` ist wieder reproduzierbar grün: die minimale Dreikantenakte
+routet vollständig. Die übrigen Referenzverletzungen sind nicht als „erlaubt"
+umgedeutet; die Freigabekette bleibt unverändert hart.
 
 ### 21.5 Was von diesem Schritt bleibt
 
-- Der Kern kann **nichts mehr still veröffentlichen**: das Gate ist da, es ist
-  getestet, und die A/B-Tabelle liest jetzt durch das Gate hindurch.
-- Sieben benannte Defekte sind behoben, jeder mit Ursache im Bericht — statt
-  „der Kern ist schlechter" jetzt „der Kern scheitert an I3, weil Klarheit ein
-  Preis ist".
-- Die Messung ist reproduzierbar: `npm run routing:core:ab` zeigt je Plan das
-  Gate-Urteil, `npm run test:invariants` prüft die Kette selbst.
+- Kein fehlerhaftes oder unvollständiges Kernergebnis kann veröffentlicht
+  werden: das Gate gibt bei `FAIL` ausschließlich `publishable = null` zurück.
+- Der abgeschnittene Ziel-Handle ist als Ursache der falschen Port-Erkennung
+  behoben; der Regressionstest schützt die Endpunktidentität.
+- Port-Konflikte erhalten einen gezielten lokalen Alternativversuch, ohne die
+  globale Lane-Planung wieder einzuführen, die zuvor Routbarkeit und Invarianten
+  verschlechtert hatte.
+- `complex` wird deterministisch und ohne Teilveröffentlichung früh abgebrochen.
+  Das ist ein Laufzeit-Schutz, kein Qualitätsnachweis.
+- Die Integration in den Render-Pfad bleibt geschlossen, bis alle sechs
+  Referenzpläne die harten Invarianten bestehen und die getrennten Qualitäts-
+  und Performance-Schranken erfüllt sind.
+
+## 22. Aktueller Release-Gate-Stand (2026-11-11)
+
+Die neueste A/B-Ausgabe ist reproduzierbar mit
+`npm run routing:core:ab -- --json`. Der maschinenlesbare Datensatz enthält
+jetzt das Gate-Urteil je Plan. Ergebnis: **PASS 2/6, FAIL 4/6** (`simple` und
+`inverter` bestehen; `camper`, `solar`, `acdc` scheitern an I2/I3, `complex` an
+Vollständigkeit). Der Gesamtstatus ist weiterhin **nicht freigabefähig**:
+zusätzlich zu den harten Fehlern sind die vollständigen Kernrouten länger als
+der Bestand und überschreiten die Laufzeit-Zielwerte.
+
+`complex` beendet die Negotiation nach zwei Läufen ohne Verbesserung der
+Konfliktmetrik (`iterations = 1`, `maxCongestion = 2`) und veröffentlicht null
+Routen. Die harte Obergrenze von acht Iterationen bleibt als Sicherheitsnetz
+bestehen. Kein Gate-Kriterium wurde gelockert.
+
+**Verifikation dieses Stands:** `npx tsc --noEmit`, `npm run typecheck:tests`,
+`npm run lint` und `npm run format:check` sind grün. `npm run test:invariants`
+meldet 171/171 Tests, `npm run test:replay` 5/5 reproduzierte Akten,
+Properties 10/10 und Fuzzing 11/11. Der vollständige `npx vitest run` besteht
+328/328 Dateien mit 4 394 Tests bestanden und 1 übersprungen. `npm run routing:audit` bestätigt für den **Bestandsrouter** I1–I7 = 0 auf allen sechs
+Referenzplänen. Diese grünen Tests heben den weiterhin roten A/B-Freigabestand
+oben nicht auf.
+
+**Nächste Freigabebedingungen:** I2 in `camper`/`solar` beseitigen, I3 in
+`solar`/`acdc` auf null bringen, `complex` vollständig und konfliktfrei routen,
+und danach die Längen-, Kreuzungs- und Laufzeit-Zielwerte erneut gegen den
+Bestand messen. Phase 4 bleibt bis dahin blockiert.

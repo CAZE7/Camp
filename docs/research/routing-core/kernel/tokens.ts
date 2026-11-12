@@ -41,10 +41,20 @@ export type CoreTokens = {
    * erreichbar, und die Verhandlung hat etwas zu tauschen.
    */
   readonly proximityPenalty: number;
+  /**
+   * Reihenfolge der Klarheits-Modi. `strict` verbietet paralleles
+   * Nebeneinanderlaufen unter der Clearance; `priced` bepreist es. Der zweite
+   * Modus ist die **dokumentierte Enge**: er greift nur, wenn mit strikter
+   * Klarheit gar kein Weg existiert, und das Ergebnis geht durch das Gate —
+   * ein Verstoß wird dort sichtbar und nicht stillschweigend veröffentlicht.
+   */
+  readonly clearanceModes: readonly ('strict' | 'priced')[];
   /** Zuwachs der History-Strafe je Konflikt-Iteration. */
   readonly historyIncrement: number;
   /** Obergrenze der Verhandlungs-Iterationen (Sicherheitsnetz). */
   readonly maxNegotiationIterations: number;
+  /** Vorzeitiger Abbruch nach so vielen Iterationen ohne bessere Konfliktlage. */
+  readonly maxStagnantNegotiationIterations: number;
   /** Obergrenze der Kreuzungs-Refinement-Runden. */
   readonly maxCrossingPasses: number;
   /** Obergrenze der A*-Expansionen je Kante (Abbruch ⇒ Kante gilt als unverlegbar). */
@@ -68,15 +78,6 @@ export type CoreTokens = {
    * Anschluss ab; das Ergebnis war „nichts routebar" statt „eng geroutet".
    */
   readonly stubReserveMargin: number;
-  /**
-   * Zahl der parallelen Korridorlinien je Bauteilseite jenseits der Clearance
-   * (Abstand `laneGrid`). Ohne sie bietet das Gitter nur die Linien 14 px und
-   * 12 px an — zwei Trassen hätten dort 2 px Abstand und damit eine
-   * I3-Verletzung, obwohl sie sich nicht überdecken. Parallele Kanäle sind die
-   * Voraussetzung dafür, dass „keine Überdeckung" und „Clearance 12" gleich-
-   * zeitig erfüllbar sind.
-   */
-  readonly corridorLanes: number;
 };
 
 export const CORE_TOKENS: CoreTokens = Object.freeze({
@@ -86,8 +87,10 @@ export const CORE_TOKENS: CoreTokens = Object.freeze({
   crossingCost: 120,
   presentPenalty: 400,
   proximityPenalty: 2500,
+  clearanceModes: ['strict', 'priced'] as const,
   historyIncrement: 200,
   maxNegotiationIterations: 8,
+  maxStagnantNegotiationIterations: 1,
   maxCrossingPasses: 1,
   maxExpansions: 200_000,
   stubMin: ROUTING_TOKENS.stubMin,
@@ -96,5 +99,4 @@ export const CORE_TOKENS: CoreTokens = Object.freeze({
   laneGrid: ROUTING_TOKENS.laneGrid,
   clearance: ROUTING_TOKENS.cableClearance,
   stubReserveMargin: 2,
-  corridorLanes: 3,
 });

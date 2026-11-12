@@ -46,6 +46,12 @@ export type AStarRequest = {
   readonly margin: number;
   /** Eigene Identität im Klarheitsfeld: Kanten-ID plus die beiden Anschluss-Gruppen. */
   readonly owners: ReadonlySet<string>;
+  /** Port-Gruppen, deren belegte Gitterkanten in diesem Suchlauf gesperrt sind. */
+  readonly portKeys: ReadonlySet<string>;
+  /** Alternativsuche: bereits belegte Schritte derselben Port-Gruppe meiden. */
+  readonly forbidPortOverlap?: boolean;
+  /** `strict` = Klarheit sperrt, `priced` = Klarheit kostet (dokumentierte Enge). */
+  readonly clearanceMode: 'strict' | 'priced';
 };
 
 export type AStarResult = {
@@ -205,18 +211,29 @@ export function gridAStar(request: AStarRequest): AStarResult | null {
       if (nextX < 0 || nextY < 0 || nextX >= nx || nextY >= ny) continue;
       const target: Point = { x: coordX(nextX), y: coordY(nextY) };
       const segment: [Point, Point] = [here, target];
+      if (
+        request.forbidPortOverlap &&
+        occupancy.overlapsPort(here.x, here.y, target.x, target.y, request.portKeys)
+      )
+        continue;
       const effectiveMargin = nearPort(segment, start, goal)
         ? CORE_TOKENS.marginLadder[CORE_TOKENS.marginLadder.length - 1]
         : request.margin;
       if (obstacles.blocked(segment, ownNodeIds, effectiveMargin)) continue;
-      if (stubBlocks(segment, reservations, ownHandleKeys)) continue;
-      // Klarheit (I3): paralleles Nebeneinanderlaufen unter `cableClearance`.
-      // Hoch bepreist, nicht gesperrt: eine Sperre macht die Verhandlung
-      // unfähig, Konflikte zu tauschen (der erste Lauf gewinnt alles), und
-      // ließ ganze Pläne unroutbar werden.
-      const proximity = occupancy.proximityBlocked(here.x, here.y, target.x, target.y, request.owners)
-        ? CORE_TOKENS.proximityPenalty
-        : 0;
+      // Im `priced`-Modus sind die Stub-Reservierungen kein hartes Verbot mehr:
+      // auf dicht liegenden Anschlüssen (8 px Abstand zweier Ports) blockieren
+      // sie sich sonst gegenseitig den Austritt — und dann ist der Plan nicht
+      // „schwer", sondern **unlösbar durch Sperren**. Die Klarheit ist dort
+      // bepreist, das Gate urteilt.
+      if (request.clearanceMode === 'strict' && stubBlocks(segment, reservations, ownHandleKeys)) continue;
+      // Klarheit (I3) ist eine **Bedingung**, kein Preis. Das ist erst jetzt
+      // zulässig: mit dem globalen Kanalraster gibt es zu jeder belegten Linie
+      // eine freie Nachbarlinie im `laneGrid`-Abstand. Vorher hat das Sperren
+      // Pläne unroutbar gemacht, weil das Gitter keine legale Alternative
+      // anbot — das war ein Mangel des Angebots, nicht der Bedingung.
+      const closeToForeign = occupancy.proximityBlocked(here.x, here.y, target.x, target.y, request.owners);
+      if (closeToForeign && request.clearanceMode === 'strict') continue;
+      const proximity = closeToForeign ? CORE_TOKENS.proximityPenalty : 0;
 
       const turn = step.dir === current.dir ? 0 : CORE_TOKENS.bendCost;
       const congestion =

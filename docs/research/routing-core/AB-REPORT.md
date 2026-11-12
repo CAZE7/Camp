@@ -3,13 +3,15 @@
 Stand: 2026-11-11 · Branch `arena/bbf610a1-camp` · erzeugt mit `npm run routing:core:ab`
 (dasselbe in Code: `npx tsx scripts/research-routing/ab.ts`, `--json` für Maschinenlesbarkeit)
 
-**Ergebnis in einem Satz:** Der neue Kern ist **nicht** besser als der Bestandsrouter.
-Er ist auf drei von sechs Referenzplänen sogar schlechter (Clearance- und
-Überlappungsverletzungen, längere Wege) und liefert auf den anderen drei Plänen
-**überhaupt keine** Route. Deshalb: **keine Integration (Phase 4 blockiert).**
+**Aktueller Stand (§8):** Der Kern besteht das harte Gate auf **2 von 6** Plänen
+(`simple`, `inverter`), scheitert auf vier weiteren und ist auf allen vollständig
+gerouteten Referenzplänen 17–49 % länger als der Bestand. `complex` liefert
+weiterhin keine veröffentlichbaren Routen. Deshalb: **keine Integration (Phase 4
+bleibt blockiert).**
 
-Das ist das Ergebnis, das der Auftrag verlangt hat — gemessen, nicht behauptet.
-Der Bericht enthält beide Seiten, auch die Niederlagen.
+Die Tabellen in §§2–4 halten den ersten vollständigen Lauf fest; §8 ist die
+aktuelle Messung nach Endpoint-Reparatur, lokaler Port-Ausweichsuche und
+Stagnationsabbruch.
 
 ---
 
@@ -205,43 +207,69 @@ bevor V4–V5 stehen.
 
 ---
 
-## 8. Nachtrag 2026-11-11 (abends): Kern unter Freigabekette, Phase 2 begonnen
+## 8. Nachtrag 2026-11-11: aktueller Kernlauf nach den Korrekturen
 
-### 8.1 Was sich geändert hat
+### 8.1 Änderungen seit dem ersten vollständigen Lauf
 
-Der Bericht oben verglich `routeCore()` direkt. Seit heute läuft der Vergleich
-**durch die Freigabekette** (`scripts/verification/routing/coreGate.ts`): was als
-Kern-Ergebnis erscheint, ist genau das, was veröffentlicht werden dürfte. Die
-Tabelle hat dafür eine Spalte `Gate`.
+- `dropShortDoglegs` darf den Ziel-Handle nicht mehr verschieben. Der bisherige
+  Endpunktverlust ließ `sharesPort` fehlschlagen; die Port-Bündel-Ausnahme wurde
+  dadurch nicht erkannt. Die zuvor verbleibenden falschen Port-Abstands-Befunde
+  auf `simple` verschwinden; der aktuelle Messwert ist I3 = 0.
+- Die Belegung führt jetzt zusätzlich Port-Gruppen je Gitterkante. Verwendet
+  ein A*-Kandidat eine belegte Kante derselben Port-Gruppe, folgt eine lokale
+  zweite Suche, die genau diese gemeinsamen Schritte meidet. Es gibt keine
+  vorab vergebene globale Lane; falls die Alternative nicht existiert, bleibt
+  der erste Kandidat bestehen und das Gate urteilt.
+- Die Negotiation bricht nach einer Iteration ohne bessere Konfliktlage ab
+  (`maxStagnantNegotiationIterations = 1`). `complex` wird dadurch nach zwei
+  Läufen mit weiterhin überlastetem Gitter verworfen, statt das Iterationslimit
+  vollständig auszuschöpfen. Das ist ein Fail-fast, keine Lösung für den Plan.
+- Die verworfenen Prototypen `rasterFanout`/`rasterLine` sind aus dem aktiven
+  Kern entfernt. Die aktive Portführung ist wieder der feste orthogonale
+  24-px-Stub.
 
-Zusätzlich sind sieben Defekte im Kern behoben (Details und Ursachen:
-`ROUTING-QUALITY-AND-VERIFICATION.md` §21.3). Der wichtigste: der Kern routete
-auf `simple`, `camper` und `complex` **keine einzige Kante** — nicht wegen
-fehlender Wege, sondern weil der Lane-Versatz in den Stub-Punkt gerechnet wurde
-und die Strecke Handle→Stub damit diagonal war (kein Gitterschritt).
+### 8.2 Messung über die Freigabekette
 
-### 8.2 Neue Messung (unveränderte Eingaben, gleiche Prüfinstanz)
+Befehl: `npm run routing:core:ab -- --json`. Beide Seiten erhalten dieselben
+Eingaben; der Kern läuft durch `routeAndValidate`, inklusive zweitem Lauf für
+Determinismus. Laufzeiten sind Einzellaufwerte und hardwareabhängig.
 
-| Plan     | Kern Kanten | I1  | I2  | I3  | Länge    | Knicke | Laufzeit | Gate |
-| -------- | ----------- | --- | --- | --- | -------- | ------ | -------- | ---- |
-| simple   | 9/9         | 0   | 5   | 8   | 3 978 px | 33     | 1,0 s    | FAIL |
-| camper   | 12/12       | 0   | 10  | 8   | 5 874 px | 51     | 6,3 s    | FAIL |
-| solar    | 11/11       | 0   | 0   | 27  | 4 528 px | 43     | 0,8 s    | FAIL |
-| inverter | 10/10       | 0   | 0   | 15  | 4 677 px | 33     | 0,7 s    | FAIL |
-| acdc     | 14/14       | 0   | 1   | 33  | 6 528 px | 56     | 1,6 s    | FAIL |
-| complex  | 0/23        | 0   | 0   | 0   | —        | —      | 103 s    | FAIL |
+| Plan     | Bestand (Länge / Knicke / Kreuzungen) | Kern (Länge / Knicke / Kreuzungen) | I1/I2/I3 Kern |    Kanten | Gate | ms Bestand/Kern |
+| -------- | ------------------------------------: | ---------------------------------: | ------------: | --------: | :--: | --------------: |
+| simple   |                        2 665 / 26 / 1 |                     3 982 / 27 / 3 |         0/0/0 |       9/9 | PASS |        78 / 421 |
+| camper   |                        3 677 / 28 / 4 |                     5 466 / 39 / 8 |         0/1/0 |     12/12 | FAIL |      52 / 1 100 |
+| solar    |                        3 200 / 18 / 2 |                    4 368 / 32 / 10 |         0/1/2 |     11/11 | FAIL |       9 / 5 907 |
+| inverter |                        3 710 / 22 / 2 |                     4 767 / 29 / 7 |         0/0/0 |     10/10 | PASS |        42 / 479 |
+| acdc     |                        5 591 / 30 / 5 |                    6 544 / 40 / 10 |         0/0/3 |     14/14 | FAIL |      74 / 6 578 |
+| complex  |                       8 646 / 53 / 25 |                                  — |         0/0/0 |      0/23 | FAIL |     97 / 15 628 |
+| **Σ**    |                 **27 489 / 177 / 39** |              **25 126 / 167 / 38** |               | **56/79** |      |                 |
 
-Bestand auf denselben Plänen: 27 489 px, 177 Knicke, 39 Kreuzungen, I1/I2/I3 =
-0/0/0, 12–124 ms je Plan.
+Die Kernsumme ist nicht mit der Bestandssumme vergleichbar: `complex` trägt
+23 fehlende Routen bei. Auf den fünf vollständig gerouteten Plänen ist die
+Länge jeweils höher als beim Bestand; der Gesamtlängenwert enthält daher
+keinen Freigabevorteil. Die gemessenen Gate-Pässe beschränken sich auf `simple`
+und `inverter`.
 
-### 8.3 Fazit bleibt negativ, aber schärfer
+### 8.3 Befund und Freigabeentscheidung
 
-Der Kern ist **nicht** besser geworden im Vergleich — er ist ehrlicher geworden:
-vorher veröffentlichte er auf drei Plänen still nichts und auf drei Plänen
-ungültige Geometrie; jetzt fällt beides als `FAIL` auf, und er routet auf fünf
-von sechs Plänen überhaupt erst vollständig.
+**I1 ist auf allen gerouteten Plänen null.** `simple` und `inverter` bestehen
+I1–I3 und den vollständigen Gate-Lauf. Die übrigen Befunde:
 
-Die drei Ursachen sind benannt (§21.4): Klarheit ist ein **Preis** statt einer
-Bedingung, die Bündel-Ausnahme greift nach dem Fächer nicht, und `complex`
-konvergiert mit einfachem Rip-up-and-reroute nicht. Phase 4 (Integration) bleibt
-geschlossen.
+- `camper`: ein I2-Paar (`e-fuse-light` / `e-fuse-usb`), kollineare Überdeckung
+  außerhalb des Ports.
+- `solar`: ein I2-Paar (`e-auto-1` / `e-auto-4`) und zwei I3-Verstöße mit
+  `e-auto-4` (je 6,4 px Abstand).
+- `acdc`: drei I3-Segmentpaare (ein Paar bei 0 px, zwei bei 9,6 px).
+- `complex`: 0/23 Routen nach zwei Negotiation-Läufen; keine partielle
+  Veröffentlichung. Der vorzeitige Abbruch verkürzt den Lauf, beseitigt den
+  Konflikt aber nicht.
+
+`ROUTE-REG-00003` ist wieder grün: die drei Kanten des Wächters sind routebar,
+und `test/invariants/failure-record.test.ts` bestätigt den Status `reproduces`.
+Die Endpoint-Korrektur hat außerdem die früheren falschen Port-Abstands-Befunde
+auf `simple` beseitigt.
+
+**Entscheidung:** Phase 4 bleibt geschlossen. Vier Gate-Fehler, die Längen- und
+Laufzeit-Zielwerte aus §8.1 sowie die verbleibenden I2/I3-Verstöße verhindern
+die Freigabe. Der A/B-Bericht wird erst nach einem weiteren vollständigen Lauf
+erneut ersetzt.
