@@ -13,13 +13,15 @@
  * erlebt.
  *
  *   npm run perf:gate              Gate (Exit 1 bei Überschreitung)
- *   npm run perf:gate -- --json
+ *   npm run perf:gate -- --out=artifacts/perf.json
  *
  * Schwellen (Spezifikation §4.7):
  *   Referenzplan        ≤ 300 ms
  *   Skalenplan 100 Kanten ≤ 2000 ms
  */
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { performAutoWiring } from '../../../lib/autoWire';
 import { routeAllCables, type RouteEdgeRef } from '../../../components/edges/utils/routeAll';
 import type { RoutableNode } from '../../../components/edges/utils/nodeGeometry';
@@ -112,7 +114,10 @@ function measureScale(): Measurement {
 }
 
 function main(argv: readonly string[]): number {
-  const json = argv.includes('--json');
+  // Achtung: der Router schreibt Fortschrittszeilen auf stdout. Ein
+  // `--json > datei.json` wäre deshalb kaputtes JSON. Ausgabe in eine Datei
+  // nur über --out, damit stdout sauber bleibt.
+  const outArg = argv.find((arg) => arg.startsWith('--out='));
   const measurements: Measurement[] = [];
 
   for (const name of Object.keys(GOLDEN_PLANS)) {
@@ -122,8 +127,11 @@ function main(argv: readonly string[]): number {
   }
   measurements.push(measureScale());
 
-  if (json) {
-    console.log(JSON.stringify({ measurements }, null, 2));
+  if (outArg) {
+    const path = outArg.slice('--out='.length);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ measurements }, null, 2)}\n`, 'utf8');
+    console.log(`Messung geschrieben: ${path}`);
   } else {
     console.log('Plan       | Kanten | Median    | Ziel      | Gate      | Urteil');
     console.log('-----------|--------|-----------|-----------|-----------|-------');

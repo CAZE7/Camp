@@ -28,16 +28,16 @@ Diese Arbeit spezifiziert ein vierstufiges Verfahren, das die vier Phänomene in
 **hierarchisch verschachtelten Fixpunkt-Iteration** behandelt und für jede Stufe einen eigenen
 Gültigkeitsnachweis führt:
 
-| Säule | Gegenstand | Mathematischer Kern | Nachweis |
-|---|---|---|---|
-| **1** | Querschnittsoptimierung | konvexe Relaxation, KKT-System, duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$ | 100/100 Zufallsnetze gegen $12^{m}$-Brute-Force exakt |
-| **2** | Elektro-Thermik | Banach-Fixpunkt $T \mapsto \Phi(T)$, Newton-/MNA-Innenschritt, Kontaktwiderstände, CP-Lasten | Kontraktionsfaktor $\approx 0{,}30$, Restfehler $<10^{-4}$ K |
-| **3** | Schutz | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$-Bedingung, I²t-Selektivitätskaskade | Residuum $c_eA_e^2/(b_e\Lambda_e)=1{,}000$, Schattenpreis gegen Finite Differenzen |
-| **4** | Layout | planare Ebenenordnung durch DFS-Intervallschlüssel, VCG-Kanalrouting, Zwei-Pass-Höhenlayout | 0 Kreuzungen in 3/3 Referenznetzen und 144/144 Zufallsbäumen; $T=\omega$ (beweisbar spurenminimal) |
+| Säule | Gegenstand              | Mathematischer Kern                                                                                                                 | Nachweis                                                                                           |
+| ----- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **1** | Querschnittsoptimierung | konvexe Relaxation, KKT-System, duale Koordinaten-Aszension, Branch-and-Bound über $\mathcal{A}_{\text{norm}}$                      | 100/100 Zufallsnetze gegen $12^{m}$-Brute-Force exakt                                              |
+| **2** | Elektro-Thermik         | Banach-Fixpunkt $T \mapsto \Phi(T)$, Newton-/MNA-Innenschritt, Kontaktwiderstände, CP-Lasten                                        | Kontraktionsfaktor $\approx 0{,}30$, Restfehler $<10^{-4}$ K                                       |
+| **3** | Schutz                  | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$, Sicherungs-Eskalation, adiabatische $k^2A^2$-Bedingung, I²t-Selektivitätskaskade | Residuum $c_eA_e^2/(b_e\Lambda_e)=1{,}000$, Schattenpreis gegen Finite Differenzen                 |
+| **4** | Layout                  | planare Ebenenordnung durch DFS-Intervallschlüssel, VCG-Kanalrouting, Zwei-Pass-Höhenlayout                                         | 0 Kreuzungen in 3/3 Referenznetzen und 144/144 Zufallsbäumen; $T=\omega$ (beweisbar spurenminimal) |
 
 Kernaussage: **Die diskrete B&B-Lösung des linearisierten Problems ist am gekoppelten Modell
 nicht ohne Nachbesserung zulässig.** Der äußere Fixpunkt muß Querschnitte anheben
-(Temperaturrückkopplung), und eine anschließende *Politur* mit exakter Verifikation senkt die
+(Temperaturrückkopplung), und eine anschließende _Politur_ mit exakter Verifikation senkt die
 Masse wieder, bis keine zulässige Einzelschritt-Reduktion mehr existiert.
 
 Der Preis der Kopplung ist **keine** pauschale Zahl, sondern eine Restlücke am Fixpunkt: Für
@@ -92,8 +92,8 @@ $$
 
 **Lasten.** Zwei Modelle, beide implementiert:
 
-* **CC** (constant current): $I_v=P_v/(\eta_v U_{\mathrm{nom}})$ mit $U_{\mathrm{nom}}=12$ V.
-* **CP** (constant power): $I_v=P_v/(\eta_v\,\tilde u_v)$ mit $\tilde u_v=\max(u_v,0{,}5\,\mathrm{V})$.
+- **CC** (constant current): $I_v=P_v/(\eta_v U_{\mathrm{nom}})$ mit $U_{\mathrm{nom}}=12$ V.
+- **CP** (constant power): $I_v=P_v/(\eta_v\,\tilde u_v)$ mit $\tilde u_v=\max(u_v,0{,}5\,\mathrm{V})$.
 
 Im MNA-System wird CP als spannungsabhängige Konduktanz $g_v=I_v/\tilde u_v=P_v/(\eta_v\tilde u_v^2)$
 eingebracht; das ist die Standard-DC-Power-Flow-Linearisierung und wird in §3.1 als
@@ -123,14 +123,14 @@ $$
 
 ### 1.4 Konstanten
 
-| Größe | Symbol | Wert | Quelle |
-|---|---|---|---|
-| spez. Widerstand Kupfer | $\rho_{20}$ | $0{,}0175\ \Omega\,\mathrm{mm}^2/\mathrm{m}$ | `lib/materials.ts` |
-| Leitfähigkeit | $\kappa_{20}=1/\rho_{20}$ | $57{,}143\ \mathrm{m}/(\Omega\,\mathrm{mm}^2)$ | abgeleitet (Repo nutzt gerundet $58$) |
-| Temperaturkoeffizient | $\alpha_{20}$ | $3{,}93\cdot10^{-3}\ \mathrm{K}^{-1}$ | `lib/materials.ts` |
-| Dichte Kupfer | $\delta_{\mathrm{Cu}}$ | $8{,}96\ \mathrm{g}/\mathrm{cm}^3$ | `lib/materials.ts` |
-| Bezugstemperatur Belastbarkeit | $T_{\mathrm{ref}}$ | $30\,^\circ\mathrm{C}$ | VDE-Tabellenfußnote |
-| Adiabatische Konstante | $k$ | $115$ (PVC) / $143$ (XLPE) $\mathrm{A}\sqrt{\mathrm{s}}/\mathrm{mm}^2$ | `lib/shortCircuit.ts` |
+| Größe                          | Symbol                    | Wert                                                                   | Quelle                                |
+| ------------------------------ | ------------------------- | ---------------------------------------------------------------------- | ------------------------------------- |
+| spez. Widerstand Kupfer        | $\rho_{20}$               | $0{,}0175\ \Omega\,\mathrm{mm}^2/\mathrm{m}$                           | `lib/materials.ts`                    |
+| Leitfähigkeit                  | $\kappa_{20}=1/\rho_{20}$ | $57{,}143\ \mathrm{m}/(\Omega\,\mathrm{mm}^2)$                         | abgeleitet (Repo nutzt gerundet $58$) |
+| Temperaturkoeffizient          | $\alpha_{20}$             | $3{,}93\cdot10^{-3}\ \mathrm{K}^{-1}$                                  | `lib/materials.ts`                    |
+| Dichte Kupfer                  | $\delta_{\mathrm{Cu}}$    | $8{,}96\ \mathrm{g}/\mathrm{cm}^3$                                     | `lib/materials.ts`                    |
+| Bezugstemperatur Belastbarkeit | $T_{\mathrm{ref}}$        | $30\,^\circ\mathrm{C}$                                                 | VDE-Tabellenfußnote                   |
+| Adiabatische Konstante         | $k$                       | $115$ (PVC) / $143$ (XLPE) $\mathrm{A}\sqrt{\mathrm{s}}/\mathrm{mm}^2$ | `lib/shortCircuit.ts`                 |
 
 **Masserechnung.** Mit $l_e$ in Metern und $a_e$ in $\mathrm{mm}^2$:
 
@@ -336,11 +336,11 @@ Lösung existieren. Bei vollständiger Exploration ohne Abbruch ist der Incumben
 
 Sei $k=|\mathcal{A}_{\text{norm}}|=12$, $s=|\mathcal{S}|$ die Blattzahl.
 
-* Relaxation: $s$ Bisektionen pro Sweep, jede mit $\mathcal{O}(\log 1/\epsilon)$ Schritten und
+- Relaxation: $s$ Bisektionen pro Sweep, jede mit $\mathcal{O}(\log 1/\epsilon)$ Schritten und
   $\mathcal{O}(|P(v)|)$ Aufwand → $\mathcal{O}(s\,|P|\log\epsilon^{-1})$ pro Sweep.
-* B&B: $\mathcal{O}(k^{m})$ im worst case; praktisch dominiert die Schranke. Gemessen:
+- B&B: $\mathcal{O}(k^{m})$ im worst case; praktisch dominiert die Schranke. Gemessen:
   $39\ldots94$ Knoten, $144\ldots953$ Prüfungen, $33\ldots326$ Relaxationen für $m=5\ldots9$.
-* Gesamtlaufzeit inkl. Elektro-Thermik: **12–150 ms** je Szenario (Browser, single thread).
+- Gesamtlaufzeit inkl. Elektro-Thermik: **12–150 ms** je Szenario (Browser, single thread).
 
 ### 2.7 Validierung gegen Brute-Force
 
@@ -463,18 +463,16 @@ $$
 
 Gemessene Kontraktionsfaktoren $\|\Delta T^{(k+1)}\|/\|\Delta T^{(k)}\|$:
 
-| Szenario | Iterationen | Restfehler $\|\Delta T\|_\infty$ | Kontraktion |
-|---|---|---|---|
-| Kastenwagen | 12 | $5{,}61\cdot10^{-5}$ K | $0{,}302$ |
-| Tiefe Kette | 11 | $7{,}25\cdot10^{-5}$ K | $0{,}301$ |
-| Papierbeispiel | 11 | $7{,}76\cdot10^{-5}$ K | $0{,}300$ |
+| Szenario       | Iterationen | Restfehler $\|\Delta T\|_\infty$ | Kontraktion |
+| -------------- | ----------- | -------------------------------- | ----------- |
+| Kastenwagen    | 12          | $5{,}61\cdot10^{-5}$ K           | $0{,}302$   |
+| Tiefe Kette    | 11          | $7{,}25\cdot10^{-5}$ K           | $0{,}301$   |
+| Papierbeispiel | 11          | $7{,}76\cdot10^{-5}$ K           | $0{,}300$   |
 
 Der Faktor $\approx0{,}30$ bestätigt die Kontraktivität **empirisch** (hinreichend, nicht
 notwendig: die Abbildung ist auf dem betrachteten Bereich Lipschitz mit $L<1$).
 
 ### 3.3 Verschachtelung der beiden Fixpunkte
-
-
 
 Der gekoppelte Zustand ist ein Fixpunkt auf **drei** Ebenen:
 
@@ -530,12 +528,12 @@ Temperaturverschiebung, um die diskrete Projektion auf einen anderen Normquersch
 zu lassen. Die Iteration oszilliert dann zwischen zwei Vektoren. Das Protokoll des
 Papierbeispiels zeigt das unverkürzt:
 
-| Außenschritt | Querschnitte / mm² | $\Delta U_{\max}$ |
-|---|---|---|
-| 01 | 50 · 16 · 10 · 16 · 16 | 2,62 % |
-| 02 | 50 · 16 · 10 · **10** · **10** | 3,00 % (Verletzung) |
-| 03 | **35** · 16 · 10 · 16 · 16 | 2,96 % |
-| 04 | 50 · 16 · 10 · 10 · 10 | 3,00 % (Zyklus erkannt) |
+| Außenschritt | Querschnitte / mm²             | $\Delta U_{\max}$       |
+| ------------ | ------------------------------ | ----------------------- |
+| 01           | 50 · 16 · 10 · 16 · 16         | 2,62 %                  |
+| 02           | 50 · 16 · 10 · **10** · **10** | 3,00 % (Verletzung)     |
+| 03           | **35** · 16 · 10 · 16 · 16     | 2,96 %                  |
+| 04           | 50 · 16 · 10 · 10 · 10         | 3,00 % (Zyklus erkannt) |
 
 Zykluserkennung bricht nach Schritt 04 ab; die Reparatur hebt `b3`/`b4` auf 16 mm² an; die
 **Politur** senkt den Trunk von 50 auf 35 mm², weil bei 16-mm²-Zweigen der Trunk nicht mehr der
@@ -555,7 +553,7 @@ weil $I_{\mathrm n}=\text{nextFuse}(|I_e|)\ge |I_e|$ gilt (Beispiel: $I=17$ A, $
 $I_z=18$ A). Nach Erschöpfung aller Einzelzüge wird zusätzlich **paarweise** reduziert
 (gleichzeitige Absenkung zweier Kanten), weil eine Einzelreduktion durch die Rückkopplung
 scheitern kann, während die gemeinsame zulässig ist. Das Ergebnis ist ein **2-opt-lokales
-Optimum** des gekoppelten Problems: in der 1-opt- *und* 2-opt-Nachbarschaft existiert keine
+Optimum** des gekoppelten Problems: in der 1-opt- _und_ 2-opt-Nachbarschaft existiert keine
 zulässige Verbesserung. Für alle drei Referenznetze wird dieser Radius tatsächlich erschöpft
 (`radius = 2`), ohne das Abbruchlimit zu berühren.
 
@@ -659,18 +657,18 @@ $I_{k,\min}(v)\ge I_{\text{trip}}(t_a)$ für jede Sicherung.
 
 ### 4.6 Flag-Taxonomie
 
-| Code | Bedeutung |
-|---|---|
-| `AIC` | Abschaltvermögen $\ge I_{k,\max}$ verletzt |
-| `COORD` | Sicherungsnennstrom $>$ effektive Belastbarkeit |
-| `TRIP` | $I_{k,\min}$ unter Auslösestrom bei $t_a$ |
-| `I2T` | adiabatische Reserve $\le 0$ |
-| `THERM` | thermischer Fixpunkt nicht konvergiert |
-| `SEL` | Selektivitätskaskade verletzt |
-| `SOLVER` (`warn`) | MNA/Relaxation numerisch nicht konvergiert |
+| Code               | Bedeutung                                                                |
+| ------------------ | ------------------------------------------------------------------------ |
+| `AIC`              | Abschaltvermögen $\ge I_{k,\max}$ verletzt                               |
+| `COORD`            | Sicherungsnennstrom $>$ effektive Belastbarkeit                          |
+| `TRIP`             | $I_{k,\min}$ unter Auslösestrom bei $t_a$                                |
+| `I2T`              | adiabatische Reserve $\le 0$                                             |
+| `THERM`            | thermischer Fixpunkt nicht konvergiert                                   |
+| `SEL`              | Selektivitätskaskade verletzt                                            |
+| `SOLVER` (`warn`)  | MNA/Relaxation numerisch nicht konvergiert                               |
 | `SOLVER` (`error`) | Budget verletzt: Normreihe ausgeschöpft oder Monotonie-Zertifikat (§2.8) |
-| `REPAIR` | äußere Iteration mußte Querschnitte anheben (Kopplung) |
-| `OK` | keine Auffälligkeit |
+| `REPAIR`           | äußere Iteration mußte Querschnitte anheben (Kopplung)                   |
+| `OK`               | keine Auffälligkeit                                                      |
 
 ---
 
@@ -678,7 +676,7 @@ $I_{k,\min}(v)\ge I_{\text{trip}}(t_a)$ für jede Sicherung.
 
 Ziel ist eine **kreuzungsfreie** orthogonale Zeichnung: kein Leitungspaar darf sich schneiden, keine
 Leitung darf kollinear über eine andere laufen, keine Karte darf überdeckt werden. Das ist die
-Mindestanforderung an einen Schaltplan; eine Heuristik, die Kreuzungen nur *minimiert*, erfüllt sie
+Mindestanforderung an einen Schaltplan; eine Heuristik, die Kreuzungen nur _minimiert_, erfüllt sie
 nicht.
 
 ### 5.1 Planare Ebenenordnung (DFS-Intervallschlüssel)
@@ -722,7 +720,7 @@ $$
 geordnet nach der x-Position des jeweiligen Kindes (monoton). Anschließend läuft eine
 **Kollisionsreparatur**: liegt ein Port-$x$ innerhalb von $5$ px auf der Klemme eines fremden
 Netzes, wird er ausweichend verschoben; danach wird die Monotonie je Elternknoten wiederhergestellt.
-Ohne diesen Schritt entstehen *vertikal kollineare* Stichleitungen (zwei Leitungen auf demselben
+Ohne diesen Schritt entstehen _vertikal kollineare_ Stichleitungen (zwei Leitungen auf demselben
 $x$), die keine Ordnungsbedingung des VCG erfassen kann.
 
 ### 5.3 Kanalrouting mit vertikalem Constraint-Graphen
@@ -794,13 +792,13 @@ auf Schnitt ($h\times v$), kollineare Überlappung ($h\times h$, $v\times v$) un
 getestet; die Zahl wird als `crossings` geführt und im Solver-Panel angezeigt. Zusätzlich prüft ein
 **unabhängiger** Test (jsdom, gerenderte SVG-Pfade, nicht die Layout-Interna):
 
-| Prüfung | Kastenwagen | Tiefe Kette | Papierbeispiel |
-|---|---|---|---|
-| Kartenkollisionen | 0 | 0 | 0 |
-| Labelkollisionen | 0 | 0 | 0 |
-| Leitungskreuzungen | 0 | 0 | 0 |
-| Spuren (max.) | 1 | 3 | 2 |
-| Jogs | 0 | 0 | 0 |
+| Prüfung            | Kastenwagen | Tiefe Kette | Papierbeispiel |
+| ------------------ | ----------- | ----------- | -------------- |
+| Kartenkollisionen  | 0           | 0           | 0              |
+| Labelkollisionen   | 0           | 0           | 0              |
+| Leitungskreuzungen | 0           | 0           | 0              |
+| Spuren (max.)      | 1           | 3           | 2              |
+| Jogs               | 0           | 0           | 0              |
 
 **Randomisierter Stresstest:** 200 zufällige Bäume (2–6 Ebenen, 0–3 Kinder je Knoten, bis 80
 Kanten, deterministischer Seed), davon 144 mit Kanten: **144/144 kreuzungsfrei**, 0 Jogs,
@@ -830,11 +828,11 @@ $\omega$ wird per Sweep bestimmt (Start-vor-Ende bei gleicher Koordinate, damit 
 ist die Zuordnung **beweisbar spurenminimal**; gilt $T>\omega$, kosten die Ordnungsbedingungen
 (5.2) zusätzliche Spuren — das wird ausgewiesen, nicht verdeckt.
 
-| Szenario | $T$ je Kanal | $\omega$ je Kanal | Zertifikat |
-|---|---|---|---|
-| Kastenwagen | 1, 1, 1 | 1, 1, 1 | **minimal** |
-| Tiefe Kette | 1, 1, 1, 3 | 1, 1, 1, 3 | **minimal** |
-| Papierbeispiel | 1, 2 | 1, 2 | **minimal** |
+| Szenario       | $T$ je Kanal | $\omega$ je Kanal | Zertifikat  |
+| -------------- | ------------ | ----------------- | ----------- |
+| Kastenwagen    | 1, 1, 1      | 1, 1, 1           | **minimal** |
+| Tiefe Kette    | 1, 1, 1, 3   | 1, 1, 1, 3        | **minimal** |
+| Papierbeispiel | 1, 2         | 1, 2              | **minimal** |
 
 Im Stresstest sind 126 von 160 Netzen in allen Kanälen spurenminimal; bei den übrigen kostet die
 Kreuzungsfreiheit eine Zusatzspur. Das ist der ehrliche Preis der Invariante aus §5.3 — und er
@@ -846,11 +844,11 @@ Die Prüfung ist nicht nur externen Skripten überlassen: die Anwendung bringt e
 **Property-based Self-Test** mit (Schaltfläche „Selbsttest · 200 Zufallsbäume“ im Solver-Panel,
 Haken `window.__selftest()`).
 
-* Deterministischer Generator (LCG, fester Seed) → reproduzierbare Läufe.
-* 200 zufällige Bäume, 2–6 Ebenen, 0–3 Kinder je Knoten, gemischte CP/CC-Lasten.
-* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl,
+- Deterministischer Generator (LCG, fester Seed) → reproduzierbare Läufe.
+- 200 zufällige Bäume, 2–6 Ebenen, 0–3 Kinder je Knoten, gemischte CP/CC-Lasten.
+- Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl,
   Rückleiterkollisionen (§5.8) sowie freie Label- und Kartenplatzierung (§5.9).
-* Ergebnis (gemessen): **160/160 kreuzungsfrei**, 0 Jogs, 126/160 spurenminimal,
+- Ergebnis (gemessen): **160/160 kreuzungsfrei**, 0 Jogs, 126/160 spurenminimal,
   **160/160 Rückleiter kollisionsfrei**, **160/160 Labels frei platziert**, maximale
   Spurenzahl 12, Laufzeit **≈200 ms**.
 
@@ -873,15 +871,15 @@ Querschnittsdarstellung abhängige Verschiebung wäre kein modelliertes Objekt, 
 Zeicheneinstellung. Die Wahl von $\delta$ ist **gemessen**, nicht behauptet: derselbe Stresstest
 (144 Netze) bei verschiedenen Versätzen.
 
-| $\delta$ / px | kollisionsfreie Netze | Treffer gesamt | Konfliktklasse |
-|---|---|---|---|
-| 2 | 144/144 | 0 | — |
-| **3** | **144/144** | **0** | — |
-| 4 | 144/144 | 0 | — |
-| 5 | 144/144 | 0 | — |
-| 6 | 132/144 | 17 | Rückleiter × fremde Zuleitung |
-| 7 | 128/144 | 38 | Rückleiter × fremde Zuleitung |
-| 9 | 127/144 | 46 | Rückleiter × fremde Zuleitung |
+| $\delta$ / px | kollisionsfreie Netze | Treffer gesamt | Konfliktklasse                |
+| ------------- | --------------------- | -------------- | ----------------------------- |
+| 2             | 144/144               | 0              | —                             |
+| **3**         | **144/144**           | **0**          | —                             |
+| 4             | 144/144               | 0              | —                             |
+| 5             | 144/144               | 0              | —                             |
+| 6             | 132/144               | 17             | Rückleiter × fremde Zuleitung |
+| 7             | 128/144               | 38             | Rückleiter × fremde Zuleitung |
+| 9             | 127/144               | 46             | Rückleiter × fremde Zuleitung |
 
 Der Sprung zwischen 5 px und 6 px markiert die Grenze des **port-eigenen Korridors**: innerhalb
 weniger Pixel um einen Port liegt kein fremdes Segment, darüber erreicht die zweite Ader die
@@ -895,7 +893,7 @@ Fehlerflag `ROUTING` bei $>0$) und in den Reihen des Selbsttests (§5.7) geführ
 Querschnitten liegt die dünne Ader innerhalb der Kabelkontur — das ist die physikalisch richtige
 Aussage (beide Adern liegen im selben Mantel), bei dünnen läuft sie sichtbar daneben.
 
-**Nicht modelliert:** der Rückleiter ist *kein* eigenes Routingobjekt. Er belegt keine eigene
+**Nicht modelliert:** der Rückleiter ist _kein_ eigenes Routingobjekt. Er belegt keine eigene
 Spur, weil er im selben Kabel läuft; eine Variante mit getrennter Rückleitung (Karosserie oder
 separater Rückleiterbaum) wäre ein zweites Routingsproblem mit eigener Kanalkapazität und ist
 nicht Teil dieses Artefakts.
@@ -926,12 +924,12 @@ zusammen mit dem Layout zurückgegeben. Findet sich kein freier Platz, wird das 
 (`labelFallbacks`), im Panel ausgewiesen und als Fehlerflag `ROUTING` gemeldet — statt still zu
 überlappen.
 
-| Größe | Kastenwagen | Tiefe Kette | Papierbeispiel | Zufallsnetze |
-|---|---|---|---|---|
-| Breite $W$ / px | 1240 | 1240 | 1240 | bis 4904 (26 Karten in einer Ebene) |
-| `cardOverlaps` | 0 | 0 | 0 | 0 in 144/144 (extern) |
-| `labelFallbacks` | 0 | 0 | 0 | 0 in 144/144 (extern) |
-| Labels frei platziert (Selbsttest) | — | — | — | 160/160 |
+| Größe                              | Kastenwagen | Tiefe Kette | Papierbeispiel | Zufallsnetze                        |
+| ---------------------------------- | ----------- | ----------- | -------------- | ----------------------------------- |
+| Breite $W$ / px                    | 1240        | 1240        | 1240           | bis 4904 (26 Karten in einer Ebene) |
+| `cardOverlaps`                     | 0           | 0           | 0              | 0 in 144/144 (extern)               |
+| `labelFallbacks`                   | 0           | 0           | 0              | 0 in 144/144 (extern)               |
+| Labels frei platziert (Selbsttest) | —           | —           | —              | 160/160                             |
 
 Die Entwicklung ist dabei selbst ein Messergebnis: mit der alten Fläche und der alten
 Kandidatenliste waren es 153/160; mehr Kandidaten (acht Vertikalversätze, zweite Stufe bis
@@ -941,15 +939,15 @@ handelte. Das ist der Unterschied zwischen Heuristik-Tuning und Ursachenbehebung
 
 ### 5.10 Grenzen
 
-* Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
-* Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft und kollisionsfrei
+- Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
+- Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft und kollisionsfrei
   platziert, aber nicht als Hindernisse geroutet).
-* Kanalweise Optimierung: die Spurenzahl ist je Kanal minimal *unter der Ordnungsbedingung*; ein
+- Kanalweise Optimierung: die Spurenzahl ist je Kanal minimal _unter der Ordnungsbedingung_; ein
   globales Minimum über alle Kanäle wird nicht beansprucht.
-* Die Zeichenfläche wächst mit der breitesten Ebene (§5.9). Sehr breite Netze werden dadurch
+- Die Zeichenfläche wächst mit der breitesten Ebene (§5.9). Sehr breite Netze werden dadurch
   korrekt, aber im eingepassten Maßstab klein gezeichnet; Zoom und Pan sind vorhanden, eine
   Umbrechung/Paginierung breiter Ebenen gibt es nicht.
-* Die Labelplatzierung ist eine zweistufige Kandidatensuche, kein Optimierungsproblem: sie liefert
+- Die Labelplatzierung ist eine zweistufige Kandidatensuche, kein Optimierungsproblem: sie liefert
   eine überlappungsfreie Position, nicht die „beste“ (minimale Distanz zur Leitung) unter allen
   zulässigen.
 
@@ -961,13 +959,13 @@ Batterie $U_{\mathrm{oc}}=13{,}2$ V, $R_i=2{,}0$ mΩ, $R_{\mathrm{sh}}=0{,}1$ m�
 $U_{\max}=14{,}4$ V, $U_{\min}=11{,}0$ V, $\vartheta_{\mathrm{amb}}=25\,^\circ$C, PVC,
 Zielspannungsfall $3\,\%$ ($\Delta U_{\mathrm{zul}}=0{,}36$ V).
 
-| Kante | von → nach | $l$ / m | Last |
-|---|---|---|---|
-| `t1` | Batterie → Busbar | 2,0 | — |
-| `b1` | Busbar → Last A | 5,0 | 240 W (CC) |
-| `b2` | Busbar → Last B | 5,0 | 120 W (CC) |
-| `b3` | Busbar → Last C | 5,0 | 180 W (CC) |
-| `b4` | Busbar → Last D | 5,0 | 180 W (CC) |
+| Kante | von → nach        | $l$ / m | Last       |
+| ----- | ----------------- | ------- | ---------- |
+| `t1`  | Batterie → Busbar | 2,0     | —          |
+| `b1`  | Busbar → Last A   | 5,0     | 240 W (CC) |
+| `b2`  | Busbar → Last B   | 5,0     | 120 W (CC) |
+| `b3`  | Busbar → Last C   | 5,0     | 180 W (CC) |
+| `b4`  | Busbar → Last D   | 5,0     | 180 W (CC) |
 
 Ströme bei Nennspannung: $I_{t1}=60$ A, $I_{b1}=20$ A, $I_{b2}=10$ A, $I_{b3}=I_{b4}=15$ A.
 
@@ -981,14 +979,14 @@ a_e^{\text{naiv}}=\text{nextNorm}\!\left(\frac{2\,l_e\,I_e}{\kappa\,\Delta U_{\m
 \tag{6.1}
 $$
 
-| Kante | $2lI/(\kappa\Delta U)$ | naiv | $I_e$ | $\Delta U_e$ kalt | Masse |
-|---|---|---|---|---|---|
-| `t1` | $11{,}67$ | **16** | 60 A | 0,2625 V | 573 g |
-| `b1` | $9{,}72$ | **10** | 20 A | 0,3500 V | 896 g |
-| `b2` | $4{,}86$ | **6** | 10 A | 0,2917 V | 538 g |
-| `b3` | $7{,}29$ | **10** | 15 A | 0,2625 V | 896 g |
-| `b4` | $7{,}29$ | **10** | 15 A | 0,2625 V | 896 g |
-| | | | | **Summe** | **3,799 kg** |
+| Kante | $2lI/(\kappa\Delta U)$ | naiv   | $I_e$ | $\Delta U_e$ kalt | Masse        |
+| ----- | ---------------------- | ------ | ----- | ----------------- | ------------ |
+| `t1`  | $11{,}67$              | **16** | 60 A  | 0,2625 V          | 573 g        |
+| `b1`  | $9{,}72$               | **10** | 20 A  | 0,3500 V          | 896 g        |
+| `b2`  | $4{,}86$               | **6**  | 10 A  | 0,2917 V          | 538 g        |
+| `b3`  | $7{,}29$               | **10** | 15 A  | 0,2625 V          | 896 g        |
+| `b4`  | $7{,}29$               | **10** | 15 A  | 0,2625 V          | 896 g        |
+|       |                        |        |       | **Summe**         | **3,799 kg** |
 
 Der Fehler ist strukturell: (6.1) setzt voraus, daß **jede** Ader das **volle** Budget
 verbrauchen darf. Im Verbund addieren sich die Pfadabfälle:
@@ -1051,25 +1049,25 @@ von 50 auf 35 mm², weil bei 16-mm²-Zweigen der Trunkdurchmesser nicht mehr der
 
 **Endentwurf:**
 
-| Kante | $a$ / mm² | $I$ / A | $T$ / °C | $R_{20}$ / mΩ | $R(T)$ / mΩ | $\Delta U$ / V | Masse / g | Sicherung | I²t-Reserve |
-|---|---|---|---|---|---|---|---|---|---|
-| `t1` | **35** | 60,00 | 38,15 | 2,000 | 2,143 | 0,1286 | 1254 | MRBF 60 A | 99,89 % |
-| `b1` | **16** | 20,00 | 28,78 | 10,938 | 11,315 | 0,2263 | 1434 | Class T 20 A | 99,95 % |
-| `b2` | **10** | 10,00 | 26,66 | 17,500 | 17,958 | 0,1796 | 896 | Class T 10 A | 99,97 % |
-| `b3` | **16** | 15,00 | 27,13 | 10,938 | 11,244 | 0,1687 | 1434 | Class T 15 A | 99,97 % |
-| `b4` | **16** | 15,00 | 27,13 | 10,938 | 11,244 | 0,1687 | 1434 | Class T 15 A | 99,97 % |
-| | | | | | | **6,451 kg** | | | |
+| Kante | $a$ / mm² | $I$ / A | $T$ / °C | $R_{20}$ / mΩ | $R(T)$ / mΩ | $\Delta U$ / V | Masse / g | Sicherung    | I²t-Reserve |
+| ----- | --------- | ------- | -------- | ------------- | ----------- | -------------- | --------- | ------------ | ----------- |
+| `t1`  | **35**    | 60,00   | 38,15    | 2,000         | 2,143       | 0,1286         | 1254      | MRBF 60 A    | 99,89 %     |
+| `b1`  | **16**    | 20,00   | 28,78    | 10,938        | 11,315      | 0,2263         | 1434      | Class T 20 A | 99,95 %     |
+| `b2`  | **10**    | 10,00   | 26,66    | 17,500        | 17,958      | 0,1796         | 896       | Class T 10 A | 99,97 %     |
+| `b3`  | **16**    | 15,00   | 27,13    | 10,938        | 11,244      | 0,1687         | 1434      | Class T 15 A | 99,97 %     |
+| `b4`  | **16**    | 15,00   | 27,13    | 10,938        | 11,244      | 0,1687         | 1434      | Class T 15 A | 99,97 %     |
+|       |           |         |          |               |             | **6,451 kg**   |           |              |             |
 
 **Knotenpotentiale und Fehlerströme:**
 
-| Knoten | $u$ / V | $\Delta U$ / mV | $Z_{\mathrm{loop}}$ / mΩ | $I_{k,\max}$ / kA | $I_{k,\min}$ / A |
-|---|---|---|---|---|---|
-| Batterie | 13,0740 | 0,0 | 2,10 | 6,857 | 5238,1 |
-| Busbar | 12,9454 | 128,6 | 4,10 | 3,512 | 2592,7 |
-| Last A | 12,7191 | **354,9** | 15,04 | 0,958 | 707,1 |
-| Last B | 12,7659 | 308,1 | 21,60 | 0,667 | 495,5 |
-| Last C | 12,7768 | 297,2 | 15,04 | 0,958 | 710,3 |
-| Last D | 12,7768 | 297,2 | 15,04 | 0,958 | 710,3 |
+| Knoten   | $u$ / V | $\Delta U$ / mV | $Z_{\mathrm{loop}}$ / mΩ | $I_{k,\max}$ / kA | $I_{k,\min}$ / A |
+| -------- | ------- | --------------- | ------------------------ | ----------------- | ---------------- |
+| Batterie | 13,0740 | 0,0             | 2,10                     | 6,857             | 5238,1           |
+| Busbar   | 12,9454 | 128,6           | 4,10                     | 3,512             | 2592,7           |
+| Last A   | 12,7191 | **354,9**       | 15,04                    | 0,958             | 707,1            |
+| Last B   | 12,7659 | 308,1           | 21,60                    | 0,667             | 495,5            |
+| Last C   | 12,7768 | 297,2           | 15,04                    | 0,958             | 710,3            |
+| Last D   | 12,7768 | 297,2           | 15,04                    | 0,958             | 710,3            |
 
 Schattenpreise: $\lambda=(4958{,}1;2460{,}0;3698{,}9;3698{,}9)$, $\sum\lambda=14815{,}9$ g/V.
 Die KKT-Stationarität ist auf allen Kanten erfüllt:
@@ -1102,12 +1100,12 @@ sondern darin, ob der Fixpunkt eingeschwungen ist oder nicht.
 
 **Vergleichstabelle:**
 
-| Verfahren | $a$ / mm² | Masse / kg | $\Delta U_{\max}$ | zulässig | Ersparnis vs. Verfahren |
-|---|---|---|---|---|---|
-| Naiv (isoliert) | 16,10,6,10,10 | 3,799 | 5,10 % | **nein** (4 Verstöße) | — |
-| Greedy-Reparatur | 25,25,10,16,16 | 6,899 | 2,86 % | ja | **6,5 %** |
-| Proportional | 50,16,10,16,16 | 6,989 | 2,52 % | ja | **7,7 %** |
-| **KKT + B&B + Politur** | **35,16,10,16,16** | **6,451** | **2,96 %** | **ja** | — |
+| Verfahren               | $a$ / mm²          | Masse / kg | $\Delta U_{\max}$ | zulässig              | Ersparnis vs. Verfahren |
+| ----------------------- | ------------------ | ---------- | ----------------- | --------------------- | ----------------------- |
+| Naiv (isoliert)         | 16,10,6,10,10      | 3,799      | 5,10 %            | **nein** (4 Verstöße) | —                       |
+| Greedy-Reparatur        | 25,25,10,16,16     | 6,899      | 2,86 %            | ja                    | **6,5 %**               |
+| Proportional            | 50,16,10,16,16     | 6,989      | 2,52 %            | ja                    | **7,7 %**               |
+| **KKT + B&B + Politur** | **35,16,10,16,16** | **6,451**  | **2,96 %**        | **ja**                | —                       |
 
 ### 6.7 Abgrenzung zum Referenzplaner (12V-Planer)
 
@@ -1117,11 +1115,11 @@ selbst über ihr Verfahren und ihren Prüfbericht aussagt — nicht auf Vermutun
 
 **Was der Referenzplaner nach eigenen Angaben tut**
 
-* „Kabelquerschnitt berechnen aus Spannungsabfall und Strombelastbarkeit (DIN VDE 0298-4)“ —
+- „Kabelquerschnitt berechnen aus Spannungsabfall und Strombelastbarkeit (DIN VDE 0298-4)“ —
   also eine **strangweise** Bemessung gegen das Spannungsfallbudget und die Belastbarkeit.
-* „Die Sicherung folgt der Leitung, nie umgekehrt“ — die Sicherung wird nach dem gewählten
+- „Die Sicherung folgt der Leitung, nie umgekehrt“ — die Sicherung wird nach dem gewählten
   Querschnitt gewählt, nicht als Koordinationsaufgabe behandelt.
-* Das Routing ist **manuell bzw. „Automatisch verbinden“**; die Zeichnung wird anschließend
+- Das Routing ist **manuell bzw. „Automatisch verbinden“**; die Zeichnung wird anschließend
   geprüft. Der mitgelieferte Beispielplan meldet in seinem eigenen Prüfbericht
   „1 Kreuzung(en)“ auf mindestens zwei Leitungen, mehrere Abstandshinweise
   („Leitung liegt zu nah an einem Bauteil“) sowie „3 Prüfhinweise im Plan, davon 1 kritisch,
@@ -1134,15 +1132,15 @@ erzeugt sie, prüft sie im selben Lauf und führt sie als Flag, wenn sie verletz
 
 **Gegenüberstellung**
 
-| Dimension | 12V-Planer (nach eigenen Angaben) | diese Arbeit |
-|---|---|---|
-| Querschnitt | strangweise aus $\Delta U$ und Belastbarkeit | diskretes **Globaloptimum über den Baum** (KKT-Relaxation + B&B, 100/100 gegen Brute-Force) |
-| Kopplung | keine Temperaturrückkopplung genannt | elektro-thermischer Fixpunkt mit Kontaktwiderständen und CP-Lasten |
-| Sicherung | folgt der Leitung | Eskalationsleiter + Abschaltvermögen + I²t-**Selektivitätskaskade** |
-| Kurzschluss | nicht genannt | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$ je Knoten, adiabatische $k^2A^2$ |
-| Routing | manuell/Auto-Verbinden, Kreuzungen werden **gemeldet** | planare Ordnung + VCG-Kanalrouting, **0 Kreuzungen** garantiert und geprüft |
-| Nachweis | regelbasierter Prüfbericht | Beweise: Brute-Force, Dualschranke, Schattenpreis, 2-opt, 144/144-Stresstest |
-| Nicht enthalten | — | 230-V-AC-Kreis, PV-Ertrag, Batteriechemie, Stückliste, Export |
+| Dimension       | 12V-Planer (nach eigenen Angaben)                      | diese Arbeit                                                                                |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Querschnitt     | strangweise aus $\Delta U$ und Belastbarkeit           | diskretes **Globaloptimum über den Baum** (KKT-Relaxation + B&B, 100/100 gegen Brute-Force) |
+| Kopplung        | keine Temperaturrückkopplung genannt                   | elektro-thermischer Fixpunkt mit Kontaktwiderständen und CP-Lasten                          |
+| Sicherung       | folgt der Leitung                                      | Eskalationsleiter + Abschaltvermögen + I²t-**Selektivitätskaskade**                         |
+| Kurzschluss     | nicht genannt                                          | Schleifenimpedanz-Tensor, $I_{k,\max}/I_{k,\min}$ je Knoten, adiabatische $k^2A^2$          |
+| Routing         | manuell/Auto-Verbinden, Kreuzungen werden **gemeldet** | planare Ordnung + VCG-Kanalrouting, **0 Kreuzungen** garantiert und geprüft                 |
+| Nachweis        | regelbasierter Prüfbericht                             | Beweise: Brute-Force, Dualschranke, Schattenpreis, 2-opt, 144/144-Stresstest                |
+| Nicht enthalten | —                                                      | 230-V-AC-Kreis, PV-Ertrag, Batteriechemie, Stückliste, Export                               |
 
 Das ist **keine** Aussage „besser oder schlechter“, sondern eine Aufgabenabgrenzung: der
 Referenzplaner ist ein Zeichen- und Prüfwerkzeug mit breitem Anlagenumfang (230 V, PV, Chemie,
@@ -1168,7 +1166,7 @@ Die Spalten „Relax.“ und „B&B“ beziehen sich auf das **eingefrorene** Pr
 mit demselben, um die Kontaktabfälle reduzierten Budget wie die Bemessung:
 „Relax.“ ist das kontinuierliche Optimum $M^\star$, „B&B“ das diskrete Optimum bei festen
 Temperaturen. Die Spalte „Kopplung“ ist die **Restlücke am Fixpunkt** $\Pi$ aus §3.3 — der
-Abstand zwischen dem ausgelieferten Entwurf und dem linearen Optimum am *konvergierten*
+Abstand zwischen dem ausgelieferten Entwurf und dem linearen Optimum am _konvergierten_
 Betriebspunkt.
 
 Für Kastenwagen und Tiefe Kette ist $\Pi=0$: der äußere Fixpunkt ist eingeschwungen, das lineare
@@ -1176,7 +1174,7 @@ Optimum am Endzustand **ist** der gezeichnete Entwurf. Im Papierbeispiel bleibt 
 weil die Fixpunktiteration dort in einem Zyklus endet (§3.3): das lineare Optimum (5,914 kg) ist
 am gekoppelten Modell nicht zulässig, der reparierte Entwurf wiegt 6,451 kg.
 
-> **Korrekturhinweis.** Bis Commit `8d6b394` wurden „Relax.“, „B&B“ und $\Pi$ mit dem *vollen*
+> **Korrekturhinweis.** Bis Commit `8d6b394` wurden „Relax.“, „B&B“ und $\Pi$ mit dem _vollen_
 > Spannungsbudget ausgewertet, während die Bemessung selbst das um die Kontaktabfälle reduzierte
 > Budget benutzt. Die Diagnose beschrieb damit ein leichteres Problem als das gelöste: für den
 > Kastenwagen wies sie 4,877 / 5,344 kg und $\Pi=+17{,}6\,\%$ aus. Aufgefallen ist das über
@@ -1187,11 +1185,11 @@ am gekoppelten Modell nicht zulässig, der reparierte Entwurf wiegt 6,451 kg.
 
 **Ersparnis gegenüber den Baselines:**
 
-| Szenario | vs. Greedy-Reparatur | vs. Proportional | vs. naive Heuristik |
-|---|---|---|---|
-| Kastenwagen | 5,2 % | 26,8 % | — |
-| Tiefe Kette | 7,3 % | 28,4 % | — |
-| Papierbeispiel | 6,5 % | 7,7 % | — |
+| Szenario       | vs. Greedy-Reparatur | vs. Proportional | vs. naive Heuristik |
+| -------------- | -------------------- | ---------------- | ------------------- |
+| Kastenwagen    | 5,2 %                | 26,8 %           | —                   |
+| Tiefe Kette    | 7,3 %                | 28,4 %           | —                   |
+| Papierbeispiel | 6,5 %                | 7,7 %            | —                   |
 
 Die naive Rechnung ist in allen drei Fällen **unzulässig** (6 / 5 / 4 Verstöße); ein
 Massevergleich gegen sie ist daher nur als „was kostet Zulässigkeit“ sinnvoll, nicht als
@@ -1222,18 +1220,18 @@ gegenüber bis zu 248 832 vollständigen Belegungen je Netz, Laufzeit ≈ 2 s.
 Längenskalierung $\times1{,}5/\times2$, Kontaktskalierung $\times0{,}5/\times2$, Isolation XLPE
 sowie drei Kombinationen. Geprüft wird für **jeden** Lauf:
 
-* $\Delta U_{\max}\le$ Budget (kein zulässiger Entwurf wird verworfen),
-* $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ (Sicherungskoordination),
-* Abschaltvermögen $\ge I_{k,\max}$, Auslösung bei $I_{k,\min}$, I²t-Reserve $\ge0$,
-* Auslastung $I/I_{z,\mathrm{eff}}\le1$.
+- $\Delta U_{\max}\le$ Budget (kein zulässiger Entwurf wird verworfen),
+- $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ (Sicherungskoordination),
+- Abschaltvermögen $\ge I_{k,\max}$, Auslösung bei $I_{k,\min}$, I²t-Reserve $\ge0$,
+- Auslastung $I/I_{z,\mathrm{eff}}\le1$.
 
 Ergebnis des reproduzierbaren Laufs (`verify/sweep.mjs`):
 
-| Ausgang | Läufe | Bedeutung |
-|---|---|---|
-| zulässig | 40 | alle Nachweise erfüllt |
-| zertifiziert unlösbar | 2 | Budget 1 % in Kastenwagen und Tiefe Kette — §2.8, Gleichung (2.2) |
-| unerklärt (Fehler) | 0 | — |
+| Ausgang               | Läufe | Bedeutung                                                         |
+| --------------------- | ----- | ----------------------------------------------------------------- |
+| zulässig              | 40    | alle Nachweise erfüllt                                            |
+| zertifiziert unlösbar | 2     | Budget 1 % in Kastenwagen und Tiefe Kette — §2.8, Gleichung (2.2) |
+| unerklärt (Fehler)    | 0     | —                                                                 |
 
 Die beiden 1 %-Läufe sind **keine** Fehlschläge, sondern der Nachweis, dass 1 % Spannungsbudget
 für diese Netze unterhalb der Normreihengrenze liegt: alle Kanten stehen auf 120 mm², und der
@@ -1255,23 +1253,23 @@ beweisbar, §3.3).
 `verify/duality.mjs` prüft am eingefrorenen linearen Problem (dasselbe Budget wie die
 Bemessung, dieselben Belastbarkeits-Untergrenzen):
 
-* **KKT-Stationarität** $c_ea_e^2/(b_e\Lambda_e)=1$ auf allen inneren Kanten (Kanten auf der
+- **KKT-Stationarität** $c_ea_e^2/(b_e\Lambda_e)=1$ auf allen inneren Kanten (Kanten auf der
   Box-Grenze ausgenommen, dort greift der Box-Multiplikator): Residuum $\le4{,}4\cdot10^{-16}$,
   die gedruckten Werte sind $1{,}0000$.
-* **Schwache Dualität** $M^{\text{Relax}}\le M^{\text{B\&B}}$ in allen drei Szenarien; die
+- **Schwache Dualität** $M^{\text{Relax}}\le M^{\text{B\&B}}$ in allen drei Szenarien; die
   Lücke (Preis der Normreihe) beträgt $12{,}56\,\%$ / $9{,}83\,\%$ / $9{,}79\,\%$.
-* **Schattenpreis gegen zentrale Differenz** $\Delta M/\Delta B$ am eingefrorenen Problem
+- **Schattenpreis gegen zentrale Differenz** $\Delta M/\Delta B$ am eingefrorenen Problem
   (Schritt $\pm0{,}002\,\%$ des Budgets): $\sum\lambda$ stimmt mit der finiten Differenz auf
   $0{,}02$–$0{,}94\,\%$ überein (Papier $0{,}02\,\%$, Kette $0{,}04\,\%$, Kastenwagen
   $0{,}94\,\%$ — dort liegt der Schritt nahe einem Knick des Normgitters).
-* **Reproduktion der Engine-Werte**: $\sum\lambda$ aus der eigenen Rekonstruktion trifft die
+- **Reproduktion der Engine-Werte**: $\sum\lambda$ aus der eigenen Rekonstruktion trifft die
   Engine-Ausgabe für Kette und Papierbeispiel auf die Nachkommastelle ($32396{,}7$ bzw.
   $14815{,}9$ g/V), für den Kastenwagen auf $0{,}05\,\%$.
 
 ### 8.5 Numerische Restfehler
 
-* MNA: $\|\Delta u\|_\infty<10^{-9}$ V (Abbruchkriterium), Iterationen 7–9, Restresiduum $<8{,}4\cdot10^{-10}$ V.
-* Thermik: Restfehler $5{,}6\cdot10^{-5}\ldots7{,}8\cdot10^{-5}$ K, Kontraktion $0{,}300$–$0{,}302$.
+- MNA: $\|\Delta u\|_\infty<10^{-9}$ V (Abbruchkriterium), Iterationen 7–9, Restresiduum $<8{,}4\cdot10^{-10}$ V.
+- Thermik: Restfehler $5{,}6\cdot10^{-5}\ldots7{,}8\cdot10^{-5}$ K, Kontraktion $0{,}300$–$0{,}302$.
 
 ### 8.6 Geometrie- und Routing-Audit
 
@@ -1305,21 +1303,21 @@ bestanden**.
 
 **Modellwerte (UNVERIFIED, im UI markiert):**
 
-* Belastbarkeit für 95 und 120 mm² ($207$ / $239$ A) — aus dem Trend der VDE-Reihe extrapoliert.
-* Abschaltzeiten $t_{2x}$ der Bauformen (ATO 0,35 s … ANL 2,0 s) — Modellparameter, keine
+- Belastbarkeit für 95 und 120 mm² ($207$ / $239$ A) — aus dem Trend der VDE-Reihe extrapoliert.
+- Abschaltzeiten $t_{2x}$ der Bauformen (ATO 0,35 s … ANL 2,0 s) — Modellparameter, keine
   Datenblattwerte.
-* Gesamt-I²t-Faktor $1{,}25$ — konservativer Aufschlag auf den Vorlichtbogenwert.
+- Gesamt-I²t-Faktor $1{,}25$ — konservativer Aufschlag auf den Vorlichtbogenwert.
 
 **Bewußte Vereinfachungen:**
 
-* Stationäres thermisches Modell (keine Wärmekapazität, kein Transientenverlauf).
-* Routing: zwei orthogonale Richtungen ohne Vias; Kanten verbinden benachbarte Ebenen. Die
+- Stationäres thermisches Modell (keine Wärmekapazität, kein Transientenverlauf).
+- Routing: zwei orthogonale Richtungen ohne Vias; Kanten verbinden benachbarte Ebenen. Die
   Kreuzungsfreiheit ist für Bäume konstruktiv garantiert (§5.1/§5.3), nicht für beliebige
   Graphen mit Zyklen oder mehrfachen Kanten zwischen zwei Ebenen.
-* Labelkästen werden auf Kollision geprüft, aber nicht als Routing-Hindernisse behandelt.
-* Keine Wechselstromanteile, keine Induktivitäten (12-V-DC-Netz).
-* Leitungsinduktivität und EMV-Kopplung sind nicht modelliert.
-* Der B&B ist bei $m>12$ nicht mehr in Echtzeit garantierbar (Knotenlimit 60 000, Zeitlimit
+- Labelkästen werden auf Kollision geprüft, aber nicht als Routing-Hindernisse behandelt.
+- Keine Wechselstromanteile, keine Induktivitäten (12-V-DC-Netz).
+- Leitungsinduktivität und EMV-Kopplung sind nicht modelliert.
+- Der B&B ist bei $m>12$ nicht mehr in Echtzeit garantierbar (Knotenlimit 60 000, Zeitlimit
   500 ms, dann `proven=false`).
 
 **Nicht-Ziele:** Kabelbaumgeometrie im 3D-Raum, Bündelungswärmestau über die reine

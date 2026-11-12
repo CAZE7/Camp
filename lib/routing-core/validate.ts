@@ -10,7 +10,12 @@
  * Plan-Kontext prüfbar sind.
  */
 
-import { checkInvariants, type InvariantId, type InvariantReport, type NodeRect } from '../routing/invariants';
+import {
+  checkInvariants,
+  type InvariantId,
+  type InvariantReport,
+  type NodeRect,
+} from '../routing/invariants';
 import { waypointsToSegments, type Point } from '../routing/geometry';
 import type { CoreInput, CoreResult, CoreRoute } from './model';
 import { CORE_TOKENS } from './tokens';

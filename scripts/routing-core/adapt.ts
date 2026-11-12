@@ -89,7 +89,11 @@ export function adaptPlan(nodes: readonly RoutableNode[], edges: readonly RouteE
       missing.push(`${edge.id}: Anschluss nicht messbar`);
       continue;
     }
-    const pushHandle = (nodeId: string, handleId: string, point: { x: number; y: number; position: Position }) => {
+    const pushHandle = (
+      nodeId: string,
+      handleId: string,
+      point: { x: number; y: number; position: Position }
+    ) => {
       const key = `${nodeId}\u0000${handleId}`;
       const cached = handleCache.get(key);
       if (cached) return cached;

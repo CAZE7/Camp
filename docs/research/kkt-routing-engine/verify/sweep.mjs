@@ -8,13 +8,23 @@ import fs from 'fs';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 const FILE = process.argv[2] || new URL('../index.html', import.meta.url).pathname;
-const w = new JSDOM(fs.readFileSync(FILE, 'utf8'), { runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: new VirtualConsole() }).window;
+const w = new JSDOM(fs.readFileSync(FILE, 'utf8'), {
+  runScripts: 'dangerously',
+  pretendToBeVisual: true,
+  virtualConsole: new VirtualConsole(),
+}).window;
 await new Promise((r) => setTimeout(r, 900));
 const E = w.CampEngine;
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
-const scaleContacts = (net, k) => ({ ...net, nodes: net.nodes.map((n) => ({ ...n, contactMilliohm: (n.contactMilliohm || 0) * k })) });
-const scaleLengths = (net, k) => ({ ...net, edges: net.edges.map((e) => ({ ...e, lengthM: e.lengthM * k })) });
+const scaleContacts = (net, k) => ({
+  ...net,
+  nodes: net.nodes.map((n) => ({ ...n, contactMilliohm: (n.contactMilliohm || 0) * k })),
+});
+const scaleLengths = (net, k) => ({
+  ...net,
+  edges: net.edges.map((e) => ({ ...e, lengthM: e.lengthM * k })),
+});
 const xlpe = (net) => ({ ...net, edges: net.edges.map((e) => ({ ...e, insulation: 'XLPE' })) });
 
 const variants = [
@@ -49,13 +59,16 @@ for (const sc of E.SCENARIOS) {
     const r = E.solve(net, opts);
     slowest = Math.max(slowest, r.metrics.runtimeMs);
     const problems = [];
-    if (r.metrics.maxDropPct > opts.dropPct + 1e-4) problems.push(`ΔU ${r.metrics.maxDropPct.toFixed(3)} % > ${opts.dropPct} %`);
+    if (r.metrics.maxDropPct > opts.dropPct + 1e-4)
+      problems.push(`ΔU ${r.metrics.maxDropPct.toFixed(3)} % > ${opts.dropPct} %`);
     for (const e of r.edges) {
-      if (e.fuse && e.izEff > 0 && e.fuse.ratedA > e.izEff * (1 + 1e-9)) problems.push(`${e.id}: I_n ${e.fuse.ratedA} A > I_z,eff ${e.izEff.toFixed(1)} A`);
+      if (e.fuse && e.izEff > 0 && e.fuse.ratedA > e.izEff * (1 + 1e-9))
+        problems.push(`${e.id}: I_n ${e.fuse.ratedA} A > I_z,eff ${e.izEff.toFixed(1)} A`);
       if (e.loading > 1 + 1e-6) problems.push(`${e.id}: Auslastung ${(e.loading * 100).toFixed(1)} %`);
       if (e.i2tReservePct < -1e-9) problems.push(`${e.id}: I²t-Reserve ${e.i2tReservePct.toFixed(1)} %`);
       if (e.tripOk === false) problems.push(`${e.id}: Auslösung bei I_k,min nicht gesichert`);
-      if (e.fuse && e.ikMinA > 0 && e.fuse.breakingCapacityA < r.metrics.ikMaxA) problems.push(`${e.id}: Abschaltvermögen`);
+      if (e.fuse && e.ikMinA > 0 && e.fuse.breakingCapacityA < r.metrics.ikMaxA)
+        problems.push(`${e.id}: Abschaltvermögen`);
     }
     // Ein Lauf ist korrekt, wenn er zulässig ist ODER die Unlösbarkeit
     // nachweislich zertifiziert wurde (alle Kanten auf dem Maximalquerschnitt
@@ -64,9 +77,15 @@ for (const sc of E.SCENARIOS) {
     if (problems.length === 0) ok += 1;
     else if (certified) {
       infeasible += 1;
-      if (process.env.VERBOSE) console.log(`  (zertifiziert unlösbar) ${sc.id} · ${v.tag}: ΔU ${r.metrics.maxDropPct.toFixed(2)} % > ${opts.dropPct} %`);
+      if (process.env.VERBOSE)
+        console.log(
+          `  (zertifiziert unlösbar) ${sc.id} · ${v.tag}: ΔU ${r.metrics.maxDropPct.toFixed(2)} % > ${opts.dropPct} %`
+        );
     } else failures.push(`${sc.id} · ${v.tag}: ${problems.slice(0, 3).join('; ')}`);
-    if (process.env.VERBOSE) console.log(`${sc.id.padEnd(7)} ${v.tag.padEnd(34)} ${problems.length ? 'FEHLER' : 'ok'} (${r.metrics.runtimeMs} ms)`);
+    if (process.env.VERBOSE)
+      console.log(
+        `${sc.id.padEnd(7)} ${v.tag.padEnd(34)} ${problems.length ? 'FEHLER' : 'ok'} (${r.metrics.runtimeMs} ms)`
+      );
   }
 }
 console.log(

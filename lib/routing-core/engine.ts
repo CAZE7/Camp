@@ -73,7 +73,6 @@ type ResolvedEdge = {
 const routeCost = (waypoints: readonly Point[], crossings: number): number =>
   pathLength(waypoints) + CORE_TOKENS.bendCost * countBends(waypoints) + CORE_TOKENS.crossingCost * crossings;
 
-
 /**
  * Lane-Vergabe: je (Bauteil, Anschluss) werden die beteiligten Kanten nach ID
  * sortiert und symmetrisch um die Portachse verteilt (I8: deterministisch,
@@ -104,7 +103,11 @@ function assignLanes(
   for (const edge of input.edges) lanes.set(edge.id, { sourceLane: 0, targetLane: 0 });
   const keys = [...groups.keys()].sort();
   for (const key of keys) {
-    const members = groups.get(key) as { edgeId: string; end: 'source' | 'target'; side: CoreHandle['side'] }[];
+    const members = groups.get(key) as {
+      edgeId: string;
+      end: 'source' | 'target';
+      side: CoreHandle['side'];
+    }[];
     members.sort((a, b) => compareIds(a.edgeId, b.edgeId));
     members.forEach((member, i) => {
       const offset = (i - (members.length - 1) / 2) * CORE_TOKENS.laneGrid;
@@ -118,10 +121,14 @@ function assignLanes(
 
 /** Baut die Geometrie einer Route: Handle → Stub → Gitterpfad → Stub → Handle. */
 function assemble(source: ResolvedEnd, target: ResolvedEnd, gridPath: readonly Point[]): Point[] {
-  const points: Point[] = [{ x: source.handle.x, y: source.handle.y }, { x: source.stub.x, y: source.stub.y }];
+  const points: Point[] = [
+    { x: source.handle.x, y: source.handle.y },
+    { x: source.stub.x, y: source.stub.y },
+  ];
   for (const point of gridPath) {
     const last = points[points.length - 1] as Point;
-    if (Math.abs(last.x - point.x) > EPS || Math.abs(last.y - point.y) > EPS) points.push({ x: point.x, y: point.y });
+    if (Math.abs(last.x - point.x) > EPS || Math.abs(last.y - point.y) > EPS)
+      points.push({ x: point.x, y: point.y });
   }
   const tail: Point = { x: target.stub.x, y: target.stub.y };
   const last = points[points.length - 1] as Point;
@@ -229,8 +236,14 @@ export function routeCore(input: CoreInput): CoreResult {
   const obstacles = new ObstacleIndex(nodes);
   const reservations: StubReservation[] = [];
   for (const entry of resolved) {
-    reservations.push({ handleKey: entry.source.handleKey, segment: [entry.source.handle, entry.source.stub] });
-    reservations.push({ handleKey: entry.target.handleKey, segment: [entry.target.handle, entry.target.stub] });
+    reservations.push({
+      handleKey: entry.source.handleKey,
+      segment: [entry.source.handle, entry.source.stub],
+    });
+    reservations.push({
+      handleKey: entry.target.handleKey,
+      segment: [entry.target.handle, entry.target.stub],
+    });
   }
 
   const occupancy = new Occupancy();
@@ -301,7 +314,13 @@ export function routeCore(input: CoreInput): CoreResult {
       break;
     }
     for (const overload of occupancy.overloaded()) {
-      occupancy.raiseHistory(overload.a.x, overload.a.y, overload.b.x, overload.b.y, CORE_TOKENS.historyIncrement);
+      occupancy.raiseHistory(
+        overload.a.x,
+        overload.a.y,
+        overload.b.x,
+        overload.b.y,
+        CORE_TOKENS.historyIncrement
+      );
     }
   }
 

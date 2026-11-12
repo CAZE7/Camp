@@ -28,6 +28,12 @@ next-env.d.ts
 # Git config
 .gitattributes
 
+# Einzeldatei-Referenzartefakt der KKT-Recherche: eine gebaute HTML mit
+# eingebettetem Engine-Skript, kein Quelltext. Prettier würde sie in einem
+# Lauf um ~7 000 Zeilen umbrechen und die Geschichte der Datei unlesbar
+# machen, ohne dass sich am Artefakt etwas ändert.
+docs/research/kkt-routing-engine/index.html
+
 # Messausgaben der Design-Audit-Skripte. Das sind generierte Daten, kein
 # Quelltext: Prettier würde sie bei jedem Messlauf neu formatieren und
 # `format:check` damit gegen genau die Skripte wenden, die sie schreiben.

@@ -55,7 +55,8 @@
     "test:properties:routing": "vitest run test/properties/routing-properties.test.ts",
     "test:fuzz:routing": "vitest run test/properties/routing-fuzz.test.ts",
     "test:determinism:process": "tsx scripts/routing/verification/determinism.ts",
-    "perf:gate": "tsx scripts/routing/verification/perf.ts"
+    "perf:gate": "tsx scripts/routing/verification/perf.ts",
+    "ci:verify-routing": "npm run test:oracle && npm run test:properties:routing && npm run test:fuzz:routing && npm run test:replay && npm run test:determinism:process"
   },
   "engines": {
     "node": ">=22.0.0"

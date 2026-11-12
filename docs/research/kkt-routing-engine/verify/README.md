@@ -19,12 +19,12 @@ Optional ein anderer Artefaktpfad: `node verify.mjs /pfad/zu/index.html`.
 
 ## Was `verify.mjs` prüft
 
-| Block | Inhalt |
-|---|---|
-| 1. Szenarien | `viewBox` = Layoutmaß; Modell-Invarianten (`crossings`, `returnCrossings`, `labelFallbacks`, `cardOverlaps`), $T\ge\omega$; gerenderte Zuleitungen kreuzungsfrei; Karten- und Labelrechtecke disjunkt |
-| 2. Rückleiter | Schalter `#toggleReturn` an; Rückleiter × Rückleiter, × fremde Zuleitung, × Knotenkarte |
-| 3. Selbsttest | Klick auf `#selftestBtn`, Auswertung des Texts (200 Zufallsbäume, fester Seed) |
-| 4. Stresstest | 144 Netze über `window.__route(net)`: kreuzungsfrei, rückleiterfrei, Labels/Karten frei |
+| Block         | Inhalt                                                                                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Szenarien  | `viewBox` = Layoutmaß; Modell-Invarianten (`crossings`, `returnCrossings`, `labelFallbacks`, `cardOverlaps`), $T\ge\omega$; gerenderte Zuleitungen kreuzungsfrei; Karten- und Labelrechtecke disjunkt |
+| 2. Rückleiter | Schalter `#toggleReturn` an; Rückleiter × Rückleiter, × fremde Zuleitung, × Knotenkarte                                                                                                               |
+| 3. Selbsttest | Klick auf `#selftestBtn`, Auswertung des Texts (200 Zufallsbäume, fester Seed)                                                                                                                        |
+| 4. Stresstest | 144 Netze über `window.__route(net)`: kreuzungsfrei, rückleiterfrei, Labels/Karten frei                                                                                                               |
 
 ## Was `bruteforce.mjs` prüft
 

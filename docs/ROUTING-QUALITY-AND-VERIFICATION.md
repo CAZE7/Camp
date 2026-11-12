@@ -908,3 +908,53 @@ Konsequenz für die Bewertung:
 - Die Fehlerzahlen I2 = 1 und I3 = 88 sind **Bestand**, nicht neu eingeführt. Sie
   sind ab jetzt ratched und in Fehlerakten reproduzierbar.
 - Performance ist gemessen, nicht behoben.
+
+---
+
+## 19. CI-Verdrahtung: was blockiert, was nicht, und warum
+
+### 19.1 Merge-Gate (`.github/workflows/quality.yml`, Schritt M-13)
+
+```bash
+npm run ci:verify-routing
+# = test:oracle && test:properties:routing && test:fuzz:routing
+#   && test:replay && test:determinism:process
+```
+
+Das ist die eine Zeile, die ein Reviewer lesen kann, wenn das Gate rot ist.
+Sie steht zusätzlich zum `test:coverage`-Schritt, in dem die Vitest-Dateien
+ohnehin mitlaufen: die Doppelung kostet wenige Sekunden und erspart die Frage
+„welcher Schritt war das?". Die tsx-Skripte (Replay, frischer Prozess) laufen
+ausschließlich hier.
+
+Zusammen mit den bestehenden Schritten M-7 (Invarianten + Audit), M-9
+(Regression) und dem Coverage-Gate ergibt sich für Routing-Änderungen:
+
+| Bei Rot                                 | Bedeutung                                                                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| M-7 (I1–I3 ≠ 0, Ratchet, Determinismus) | Ein Referenzplan verletzt eine harte Invariante                                                                                          |
+| M-9 (Regression)                        | Ein Szenario hat sich byte-verschieden verändert                                                                                         |
+| M-13 Orakel                             | Zwei unabhängige Umsetzungen sind uneinig — **immer** ein Fehler, nie ein Testfehler                                                     |
+| M-13 Properties                         | I1 > 0 oder eine Kante verschwunden oder I2/I3 über Ratchet                                                                              |
+| M-13 Fuzzing                            | Der Input-Validator lässt eine kaputte Eingabe durch oder meldet falsch                                                                  |
+| M-13 Replay                             | Eine Fehlerakte `fixed` (Fehler behoben: Akte anpassen) oder `input-drift` (Plan geändert: Hash neu setzen) — **beides absichtlich rot** |
+| M-13 frischer Prozess                   | Determinismus verletzt, auch über Prozessgrenzen                                                                                         |
+
+### 19.2 Kein Merge-Gate: Performance (`.github/workflows/routing-perf.yml`)
+
+Nächtlich um 03:00 UTC und auf Zuruf, nicht bei jedem PR. Die Laufzeit hängt
+von der CPU des Runners ab; ein 300-ms-Gate auf geteilten Runnern ist entweder
+flaky oder so großzügig, dass es nichts fängt. Was blockiert, ist der Ratchet
+(12 000 ms auf dem Skalenplan), und der liegt weit über jeder Runner-Streuung —
+wird er gerissen, ist das ein Befund.
+
+Die JSON-Messung wird als Artefakt abgelegt (30 Tage), damit ein Trend
+entsteht und nicht nur ein Ja/Nein.
+
+### 19.3 Warum `fixed` ein rotes Gate ist
+
+Eine Fehlerakte, die nicht mehr reproduziert, heißt: der Fehler ist behoben.
+Das ist eine gute Nachricht und trotzdem ein rotes Gate — weil niemand die
+Akte angepasst hat. Der rote Lauf zwingt zu einer Entscheidung (Akte
+archivieren, `expect` verschärfen, Hash neu setzen) statt dazu, dass die Akte
+still veraltet und später niemand mehr weiß, ob sie noch etwas bedeutet.

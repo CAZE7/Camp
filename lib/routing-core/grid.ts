@@ -106,10 +106,8 @@ export function buildGrid(
 }
 
 /** Achsenparalleles Segment (nur horizontale/vertikale Stücke). */
-export const isHorizontal = (segment: Segment): boolean =>
-  Math.abs(segment[0].y - segment[1].y) < EPS;
-export const isVertical = (segment: Segment): boolean =>
-  Math.abs(segment[0].x - segment[1].x) < EPS;
+export const isHorizontal = (segment: Segment): boolean => Math.abs(segment[0].y - segment[1].y) < EPS;
+export const isVertical = (segment: Segment): boolean => Math.abs(segment[0].x - segment[1].x) < EPS;
 
 const openOverlap = (a0: number, a1: number, b0: number, b1: number): boolean => {
   const lo = Math.max(Math.min(a0, a1), Math.min(b0, b1));
@@ -148,7 +146,11 @@ export class ObstacleIndex {
    * über `stubCap`/`tightMarginUsed`.
    */
   /** Erste blockierende Bauteil-ID (Diagnose/Tests) oder `null`. */
-  blocker(segment: Segment, ownNodeIds: ReadonlySet<string>, margin = CORE_TOKENS.obstacleMargin): string | null {
+  blocker(
+    segment: Segment,
+    ownNodeIds: ReadonlySet<string>,
+    margin = CORE_TOKENS.obstacleMargin
+  ): string | null {
     const horizontal = isHorizontal(segment);
     const [a, b] = segment;
     const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
@@ -182,9 +184,7 @@ export class ObstacleIndex {
       const x1 = entry.x1 - inset;
       const y0 = entry.y0 + inset;
       const y1 = entry.y1 - inset;
-      const lineOk = horizontal
-        ? pointInsideOpen(line, y0, y1, true)
-        : pointInsideOpen(line, x0, x1, true);
+      const lineOk = horizontal ? pointInsideOpen(line, y0, y1, true) : pointInsideOpen(line, x0, x1, true);
       if (!lineOk) continue;
       const spanOk = horizontal ? openOverlap(lo, hi, x0, x1) : openOverlap(lo, hi, y0, y1);
       if (spanOk) return true;
@@ -367,7 +367,12 @@ export function applyRoute(
   waypoints: readonly { x: number; y: number }[],
   delta: 1 | -1
 ): void {
-  const interiorIndices = (values: readonly number[], index: ReadonlyMap<number, number>, from: number, to: number) => {
+  const interiorIndices = (
+    values: readonly number[],
+    index: ReadonlyMap<number, number>,
+    from: number,
+    to: number
+  ) => {
     const lo = Math.min(from, to);
     const hi = Math.max(from, to);
     const out: [number, number][] = [];

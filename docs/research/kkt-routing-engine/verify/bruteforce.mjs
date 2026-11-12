@@ -8,13 +8,20 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 
 const FILE = process.argv[2] || new URL('../index.html', import.meta.url).pathname;
 const COUNT = Number(process.argv[3] || 100);
-const w = new JSDOM(fs.readFileSync(FILE, 'utf8'), { runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: new VirtualConsole() }).window;
+const w = new JSDOM(fs.readFileSync(FILE, 'utf8'), {
+  runScripts: 'dangerously',
+  pretendToBeVisual: true,
+  virtualConsole: new VirtualConsole(),
+}).window;
 await new Promise((r) => setTimeout(r, 900));
 const E = w.CampEngine;
 const OPT = { ...E.DEFAULT_OPTIONS, dropPct: 3 };
 
 let seed = 20260101 >>> 0;
-const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+const rnd = () => {
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+  return seed / 4294967296;
+};
 const ri = (k) => Math.floor(rnd() * k);
 
 /** Kleiner Baum mit 3–5 Kanten (12^5 = 248 832 Belegungen, vollständig prüfbar). */
@@ -61,7 +68,10 @@ function smallTree(index) {
 }
 
 const budgetV = (OPT.dropPct / 100) * E.U_NOMINAL;
-let runs = 0, exact = 0, proven = 0, evals = 0;
+let runs = 0,
+  exact = 0,
+  proven = 0,
+  evals = 0;
 const problems = [];
 
 for (let i = 0; i < COUNT; i += 1) {
@@ -80,14 +90,20 @@ for (let i = 0; i < COUNT; i += 1) {
 
   // Eingefrorenes lineares Problem rekonstruieren (Whitepaper §2.1)
   const c = net.edges.map((e) => 2 * e.lengthM * OPT.lengthScale * E.CU_DENSITY);
-  const b = net.edges.map((e, k) => (2 * e.lengthM * OPT.lengthScale * Math.max(state.I[k], 0) * (1 + E.ALPHA20 * (state.T[k] - 20))) / E.GAMMA20);
+  const b = net.edges.map(
+    (e, k) =>
+      (2 * e.lengthM * OPT.lengthScale * Math.max(state.I[k], 0) * (1 + E.ALPHA20 * (state.T[k] - 20))) /
+      E.GAMMA20
+  );
   const contactDrop = net.edges.map((e, k) => Math.max(state.I[k], 0) * state.contactR[k]);
   const floors = net.edges.map((e, k) => {
     const need = Math.max(state.I[k], 0);
     for (const a of E.A_NORM) if (E.effectiveAmpacity(a, e, OPT.ambientC) >= need - 1e-9) return a;
     return E.A_NORM[E.A_NORM.length - 1];
   });
-  const residual = topology.sinks.map((v) => budgetV - topology.pathEdges[v].reduce((s, k) => s + contactDrop[k], 0));
+  const residual = topology.sinks.map(
+    (v) => budgetV - topology.pathEdges[v].reduce((s, k) => s + contactDrop[k], 0)
+  );
   const cd = { c, b, floor: floors, contactDrop };
 
   const bb = E.discreteOptimize(cd, topology, topology.sinks, residual, floors, OPT);
@@ -98,15 +114,19 @@ for (let i = 0; i < COUNT; i += 1) {
   let best = Infinity;
   let bestAssign = null;
   const assign = new Array(m).fill(0);
-  const feasible = () => topology.sinks.every((v, li) => {
-    let d = 0;
-    for (const k of topology.pathEdges[v]) d += b[k] / assign[k];
-    return d <= residual[li] + 1e-9;
-  });
+  const feasible = () =>
+    topology.sinks.every((v, li) => {
+      let d = 0;
+      for (const k of topology.pathEdges[v]) d += b[k] / assign[k];
+      return d <= residual[li] + 1e-9;
+    });
   const rec = (k, cost) => {
     if (cost >= best - 1e-9) return;
     if (k === m) {
-      if (feasible()) { best = cost; bestAssign = assign.slice(); }
+      if (feasible()) {
+        best = cost;
+        bestAssign = assign.slice();
+      }
       return;
     }
     for (const a of E.A_NORM) {
@@ -118,11 +138,15 @@ for (let i = 0; i < COUNT; i += 1) {
   rec(0, 0);
 
   const bbCost = bb.feasible === false ? Infinity : bb.cost;
-  const same = Number.isFinite(bbCost) && Number.isFinite(best)
-    ? Math.abs(bbCost - best) <= 1e-9 * Math.max(1, Math.abs(best))
-    : bbCost === best;
+  const same =
+    Number.isFinite(bbCost) && Number.isFinite(best)
+      ? Math.abs(bbCost - best) <= 1e-9 * Math.max(1, Math.abs(best))
+      : bbCost === best;
   if (same) exact += 1;
-  else problems.push(`#${i}: B&B ${Number.isFinite(bbCost) ? bbCost.toFixed(3) : '∞'} vs Brute-Force ${Number.isFinite(best) ? best.toFixed(3) : '∞'} (m=${m})`);
+  else
+    problems.push(
+      `#${i}: B&B ${Number.isFinite(bbCost) ? bbCost.toFixed(3) : '∞'} vs Brute-Force ${Number.isFinite(best) ? best.toFixed(3) : '∞'} (m=${m})`
+    );
 }
 
 console.log(`\nNetze ${runs} · exakt gleich ${exact}/${runs} · B&B-Optimalität bewiesen ${proven}/${runs}`);

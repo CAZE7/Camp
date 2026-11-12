@@ -136,13 +136,28 @@ export function runAb(): Row[] {
     const adapted = adaptPlan(nodes, edges);
     let coreSide: Side;
     if (!adapted.ok) {
-      coreSide = { edges: 0, length: 0, bends: 0, crossings: 0, I1: 0, I2: 0, I3: 0, unroutable: adapted.missing.length, ms: 0, deterministic: true };
+      coreSide = {
+        edges: 0,
+        length: 0,
+        bends: 0,
+        crossings: 0,
+        I1: 0,
+        I2: 0,
+        I3: 0,
+        unroutable: adapted.missing.length,
+        ms: 0,
+        deterministic: true,
+      };
     } else {
       const c0 = performance.now();
       const result = routeCore(adapted.input);
       const coreMs = performance.now() - c0;
       const coreWaypoints = new Map<string, Point[]>();
-      for (const [id, route] of result.routes) coreWaypoints.set(id, route.waypoints.map((p) => ({ x: p.x, y: p.y })));
+      for (const [id, route] of result.routes)
+        coreWaypoints.set(
+          id,
+          route.waypoints.map((p) => ({ x: p.x, y: p.y }))
+        );
       // Doppellauf: identische Metriken?
       const again = routeCore(adapted.input);
       const deterministic =
@@ -184,9 +199,13 @@ const table = (rows: Row[]): string => {
     lines.push(
       `${row.plan.padEnd(10)} | ${fmt(l.length).padStart(6)} / ${String(l.bends).padStart(3)} / ${String(
         l.crossings
-      ).padStart(3)}                     | ${fmt(c.length).padStart(6)} / ${String(c.bends).padStart(3)} / ${String(
+      ).padStart(
+        3
+      )}                     | ${fmt(c.length).padStart(6)} / ${String(c.bends).padStart(3)} / ${String(
         c.crossings
-      ).padStart(3)}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${
+      ).padStart(
+        3
+      )}                     | ${l.I1}/${l.I2}/${l.I3}              | ${c.I1}/${c.I2}/${c.I3}           | ${
         dLength >= 0 ? '+' : ''
       }${dLength.toFixed(1).padStart(6)} % | ${dBends >= 0 ? '+' : ''}${dBends.toFixed(1).padStart(6)} % | ${String(
         dCross >= 0 ? '+' + dCross : dCross

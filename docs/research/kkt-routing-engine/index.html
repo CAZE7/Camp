@@ -1386,6 +1386,25 @@
                   <option value="XLPE">XLPE · 90 °C · k = 143</option>
                 </select>
               </div>
+              <div class="control">
+                <div class="control-head">
+                  <label class="control-label" for="returnMode">Rückleiter</label>
+                  <span class="control-value" id="returnModeOut">Aderpaar 1:1</span>
+                </div>
+                <select id="returnMode" aria-label="Rückleiter-Modell">
+                  <option value="pair">Aderpaar 1:1 · Faktor 2/2</option>
+                  <option value="scaled">Eigene Rückader · Verhältnis k</option>
+                  <option value="chassis">Rückweg über Karosserie</option>
+                </select>
+                <div id="returnRatioRow" class="control" style="display: none" hidden>
+                  <div class="control-head">
+                    <label class="control-label" for="returnRatio">Rückleiterquerschnitt</label>
+                    <span class="control-value" id="returnRatioOut">k = 0,50</span>
+                  </div>
+                  <input id="returnRatio" type="range" min="0.2" max="2" step="0.05" value="0.5" />
+                </div>
+                <div class="control-hint">Der Rückweg ist eine Modellgröße: <span class="mono">R = ρl/A · (1 + 1/k)</span> für die eigene Rückader, fester Serienwiderstand im Karosserie-Modus (Whitepaper §5.11).</div>
+              </div>
               <div class="toggle-row">
                 <span>Rückleiter-Paar zeigen</span>
                 <label class="switch"><input id="toggleReturn" type="checkbox" /><span></span></label>
@@ -1396,6 +1415,13 @@
               </div>
               <button class="btn btn-reset" id="btnReset" type="button">↺ Standardwerte</button>
             </div>
+          </section>
+
+          <section class="card" id="card-return">
+            <div class="card-head">
+              <span class="card-title">Rückleiter &amp; Rückweg</span>
+            </div>
+            <div class="card-body" id="returnBody"></div>
           </section>
 
           <section class="card">
@@ -1938,6 +1964,87 @@ const CAMPEngine = (() => {
     return ((a.contactMilliohm ?? 0) + (b.contactMilliohm ?? 0)) / 1000;
   }
 
+  // ===========================================================================
+  // §7a Rückleiter-Modell (Whitepaper §5.11)
+  // ===========================================================================
+  /**
+   * Der Rückweg des Stroms ist eine Modellgröße, keine Zeichenentscheidung.
+   *
+   *   pair    — eigene Rückader gleichen Querschnitts und gleicher Temperatur
+   *             wie der Hinleiter (Faktor 2 in Widerstand und Masse). Das ist
+   *             die Voreinstellung und die Annahme aller früheren Zahlen.
+   *   scaled  — eigene Rückader im festen Verhältnis k zum Hinleiter
+   *             (Voreinstellung k = 1/2: halbes Rückleiterkupfer, 1,5-facher
+   *             Widerstand des Aderpaars).
+   *   chassis — Rückweg über Karosserie/Rahmen: Ersatzwiderstand aus
+   *             Blechquerschnitt, Stahlwiderstand und zwei Klemmstellen je
+   *             Kante. Kein Kupfer im Rückweg.
+   *
+   * `pair` und `scaled` sind reine Faktoren und ändern die Struktur des
+   * linearen Programms aus §2 nicht. Im Modus `chassis` kommt ein bei
+   * eingefrorener Temperatur konstanter Serienwiderstand je Kante hinzu —
+   * dieselbe Rolle, die dort schon die Kontaktabfälle spielen; er geht als
+   * Abzug ins Spannungsbudget und ist keine Optimierungsvariable.
+   */
+  const RETURN_MODES = Object.freeze({
+    pair: { label: 'Aderpaar 1:1 (Hin- und Rückleiter gleich)' },
+    scaled: { label: 'Rückader im festen Querschnittsverhältnis' },
+    chassis: { label: 'Rückweg über Karosserie/Rahmen' },
+  });
+
+  /**
+   * Rückleiter-Konfiguration eines Laufs.
+   *
+   * Für `pair` und `scaled` ist der Rückweg ein reiner Faktor auf den
+   * Hinleiterwiderstand ρl/a: bei Rückleiterquerschnitt k·a ist
+   *
+   *   R_e = ρl/a · (1 + 1/k)      Kupfermasse ∝ (1 + k)·l·a.
+   *
+   * k = 1 ist das Aderpaar (Faktor 2/2), k = 1/2 halbiert das Rückleiter-
+   * kupfer und erhöht den Widerstand auf das 1,5-fache des Aderpaars. Das
+   * lineare Programm aus §2 bleibt damit strukturell unverändert — nur die
+   * beiden Konstanten ändern sich.
+   */
+  function returnSpec(options) {
+    const mode = RETURN_MODES[options.returnMode] ? options.returnMode : 'pair';
+    const k = clamp(Number(options.returnRatio) || 0.5, 0.2, 4);
+    let elecFactor = 2;
+    let massFactor = 2;
+    if (mode === 'scaled') {
+      elecFactor = 1 + 1 / k;
+      massFactor = 1 + k;
+    } else if (mode === 'chassis') {
+      elecFactor = 1;
+      massFactor = 1;
+    }
+    return {
+      mode,
+      label: RETURN_MODES[mode].label,
+      ratio: mode === 'pair' ? 1 : k,
+      elecFactor,
+      massFactor,
+      chassisEquivAreaMm2: Math.max(Number(options.chassisEquivAreaMm2) || 200, 0.1),
+      chassisRhoMm2PerM: Math.max(Number(options.chassisRhoMm2PerM) || 0.13, 0),
+      chassisClampOhm: Math.max(Number(options.chassisClampMilliohm) || 0, 0) / 1000,
+    };
+  }
+
+  /** Fester Rückwegwiderstand einer Kante in Ohm (nur `chassis`); `hotFactor` gilt für Kupfer. */
+  function returnResistance(spec, edge, lengthM, hotFactor = 1) {
+    if (spec.mode !== 'chassis') return 0;
+    return (spec.chassisRhoMm2PerM * lengthM) / spec.chassisEquivAreaMm2 + 2 * spec.chassisClampOhm;
+  }
+
+  /** Kupfermasse des Rückleiters (reine Anzeigegröße; im Massenfaktor enthalten). */
+  function returnCopperMassG(spec, network, options) {
+    if (spec.mode === 'chassis') return 0;
+    let sum = 0;
+    for (const edge of network.edges) {
+      sum += edge.lengthM * options.lengthScale * (spec.massFactor - 1) * CU_DENSITY;
+    }
+    return sum;
+  }
+
   /**
    * Elektrischer Zustand bei festen Leitertemperaturen T.
    * Batterie als Norton-Äquivalent (U_oc/R_i ∥ R_i + R_shunt), Lasten als
@@ -1957,6 +2064,9 @@ const CAMPEngine = (() => {
     const resistance = new Array(m).fill(0);
     const conductorR = new Array(m).fill(0);
     const contactR = new Array(m).fill(0);
+    const returnR = new Array(m).fill(0);
+    const fixedR = new Array(m).fill(0);
+    const spec = returnSpec(options);
 
     for (let iter = 1; iter <= maxIter; iter += 1) {
       iterations = iter;
@@ -1965,11 +2075,15 @@ const CAMPEngine = (() => {
         const na = nodes[index.get(edge.from)];
         const nb = nodes[index.get(edge.to)];
         const length = edge.lengthM * options.lengthScale;
-        const rCu = (2 * RHO20 * length * (1 + ALPHA20 * (T[e] - 20))) / A[e];
+        const hotFactor = 1 + ALPHA20 * (T[e] - 20);
+        const rCu = (spec.elecFactor * RHO20 * length * hotFactor) / A[e];
         const rC = contactOhm(na, nb);
+        const rRet = returnResistance(spec, edge, length, hotFactor);
         conductorR[e] = rCu;
         contactR[e] = rC;
-        resistance[e] = rCu + rC;
+        returnR[e] = rRet;
+        fixedR[e] = rC + rRet;
+        resistance[e] = rCu + rC + rRet;
       }
 
       const G = Array.from({ length: n }, () => new Array(n).fill(0));
@@ -2020,6 +2134,8 @@ const CAMPEngine = (() => {
       resistance,
       conductorR,
       contactR,
+      returnR,
+      fixedR,
       iterations,
       residual,
       iRoot,
@@ -2100,19 +2216,22 @@ const CAMPEngine = (() => {
     const c = new Array(m);
     const b = new Array(m);
     const floor = new Array(m);
-    const contactDrop = new Array(m).fill(0);
-    const ambient = options.ambientC;
+    const seriesDrop = new Array(m).fill(0);
+    const spec = returnSpec(options);
+    // Externe Aufrufer (Prüfskripte) dürfen einen Zustand ohne Rückleiter-
+    // felder übergeben; dann gilt das reine Kontaktmodell.
+    const fixedR = state.fixedR || state.contactR;
 
     for (let e = 0; e < m; e += 1) {
       const edge = network.edges[e];
       const length = edge.lengthM * options.lengthScale;
-      c[e] = 2 * length * CU_DENSITY;
+      c[e] = spec.massFactor * length * CU_DENSITY;
       const hotFactor = 1 + ALPHA20 * (state.T[e] - 20);
-      b[e] = (2 * length * Math.max(state.I[e], 0) * hotFactor) / GAMMA20;
+      b[e] = (spec.elecFactor * length * Math.max(state.I[e], 0) * hotFactor) / GAMMA20;
       floor[e] = A_NORM[0];
-      contactDrop[e] = Math.max(state.I[e], 0) * state.contactR[e];
+      seriesDrop[e] = Math.max(state.I[e], 0) * fixedR[e];
     }
-    return { c, b, floor, contactDrop };
+    return { c, b, floor, contactDrop: seriesDrop, seriesDrop, elecFactor: spec.elecFactor, massFactor: spec.massFactor };
   }
 
   /**
@@ -2493,6 +2612,12 @@ const CAMPEngine = (() => {
     nodeLimit: 60000,
     timeLimitMs: 500,
     faultClearingTimeS: 5,
+    // Rückleiter (§5.11): Voreinstellung reproduziert das Aderpaar-Modell.
+    returnMode: 'pair',
+    returnRatio: 0.5,
+    chassisEquivAreaMm2: 200,
+    chassisRhoMm2PerM: 0.13,
+    chassisClampMilliohm: 1,
   });
 
   function resolveOptions(network, user) {
@@ -2516,13 +2641,15 @@ const CAMPEngine = (() => {
   /** Schnelle Zulässigkeitsschätzung mit eingefrorenen Strömen (Vorfilter). */
   function cheapFeasible(network, topo, state, areas, budgetV, options) {
     const ambient = options.ambientC;
+    const spec = returnSpec(options);
     for (const v of topo.sinks) {
       let drop = 0;
       for (const e of topo.pathEdges[v]) {
         const edge = network.edges[e];
         const length = edge.lengthM * options.lengthScale;
         const t = edgeTemperature(edge, areas[e], state.I[e], ambient);
-        const r = (2 * RHO20 * length * (1 + ALPHA20 * (t - 20))) / areas[e] + state.contactR[e];
+        const r =
+          (spec.elecFactor * RHO20 * length * (1 + ALPHA20 * (t - 20))) / areas[e] + state.fixedR[e];
         drop += Math.abs(state.I[e]) * r;
       }
       if (drop > budgetV + 1e-9) return false;
@@ -2550,7 +2677,9 @@ const CAMPEngine = (() => {
   function polishSizes(network, topo, start, options, budgetV, minArea) {
     const m = topo.m;
     const izOf = (e, a) => effectiveAmpacity(a, network.edges[e], options.ambientC);
-    const costOf = (e, a) => 2 * network.edges[e].lengthM * options.lengthScale * a * CU_DENSITY;
+    const polishSpec = returnSpec(options);
+    const costOf = (e, a) =>
+      polishSpec.massFactor * network.edges[e].lengthM * options.lengthScale * a * CU_DENSITY;
 
     let best = start.slice();
     let state = solveElectroThermal(network, topo, best, options);
@@ -2701,6 +2830,8 @@ const CAMPEngine = (() => {
     const sinks = topo.sinks;
     const budgetV = (U_NOMINAL * options.dropPct) / 100;
     const budgets = sinks.map(() => budgetV);
+    const spec = returnSpec(options);
+    const returnCopperG = returnCopperMassG(spec, network, options);
 
     // Startquerschnitte aus dem Nennstrom bei 12 V (vermeidet den entarteten
     // ersten MNA-Zustand, in dem leistungskonstante Lasten bei
@@ -2827,12 +2958,20 @@ const CAMPEngine = (() => {
     const nodes = network.nodes;
 
     const nodeReports = nodes.map((node, v) => {
-      const rPathCold = pathResistance(topo, v, state.conductorR.map((r, e) => {
-        const edge = network.edges[e];
-        const length = edge.lengthM * options.lengthScale;
-        return (2 * RHO20 * length) / A[e];
-      }), state.contactR);
-      const rPathHot = pathResistance(topo, v, state.conductorR, state.contactR);
+      const rPathCold = pathResistance(
+        topo,
+        v,
+        state.conductorR.map((r, e) => {
+          const edge = network.edges[e];
+          const length = edge.lengthM * options.lengthScale;
+          return (spec.elecFactor * RHO20 * length) / A[e];
+        }),
+        state.contactR.map((c, e) => {
+          const edge = network.edges[e];
+          return c + returnResistance(spec, edge, edge.lengthM * options.lengthScale, 1);
+        })
+      );
+      const rPathHot = pathResistance(topo, v, state.conductorR, state.fixedR);
       const zCold = rInt + rPathCold;
       const zHot = rInt + rPathHot;
       const drop = v === topo.root ? 0 : state.u[topo.root] - state.u[v];
@@ -2857,7 +2996,7 @@ const CAMPEngine = (() => {
       const a = topo.index.get(edge.from);
       const b = topo.index.get(edge.to);
       const length = edge.lengthM * options.lengthScale;
-      const rCu20 = (2 * RHO20 * length) / A[e];
+      const rCu20 = (spec.elecFactor * RHO20 * length) / A[e];
       const izEff = effectiveAmpacity(A[e], edge, options.ambientC);
       const ikFuse = Math.max(nodeReports[a].ikMaxA, nodeReports[b].ikMaxA);
       const fuse = pickFuse(Math.abs(state.I[e]), izEff, ikFuse);
@@ -2880,12 +3019,13 @@ const CAMPEngine = (() => {
         rCu20Milliohm: rCu20 * 1000,
         rHotMilliohm: state.conductorR[e] * 1000,
         rContactMilliohm: state.contactR[e] * 1000,
+        rReturnMilliohm: state.returnR[e] * 1000,
         temperatureC: state.T[e],
         dU: Math.abs(state.I[e]) * state.resistance[e],
         dUModel: Math.abs(state.I[e]) * state.conductorR[e],
         izEff,
         loading: izEff > 0 ? Math.abs(state.I[e]) / izEff : Infinity,
-        massG: 2 * length * A[e] * CU_DENSITY,
+        massG: spec.massFactor * length * A[e] * CU_DENSITY,
         fuse,
         i2tLimit,
         i2tReservePct: reserve,
@@ -2957,6 +3097,7 @@ const CAMPEngine = (() => {
       })),
       continuousMassG: finalSizing.relaxed.cost,
       linearDiscreteMassG: finalSizing.cost,
+      returnCopperG,
       discreteMassG: sum(edgeReports.map((r) => r.massG)),
       gapPct:
         finalSizing.cost > 0
@@ -3029,7 +3170,7 @@ const CAMPEngine = (() => {
           let d = 0;
           for (const e of topo.pathEdges[v]) {
             const length = network.edges[e].lengthM * options.lengthScale;
-            d += Math.abs(cold.I[e]) * ((2 * RHO20 * length) / aMax + cold.contactR[e]);
+            d += Math.abs(cold.I[e]) * ((spec.elecFactor * RHO20 * length) / aMax + cold.fixedR[e]);
           }
           return d;
         })
@@ -3051,6 +3192,11 @@ const CAMPEngine = (() => {
     if (state.residual > 1e-6) degraded.push('MNA-Fixpunkt nicht konvergiert');
 
     const massG = kkt.discreteMassG;
+    const returnDropV = Math.max(
+      ...topo.sinks.map((v) =>
+        topo.pathEdges[v].reduce((acc, e) => acc + Math.abs(state.I[e]) * state.returnR[e], 0)
+      )
+    );
     const primary = network.edges[0];
     const mainFuse = edgeReports[0].fuse;
 
@@ -3113,6 +3259,15 @@ const CAMPEngine = (() => {
       kktProven: kkt.proven,
       kktNodes: kkt.nodes,
       kktGapPct: kkt.gapPct,
+      // Rückleiter-Modell (§5.11): Modus, Kupferanteil und Abfallanteil.
+      returnMode: spec.mode,
+      returnModeLabel: spec.label,
+      returnRatio: spec.ratio,
+      returnElecFactor: spec.elecFactor,
+      returnMassFactor: spec.massFactor,
+      returnCopperG,
+      returnDropV,
+      returnSharePct: maxDrop > 0 ? (returnDropV / maxDrop) * 100 : 0,
       degraded,
     };
 
@@ -3182,6 +3337,16 @@ const CAMPEngine = (() => {
       }
       flags.push({ level: 'warn', code: 'SOLVER', text: d });
     });
+    if (spec.mode !== 'pair') {
+      flags.unshift({
+        level: 'info',
+        code: 'RET',
+        text:
+          spec.mode === 'chassis'
+            ? `Rückweg über Karosserie: ${spec.chassisEquivAreaMm2} mm² Blech, ${(spec.chassisRhoMm2PerM * 1000).toFixed(0)} mΩ·mm²/m, ${(spec.chassisClampOhm * 1000).toFixed(1)} mΩ je Klemmstelle — ${(returnDropV * 1000).toFixed(0)} mV Rückwegabfall, kein Rückleiterkupfer`
+            : `Rückader ${spec.ratio > 0 ? spec.ratio.toFixed(2) : '1.00'}:1 zum Hinleiter — ${(returnCopperG / 1000).toFixed(3)} kg Rückleiterkupfer, ${(returnDropV * 1000).toFixed(0)} mV Rückwegabfall`,
+      });
+    }
     if (repairs > 0) {
       flags.push({
         level: 'info',
@@ -3218,13 +3383,16 @@ const CAMPEngine = (() => {
    */
   function computeNaive(network, topo, state, options, actual, budgetV) {
     const m = topo.m;
+    const spec = returnSpec(options);
+    const ef = spec.elecFactor;
+    const mf = spec.massFactor;
     const areas = new Array(m);
     const currents = new Array(m);
     for (let e = 0; e < m; e += 1) {
       const edge = network.edges[e];
       const length = edge.lengthM * options.lengthScale;
       currents[e] = Math.abs(state.I[e]);
-      const required = (2 * length * currents[e]) / (GAMMA20 * budgetV);
+      const required = (ef * length * currents[e]) / (GAMMA20 * budgetV);
       let a = normUp(Math.max(required, A_NORM[0]));
       // Belastbarkeit nicht unterschreiten (die triviale Rechnung prüft sie separat).
       for (const cand of A_NORM) {
@@ -3238,7 +3406,10 @@ const CAMPEngine = (() => {
 
     const massOf = (arr) => {
       let s = 0;
-      for (let e = 0; e < m; e += 1) s += 2 * network.edges[e].lengthM * options.lengthScale * arr[e] * CU_DENSITY;
+      for (let e = 0; e < m; e += 1) {
+        s += mf * network.edges[e].lengthM * options.lengthScale * arr[e] * CU_DENSITY;
+      }
+      s += returnCopperMassG(spec, network, options);
       return s;
     };
 
@@ -3247,7 +3418,7 @@ const CAMPEngine = (() => {
         let d = 0;
         for (const e of topo.pathEdges[v]) {
           const length = network.edges[e].lengthM * options.lengthScale;
-          const r = (2 * RHO20 * length) / arr[e] + state.contactR[e];
+          const r = (ef * RHO20 * length) / arr[e] + state.fixedR[e];
           d += Math.abs(state.I[e]) * r;
         }
         return d;
@@ -3274,7 +3445,7 @@ const CAMPEngine = (() => {
       let pickDrop = -1;
       for (const e of topo.pathEdges[worst]) {
         const length = network.edges[e].lengthM * options.lengthScale;
-        const d = (2 * RHO20 * length * Math.abs(state.I[e])) / repaired[e];
+        const d = (ef * RHO20 * length * Math.abs(state.I[e])) / repaired[e];
         if (d > pickDrop && A_NORM.indexOf(repaired[e]) < A_NORM.length - 1) {
           pickDrop = d;
           pick = e;
@@ -3291,7 +3462,7 @@ const CAMPEngine = (() => {
     topo.sinks.forEach((v, li) => {
       const path = topo.pathEdges[v];
       const totalLength = path.reduce((acc, e) => acc + network.edges[e].lengthM * options.lengthScale, 0);
-      const available = budgetV - path.reduce((acc, e) => acc + Math.abs(state.I[e]) * state.contactR[e], 0);
+      const available = budgetV - path.reduce((acc, e) => acc + Math.abs(state.I[e]) * state.fixedR[e], 0);
       for (const e of path) {
         const length = network.edges[e].lengthM * options.lengthScale;
         const share = totalLength > 0 ? available * (length / totalLength) : available / path.length;
@@ -3302,7 +3473,8 @@ const CAMPEngine = (() => {
       const edge = network.edges[e];
       const length = edge.lengthM * options.lengthScale;
       const dU = Math.max(allocated[e], 1e-6);
-      const required = (2 * length * Math.abs(state.I[e]) * (1 + ALPHA20 * (state.T[e] - 20))) / (GAMMA20 * dU);
+      const required =
+        (ef * length * Math.abs(state.I[e]) * (1 + ALPHA20 * (state.T[e] - 20))) / (GAMMA20 * dU);
       let a = normUp(Math.max(required, A_NORM[0]));
       for (const cand of A_NORM) {
         if (cand >= a - 1e-12 && effectiveAmpacity(cand, edge, options.ambientC) >= Math.abs(state.I[e]) - 1e-9) {
@@ -3317,7 +3489,7 @@ const CAMPEngine = (() => {
         let d = 0;
         for (const e of topo.pathEdges[v]) {
           const length = network.edges[e].lengthM * options.lengthScale;
-          d += Math.abs(state.I[e]) * ((2 * RHO20 * length) / arr[e] + state.contactR[e]);
+          d += Math.abs(state.I[e]) * ((ef * RHO20 * length) / arr[e] + state.fixedR[e]);
         }
         return d;
       });
@@ -3339,7 +3511,7 @@ const CAMPEngine = (() => {
       let pickDrop = -1;
       for (const e of topo.pathEdges[worst]) {
         const length = network.edges[e].lengthM * options.lengthScale;
-        const d = (2 * RHO20 * length * Math.abs(state.I[e])) / propAreas[e];
+        const d = (ef * RHO20 * length * Math.abs(state.I[e])) / propAreas[e];
         if (d > pickDrop && A_NORM.indexOf(propAreas[e]) < A_NORM.length - 1) {
           pickDrop = d;
           pick = e;
@@ -3371,6 +3543,57 @@ const CAMPEngine = (() => {
   }
 
   // ===========================================================================
+  // §9a Rückleiterstudie
+  // ===========================================================================
+
+  /**
+   * Rückleiterstudie: der Rückleiterquerschnitt ist keine Nebensache, sondern
+   * eine Entwurfsvariable. Für eine Reihe von Verhältnissen k = A_Rück/A_Hin
+   * wird der vollständige Entwurf gerechnet; kleines k spart Rückleiterkupfer,
+   * vergrößert aber den Widerstand jeder Kante und damit die Hinleiter.
+   *
+   * Die Studie ist bewusst eine Reihe vollständiger Läufe und keine
+   * Optimierung im LP: k wirkt als Faktor auf Kosten UND Restriktionsmatrix,
+   * das Optimum über k ist deshalb nicht konvex und wird durch Abtastung
+   * bestimmt (deterministisch, dieselbe Reihenfolge bei jedem Aufruf).
+   */
+  function returnStudy(network = DEFAULT_NETWORK, userOptions = {}, ratios = null) {
+    const grid = ratios || [0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1, 1.25, 1.5, 2];
+    const points = grid.map((k) => {
+      const options = { ...userOptions, returnMode: 'scaled', returnRatio: k };
+      const solved = solve(network, options);
+      const spec = returnSpec(resolveOptions(network, options));
+      return {
+        ratio: k,
+        elecFactor: spec.elecFactor,
+        massFactor: spec.massFactor,
+        massG: solved.metrics.copperMassG,
+        maxDropPct: solved.metrics.maxDropPct,
+        ikMinA: solved.metrics.ikMinA,
+        violations: solved.metrics.violations,
+        infeasible: solved.metrics.infeasible,
+        areas: solved.areas.slice(),
+        feasible:
+          !solved.metrics.infeasible &&
+          solved.metrics.violations === 0 &&
+          solved.metrics.maxDropPct <= options.dropPct + 1e-9,
+      };
+    });
+    let bestIndex = -1;
+    points.forEach((pt, i) => {
+      if (!pt.feasible) return;
+      if (bestIndex < 0 || pt.massG < points[bestIndex].massG - 1e-9) bestIndex = i;
+    });
+    return {
+      ratios: grid.slice(),
+      points,
+      bestIndex,
+      best: bestIndex >= 0 ? points[bestIndex] : null,
+      reference: points.find((pt) => pt.ratio === 1) || null,
+    };
+  }
+
+  // ===========================================================================
   // §10 Öffentliche API
   // ===========================================================================
 
@@ -3383,6 +3606,9 @@ const CAMPEngine = (() => {
     GROUP_FACTORS,
     RHO20,
     GAMMA20,
+    RETURN_MODES,
+    returnSpec,
+    returnStudy,
     ALPHA20,
     CU_DENSITY,
     K_INSULATION,
