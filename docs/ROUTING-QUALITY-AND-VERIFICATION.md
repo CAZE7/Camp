@@ -2,9 +2,23 @@
 
 **Status:** Verbindliche Spezifikation (Phase V0) · **Datum:** 2026-11-11 ·
 **Branch:** `arena/bbf610a1-camp`
-**Umsetzungsstand:** V0 ✔ · V1-Audit ✔ (§2, §10) · V2 Orakel ✔ · V3 Fehlerakten ✔ ·
-**V4 Property ✔** · **V5 Fuzzing/Determinismus ✔** · **V7 Performance-Gate ✔**
-(Ergebnisse in §17) · V6 Engine und V8 Production offen
+**Umsetzungsstand der Prüfpipeline: V1–V7 vollständig umgesetzt** (Nachweise in
+§17 und §18). Damit ist die Verifikationsseite gebaut; offen sind **Phase 3**
+(A/B auf echten Plannutzungen) und **Phase 4** (Produktionsintegration) — beides
+Vorhaben, die diese Datei _prüft_, nicht solche, die sie baut.
+
+| Stufe | Bedeutung (§4)                  | Umsetzung                             | Nachweis                            |
+| ----- | ------------------------------- | ------------------------------------- | ----------------------------------- |
+| V1    | Eingabevalidierung              | `inputValidator.ts` (7 Codes)         | §18.2                               |
+| V2    | Geometrie (unabhängiges Orakel) | `oracle/`                             | §17.1 (19 Tests)                    |
+| V3    | Netzwerk                        | `oracle/` + Fehlerakten               | §17.2 (5 Akten)                     |
+| V4    | Determinismus                   | `determinism.ts` (frischer Prozess)   | §18.2                               |
+| V5    | Property                        | `planGenerator.ts`, `reachability.ts` | §18.1 (10 Tests, 120 Seeds)         |
+| V6    | Adversarial & Regression        | Fuzzing + `replay.ts`                 | §18.2 (11 Tests)                    |
+| V7    | Performance                     | `perf.ts`                             | §18.3 (Gate grün, Skalenziel offen) |
+
+Die Stufennummern V1–V7 bezeichnen **immer** diese Pipeline, nie einen
+Arbeitspaket-Namen; abweichende Zählungen in Commit-Texten sind historisch.
 
 **Verhältnis zu anderen Dokumenten**
 
@@ -755,15 +769,16 @@ npm run check:routing               # alles oben + Invarianten + Regression + Au
 
 - Kein Nachweis, dass der Router korrekt ist. Geprüft ist, dass zwei unabhängige
   Umsetzungen derselben Bedingungen zum selben Urteil kommen.
-- Kein Ersatz für V4 (Property-Generator, Erreichbarkeitsgegentest), V5
-  (Fuzzing, frischer Prozess), V7 (Performance-Schwellen).
+- Kein Ersatz für die übrigen Stufen: V5 (Property-Generator,
+  Erreichbarkeitsgegentest), V1/V6 (Fuzzing), V4 (frischer Prozess), V7
+  (Performance) — inzwischen alle umgesetzt, siehe §18.
 - Keine elektrische Aussage (§1.1).
 
 ---
 
-## 18. Umsetzungsnachweis V4, V5 und V7 (gemessen 2026-11-11)
+## 18. Umsetzungsnachweis V1, V4, V5, V6 und V7 (gemessen 2026-11-11)
 
-### 18.1 V4 — Generator, Eigenschaften, Erreichbarkeitsgegentest
+### 18.1 V5 — Generator, Eigenschaften, Erreichbarkeitsgegentest
 
 **Der Plan-Generator** (`lib/routing/verification/planGenerator.ts`) erzeugt
 Bauteile mit `mulberry32` aus einem Seed — deterministisch, ohne echten Zufall.
@@ -816,7 +831,7 @@ Router liefert trotzdem eine Route, ist das ein Fehler (R-ERR-1). Ein kurzes
 Hindernis ist umgehbar — der Test prüft genau das an drei Fällen (kurze Wand
 ⇒ erreichbar, hohe Wand ⇒ nicht, Start in der Wand ⇒ nicht).
 
-### 18.2 V5 — Fuzzing der Eingabe und Determinismus im frischen Prozess
+### 18.2 V1 + V6 + V4 — Fuzzing der Eingabe und Determinismus im frischen Prozess
 
 `lib/routing/verification/inputValidator.ts` prüft die Eingabe **vor** dem
 Router und liefert benannte Codes. Neun Mutationen × 25 Pläne, jede muss genau
