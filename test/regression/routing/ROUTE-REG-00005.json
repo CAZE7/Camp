@@ -1,0 +1,175 @@
+{
+  "failureId": "ROUTE-REG-00005",
+  "category": "clearance_violation",
+  "severity": "hard",
+  "engine": "legacy",
+  "plan": {
+    "kind": "inline",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "component",
+        "position": {
+          "x": 66,
+          "y": 90
+        },
+        "data": {
+          "label": "N0"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [],
+          "right": [],
+          "top": [],
+          "bottom": [
+            {
+              "id": "bottom-0",
+              "x": 96,
+              "y": 120,
+              "width": 8,
+              "height": 8,
+              "position": "bottom"
+            }
+          ]
+        }
+      },
+      {
+        "id": "n1",
+        "type": "component",
+        "position": {
+          "x": 488,
+          "y": 97
+        },
+        "data": {
+          "label": "N1"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [],
+          "right": [
+            {
+              "id": "right-0",
+              "x": 192,
+              "y": 56,
+              "width": 8,
+              "height": 8,
+              "position": "right"
+            }
+          ],
+          "top": [],
+          "bottom": []
+        }
+      },
+      {
+        "id": "n3",
+        "type": "component",
+        "position": {
+          "x": 86,
+          "y": 510
+        },
+        "data": {
+          "label": "N3"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [],
+          "right": [],
+          "top": [
+            {
+              "id": "top-0",
+              "x": 96,
+              "y": 0,
+              "width": 8,
+              "height": 8,
+              "position": "top"
+            }
+          ],
+          "bottom": []
+        }
+      },
+      {
+        "id": "n4",
+        "type": "component",
+        "position": {
+          "x": 481,
+          "y": 515
+        },
+        "data": {
+          "label": "N4"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [],
+          "right": [
+            {
+              "id": "right-0",
+              "x": 192,
+              "y": 60,
+              "width": 8,
+              "height": 8,
+              "position": "right"
+            }
+          ],
+          "top": [
+            {
+              "id": "top-0",
+              "x": 96,
+              "y": 0,
+              "width": 8,
+              "height": 8,
+              "position": "top"
+            }
+          ],
+          "bottom": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e0",
+        "source": "n3",
+        "target": "n1",
+        "sourceHandle": "top-0",
+        "targetHandle": "right-0"
+      },
+      {
+        "id": "e2",
+        "source": "n4",
+        "target": "n0",
+        "sourceHandle": "right-0",
+        "targetHandle": "bottom-0"
+      }
+    ]
+  },
+  "expect": {
+    "kind": "invariant",
+    "invariant": "I3",
+    "atLeast": 1
+  },
+  "firstSeen": "2026-11-11",
+  "routingVersion": "routeAll@d30d5a0",
+  "inputHash": "sha256:b12cac7e338c42896a6846c7c7da1ab1f05349f6a083e1f77a2e30f49e0fb698",
+  "minimized": true,
+  "reproducible": true,
+  "notes": "Property-Generator V4: der Produktivpfad unterschreitet auf zufaelligen Plaenen die Freigabe (I3). Kein Einzelfall: 88 Verletzungen ueber 200 Plaene / 486 Kanten, 62 Plaene betroffen. Ratchet in test/properties/routing-properties.test.ts."
+}

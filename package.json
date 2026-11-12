@@ -51,7 +51,11 @@
     "test:oracle": "vitest run test/invariants/oracle-crosscheck.test.ts",
     "test:replay": "tsx scripts/routing/verification/replay.ts",
     "routing:replay": "tsx scripts/routing/verification/replay.ts --json",
-    "check:routing": "npm run test:oracle && npm run test:replay && npm run test:invariants && npm run test:regression && npm run routing:audit"
+    "check:routing": "npm run test:oracle && npm run test:properties:routing && npm run test:fuzz:routing && npm run test:replay && npm run test:determinism:process && npm run test:invariants && npm run test:regression && npm run routing:audit",
+    "test:properties:routing": "vitest run test/properties/routing-properties.test.ts",
+    "test:fuzz:routing": "vitest run test/properties/routing-fuzz.test.ts",
+    "test:determinism:process": "tsx scripts/routing/verification/determinism.ts",
+    "perf:gate": "tsx scripts/routing/verification/perf.ts"
   },
   "engines": {
     "node": ">=22.0.0"

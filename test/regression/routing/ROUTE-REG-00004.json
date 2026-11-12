@@ -1,0 +1,109 @@
+{
+  "failureId": "ROUTE-REG-00004",
+  "category": "overlap",
+  "severity": "hard",
+  "engine": "legacy",
+  "plan": {
+    "kind": "inline",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "component",
+        "position": {
+          "x": 85,
+          "y": 72
+        },
+        "data": {
+          "label": "N0"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [
+            {
+              "id": "left-0",
+              "x": 0,
+              "y": 60,
+              "width": 8,
+              "height": 8,
+              "position": "left"
+            }
+          ],
+          "right": [],
+          "top": [],
+          "bottom": []
+        }
+      },
+      {
+        "id": "n3",
+        "type": "component",
+        "position": {
+          "x": 97,
+          "y": 504
+        },
+        "data": {
+          "label": "N3"
+        },
+        "width": 192,
+        "height": 120,
+        "measured": {
+          "width": 192,
+          "height": 120
+        },
+        "handleBounds": {
+          "left": [
+            {
+              "id": "left-0",
+              "x": 0,
+              "y": 60,
+              "width": 8,
+              "height": 8,
+              "position": "left"
+            }
+          ],
+          "right": [],
+          "top": [],
+          "bottom": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e0",
+        "source": "n0",
+        "target": "n3",
+        "sourceHandle": "left-0",
+        "targetHandle": "left-0"
+      },
+      {
+        "id": "e2",
+        "source": "n0",
+        "target": "n3",
+        "sourceHandle": "left-0",
+        "targetHandle": "left-0"
+      },
+      {
+        "id": "e3",
+        "source": "n3",
+        "target": "n0",
+        "sourceHandle": "left-0",
+        "targetHandle": "left-0"
+      }
+    ]
+  },
+  "expect": {
+    "kind": "invariant",
+    "invariant": "I2",
+    "atLeast": 1
+  },
+  "firstSeen": "2026-11-11",
+  "routingVersion": "routeAll@d30d5a0",
+  "inputHash": "sha256:54265685a7c52bdb97ae6c411ddd33c2c8726a81b3d213d09aeffc150cfcd497",
+  "minimized": true,
+  "reproducible": true,
+  "notes": "Property-Generator V4: der Produktivpfad erzeugt auf einem zufaelligen, aber gueltigen Plan eine harte kollineare Ueberdeckung (I2). Gefunden ueber 200 Seeds, minimiert auf den Kern des Falls."
+}
