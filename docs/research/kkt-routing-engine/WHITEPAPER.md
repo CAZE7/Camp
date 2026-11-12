@@ -745,8 +745,9 @@ getestet; die Zahl wird als `crossings` geführt und im Solver-Panel angezeigt. 
 
 **Randomisierter Stresstest:** 200 zufällige Bäume (2–6 Ebenen, 0–3 Kinder je Knoten, bis 80
 Kanten, deterministischer Seed), davon 144 mit Kanten: **144/144 kreuzungsfrei**, 0 Jogs,
-Spurenzahl 1–15. Der Test läuft über den reinen Routing-Haken `window.__route(network)` ohne
-Netzberechnung (< 2 s für alle Netze).
+Spurenzahl 1–13 (Verteilung 1:74, 2:30, 3:12, 4:9, 5:8, 6:1, 7:3, 8:2, 10:3, 12:1, 13:1).
+Der Test läuft über den reinen Routing-Haken `window.__route(network)` ohne Netzberechnung
+(< 2 s für alle Netze).
 
 Die Prüfung umfasst seit der Rückleitererweiterung (§5.8) **drei** Klassen von Konflikten:
 Zuleitung × Zuleitung, Rückleiter × Rückleiter und Rückleiter × fremde Zuleitung bzw.
@@ -788,10 +789,11 @@ Haken `window.__selftest()`).
 
 * Deterministischer Generator (LCG, fester Seed) → reproduzierbare Läufe.
 * 200 zufällige Bäume, 2–6 Ebenen, 0–3 Kinder je Knoten, gemischte CP/CC-Lasten.
-* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl und
-  Rückleiterkollisionen (§5.8).
+* Geprüft werden: Kreuzungen, Jogs, Spurenminimalität, maximale Spurenzahl,
+  Rückleiterkollisionen (§5.8) sowie freie Label- und Kartenplatzierung (§5.9).
 * Ergebnis (gemessen): **160/160 kreuzungsfrei**, 0 Jogs, 126/160 spurenminimal,
-  **160/160 Rückleiter kollisionsfrei**, maximale Spurenzahl 16, Laufzeit **203 ms**.
+  **160/160 Rückleiter kollisionsfrei**, **160/160 Labels frei platziert**, maximale
+  Spurenzahl 12, Laufzeit **≈200 ms**.
 
 Damit ist die Invariante im ausgelieferten Artefakt selbst überprüfbar — ohne Testframework,
 ohne Build-Schritt.
@@ -817,16 +819,17 @@ Zeicheneinstellung. Die Wahl von $\delta$ ist **gemessen**, nicht behauptet: der
 | 2 | 144/144 | 0 | — |
 | **3** | **144/144** | **0** | — |
 | 4 | 144/144 | 0 | — |
-| 5 | 143/144 | 1 | Rückleiter × fremde Zuleitung |
-| 6 | 128/144 | 25 | Rückleiter × fremde Zuleitung |
-| 7 | 123/144 | 52 | Rückleiter × fremde Zuleitung |
-| 9 | 117/144 | 84 | Rückleiter × fremde Zuleitung |
+| 5 | 144/144 | 0 | — |
+| 6 | 132/144 | 17 | Rückleiter × fremde Zuleitung |
+| 7 | 128/144 | 38 | Rückleiter × fremde Zuleitung |
+| 9 | 127/144 | 46 | Rückleiter × fremde Zuleitung |
 
-Der Sprung zwischen 4 px und 5 px markiert die Grenze des **port-eigenen Korridors**: innerhalb
+Der Sprung zwischen 5 px und 6 px markiert die Grenze des **port-eigenen Korridors**: innerhalb
 weniger Pixel um einen Port liegt kein fremdes Segment, darüber erreicht die zweite Ader die
 Horizontale einer Nachbarkante, deren Endpunkt knapp neben dem eigenen Port liegt. $\delta=3$ px
 liegt mit 2 px Abstand zur gemessenen Kante dieses Bereichs und hält zugleich sichtbaren Abstand
-zur Zuleitung.
+zur Zuleitung. (Die Messreihe wurde nach der Erweiterung der Zeichenfläche aus §5.9 wiederholt —
+mit der breiteren Fläche verschiebt sich die Grenze von 5 auf 6 px.)
 
 Die zweite Ader wird **im Artefakt selbst mitgeprüft** (`returnCrossings` im Solver-Panel,
 Fehlerflag `ROUTING` bei $>0$) und in den Reihen des Selbsttests (§5.7) geführt. Bei dicken
@@ -838,13 +841,58 @@ Spur, weil er im selben Kabel läuft; eine Variante mit getrennter Rückleitung 
 separater Rückleiterbaum) wäre ein zweites Routingsproblem mit eigener Kanalkapazität und ist
 nicht Teil dieses Artefakts.
 
-### 5.9 Grenzen
+### 5.9 Zeichenfläche, Labelplatzierung und Karten
+
+Die Zeichenfläche war zunächst auf 1240 px festgenagelt. Bei breiten Ebenen (viele Knoten je
+Ebene) überlappen dann die Karten — **still**, weil weder Kreuzungs- noch Spurenprüfung davon
+etwas merkt. Das ist genau die Klasse von Fehler, die ein Zertifikat wertlos macht.
+
+Deshalb ist die Breite jetzt eine **Funktion des Netzes**:
+
+$$
+W=\max\Bigl(1240,\; 2\,S + n_{\max}\,(176+8)\Bigr),
+\qquad n_{\max}=\max_k |\,\text{Ebene }k\,|
+\tag{5.4}
+$$
+
+Mit $S=60$ px Rand, 176 px Kartenbreite und 8 px Mindestfuge ist der Kartenabstand
+$\ge$ Kartenbreite + 8 px — Überlappung ist **konstruktiv ausgeschlossen** und wird zusätzlich
+als `cardOverlaps` geprüft. Für die drei Referenznetze bleibt $W=1240$ (6 Knoten je Ebene:
+$2\cdot60+6\cdot184=1224<1240$), ihre Geometrie ändert sich also nicht.
+
+Die **Labelplatzierung** wandert damit vom Renderer ins Modell: die Position jedes Kabel-Labels
+wird in `buildLayout` bestimmt (Kandidaten in zwei Stufen — erst $|\Delta x|\le60$, dann
+$\le140$ px, je 8 Vertikalversätze), gegen Karten und bereits platzierte Labels geprüft und
+zusammen mit dem Layout zurückgegeben. Findet sich kein freier Platz, wird das **gezählt**
+(`labelFallbacks`), im Panel ausgewiesen und als Fehlerflag `ROUTING` gemeldet — statt still zu
+überlappen.
+
+| Größe | Kastenwagen | Tiefe Kette | Papierbeispiel | Zufallsnetze |
+|---|---|---|---|---|
+| Breite $W$ / px | 1240 | 1240 | 1240 | bis 4904 (26 Karten in einer Ebene) |
+| `cardOverlaps` | 0 | 0 | 0 | 0 in 144/144 (extern) |
+| `labelFallbacks` | 0 | 0 | 0 | 0 in 144/144 (extern) |
+| Labels frei platziert (Selbsttest) | — | — | — | 160/160 |
+
+Die Entwicklung ist dabei selbst ein Messergebnis: mit der alten Fläche und der alten
+Kandidatenliste waren es 153/160; mehr Kandidaten (acht Vertikalversätze, zweite Stufe bis
+140 px) brachten 157/160 — die letzten drei Fälle ließen sich so **nicht** lösen. Erst die
+breitere Fläche löste sie, weil es sich nicht um Platzierungs-, sondern um **Platzprobleme**
+handelte. Das ist der Unterschied zwischen Heuristik-Tuning und Ursachenbehebung.
+
+### 5.10 Grenzen
 
 * Zwei Ebenen (horizontal/vertikal) ohne Vias; jede Kante verbindet benachbarte Ebenen.
-* Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft, aber nicht als
-  Hindernisse geroutet).
+* Keine Hindernisvermeidung außerhalb der Karten (Labelkästen werden geprüft und kollisionsfrei
+  platziert, aber nicht als Hindernisse geroutet).
 * Kanalweise Optimierung: die Spurenzahl ist je Kanal minimal *unter der Ordnungsbedingung*; ein
   globales Minimum über alle Kanäle wird nicht beansprucht.
+* Die Zeichenfläche wächst mit der breitesten Ebene (§5.9). Sehr breite Netze werden dadurch
+  korrekt, aber im eingepassten Maßstab klein gezeichnet; Zoom und Pan sind vorhanden, eine
+  Umbrechung/Paginierung breiter Ebenen gibt es nicht.
+* Die Labelplatzierung ist eine zweistufige Kandidatensuche, kein Optimierungsproblem: sie liefert
+  eine überlappungsfreie Position, nicht die „beste“ (minimale Distanz zur Leitung) unter allen
+  zulässigen.
 
 ## 6 Konkreter Vergleich: Stamm + vier Zweige
 
@@ -1125,7 +1173,9 @@ Der eingebaute Selbsttest (§5.7) meldet **160/160 kreuzungsfrei, 126/160 spuren
 160/160 auch in der Rückleiterklasse kollisionsfrei** und bestätigt für alle drei Referenznetze
 $T=\omega$ (§5.6). Die Rückleitergeometrie (§5.8) wird mitgeprüft; ein externer Abgleich der
 gerenderten `<path class="return-line">`-Daten gegen alle Zuleitungen und Knotenkarten liefert
-für alle drei Netze ebenfalls 0 Treffer.
+für alle drei Netze ebenfalls 0 Treffer. Karten und Labels werden sowohl im Modell
+(`cardOverlaps`, `labelFallbacks`, §5.9) als auch aus den gerenderten Rechtecken geprüft: 0
+Überlappungen in allen drei Netzen und in 144/144 Zufallsnetzen.
 Der Stresstest deckte zwei echte Router-Fehler auf, die im Festnetz nicht sichtbar waren:
 vertikal kollineare Stichleitungen (Port auf fremder Klemme) und ein Spurenband, das bei
 $T>8$ den festen Ebenenabstand sprengte und Stichleitungen rückwärts laufen ließ. Beide sind
@@ -1134,8 +1184,9 @@ behoben (§5.2, §5.4) — der zweite durch das Zwei-Pass-Layout.
 ### 8.7 DOM-Assertions
 
 Für jedes Szenario werden geprüft: 6 KPI-Kacheln, Knoten-/Kantenzahl im SVG und in den
-Tabellen, $\ge1$ Flag, 4 KKT-Karten, 10 Solver-Zellen, Status-Pill, keine Konsolenfehler.
-Ergebnis: **alle Prüfungen bestanden**.
+Tabellen, $\ge1$ Flag, 4 KKT-Karten, 16 Solver-Zellen (inkl. Rückleiter- und Labelzeile),
+Status-Pill, `viewBox` = Layoutmaß, keine Konsolenfehler. Ergebnis: **alle Prüfungen
+bestanden**.
 
 ---
 

@@ -28,7 +28,8 @@ sowie Isolierklasse lösen das Netz neu.
 | Routing | 0 Kreuzungen, 0 Jogs, 0 Karten-/Labelkollisionen in allen Szenarien; **144/144 zufällige Bäume kreuzungsfrei** |
 | Rückleiter (zweite Ader) | geometrisch geprüft statt gezeichnet: 0 Kollisionen in allen Szenarien, **144/144** im Stresstest bei Versatz 3 px (§5.8) |
 | Spurenminimalität | $T=\omega$ (Cliquenzahl) in allen Kanälen der drei Referenznetze — bewiesen minimal |
-| Selbsttest im Artefakt | 160/160 kreuzungsfrei, 126/160 spurenminimal, 160/160 Rückleiter kollisionsfrei, 0 Jogs (Schaltfläche im Solver-Panel) |
+| Zeichenfläche, Labels, Karten | Breite wächst mit der breitesten Ebene (§5.9); 0 Kartenüberlappungen und 0 Label-Fallbacks in 144/144 Netzen (Modell **und** gerenderte Rechtecke) |
+| Selbsttest im Artefakt | 160/160 kreuzungsfrei, 126/160 spurenminimal, 160/160 Rückleiter kollisionsfrei, 160/160 Labels frei platziert, 0 Jogs (Schaltfläche im Solver-Panel) |
 | DOM-Assertions (KPIs, Tabellen, Flags, Status, Konsole) | alle bestanden, 0 Konsolenfehler |
 
 ## Deklarationen

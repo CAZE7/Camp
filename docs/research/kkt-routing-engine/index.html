@@ -3455,7 +3455,11 @@ window.CampEngine = CAMPEngine;
    *  kollisionsfrei, ab 5 px kreuzt der Rückleiter fremde Zuleitungen
    *  (siehe WHITEPAPER §5.9). */
   const RETURN_OFFSET = 3;
+  /** Mindestbreite der Zeichenfläche. Breite Ebenen (viele Knoten) erweitern
+   *  sie: canvasW = max(CANVAS_W, 2*SIDE + breiteste Ebene * (NODE_W + 16)).
+   *  Ohne diese Regel überlappen die Karten breiter Ebenen still. */
   const CANVAS_W = 1240;
+  const NODE_GAP = 8;
   const TOP = 62;
   const DY = 152;
   const SIDE = 60;
@@ -3485,11 +3489,14 @@ window.CampEngine = CAMPEngine;
     net.nodes.forEach((node, i) => layers[node.layer].push(i));
     layers.forEach((arr) => arr.sort((a, b) => net.nodes[a].id.localeCompare(net.nodes[b].id)));
 
+    const widest = Math.max(...layers.map((a) => a.length));
+    const canvasW = Math.max(CANVAS_W, 2 * SIDE + widest * (NODE_W + NODE_GAP));
+
     const pos = new Map();
     const assign = (arr, k) => {
-      const usable = CANVAS_W - 2 * SIDE;
+      const usable = canvasW - 2 * SIDE;
       arr.forEach((v, i) => {
-        const x = arr.length === 1 ? CANVAS_W / 2 : SIDE + (i + 0.5) * (usable / arr.length);
+        const x = arr.length === 1 ? canvasW / 2 : SIDE + (i + 0.5) * (usable / arr.length);
         pos.set(v, { x, y: TOP + k * DY + NODE_H / 2 });
       });
     };
@@ -3891,6 +3898,26 @@ window.CampEngine = CAMPEngine;
       }
     }
 
+    // ---- Invariante: Karten überlappen nicht ----------------------------
+    // Konstruktiv garantiert (Pitch >= NODE_W + NODE_GAP), aber geprüft:
+    // eine stille Überlappung bei breiten Ebenen wäre ein Zeichenfehler.
+    let cardOverlaps = 0;
+    for (const arr of layers) {
+      const xs = arr.map((v) => pos.get(v).x).sort((a2, b2) => a2 - b2);
+      for (let i = 1; i < xs.length; i += 1) if (xs[i] - xs[i - 1] < NODE_W) cardOverlaps += 1;
+    }
+
+    // ---- Labelplatzierung: Teil des Modells, nicht des Renderers ---------
+    // Damit ist die Platzierung prüfbar (Fallback-Zähler) und nicht von der
+    // Zeichenreihenfolge abhängig. Reihenfolge = Kantenindex (wie zuvor).
+    const labelCards = [...pos.values()].map((p) => [p.x - NODE_W / 2, p.y - NODE_H / 2, NODE_W, NODE_H]);
+    const placer = makeLabelPlacer(labelCards, canvasW);
+    net.edges.forEach((edge, e) => {
+      const g = edgeGeom.get(e);
+      if (g) g.labelPos = placer(g.points, g.midY);
+    });
+    const labelFallbacks = placer.fallbacks;
+
     const trackLowerBound = channelStats.reduce((a2, c) => Math.max(a2, c.omega), 0);
     const tracksMinimal = channelStats.every((c) => c.minimal);
     const totalBends = channelStats.reduce((a2, c) => a2 + c.bends, 0);
@@ -3898,6 +3925,7 @@ window.CampEngine = CAMPEngine;
     return {
       pos,
       edgeGeom,
+      width: canvasW,
       height,
       layers,
       channelStats,
@@ -3909,6 +3937,8 @@ window.CampEngine = CAMPEngine;
       returnGeom,
       returnCrossings,
       returnCrossingList,
+      labelFallbacks,
+      cardOverlaps,
       trackLowerBound,
       tracksMinimal,
       totalBends,
@@ -3931,6 +3961,9 @@ window.CampEngine = CAMPEngine;
       doglegs: layout.doglegs,
       returnCrossings: layout.returnCrossings,
       returnCrossingList: layout.returnCrossingList.slice(0, 6),
+      labelFallbacks: layout.labelFallbacks,
+      cardOverlaps: layout.cardOverlaps,
+      width: layout.width,
       maxTrack: layout.maxTrack,
       trackLowerBound: layout.trackLowerBound,
       tracksMinimal: layout.tracksMinimal,
@@ -4019,39 +4052,47 @@ window.CampEngine = CAMPEngine;
    * Leitung, die Zuordnung bleibt eindeutig. Deterministisch: Kandidaten
    * werden in fester Reihenfolge geprüft.
    */
-  function makeLabelPlacer(cardRects) {
+  function makeLabelPlacer(cardRects, canvasW) {
     const placed = [];
-    const hits = (r, list) =>
-      list.some(
-        (o) => r[0] < o[0] + o[2] + 2 && o[0] < r[0] + r[2] + 2 && r[1] < o[1] + o[3] + 2 && o[1] < r[1] + r[3] + 2
-      );
-    return (points, midY) => {
+    const placer = (points, midY) => {
       const x1 = points[1][0];
       const x2 = points[2][0];
       const lo = Math.min(x1, x2);
       const hi = Math.max(x1, x2);
       const w = 68;
       const h = 15;
-      const centre = clamp((x1 + x2) / 2, 40, CANVAS_W - 40);
+      const centre = clamp((x1 + x2) / 2, 40, canvasW - 40);
+      // Zwei Stufen: erst nah an der Leitung (|dx| <= 60), dann weiter weg
+      // (|dx| <= 140). Nur wenn beide Stufen scheitern, gilt es als Fallback.
       const candidates = [];
-      for (const dy of [-10, -26, 6]) {
-        candidates.push([centre, midY + dy]);
-        for (let d = 16; d <= 160; d += 16) {
-          candidates.push([clamp(centre - d, 40, CANVAS_W - 40), midY + dy]);
-          candidates.push([clamp(centre + d, 40, CANVAS_W - 40), midY + dy]);
+      for (const reach of [60, 140]) {
+        for (const dy of [-10, -26, 6, 22, -42, 38, -58, 54]) {
+          candidates.push([centre, midY + dy, reach]);
+          for (let d = 12; d <= reach; d += 8) {
+            candidates.push([clamp(centre - d, 40, canvasW - 40), midY + dy, reach]);
+            candidates.push([clamp(centre + d, 40, canvasW - 40), midY + dy, reach]);
+          }
         }
       }
-      for (const [cx, cy] of candidates) {
-        if (cx - w / 2 < lo - 60 || cx + w / 2 > hi + 60) continue;
+      for (const [cx, cy, reach] of candidates) {
+        if (cx - w / 2 < lo - reach || cx + w / 2 > hi + reach) continue;
         const r = [cx - w / 2, cy - 9, w, h + 3];
-        if (!hits(r, cardRects) && !hits(r, placed)) {
+        if (!placer.hits(r, cardRects) && !placer.hits(r, placed)) {
           placed.push(r);
           return [cx, cy];
         }
       }
+      // Kein freier Platz: laut zählen und trotzdem zeichnen — der Aufrufer
+      // weist die Zahl aus (Panel + ROUTING-Flag), statt sie zu verschweigen.
+      placer.fallbacks += 1;
       placed.push([centre - w / 2, midY - 19, w, h]);
       return [centre, midY - 10];
     };
+    placer.fallbacks = 0;
+    placer.hits = (r, list) =>
+      list.some((o) => r[0] < o[0] + o[2] + 2 && o[0] < r[0] + r[2] + 2 && r[1] < o[1] + o[3] + 2 && o[1] < r[1] + r[3] + 2);
+    placer.placed = placed;
+    return placer;
   }
 
   function renderSvg() {
@@ -4080,17 +4121,11 @@ window.CampEngine = CAMPEngine;
     let guides = '';
     for (let k = 0; k < layout.layerCount; k += 1) {
       const y = TOP + k * DY + NODE_H / 2;
-      guides += `<line class="layer-line" x1="18" y1="${y}" x2="${CANVAS_W - 18}" y2="${y}"/>`;
+      guides += `<line class="layer-line" x1="18" y1="${y}" x2="${layout.width - 18}" y2="${y}"/>`;
       guides += `<text class="layer-tag" x="10" y="${y + 3}">${String(k + 1).padStart(2, '0')} ${esc(
         layerNames[k] || 'LAST'
       )}</text>`;
     }
-
-    const cardRects = net.nodes.map((node, v) => {
-      const p = layout.pos.get(v);
-      return [p.x - NODE_W / 2, p.y - NODE_H / 2, NODE_W, NODE_H];
-    });
-    const placeLabel = makeLabelPlacer(cardRects);
 
     let edgeMarkup = '';
     net.edges.forEach((edge, e) => {
@@ -4105,7 +4140,7 @@ window.CampEngine = CAMPEngine;
       const points = geom.points;
 
       const mid = points[1];
-      const [labelX, labelY] = placeLabel(points, geom.midY);
+      const [labelX, labelY] = geom.labelPos;
       const showFuse = selectedEdge;
       const label = `${nf(rep.area, rep.area < 10 ? 1 : 0)} mm²`;
       const fuseLabel = `${rep.fuse.typeLabel} ${nf(rep.fuse.ratedA, 0)} A`;
@@ -4195,7 +4230,7 @@ window.CampEngine = CAMPEngine;
 
     const transform = `translate(${state.view.tx.toFixed(2)} ${state.view.ty.toFixed(2)}) scale(${state.view.k.toFixed(4)})`;
 
-    svg.setAttribute('viewBox', `0 0 ${CANVAS_W} ${layout.height}`);
+    svg.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
     svg.innerHTML = `
       <defs>
         <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
@@ -4293,6 +4328,20 @@ window.CampEngine = CAMPEngine;
     // Fail loud: eine verletzte Routing-Invariante ist ein Fehlerzustand, kein
     // Hinweis. Sie wird als Flag vorangestellt, nicht nur als Zahl geführt.
     const routingFlags = [];
+    if (state.layout && state.layout.cardOverlaps > 0) {
+      flags.push({
+        code: 'ROUTING',
+        level: 'error',
+        text: `${state.layout.cardOverlaps} überlappende Knotenkarten — Zeichenfläche zu schmal`,
+      });
+    }
+    if (state.layout && state.layout.labelFallbacks > 0) {
+      flags.push({
+        code: 'ROUTING',
+        level: 'error',
+        text: `${state.layout.labelFallbacks} Kabel-Label ohne freien Platz — überdeckt Karte oder anderes Label`,
+      });
+    }
     if (state.layout && state.layout.returnCrossings > 0) {
       flags.push({
         code: 'ROUTING',
@@ -4518,7 +4567,7 @@ window.CampEngine = CAMPEngine;
   /** Führt den Selbsttest aus (synchron, ~0,3 s für 200 Netze). */
   function runSelfTest(count = 200) {
     const rnd = seededRandom(0x5eed1234);
-    const result = { total: 0, clean: 0, doglegs: 0, minimal: 0, worstTrack: 0, failures: [], count, returnClean: 0, returnHits: 0 };
+    const result = { total: 0, clean: 0, doglegs: 0, minimal: 0, worstTrack: 0, failures: [], count, returnClean: 0, returnHits: 0, labelClean: 0, labelFallbacks: 0 };
     for (let i = 0; i < count; i += 1) {
       const net = randomTree(rnd, i);
       if (!net.edges.length) continue;
@@ -4530,7 +4579,11 @@ window.CampEngine = CAMPEngine;
       if (r.tracksMinimal) result.minimal += 1;
       if (r.returnCrossings === 0) result.returnClean += 1;
       result.returnHits += r.returnCrossings;
+      if (r.labelFallbacks === 0 && r.cardOverlaps === 0) result.labelClean += 1;
+      result.labelFallbacks += r.labelFallbacks;
+      result.cardOverlaps = (result.cardOverlaps || 0) + r.cardOverlaps;
       result.worstTrack = Math.max(result.worstTrack, r.maxTrack);
+      result.maxWidth = Math.max(result.maxWidth || 0, r.width);
     }
     return result;
   }
@@ -4542,7 +4595,9 @@ window.CampEngine = CAMPEngine;
     const okRet = r.returnClean === r.total;
     return `<b class="${ok ? 'ok-text' : 'warn-text'}">${r.clean}/${r.total}</b> kreuzungsfrei · ${r.minimal}/${r.total} spurenminimal · <b class="${
       okRet ? 'ok-text' : 'warn-text'
-    }">${r.returnClean}/${r.total}</b> Rückleiter kollisionsfrei · ${r.doglegs} Jogs · max. ${r.worstTrack} Spuren`;
+    }">${r.returnClean}/${r.total}</b> Rückleiter kollisionsfrei · ${r.labelClean}/${r.total} Labels frei platziert · ${
+      r.doglegs
+    } Jogs · max. ${r.worstTrack} Spuren`;
   }
 
   /** Schattenpreise als normierte Balken (Maximum = 100 %). */
@@ -4747,6 +4802,9 @@ window.CampEngine = CAMPEngine;
         <div><span>Rückleiter-Kollisionen</span><b class="${
           lay.returnCrossings === 0 ? 'ok-text' : 'warn-text'
         }">${nf(lay.returnCrossings, 0)}</b></div>
+        <div><span>Label-Fallbacks / Kartenüberlappung</span><b class="${
+          lay.labelFallbacks === 0 && lay.cardOverlaps === 0 ? 'ok-text' : 'warn-text'
+        }">${nf(lay.labelFallbacks, 0)} / ${nf(lay.cardOverlaps, 0)}</b></div>
         <div><span>Biegungen</span><b>${nf(lay.totalBends, 0)}</b></div>
       </div>
       <div class="selftest">
@@ -5000,7 +5058,7 @@ window.CampEngine = CAMPEngine;
   function zoomBy(factor) {
     const svg = $('#canvas');
     if (!svg) return;
-    const cx = CANVAS_W / 2;
+    const cx = state.layout ? state.layout.width / 2 : CANVAS_W / 2;
     const cy = state.layout ? state.layout.height / 2 : 300;
     const k = clamp(state.view.k * factor, 0.5, 3.2);
     const ratio = k / state.view.k;
