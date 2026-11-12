@@ -46,7 +46,8 @@
     "audit:dead-code": "knip --no-progress",
     "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
     "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts",
-    "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts"
+    "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts",
+    "routing:core:ab": "tsx scripts/routing-core/ab.ts"
   },
   "engines": {
     "node": ">=22.0.0"
