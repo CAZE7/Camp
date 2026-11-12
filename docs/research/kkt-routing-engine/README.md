@@ -17,16 +17,19 @@ sowie Isolierklasse lösen das Netz neu.
 
 ## Nachweisstand
 
-Alle Zahlen der folgenden Tabelle sind mit zwei Skripten reproduzierbar
+Alle Zahlen der folgenden Tabelle sind mit vier Skripten reproduzierbar
 ([`verify/`](./verify/README.md)): `verify.mjs` prüft Geometrie, DOM und Stresstest am
-gerenderten SVG, `sweep.mjs` fährt den Betriebsbereich (42 Läufe). Beide lesen das
-ausgelieferte `index.html` in `jsdom` — geprüft wird also das Artefakt, nicht eine Kopie davon.
+gerenderten SVG, `sweep.mjs` den Betriebsbereich (42 Läufe), `bruteforce.mjs` die
+Optimalität gegen vollständige Enumeration und `duality.mjs` KKT-Residuum, schwache Dualität
+und Schattenpreis. Alle lesen das ausgelieferte `index.html` in `jsdom` — geprüft wird also das
+Artefakt, nicht eine Kopie davon.
 
 | Prüfung | Ergebnis |
 |---|---|
-| B&B gegen $12^{m}$-Brute-Force (100 Zufallsnetze) | 100/100 exakt, alle Optima bewiesen |
-| KKT-Residuum $c_e a_e^2/(b_e\Lambda_e)$ | $1{,}000$ auf allen Kanten |
-| Schattenpreis gegen Finite Differenzen | Abweichung $0{,}26\,\%$ |
+| B&B gegen $12^{m}$-Brute-Force (100 Zufallsnetze) | 100/100 exakt, alle Optima bewiesen (`verify/bruteforce.mjs`) |
+| KKT-Residuum $c_e a_e^2/(b_e\Lambda_e)$ | $1{,}0000$ auf allen inneren Kanten (Residuum $\le4{,}4\cdot10^{-16}$) |
+| Schattenpreis gegen Finite Differenzen | Abweichung $0{,}02$–$0{,}94\,\%$ je Szenario (`verify/duality.mjs`) |
+| Restlücke am Fixpunkt $\Pi$ | 0 % / 0 % / 8,3 % — Kastenwagen und Kette konvergieren auf das lineare Optimum, das Papierbeispiel endet im Zyklus (§7) |
 | Thermischer Fixpunkt | Restfehler $<10^{-4}$ K, Kontraktion $\approx0{,}30$ |
 | Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft |
 | Betriebsbereich (`verify/sweep.mjs`) | 42 Läufe: 40 zulässig, 2 zertifiziert unlösbar (Budget 1 %), 0 unerklärt |

@@ -38,11 +38,15 @@ Gültigkeitsnachweis führt:
 Kernaussage: **Die diskrete B&B-Lösung des linearisierten Problems ist am gekoppelten Modell
 nicht ohne Nachbesserung zulässig.** Der äußere Fixpunkt muß Querschnitte anheben
 (Temperaturrückkopplung), und eine anschließende *Politur* mit exakter Verifikation senkt die
-Masse wieder, bis keine zulässige Einzelschritt-Reduktion mehr existiert. Der Preis der
-Kopplung ist meßbar: $+17{,}6\,\%$ gegenüber dem B&B-Optimum bei eingefrorenen Temperaturen
-(Kastenwagen), $+8{,}3\,\%$ im Papierbeispiel. Diese Zahl ist **kein** Solver-Fehler, sondern
-der physikalische Preis der Selbstaufheizung — sie wird in §6.6 explizit ausgewiesen und nicht
-wegdefiniert.
+Masse wieder, bis keine zulässige Einzelschritt-Reduktion mehr existiert.
+
+Der Preis der Kopplung ist **keine** pauschale Zahl, sondern eine Restlücke am Fixpunkt: Für
+Kastenwagen und Tiefe Kette konvergiert die Iteration auf einen Zustand, in dem das lineare
+Optimum bei eingefrorenen Temperaturen genau der gezeichnete Entwurf ist ($\Pi=0$). Im
+Papierbeispiel endet sie in einem Zyklus, und der reparierte Entwurf wiegt mit 6,451 kg
+$8{,}3\,\%$ mehr als das lineare Optimum (5,914 kg). Frühere Fassungen nannten hier
+$+17{,}6\,\%$ für den Kastenwagen — dieser Wert war ein Buchhaltungsfehler in der
+KKT-Diagnose (volles statt kontaktbereinigtes Budget, siehe §7), kein physikalischer Effekt.
 
 ---
 
@@ -241,9 +245,14 @@ $$
 $$
 
 Der numerische Differenzenquotient der Relaxationsmasse nach dem Budget,
-$\big(M(B+h)-M(B-h)\big)/2h$, ergibt $-14777{,}1\ \mathrm{g/V}$ gegenüber $-\sum_v\lambda_v=-14815{,}9$
-— Abweichung $0{,}26\,\%$, verursacht durch die endliche Schrittweite $h$ und die
-Bisektionsgenauigkeit. Das ist der **Gültigkeitstest der Dualität**, nicht nur eine Plausibilität.
+$\big(M(B+h)-M(B-h)\big)/2h$, ergibt bei $h=0{,}002\,\%$ des Budgets
+$-14818{,}2\ \mathrm{g/V}$ gegenüber $-\sum_v\lambda_v=-14815{,}9$ g/V — Abweichung
+$0{,}02\,\%$. Das ist der **Gültigkeitstest der Dualität**, nicht nur eine Plausibilität; er
+wird von `verify/duality.mjs` für alle drei Referenznetze gefahren (Abweichung dort
+$0{,}02$–$0{,}94\,\%$, §8.4). Wichtig ist, daß die Differenz am **eingefrorenen** Problem
+gebildet wird: Wird stattdessen die gesamte Kette inklusive der elektro-thermischen Rückkopplung
+neu gelöst, ändert sich der Betriebspunkt mit dem Budget, und der Vergleich mißt zwei Effekte
+gleichzeitig.
 
 Daß $\lambda_B$ kleiner ist als $\lambda_A$, obwohl beide dasselbe Budget haben, folgt aus
 $b_1/b_2$: Blatt B hat den halben Strom und damit den halben Koeffizienten; eine Budgeterweiterung
@@ -550,16 +559,25 @@ Optimum** des gekoppelten Problems: in der 1-opt- *und* 2-opt-Nachbarschaft exis
 zulässige Verbesserung. Für alle drei Referenznetze wird dieser Radius tatsächlich erschöpft
 (`radius = 2`), ohne das Abbruchlimit zu berühren.
 
-**Kopplungsprämie.** Der Abstand zwischen dem B&B-Optimum bei eingefrorenen Temperaturen und
-dem verifizierten Entwurf ist die physikalische Kopplungsprämie:
+**Restlücke am Fixpunkt.** Der Abstand zwischen dem B&B-Optimum bei eingefrorenen Temperaturen
+und dem verifizierten Entwurf wird als Restlücke $\Pi$ ausgewiesen:
 
 $$
 \Pi=\frac{M^{\text{Design}}-M^{\text{B\&B,fix}}}{M^{\text{Design}}}.
 $$
 
-Sie beträgt $17{,}6\,\%$ (Kastenwagen), $18{,}0\,\%$ (Kette) und $8{,}3\,\%$ (Papierbeispiel,
-kürzere Zweige, geringere Erwärmung). Sie wird **nicht** als Solver-Lücke deklariert, sondern
-als Modellpreis ausgewiesen.
+$\Pi$ ist ein **Konvergenzmaß der äußeren Iteration**, kein physikalischer Modellpreis: Ist der
+Fixpunkt eingeschwungen, liefert das B&B am Endzustand genau den gezeichneten Entwurf, also
+$\Pi=0$. Genau das ist bei Kastenwagen und Tiefe Kette der Fall. Bleibt $\Pi>0$, endet die
+Iteration in einem Zyklus (§3.3): das lineare Optimum am Endzustand ist am gekoppelten Modell
+nicht zulässig, und der reparierte Entwurf bleibt schwerer — im Papierbeispiel
+$\Pi=8{,}3\,\%$.
+
+> **Frühere Fassung.** Bis Commit `8d6b394` wurde $\Pi$ mit dem vollen Spannungsbudget
+> ausgewertet (die Bemessung selbst rechnet mit dem um die Kontaktabfälle reduzierten Budget).
+> Dadurch entstand ein scheinbarer Modellpreis von $+17{,}6\,\%$ (Kastenwagen) und
+> $+18{,}0\,\%$ (Kette). Aufgefallen ist die Inkonsistenz über `verify/bruteforce.mjs`; siehe
+> den Korrekturhinweis in §7.
 
 ---
 
@@ -1075,10 +1093,12 @@ $2{,}7\,\%$ — genau dieser kleine Anstieg reicht, um die Budgetgleichheit
 Eigenschaft eines aktiven Gleichheitsrestriktion: das Optimum liegt **auf** der Schranke, jede
 Rückkopplung wirkt nach außen.
 
-**Kopplungsprämie.** $M^{\text{Design}}/M^{\text{B\&B,fix}}=6{,}451/5{,}914=1{,}091$, also
-$+8{,}3\,\%$ — der kleinste Wert der drei Szenarien, weil die Zweige kurz sind (5 m) und die
-Erwärmung gering bleibt. Bei langen Ketten (Kastenwagen: $+17{,}6\,\%$) wächst der Preis der
-Kopplung deutlich.
+**Restlücke am Fixpunkt.** $M^{\text{Design}}/M^{\text{B\&B,fix}}=6{,}451/5{,}914=1{,}091$,
+also $+8{,}3\,\%$. Das Papierbeispiel ist damit das **einzige** der drei Netze mit einer
+Restlücke: Bei Kastenwagen und Tiefer Kette schwingt die äußere Iteration ein ($\Pi=0$), hier
+endet sie im Zyklus — das lineare Optimum (5,914 kg) verletzt am gekoppelten Modell das Budget,
+der reparierte Entwurf wiegt 6,451 kg. Der Unterschied liegt nicht in der Länge der Zweige,
+sondern darin, ob der Fixpunkt eingeschwungen ist oder nicht.
 
 **Vergleichstabelle:**
 
@@ -1137,17 +1157,33 @@ ausgegeben.
 
 | Szenario | $m$ | $a$ / mm² | Masse / kg | $\Delta U_{\max}$ | $I_{k,\max}$ / kA | $I_{k,\min}$ / A | I²t-Reserve | Relax. / kg | B&B / kg | Lücke | Kopplung | Laufzeit |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Kastenwagen (4-stufig) | 9 | 70,10,50,6,4,2.5,16,25,16 | **6,487** | 2,93 % | 11,08 | 113,9 | 99,78 % | 4,877 | 5,344 | 8,7 % | +17,6 % | 118 ms |
-| Tiefe Kette (5-stufig) | 8 | 70,70,35,6,6,16,10,16 | **10,877** | 2,97 % | 7,58 | 194,3 | 99,76 % | 8,247 | 8,924 | 7,6 % | +18,0 % | 68 ms |
-| Papierbeispiel | 5 | 35,16,10,16,16 | **6,451** | 2,96 % | 6,86 | 495,5 | 99,89 % | 5,335 | 5,914 | 9,8 % | +8,3 % | 11 ms |
+| Kastenwagen (4-stufig) | 9 | 70,10,50,6,4,2.5,16,25,16 | **6,487** | 2,93 % | 11,08 | 113,9 | 99,78 % | 5,674 | 6,487 | 12,5 % | 0,0 % | 62 ms |
+| Tiefe Kette (5-stufig) | 8 | 70,70,35,6,6,16,10,16 | **10,877** | 2,97 % | 7,58 | 194,3 | 99,76 % | 9,808 | 10,877 | 9,8 % | 0,0 % | 26 ms |
+| Papierbeispiel | 5 | 35,16,10,16,16 | **6,451** | 2,96 % | 6,86 | 495,5 | 99,89 % | 5,335 | 5,914 | 9,8 % | +8,3 % | 6 ms |
 
 Laufzeiten: Mittel aus zehn Läufen im Browser (single thread, jsdom-Vergleichsmessung);
 Streuung ±30 %. Die Politur meldet in allen drei Fällen `radius = 2`.
 
-Die Spalten „Relax.“ und „B&B“ beziehen sich auf das **eingefrorene** Problem (§2.1):
+Die Spalten „Relax.“ und „B&B“ beziehen sich auf das **eingefrorene** Problem (§2.1), und zwar
+mit demselben, um die Kontaktabfälle reduzierten Budget wie die Bemessung:
 „Relax.“ ist das kontinuierliche Optimum $M^\star$, „B&B“ das diskrete Optimum bei festen
-Temperaturen. Der ausgelieferte Entwurf (Spalte „Masse“) ist stets schwerer — die Differenz ist
-die Kopplungsprämie $\Pi$ aus §3.3, kein Solver-Restfehler.
+Temperaturen. Die Spalte „Kopplung“ ist die **Restlücke am Fixpunkt** $\Pi$ aus §3.3 — der
+Abstand zwischen dem ausgelieferten Entwurf und dem linearen Optimum am *konvergierten*
+Betriebspunkt.
+
+Für Kastenwagen und Tiefe Kette ist $\Pi=0$: der äußere Fixpunkt ist eingeschwungen, das lineare
+Optimum am Endzustand **ist** der gezeichnete Entwurf. Im Papierbeispiel bleibt $\Pi=8{,}3\,\%$,
+weil die Fixpunktiteration dort in einem Zyklus endet (§3.3): das lineare Optimum (5,914 kg) ist
+am gekoppelten Modell nicht zulässig, der reparierte Entwurf wiegt 6,451 kg.
+
+> **Korrekturhinweis.** Bis Commit `8d6b394` wurden „Relax.“, „B&B“ und $\Pi$ mit dem *vollen*
+> Spannungsbudget ausgewertet, während die Bemessung selbst das um die Kontaktabfälle reduzierte
+> Budget benutzt. Die Diagnose beschrieb damit ein leichteres Problem als das gelöste: für den
+> Kastenwagen wies sie 4,877 / 5,344 kg und $\Pi=+17{,}6\,\%$ aus. Aufgefallen ist das über
+> `verify/bruteforce.mjs` — Brute-Force und B&B stimmten nur bei den Szenarien ohne
+> Kontaktwiderstände überein. Mit dem korrigierten Budget verschwindet der scheinbare
+> Kopplungspreis für zwei der drei Netze; er war zu einem guten Teil ein Buchhaltungsfehler, kein
+> physikalischer Effekt.
 
 **Ersparnis gegenüber den Baselines:**
 
@@ -1167,12 +1203,22 @@ Ersparnis.
 
 ### 8.1 Brute-Force-Gegenprobe
 
-100 Zufallsnetze, $12^{5}$ Enumeration, **100/100 Übereinstimmung**, alle Optima bewiesen
-(§2.7).
+`verify/bruteforce.mjs` erzeugt 100 Zufallsnetze mit 3–5 Kanten, rekonstruiert für jedes das
+eingefrorene lineare Problem (§2.1) — Kostenvektor $c$, Spannungsvektor $b$, Belastbarkeits-
+Untergrenzen, um Kontaktabfälle reduziertes Budget — und vergleicht das B&B-Ergebnis
+(`discreteOptimize`) mit einer vollständigen Enumeration aller $12^{m}$ Belegungen.
+
+Ergebnis: **100/100 exakt gleich**, **100/100 Optimalität bewiesen**, 5115 B&B-Auswertungen
+gegenüber bis zu 248 832 vollständigen Belegungen je Netz, Laufzeit ≈ 2 s.
+
+> **Was dieser Test gefunden hat.** Er war der Anlass für den Korrekturhinweis in §7: Solange
+> die Engine die KKT-Diagnose mit dem vollen Budget rechnete, stimmten B&B und Brute-Force nur
+> bei den Szenarien ohne Kontaktwiderstände überein. Die Abweichung lag nicht im Optimierer,
+> sondern in den Daten, die ihm übergeben wurden.
 
 ### 8.2 Betriebsbereich (Regressionslauf)
 
-14 Parametersätze je Szenario, 42 Läufe: Budget $1/2/3/5\,\%$, Umgebung $15/45/55\,^\circ$C,
+14 Parametersätze je Szenario, 42 Läufe (`verify/sweep.mjs`): Budget $1/3/5\,\%$, Umgebung $15/45/55\,^\circ$C,
 Längenskalierung $\times1{,}5/\times2$, Kontaktskalierung $\times0{,}5/\times2$, Isolation XLPE
 sowie drei Kombinationen. Geprüft wird für **jeden** Lauf:
 
@@ -1206,9 +1252,21 @@ beweisbar, §3.3).
 
 ### 8.4 Duale Schranke und Schattenpreis
 
-* KKT-Residuum $c_ea_e^2/(b_e\Lambda_e)=1{,}000$ auf allen Kanten.
-* Numerischer Schattenpreis $-14777{,}1$ g/V gegen $-\sum\lambda=-14815{,}9$ g/V
-  ($0{,}26\,\%$ Abweichung, endliche Differenz).
+`verify/duality.mjs` prüft am eingefrorenen linearen Problem (dasselbe Budget wie die
+Bemessung, dieselben Belastbarkeits-Untergrenzen):
+
+* **KKT-Stationarität** $c_ea_e^2/(b_e\Lambda_e)=1$ auf allen inneren Kanten (Kanten auf der
+  Box-Grenze ausgenommen, dort greift der Box-Multiplikator): Residuum $\le4{,}4\cdot10^{-16}$,
+  die gedruckten Werte sind $1{,}0000$.
+* **Schwache Dualität** $M^{\text{Relax}}\le M^{\text{B\&B}}$ in allen drei Szenarien; die
+  Lücke (Preis der Normreihe) beträgt $12{,}56\,\%$ / $9{,}83\,\%$ / $9{,}79\,\%$.
+* **Schattenpreis gegen zentrale Differenz** $\Delta M/\Delta B$ am eingefrorenen Problem
+  (Schritt $\pm0{,}002\,\%$ des Budgets): $\sum\lambda$ stimmt mit der finiten Differenz auf
+  $0{,}02$–$0{,}94\,\%$ überein (Papier $0{,}02\,\%$, Kette $0{,}04\,\%$, Kastenwagen
+  $0{,}94\,\%$ — dort liegt der Schritt nahe einem Knick des Normgitters).
+* **Reproduktion der Engine-Werte**: $\sum\lambda$ aus der eigenen Rekonstruktion trifft die
+  Engine-Ausgabe für Kette und Papierbeispiel auf die Nachkommastelle ($32396{,}7$ bzw.
+  $14815{,}9$ g/V), für den Kastenwagen auf $0{,}05\,\%$.
 
 ### 8.5 Numerische Restfehler
 

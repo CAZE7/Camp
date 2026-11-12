@@ -6,7 +6,9 @@
   "scripts": {
     "verify": "node verify.mjs",
     "sweep": "node sweep.mjs",
-    "all": "node verify.mjs && node sweep.mjs"
+    "bruteforce": "node bruteforce.mjs",
+    "duality": "node duality.mjs",
+    "all": "node verify.mjs && node sweep.mjs && node bruteforce.mjs && node duality.mjs"
   },
   "dependencies": {
     "jsdom": "^25.0.1"

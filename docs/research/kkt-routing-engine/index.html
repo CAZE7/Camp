@@ -2929,8 +2929,20 @@ const CAMPEngine = (() => {
 
     // Pillar-1-Auswertung am endgültigen Fixpunkt: kontinuierliche Relaxation
     // und B&B-Optimum des linearisierten Problems (Temperaturen eingefroren).
+    // WICHTIG: dasselbe Budget wie in der Bemessung, also um die
+    // querschnittsunabhängigen Kontaktabfälle reduziert. Mit dem vollen Budget
+    // würde die Auswertung ein anderes (leichteres) Problem beschreiben als das,
+    // das tatsächlich gelöst wurde — λ, a* und die Relaxationslücke wären zu
+    // optimistisch. Das war bis hierher der Fall (gefunden über
+    // verify/bruteforce.mjs: Brute-Force und B&B stimmten nur bei Szenarien ohne
+    // Kontaktwiderstände überein).
     const finalCd = buildConstraintData(network, topo, state, options);
-    const finalSizing = discreteOptimize(finalCd, topo, topo.sinks, budgets, finalCd.floor, options);
+    const finalBudgets = topo.sinks.map((v, li) => {
+      let drop = 0;
+      for (const e of topo.pathEdges[v]) drop += finalCd.contactDrop[e];
+      return budgets[li] - drop;
+    });
+    const finalSizing = discreteOptimize(finalCd, topo, topo.sinks, finalBudgets, finalCd.floor, options);
 
     // KKT-Auswertung: Schattenpreise, Budgetaufteilung, kontinuierliche Masse.
     const kkt = {
@@ -4336,7 +4348,7 @@ window.CampEngine = CAMPEngine;
         'Kupfermasse (diskret)',
         nf(m.copperMassKg, 2),
         'kg',
-        `Relaxation ${nf(kkt.continuousMassG / 1000, 2)} kg · Kopplungsprämie +${nf(kkt.couplingPremiumPct, 1)} %`,
+        `Relaxation ${nf(kkt.continuousMassG / 1000, 2)} kg · Restlücke am Fixpunkt ${nf(kkt.couplingPremiumPct, 1)} %`,
         'copper'
       ),
       kpi(
@@ -4676,6 +4688,13 @@ window.CampEngine = CAMPEngine;
     if (!host) return;
     const res = state.result;
     const kkt = res.kkt;
+    // Kontaktabfälle des schlechtesten Blatts: die dualen Werte gelten für das
+    // um diese Abfälle reduzierte Budget (sonst wäre die Karte irreführend).
+    const contactSum = res.topology.sinks.reduce((mx, v) => {
+      let d = 0;
+      for (const e of res.topology.pathEdges[v]) d += Math.abs(res.state.I[e]) * res.state.contactR[e];
+      return Math.max(mx, d);
+    }, 0);
     const m = res.metrics;
     const sinks = kkt.perSink;
     const rows = sinks
@@ -4718,7 +4737,7 @@ window.CampEngine = CAMPEngine;
         <div class="kkt-card">
           <div class="kkt-card-title">B&amp;B-Optimum (Fixpunkt)</div>
           <div class="kkt-big">${nf(kkt.linearDiscreteMassG / 1000, 3)}<span>kg</span></div>
-          <p>Branch-and-Bound über A<sub>norm</sub> bei eingefrorenen Temperaturen. Die thermische Rückkopplung liegt außerhalb dieser Schranke; die Politur verifiziert jede Reduktion am vollen Modell.</p>
+          <p>Branch-and-Bound über A<sub>norm</sub> bei eingefrorenen Temperaturen, mit demselben (kontaktbereinigten) Budget wie die Bemessung. Ist die äußere Iteration eingeschwungen, ist dieser Entwurf identisch mit dem gezeichneten (Restlücke 0 %).</p>
           <div class="kkt-mini"><span>Knoten / Relax.</span><b>${nf(kkt.nodes, 0)} / ${nf(kkt.relaxations, 0)}</b></div>
           <div class="kkt-mini"><span>Optimalität</span><b class="${kkt.proven ? 'ok-text' : 'warn-text'}">${kkt.proven ? 'bewiesen' : 'nicht bewiesen'}</b></div>
           <div class="kkt-mini"><span>Politur</span><b>${nf(m.polishSteps, 0)} ΔA · ${m.polishRadius >= 2 ? '2-opt' : m.polishRadius === 1 ? '1-opt' : '—'}</b></div>
@@ -4726,13 +4745,19 @@ window.CampEngine = CAMPEngine;
         <div class="kkt-card">
           <div class="kkt-card-title">Ganzzahligkeitslücke</div>
           <div class="kkt-big">${nf(kkt.gapPct, 1)}<span>%</span></div>
-          <p>Preis der Normreihe: diskretes B&amp;B-Optimum gegen die kontinuierliche Relaxation. Die Kopplungsprämie (thermische Rückkopplung) beträgt +${nf(kkt.couplingPremiumPct, 1)} %.</p>
+          <p>Preis der Normreihe: diskretes B&amp;B-Optimum gegen die kontinuierliche Relaxation. Restlücke am Fixpunkt (thermische Rückkopplung noch nicht eingelöst): ${nf(
+            kkt.couplingPremiumPct,
+            1
+          )} % — 0 % heißt: das lineare Optimum am Endzustand ist der gezeichnete Entwurf.</p>
           <div class="kkt-mini"><span>Prüfungen</span><b>${nf(kkt.evaluations, 0)}</b></div>
         </div>
         <div class="kkt-card">
           <div class="kkt-card-title">Budget-Aufteilung (KKT)</div>
           <div class="kkt-big">${nf(kkt.budgetV, 3)}<span>V</span></div>
-          <p>Schattenpreise λ<sub>v</sub> je Blatt in g/V — der Grenznutzen einer Budgeterweiterung.</p>
+          <p>Schattenpreise λ<sub>v</sub> je Blatt in g/V — der Grenznutzen einer Budgeterweiterung. Sie beziehen sich auf das um die Kontaktabfälle reduzierte Budget: ${nf(
+            kkt.budgetV - contactSum,
+            3
+          )} V (Kontakte ${nf(contactSum * 1000, 0)} mV).</p>
           ${lamBars(kkt)}
           <div class="kkt-mini"><span>Σλ</span><b>${nf(
             kkt.perSink.reduce((a, s2) => a + s2.lambda, 0),
