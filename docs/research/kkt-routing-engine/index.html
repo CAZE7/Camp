@@ -169,6 +169,11 @@
         background: rgba(244, 184, 96, 0.09);
         color: #ffd79a;
       }
+      .status-pill.err {
+        border-color: rgba(251, 113, 133, 0.45);
+        background: rgba(251, 113, 133, 0.1);
+        color: #ffc2cb;
+      }
       .pulse {
         width: 6px;
         height: 6px;
@@ -2993,6 +2998,38 @@ const CAMPEngine = (() => {
     const worstLoading = edgeReports.reduce((max, r) => Math.max(max, r.loading), 0);
     const maxDrop = leaves.reduce((max, l) => Math.max(max, l.dropV), 0);
     const violations = leaves.filter((l) => l.dropV > budgetV + 1e-9);
+
+    // ---- Infeasibilitäts-Zertifikat (Monotonie in A) --------------------
+    // ΔU ist monoton fallend in jedem Querschnitt A_e. Der Kaltfall
+    // (T = Umgebung) mit ALLEN Kanten auf dem größten Normquerschnitt liefert
+    // deshalb eine untere Schranke für jeden mit A_NORM erreichbaren
+    // Spannungsfall: größere A sind nicht verfügbar, höhere T nur schlechter.
+    // Liegt diese Schranke über dem Budget, ist die Aufgabe unlösbar — nicht
+    // der Solver schlecht. Gültigkeit unter dem Lastmodell (§1.2: CC/CV-Lasten
+    // mit I(U) monoton fallend); das ist eine Modellaussage, kein Messwert.
+    let coldBoundV = null;
+    if (violations.length > 0) {
+      const aMax = A_NORM[A_NORM.length - 1];
+      const maxAreas = new Array(m).fill(aMax);
+      const cold = solveElectrical(network, topo, maxAreas, new Array(m).fill(options.ambientC), options);
+      coldBoundV = Math.max(
+        ...topo.sinks.map((v) => {
+          let d = 0;
+          for (const e of topo.pathEdges[v]) {
+            const length = network.edges[e].lengthM * options.lengthScale;
+            d += Math.abs(cold.I[e]) * ((2 * RHO20 * length) / aMax + cold.contactR[e]);
+          }
+          return d;
+        })
+      );
+    }
+    // Zweites, schärferes Zeugnis ohne Modellannahme: steht JEDE Kante bereits
+    // auf dem größten Normquerschnitt und ist das Budget dann noch verletzt,
+    // ist die Normreihe ausgeschöpft — es gibt keinen zulässigen Entwurf.
+    const aMaxTop = A_NORM[A_NORM.length - 1];
+    const allMax = A.every((a) => a >= aMaxTop - 1e-9);
+    const infeasible =
+      violations.length > 0 && (allMax || (coldBoundV !== null && coldBoundV > budgetV + 1e-9));
     const selectivityFails = selectivity.filter((s) => !s.ok);
     const fuseFails = edgeReports.filter((r) => !r.fuse.breakingOk || !r.fuse.cableOk || !r.tripOk);
     const degraded = [];
@@ -3057,6 +3094,10 @@ const CAMPEngine = (() => {
       mainEdgeId: primary.id,
       mainArea: A[0],
       violations: violations.length,
+      infeasible,
+      allMax,
+      coldBoundV,
+      coldBoundPct: coldBoundV === null ? null : (coldBoundV / U_NOMINAL) * 100,
       kktProven: kkt.proven,
       kktNodes: kkt.nodes,
       kktGapPct: kkt.gapPct,
@@ -3114,7 +3155,21 @@ const CAMPEngine = (() => {
         text: `Selektivität ${s.parentFuse.ratedA} A / ${s.childFuse.ratedA} A: I²t_pre,Eltern / I²t_total,Kind = ${s.ratio.toFixed(2)} ≤ 1`,
       });
     });
-    degraded.forEach((d) => flags.push({ level: 'warn', code: 'SOLVER', text: d }));
+    degraded.forEach((d) => {
+      if (d.startsWith('Spannungsfall-Budget')) {
+        flags.push({
+          level: 'error',
+          code: 'SOLVER',
+          text: allMax
+            ? `Unlösbar: alle ${m} Kanten stehen auf ${aMaxTop} mm², ΔU = ${(maxDrop / U_NOMINAL * 100).toFixed(2)} % > Budget ${(budgetV / U_NOMINAL * 100).toFixed(2)} % — Normreihe ausgeschöpft`
+            : infeasible
+            ? `Unlösbar mit der Normreihe: Kalt-Schranke ΔU ≥ ${(coldBoundV / U_NOMINAL * 100).toFixed(2)} % bei ${aMaxTop} mm² auf allen Kanten, Budget ${(budgetV / U_NOMINAL * 100).toFixed(2)} % (Monotonie-Zertifikat, Modell §1.2)`
+            : `Budget nicht eingehalten (ΔU ${(maxDrop / U_NOMINAL * 100).toFixed(2)} % > ${(budgetV / U_NOMINAL * 100).toFixed(2)} %), Nachbesserung ausgeschöpft`,
+        });
+        return;
+      }
+      flags.push({ level: 'warn', code: 'SOLVER', text: d });
+    });
     if (repairs > 0) {
       flags.push({
         level: 'info',
@@ -4372,9 +4427,12 @@ window.CampEngine = CAMPEngine;
     const m = state.result.metrics;
     const pill = $('#statusPill');
     if (!pill) return;
-    const ok = m.violations === 0 && m.fuseFails === 0 && m.degraded.length === 0;
-    pill.className = 'status-pill ' + (ok ? 'ok' : 'warn');
-    pill.innerHTML = `<span class="pulse"></span>${ok ? 'SOLVER KONVERGIERT' : 'PRÜFHINWEISE'}`;
+    const infeasible = m.infeasible === true;
+    const ok = !infeasible && m.violations === 0 && m.fuseFails === 0 && m.degraded.length === 0;
+    pill.className = 'status-pill ' + (infeasible ? 'err' : ok ? 'ok' : 'warn');
+    pill.innerHTML = `<span class="pulse"></span>${
+      infeasible ? 'UNLÖSBAR · NORMREIHE AUSGESCHÖPFT' : ok ? 'SOLVER KONVERGIERT' : 'PRÜFHINWEISE'
+    }`;
     const rt = $('#runtime');
     if (rt) rt.textContent = nf(state.solveMs, 0) + ' ms';
     const scenarioTag = $('#scenarioTag');

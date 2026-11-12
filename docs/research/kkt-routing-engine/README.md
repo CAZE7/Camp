@@ -17,13 +17,19 @@ sowie Isolierklasse lösen das Netz neu.
 
 ## Nachweisstand
 
+Alle Zahlen der folgenden Tabelle sind mit zwei Skripten reproduzierbar
+([`verify/`](./verify/README.md)): `verify.mjs` prüft Geometrie, DOM und Stresstest am
+gerenderten SVG, `sweep.mjs` fährt den Betriebsbereich (42 Läufe). Beide lesen das
+ausgelieferte `index.html` in `jsdom` — geprüft wird also das Artefakt, nicht eine Kopie davon.
+
 | Prüfung | Ergebnis |
 |---|---|
 | B&B gegen $12^{m}$-Brute-Force (100 Zufallsnetze) | 100/100 exakt, alle Optima bewiesen |
 | KKT-Residuum $c_e a_e^2/(b_e\Lambda_e)$ | $1{,}000$ auf allen Kanten |
 | Schattenpreis gegen Finite Differenzen | Abweichung $0{,}26\,\%$ |
 | Thermischer Fixpunkt | Restfehler $<10^{-4}$ K, Kontraktion $\approx0{,}30$ |
-| Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft, 42/42 Läufe im Betriebsbereich zulässig |
+| Gekoppelte Politur (1-opt **und** 2-opt) | Radius 2 in allen Szenarien erschöpft |
+| Betriebsbereich (`verify/sweep.mjs`) | 42 Läufe: 40 zulässig, 2 zertifiziert unlösbar (Budget 1 %), 0 unerklärt |
 | Sicherungskoordination nach Politur | $I_{\mathrm n}\le I_{z,\mathrm{eff}}$ für jede Kante geprüft |
 | Routing | 0 Kreuzungen, 0 Jogs, 0 Karten-/Labelkollisionen in allen Szenarien; **144/144 zufällige Bäume kreuzungsfrei** |
 | Rückleiter (zweite Ader) | geometrisch geprüft statt gezeichnet: 0 Kollisionen in allen Szenarien, **144/144** im Stresstest bei Versatz 3 px (§5.8) |

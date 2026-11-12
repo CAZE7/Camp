@@ -351,6 +351,46 @@ der Relaxation, veraltete Incumbent-Seedierung); die vierte Abweichung war ein A
 Testtreibers (Budget nicht skaliert). Diese Fehlerhistorie ist Teil des Nachweises: **ein
 Optimalitätsbeweis ohne Brute-Force-Gegenprobe ist wertlos.**
 
+### 2.8 Unlösbarkeit: zwei Zeugnisse statt einer Warnung
+
+Nicht jedes Budget ist mit der Normreihe erreichbar. Ein Solver, der dann einfach den besten
+gefundenen Entwurf zeichnet, liefert ein **unzulässiges** Ergebnis mit dem Anschein eines
+Ergebnisses. Das Artefakt unterscheidet deshalb drei Fälle und weist sie im Status und im Flag
+aus:
+
+1. **Normreihe ausgeschöpft (exakt, ohne Modellannahme).** Steht jede Kante auf dem größten
+   Normquerschnitt $\mathcal{A}_{\text{norm}}[-1]=120\ \text{mm}^2$ und ist das Budget dann noch
+   verletzt, gibt es keinen zulässigen Entwurf: die Menge der Kandidaten ist erschöpft.
+
+   $$
+   A_e=\max\mathcal{A}_{\text{norm}}\ \ \forall e \ \wedge\ \ \Delta U_{\max}>\text{Budget}
+   \;\Longrightarrow\; \text{unlösbar}.
+   \tag{2.2}
+   $$
+
+2. **Monotonie-Zertifikat (Modellaussage).** Ist das Budget nur an einzelnen Kanten verletzt,
+   liefert der Kaltfall ($T=\vartheta_{\text{amb}}$) mit **allen** Kanten auf 120 mm² eine untere
+   Schranke für jeden mit der Normreihe erreichbaren Spannungsabfall: größere Querschnitte sind
+   nicht verfügbar, höhere Temperaturen wirken nur ungünstiger, und die Lastströme sind unter dem
+   Lastmodell aus §1.2 monoton fallend in der Spannung. Liegt diese Schranke über dem Budget, ist
+   die Aufgabe unlösbar. Die Aussage hängt an der Monotonie des Lastmodells — sie wird als
+   **Modell** deklariert, nicht als Messung.
+
+3. **Nachbesserung ausgeschöpft.** Ist keines der beiden Zeugnisse erfüllt und das Budget
+   trotzdem verletzt, ist das ein **Solver-Befund**: die Eskalation konnte keine zulässige
+   Belegung finden, obwohl eine möglich erscheint. Auch das wird als Fehler (`SOLVER`, `error`)
+   gemeldet — nicht als Warnung.
+
+Im UI schaltet der Status dann von `SOLVER KONVERGIERT` auf **`UNLÖSBAR · NORMREIHE
+AUSGESCHÖPFT`** (rote Pille), und das Flag nennt die konkrete Zahl, z. B. „alle 9 Kanten stehen
+auf 120 mm², ΔU = 1,42 % > Budget 1,00 % — Normreihe ausgeschöpft“. Anlass war der Regressionslauf
+§8.2: bei 1 % Budget lieferte das Artefakt zuvor eine `warn`-Meldung und zeichnete trotzdem einen
+Entwurf mit 1,42 %.
+
+Die Zeugnisse sind prüfbar: `verify/sweep.mjs` akzeptiert einen Lauf genau dann als korrekt, wenn
+er zulässig ist **oder** `metrics.infeasible` gesetzt hat. Von 42 Läufen sind 40 zulässig und 2
+zertifiziert unlösbar (§8.2) — keiner bleibt unerklärt.
+
 ---
 
 ## 3 Säule 2 — Elektro-thermischer Fixpunkt
@@ -609,7 +649,8 @@ $I_{k,\min}(v)\ge I_{\text{trip}}(t_a)$ für jede Sicherung.
 | `I2T` | adiabatische Reserve $\le 0$ |
 | `THERM` | thermischer Fixpunkt nicht konvergiert |
 | `SEL` | Selektivitätskaskade verletzt |
-| `SOLVER` | MNA/Relaxation numerisch nicht konvergiert |
+| `SOLVER` (`warn`) | MNA/Relaxation numerisch nicht konvergiert |
+| `SOLVER` (`error`) | Budget verletzt: Normreihe ausgeschöpft oder Monotonie-Zertifikat (§2.8) |
 | `REPAIR` | äußere Iteration mußte Querschnitte anheben (Kopplung) |
 | `OK` | keine Auffälligkeit |
 
@@ -763,7 +804,7 @@ paarweise verschiedene Spuren. Also gilt stets
 
 $$
 \omega\;\le\;T .
-	ag{5.3}
+\tag{5.3}
 $$
 
 $\omega$ wird per Sweep bestimmt (Start-vor-Ende bei gleicher Koordinate, damit Punktintervalle
@@ -1140,8 +1181,20 @@ sowie drei Kombinationen. Geprüft wird für **jeden** Lauf:
 * Abschaltvermögen $\ge I_{k,\max}$, Auslösung bei $I_{k,\min}$, I²t-Reserve $\ge0$,
 * Auslastung $I/I_{z,\mathrm{eff}}\le1$.
 
-Ergebnis: **42/42 zulässig**, langsamster Lauf 158 ms. Der Test ist als
-`sweep2.mjs`-Äquivalent Teil des Abnahmeprotokolls.
+Ergebnis des reproduzierbaren Laufs (`verify/sweep.mjs`):
+
+| Ausgang | Läufe | Bedeutung |
+|---|---|---|
+| zulässig | 40 | alle Nachweise erfüllt |
+| zertifiziert unlösbar | 2 | Budget 1 % in Kastenwagen und Tiefe Kette — §2.8, Gleichung (2.2) |
+| unerklärt (Fehler) | 0 | — |
+
+Die beiden 1 %-Läufe sind **keine** Fehlschläge, sondern der Nachweis, dass 1 % Spannungsbudget
+für diese Netze unterhalb der Normreihengrenze liegt: alle Kanten stehen auf 120 mm², und der
+Spannungsfall bleibt bei 1,42 % bzw. 1,28 %. Vor der Einführung des Zertifikats meldete das
+Artefakt diese Fälle nur als `warn` — der Regressionslauf hat die Lücke aufgedeckt. Die
+Zählwerte sind reproduzierbar (fester Seed), die Laufzeiten nicht: je nach Maschine 65 ms bis
+1,3 s für den langsamsten Lauf.
 
 ### 8.3 2-opt-Lokalität
 

@@ -1,0 +1,14 @@
+{
+  "name": "kkt-routing-engine-verify",
+  "private": true,
+  "type": "module",
+  "description": "Reproduzierbare Prüfkette zum Artefakt docs/research/kkt-routing-engine/index.html",
+  "scripts": {
+    "verify": "node verify.mjs",
+    "sweep": "node sweep.mjs",
+    "all": "node verify.mjs && node sweep.mjs"
+  },
+  "dependencies": {
+    "jsdom": "^25.0.1"
+  }
+}
