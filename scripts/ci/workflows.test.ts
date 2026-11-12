@@ -356,6 +356,47 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
+  /**
+   * Minuten sparen, ohne blind zu werden.
+   *
+   * Ein privates Repo hat 2.000 Actions-Minuten im Monat, ein voller Lauf
+   * kostet rund 25. Die Ausnahmen in `ci.yml` dürfen deshalb nur Dinge
+   * treffen, die das Gate nicht kippen können — nie ausführbaren Code.
+   */
+  it('ci.yml überspringt nur Doku und Bilder, nie ausführbaren Code', () => {
+    const workflow = readWorkflow('ci.yml');
+    const pullRequest = (workflow.on as Record<string, { 'paths-ignore'?: string[] }>)?.pull_request;
+    const ignore = pullRequest?.['paths-ignore'] ?? [];
+    expect(ignore.length, 'paths-ignore fehlt in ci.yml').toBeGreaterThan(0);
+    expect(ignore).toEqual(expect.arrayContaining(['**/*.md', 'docs/**', 'public/**', 'audit-out/**']));
+
+    // Nichts Ausführbares darf übersprungen werden: kein Quellordner, keine
+    // Tests, keine Paketdateien, keine Workflows.
+    const VERBOTEN = ['app', 'components', 'lib', 'store', 'tests', 'scripts', 'hooks', '.github'];
+    for (const eintrag of ignore) {
+      for (const ordner of VERBOTEN) {
+        expect(
+          eintrag.startsWith(`${ordner}/`),
+          `${eintrag} überspringt ausführbaren Code (${ordner}/)`
+        ).toBe(false);
+      }
+      expect(eintrag, `${eintrag} überspringt Paketdateien`).not.toMatch(/package(-lock)?\.json/);
+    }
+  });
+
+  it('das visuelle Gate läuft nicht bei jedem Pull Request', () => {
+    const workflow = readWorkflow('quality.yml');
+    const visual = workflow.jobs.visual as unknown as { if?: string };
+    // Ein PR-Lauf ohne diese Bedingung bezahlt Build + Browser-Installation
+    // für einen Job, der nie blockiert (`continue-on-error: true`).
+    expect(visual?.if, 'visual-Job ohne Bedingung').toBeDefined();
+    expect(visual.if).toMatch(/inputs\.visual/);
+    // Der Deploy fordert ihn weiterhin an — dort hängt er am Schalter.
+    const deploy = readWorkflow('deploy.yml');
+    const quality = deploy.jobs.quality as unknown as { with?: Record<string, unknown> };
+    expect(quality.with?.visual, 'Deploy fragt den Pixel-Vergleich nicht mehr an').toBeDefined();
+  });
+
   it('Jobs haben ein Zeitlimit, damit hängende Läufe nicht das Gate blockieren', () => {
     for (const file of ['quality.yml', 'deploy.yml']) {
       const workflow = readWorkflow(file);

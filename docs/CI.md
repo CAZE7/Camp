@@ -12,11 +12,11 @@ Workflow-Test (`scripts/ci/workflows.test.ts`) prüft die 1:1-Übereinstimmung b
 
 Drei Workflows, eine einzige Quelle für die Qualitätsprüfung:
 
-| Datei                           | Auslöser                                          | Zweck                                                                  |
-| ------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| `.github/workflows/quality.yml` | `workflow_call`                                   | **Einzige** Definition von Install, Lint, Tests, Typecheck, Build, E2E |
-| `.github/workflows/ci.yml`      | Pull Request (alle Branches), `workflow_dispatch` | Pflicht-Check für PRs (ohne redundante Doppelläufe bei Pushes)         |
-| `.github/workflows/deploy.yml`  | Push auf den GitHub-Default-Branch, manuell       | Pages-Build + Deploy + Smoke-Check, **nach** dem Quality Gate          |
+| Datei                           | Auslöser                                                                       | Zweck                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `.github/workflows/quality.yml` | `workflow_call`                                                                | **Einzige** Definition von Install, Lint, Tests, Typecheck, Build, E2E |
+| `.github/workflows/ci.yml`      | Pull Request (alle Branches, **außer** reine Doku/Bilder), `workflow_dispatch` | Pflicht-Check für PRs (ohne redundante Doppelläufe bei Pushes)         |
+| `.github/workflows/deploy.yml`  | Push auf den GitHub-Default-Branch, manuell                                    | Pages-Build + Deploy + Smoke-Check, **nach** dem Quality Gate          |
 
 ```
 pull_request ─► ci.yml ─────► quality.yml (npm ci → lint → format → typecheck → test:coverage → perf:edge-routing → build → e2e)
@@ -27,6 +27,25 @@ push (default) ─► deploy.yml ─► quality.yml
 
 Weil `deploy.yml` denselben wiederverwendbaren Workflow aufruft wie `ci.yml`,
 kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
+
+### 1.1 Minutenbudget (privates Repo)
+
+Das Repository ist privat; damit zählt jeder Lauf gegen die 2.000 Actions-Minuten
+des Monats. Ein voller Lauf kostet rund 25 Minuten (fünf Jobs, davon zwei mit
+eigenem Build). Zwei Änderungen senken den Verbrauch, ohne eine Prüfung zu
+verlieren:
+
+| Änderung                                                                        | Wirkung                                          | Warum es keine Lücke ist                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml` → `paths-ignore` für `**/*.md`, `docs/**`, `public/**`, `audit-out/**` | Ein reiner Doku-PR startet kein Gate             | Übersprungen wird nur, was das Gate nicht kippen kann. Quellordner, Tests, Paketdateien und `.github/**` sind ausdrücklich **nicht** ausgenommen — ein Lauf, der bei einem Workflow-Fehler ausbliebe, wäre blind. `scripts/ci/workflows.test.ts` hält das fest. |
+| `quality.yml` → Job `visual` nur bei `inputs.visual`                            | Jeder PR-Lauf spart Build + Browser-Installation | Der Job war schon vorher `continue-on-error: true`, konnte also nie blockieren. Beim Deploy läuft er weiter (dort hängt er am Schalter, Standard an), weil ein Deploy die Oberfläche ausliefert.                                                                |
+
+Aufruf des Pixel-Vergleichs von Hand: Actions → _Quality Gate_ → **Run workflow**
+mit `visual: true`; für den Deploy: Actions → _Deploy_ → `visual` (Standard an).
+
+**Nicht** umgesetzt: den E2E-Job in eigene Läufe je Geräteprojekt aufzuteilen.
+Das kostet mehr statt weniger, weil jeder Lauf `npm ci`, Build und
+Browser-Installation erneut bezahlt — genau das Gegenteil des Ziels.
 
 ## 2. Härtungen gegenüber dem Vorgängerstand
 
