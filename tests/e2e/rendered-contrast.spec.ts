@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { PLANNER_URL } from './helpers';
+import { isPhoneShell, PLANNER_URL } from './helpers';
 
 /**
  * tests/e2e/rendered-contrast.spec.ts — AP-2 Wächter auf GEMALTE Elemente.
@@ -28,6 +28,43 @@ import { PLANNER_URL } from './helpers';
  * (Inspector.tsx: EmptySelection → RoutingLegend). Wer für die Legende ein
  * Bauteil anklickt, blendet sie wieder aus.
  */
+/**
+ * Klickt den ersten Bauteil-Knoten, der WIRKLICH im Bild steht.
+ *
+ * Auf schmalen Flächen zeigt der eingepasste Plan nur einen Ausschnitt — bei
+ * 375 px Breite und der Zoom-Untergrenze 0,25 liegen die linken Knoten
+ * außerhalb. `locator.click()` würde sie anspringen wollen und endlos
+ * scrollen; gemessen wird deshalb der Mittelpunkt: Liegt er im Fenster und
+ * trifft dort der Knoten selbst (kein Anschluss-Punkt eines Nachbarn), wird
+ * geklickt.
+ */
+async function clickVisibleNode(
+  page: import('@playwright/test').Page,
+  knoten: import('@playwright/test').Locator,
+  viewport: { width: number; height: number }
+): Promise<string | null> {
+  const anzahl = await knoten.count();
+  for (let index = 0; index < anzahl; index += 1) {
+    const kandidat = knoten.nth(index);
+    const box = await kandidat.boundingBox();
+    if (!box) continue;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    if (x < 4 || y < 4 || x > viewport.width - 4 || y > viewport.height - 4) continue;
+    const trifft = await page.evaluate(
+      ({ px, py, id }) => {
+        const top = document.elementFromPoint(px, py);
+        return top?.closest('.react-flow__node')?.getAttribute('data-id') === id;
+      },
+      { px: x, py: y, id: await kandidat.getAttribute('data-id') }
+    );
+    if (!trifft) continue;
+    await page.mouse.click(x, y);
+    return (await kandidat.getAttribute('data-id')) ?? '';
+  }
+  return null;
+}
+
 async function zeigeLegende(page: import('@playwright/test').Page): Promise<boolean> {
   const legende = page.locator('.cad-routing-legend').first();
   if (await legende.isVisible().catch(() => false)) return true;
@@ -227,13 +264,49 @@ test.describe('Kontrast gemalter Elemente', () => {
     test(`Auswahl ist Form, nicht Farbe (${schema})`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: schema === 'dunkel' ? 'dark' : 'light' });
       await page.goto(`${PLANNER_URL}?template=kastenwagen`);
+      // NICHT `.first()`: Auf schmalen Flächen zeigt der eingepasste Plan nur
+      // einen Ausschnitt (der Kastenwagen-Plan ist 610 px breit bei 375 px
+      // Fläche, Zoom-Untergrenze 0,25), und der erste Knoten liegt links
+      // außerhalb. Gesucht ist ein Knoten, der wirklich im Bild steht.
       const knoten = page
         .locator('.react-flow__node')
         .filter({ has: page.locator('.node-card') })
-        .first();
-      await expect(knoten).toBeVisible({ timeout: 30_000 });
+        .filter({ hasNot: page.locator('[data-id^="__"]') });
+      await expect(knoten.first()).toBeAttached({ timeout: 30_000 });
 
-      await knoten.click();
+      // Die Zeichenfläche ist `inert`, solange eine Hülle-Ansicht offen ist —
+      // der Knoten wäre gefunden, aber nicht anklickbar. „Schaltplan“ ist die
+      // Ansicht, in der die Fläche selbst bedienbar ist (Spec §6.1). Die Hülle
+      // entsteht erst nach dem ersten Rendern; vorher gäbe es keinen Tab.
+      if (await page.getByTestId('nav-tab-schaltplan').count()) {
+        await page.getByTestId('nav-tab-schaltplan').click();
+        // Einpassen abwarten, bis mindestens ein Knoten im Bild steht: Die
+        // Fläche ist im Schaltplan kürzer als in der Startansicht (483 → 298
+        // px). NICHT den ersten Knoten prüfen: Der eingepasste Plan ist bei
+        // 375 px breiter als die Fläche, seine linke Spalte bleibt draußen.
+        // Geprüft wird der Zustand, nicht die Uhr.
+        await expect
+          .poll(
+            () =>
+              page.evaluate(() => {
+                const nodes = Array.from(document.querySelectorAll('.react-flow__node'));
+                return nodes.some((node) => {
+                  const box = node.getBoundingClientRect();
+                  const x = box.x + box.width / 2;
+                  const y = box.y + box.height / 2;
+                  if (box.width < 8) return false;
+                  if (x < 4 || y < 4 || x > innerWidth - 4 || y > innerHeight - 4) return false;
+                  const top = document.elementFromPoint(x, y);
+                  return top?.closest('.react-flow__node') === node;
+                });
+              }),
+            { timeout: 10_000 }
+          )
+          .toBe(true);
+      }
+      const viewport = page.viewportSize()!;
+      const auswahl = await clickVisibleNode(page, knoten, viewport);
+      expect(auswahl, 'kein Bauteil im Bild anklickbar').not.toBeNull();
       await expect(page.locator('.node-card--selected').first()).toBeVisible({ timeout: 10_000 });
 
       const nach = await page
@@ -298,6 +371,21 @@ test.describe('Kontrast gemalter Elemente', () => {
 test.describe('Katalog und angewandte Prüfungen', () => {
   test('das Siegel trennt Regelkatalog von ausgeführten Prüfungen', async ({ page }) => {
     await page.goto(`${PLANNER_URL}?template=kastenwagen`);
+    // Am Desktop sitzt das Siegel in der Werkzeugleiste, in der Handy-Hülle in
+    // der Ansicht „Prüfung“ (Spec §5.2/§6.3): Die Werkzeugleiste gibt es dort
+    // nicht, der Bericht ist aber derselbe. Die Hülle entsteht erst nach dem
+    // ersten Rendern (Medienabfrage in `PlannerInner`) — vorher schlägt
+    // `isPhoneShell` falsch an.
+    await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
+    // Die Hülle entsteht nach der Medienabfrage; „Prüfung“ ist ihr Merkmal.
+    await page
+      .getByTestId('nav-tab-pruefung')
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .catch(() => undefined);
+    if (await isPhoneShell(page)) {
+      await page.getByTestId('nav-tab-pruefung').click();
+      await expect(page.getByTestId('planner-phone-view')).toBeVisible();
+    }
     const siegel = page.getByTestId('verification-seal-toggle');
     await expect(siegel).toBeVisible({ timeout: 30_000 });
 
@@ -353,20 +441,44 @@ test.describe('§10 B6 — der Löschknopf malt keine Fehlerfläche', () => {
       await page.goto(`${PLANNER_URL}?template=kastenwagen`);
       await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
 
-      const dialog = page.getByRole('dialog');
-      await dialog
+      // Der Einstiegsassistent kann (muss aber nicht) stehen. Er schließt sich
+      // beim ersten Schritt selbst — ein Klick auf „Dialog schließen“ traf
+      // deshalb ins Leere, während der Dialog schon ausblendete (im Lauf
+      // gemessen: „element is not visible“, Retry bis zum Timeout). Erst
+      // warten, dann nur klicken, wenn der Knopf noch steht.
+      const schliessen = page.getByRole('dialog').getByRole('button', { name: 'Dialog schließen' });
+      await schliessen
         .first()
         .waitFor({ state: 'visible', timeout: 8_000 })
         .catch(() => undefined);
-      if ((await dialog.count()) > 0) {
-        await dialog.getByRole('button', { name: 'Dialog schließen' }).click();
+      if (
+        await schliessen
+          .first()
+          .isVisible()
+          .catch(() => false)
+      ) {
+        await schliessen
+          .first()
+          .click({ timeout: 5_000 })
+          .catch(() => undefined);
       }
+      await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 });
 
       // Bauteil auswählen — derselbe Tastaturweg wie im A11y-Szenario.
+      // Die Hülle startet in „Bauteile“; dort ist die Zeichenfläche `inert`,
+      // also weder fokussierbar noch bedienbar (Spec §6.1).
+      await page
+        .getByTestId('nav-tab-schaltplan')
+        .waitFor({ state: 'visible', timeout: 5_000 })
+        .catch(() => undefined);
+      if (await page.getByTestId('nav-tab-schaltplan').count()) {
+        await page.getByTestId('nav-tab-schaltplan').click();
+      }
       const knoten = page.locator('.react-flow__node[role="group"]').first();
       await expect(knoten).toBeVisible({ timeout: 20_000 });
       await knoten.focus();
       await page.keyboard.press('Enter');
+      await expect(page.locator('.node-card--selected').first()).toBeVisible({ timeout: 10_000 });
 
       // Der Inspector startet je Breite anders: Klappgriff oder Reiter.
       const loesch = await zeigeLoeschKnopf(page);

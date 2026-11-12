@@ -362,12 +362,35 @@ export function FlowCanvas() {
   // gerendert — eine Bedienung, ein Ort, keine zwei Zoom-Knöpfe übereinander.
   const phoneChrome = useMediaQuery(PHONE_CHROME_QUERY);
   const isDarkPlanner = usePlannerDarkMode();
-  const fitMinZoom = coarsePointer || compactViewport ? 0.5 : PLANNER_INITIAL_FIT_MIN_ZOOM;
+  /*
+   * Der automatische Fit rechnet mit dem Platz, der NACH den schwebenden
+   * Bedienelementen bleibt. Am Desktop sind das Kopf-Panels (Modus, Ansicht,
+   * Attribution) und unten Zoom/MiniMap — M11: 128/84 px, damit der Plan sie
+   * nicht unterläuft.
+   *
+   * In der Handy-Hülle gibt es diese schwebenden Elemente nicht (Spec §6.2:
+   * „Die React-Flow-Controls und die MiniMap werden unter der Handy-Grenze
+   * nicht gerendert“); Zoom und Übersicht stehen IM Fluss in der Werkzeugzone.
+   * Der Desktop-Abstand frisst dort trotzdem 212 von 298 px Fläche. Gemessen
+   * am 2026-11-10 (375 × 667, Vorlage „Kastenwagen“): Der Plan ist 2440 × 816
+   * Einheiten groß, der Fit blieb auf der Untergrenze 0,5 stehen und setzte
+   * ihn bei x = -422 px ab — ein Drittel lag links außerhalb, Antippen
+   * unmöglich. Deshalb: kleine Innenabstände und eine Untergrenze, die den
+   * ganzen Plan zeigen DARF (der bewusste „Ganzes Bild“-Knopf ohnehin).
+   */
+  const fitMinZoom = phoneChrome
+    ? PLANNER_MIN_ZOOM
+    : coarsePointer || compactViewport
+      ? 0.5
+      : PLANNER_INITIAL_FIT_MIN_ZOOM;
   // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht/Attribution)
   // und untere Steuerelemente (Zoom/MiniMap) beim automatischen Einpassen frei.
   const fitPanelPadding = useMemo(
-    () => ({ top: '128px' as const, right: '24px' as const, bottom: '84px' as const, left: '24px' as const }),
-    []
+    () =>
+      phoneChrome
+        ? { top: '16px' as const, right: '16px' as const, bottom: '16px' as const, left: '16px' as const }
+        : { top: '128px' as const, right: '24px' as const, bottom: '84px' as const, left: '24px' as const },
+    [phoneChrome]
   );
   const interaction = useMemo(
     () => getFlowInteractionProps(pointerModeFromCoarse(coarsePointer)),

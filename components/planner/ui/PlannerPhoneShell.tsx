@@ -24,6 +24,7 @@ import {
 import { usePlannerActions, type PlannerActions } from '../hooks/usePlannerActions';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from '../hooks/useLiveValidation';
 import { verificationSummary } from '../utils/verificationWarnings';
+import { VerificationSeal } from './VerificationSeal';
 import { nextStepSummary } from '../utils/verificationActions';
 import { PLANNER_TEMPLATES } from '../templates';
 import { PHONE_CHROME_QUERY as PHONE_CHROME_QUERY_SOURCE } from './breakpoints';
@@ -440,6 +441,15 @@ function PhoneCheckView({ onSelectView }: { onSelectView: (view: PhoneView) => v
           {summary.label}
         </p>
         <p className="text-xs text-ink-soft">{next}</p>
+        {/* Siegel und Prüfbericht: Am Desktop sitzt das Siegel in der
+            Werkzeugleiste, die es in der Hülle nicht gibt (Spec §5.2). Ohne
+            diesen Zugang wäre der Bericht — Verdikt, Abdeckung, Modellgrenzen,
+            Zertifikat — auf dem Handy unerreichbar; die Fußleiste trägt nur die
+            Zahl. Dasselbe Bauteil, dieselbe Zusammenfassung, kein zweiter
+            Rechenweg. */}
+        <div className="mt-1">
+          <VerificationSeal summary={summary} nextStep={next} />
+        </div>
       </div>
       {warnings.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -663,8 +673,19 @@ function PhoneMoreView({ actions }: { actions: PlannerActions }) {
               <button
                 type="button"
                 onClick={() => {
-                  usePlannerStore.getState().clearPlan?.();
+                  const store = usePlannerStore.getState();
+                  store.clearPlan?.();
                   setResetOpen(false);
+                  // Dieselbe Rückmeldung wie am Desktop (`PlannerDashboard`):
+                  // Ohne sie bleibt die Einstiegsmeldung stehen, obwohl der
+                  // Plan leer ist (im Handy-Lauf gemessen). Der Meldungsplatz
+                  // liegt in der Hülle und zeigt sie sofort.
+                  store.setPlannerMessage?.({
+                    type: 'success',
+                    message: 'Leerer Plan gestartet.',
+                    actionLabel: 'Rückgängig',
+                    onAction: store.undo,
+                  });
                 }}
                 className="cad-btn cad-btn--line min-h-11 border-destructive text-destructive"
               >

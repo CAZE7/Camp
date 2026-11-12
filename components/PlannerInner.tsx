@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider, useStore as useFlowStore } from '@xyflow/react';
 import { usePlannerDarkMode } from './planner/hooks/usePlannerTheme';
 import '@xyflow/react/dist/style.css';
@@ -129,6 +129,31 @@ function PlannerShell() {
   useEffect(() => {
     setPlannerErrors(liveWarnings.map((warning) => warningToPlannerError(warning)));
   }, [liveWarnings, setPlannerErrors]);
+
+  /**
+   * Ansichtswechsel → Fläche neu einpassen.
+   *
+   * Die Handy-Ansichten liegen ÜBER der Fläche: In „Bauteile“, „Prüfung“ und
+   * „Mehr“ ist die Fläche zwar montiert und gemessen, aber nur so hoch wie der
+   * freie Rest (im Browser gemessen 2026-11-10: 483 px in der Startansicht,
+   * 298 px im Schaltplan). React Flow setzt den Viewport einmal beim Einhängen;
+   * ein späteres Größenupdate verschiebt ihn nicht mit (auch `resize` half
+   * nicht). Der Plan lag danach bei x = -422 px, also links außerhalb des
+   * Bildes, und ließ sich nicht anklicken. Der Wechsel in den Schaltplan passt
+   * deshalb einmal neu ein — mit der Zoom-Untergrenze, wie jeder automatische
+   * Fit (Nachtest Bug 25); danach bleibt der Ausschnitt des Nutzers stehen.
+   */
+  const previousPhoneView = useRef<PhoneView | null>(null);
+  useEffect(() => {
+    const previous = previousPhoneView.current;
+    previousPhoneView.current = phoneView;
+    if (previous === null || previous === phoneView || phoneView !== 'schaltplan') return;
+    if (typeof window === 'undefined') return;
+    const frame = window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')))
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [phoneView]);
 
   const hasOnboarded = useAppStore((state) => state.hasOnboarded);
   const viewMode = usePlannerStore((state) => state.viewMode);

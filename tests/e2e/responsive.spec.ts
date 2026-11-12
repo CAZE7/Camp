@@ -34,7 +34,9 @@ test.describe('Responsives Layout', () => {
       await expect(bottomNav).toBeVisible();
       await expect(sidebar).toBeHidden();
       await page.getByTestId('nav-tab-bauteile').click();
-      await page.getByTestId('phone-add').click();
+      // Leerer Plan: Der Einstieg heißt „Batterie hinzufügen“; sonst
+      // „Hinzufügen“ (Spec §6.1).
+      await page.getByTestId('phone-add').or(page.getByTestId('phone-add-battery')).first().click();
       await expect(sidebar).toBeVisible();
     } else {
       // Tablet und Desktop: Sidebar dauerhaft sichtbar, keine Bottom-Tabs.

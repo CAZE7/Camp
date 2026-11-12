@@ -90,7 +90,9 @@ vi.mock('../hooks/useLiveValidation', () => ({
   useVerificationReport: () => ({ verdict: 'ok', coverage: [], findings: [] }),
 }));
 vi.mock('../utils/verificationWarnings', () => ({
-  verificationSummary: () => ({ label: 'Alles geprüft', tone: 'good' }),
+  // `tone` ist 'ok' | 'warn' | 'bad' (`verificationWarnings.ts`). Der Mock stand
+  // auf 'good' — das fiel nicht auf, solange die Hülle kein Siegel rendert.
+  verificationSummary: () => ({ label: 'Alles geprüft', tone: 'ok' }),
 }));
 vi.mock('../utils/verificationActions', () => ({
   nextStepSummary: () => 'Als Nächstes: Verbraucher ergänzen.',

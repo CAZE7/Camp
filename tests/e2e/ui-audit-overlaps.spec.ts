@@ -30,6 +30,19 @@ async function openFreshExample(page: Page): Promise<void> {
   await expect(page.locator('[data-designator]').first()).toBeAttached({ timeout: 15_000 });
 }
 
+/**
+ * Die Vorlage ersetzt den aktuellen Plan — vorher fragt der Planer nach
+ * („Bitte bestätigen“). Den Dialog gibt es auf beiden Wegen, am Desktop wie in
+ * der Handy-Hülle; ohne Antwort bliebe die Vorlage ungeladen und die
+ * Erfolgsmeldung aus (im Lauf gemessen: Dialog blieb offen).
+ */
+async function confirmReplace(page: Page): Promise<void> {
+  const confirm = page.getByRole('button', { name: 'Fortfahren' });
+  if ((await confirm.count()) === 0) return;
+  await confirm.click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+}
+
 async function boxOf(locator: Locator) {
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
@@ -82,6 +95,7 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
       expect(insideViewport(await boxOf(template), viewport)).toBe(true);
       expect(await template.evaluate((element) => element.scrollWidth <= element.clientWidth + 2)).toBe(true);
       await template.click();
+      await confirmReplace(page);
       await expect(page.getByTestId('action-feedback')).toContainText(/Vorlage .* geladen/);
       return;
     }
@@ -108,6 +122,7 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
 
     await item.click();
     await expect(menu).toBeHidden();
+    await confirmReplace(page);
     await expect(page.getByTestId('action-feedback')).toContainText(/Vorlage .* geladen/);
   });
 
@@ -222,9 +237,20 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     const viewport = page.viewportSize()!;
     const toastBox = await boxOf(toast);
     expect(insideViewport(toastBox, viewport)).toBe(true);
-    // Der Platz liegt oben unter der Kopfleiste; er schiebt den Plan nach
-    // unten und überdeckt keine Bedienung (Spec §5.3).
-    expect(toastBox.y).toBeLessThan(viewport.height / 2);
+    // Der Platz schiebt den Inhalt nach oben, statt ihn zu überdecken
+    // (Spec §5.3). Wo er sitzt, hängt von der Ansicht ab: Am Desktop oben unter
+    // der Menüleiste, in der Handy-Hülle zwischen Ansicht und Fußleiste („Der
+    // Meldungsplatz steht dann im Fluss darunter“). Beides ist ein Platz im
+    // Fluss — gemessen wird deshalb, dass er die Fläche nicht überlagert.
+    if (await isPhoneShell(page)) {
+      const surface = page.getByTestId('planner-canvas-surface');
+      if ((await surface.count()) > 0) {
+        expect(overlaps(toastBox, await boxOf(surface)), 'fläche').toBe(false);
+      }
+      expect(toastBox.y).toBeGreaterThan(0);
+    } else {
+      expect(toastBox.y).toBeLessThan(viewport.height / 2);
+    }
 
     for (const id of [
       'planner-toolbar',

@@ -185,32 +185,34 @@ export function PhoneCanvasTools({
       </div>
 
       <div className="flex items-center gap-1 border-t border-rule px-2 py-1">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'electric'}
-          aria-label="Elektrikplan anzeigen"
-          data-testid="phone-viewmode-electric"
-          onClick={() => setViewMode('electric')}
-          className={`cad-btn min-h-11 min-w-11 shrink-0 justify-center ${
-            viewMode === 'electric' ? 'cad-btn--active' : 'cad-btn--line'
-          }`}
-        >
-          <Zap size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'water'}
-          aria-label="Wasserplan anzeigen"
-          data-testid="phone-viewmode-water"
-          onClick={() => setViewMode('water')}
-          className={`cad-btn min-h-11 min-w-11 shrink-0 justify-center ${
-            viewMode === 'water' ? 'cad-btn--active' : 'cad-btn--line'
-          }`}
-        >
-          <Droplets size={16} aria-hidden="true" />
-        </button>
+        <div role="tablist" aria-label="Bereich" className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'electric'}
+            aria-label="Elektrikplan anzeigen"
+            data-testid="phone-viewmode-electric"
+            onClick={() => setViewMode('electric')}
+            className={`cad-btn min-h-11 min-w-11 shrink-0 justify-center ${
+              viewMode === 'electric' ? 'cad-btn--active' : 'cad-btn--line'
+            }`}
+          >
+            <Zap size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'water'}
+            aria-label="Wasserplan anzeigen"
+            data-testid="phone-viewmode-water"
+            onClick={() => setViewMode('water')}
+            className={`cad-btn min-h-11 min-w-11 shrink-0 justify-center ${
+              viewMode === 'water' ? 'cad-btn--active' : 'cad-btn--line'
+            }`}
+          >
+            <Droplets size={16} aria-hidden="true" />
+          </button>
+        </div>
         <span className="cad-toolbar__sep shrink-0" aria-hidden="true" />
         <div className="min-w-0 shrink-0">
           <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />

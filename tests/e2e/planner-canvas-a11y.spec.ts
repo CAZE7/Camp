@@ -17,6 +17,11 @@ async function openExampleCanvas(page: Page): Promise<void> {
   await expect(page.locator('.react-flow__node:not(.react-flow__node-backboneGroup)').first()).toBeVisible({
     timeout: 15_000,
   });
+  // Handy-Hülle: Die Startansicht ist „Bauteile“, die Zeichenfläche darunter
+  // ist `inert` (Spec §5) — ohne den Wechsel zum Schaltplan ist kein Knoten
+  // fokussierbar.
+  const schaltplan = page.getByTestId('nav-tab-schaltplan');
+  if (await schaltplan.isVisible().catch(() => false)) await schaltplan.click();
 }
 
 test.describe('Planer-Canvas: Barrierefreiheit', () => {
