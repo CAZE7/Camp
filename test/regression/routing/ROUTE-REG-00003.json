@@ -1,0 +1,128 @@
+{
+  "failureId": "ROUTE-REG-00003",
+  "category": "unroutable_without_blocker",
+  "severity": "hard",
+  "engine": "core",
+  "plan": {
+    "kind": "inline",
+    "nodes": [
+      {
+        "id": "fusebox-1",
+        "type": "fuse",
+        "position": {
+          "x": 380,
+          "y": 160
+        },
+        "data": {
+          "label": "Sicherungskasten",
+          "rating": 7.5
+        }
+      },
+      {
+        "id": "cons-light",
+        "type": "consumer",
+        "position": {
+          "x": 680,
+          "y": 80
+        },
+        "data": {
+          "label": "LED-Beleuchtung",
+          "watts": 20
+        }
+      },
+      {
+        "id": "cons-pump",
+        "type": "consumer",
+        "position": {
+          "x": 680,
+          "y": 280
+        },
+        "data": {
+          "label": "Wasserpumpe",
+          "watts": 40
+        }
+      },
+      {
+        "id": "auto-node:busbar:Plus-Schiene",
+        "type": "busbar",
+        "position": {
+          "x": 288,
+          "y": 0
+        },
+        "data": {
+          "label": "Plus-Schiene",
+          "role": "positive"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-auto-4",
+        "source": "auto-node:busbar:Plus-Schiene",
+        "target": "fusebox-1",
+        "sourceHandle": "plus",
+        "targetHandle": "plus",
+        "type": "cableEdge",
+        "data": {
+          "length": 1,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "fuseSize": 7.5,
+          "fuseWarning": false,
+          "fuseType": "anl"
+        }
+      },
+      {
+        "id": "e-auto-6",
+        "source": "fusebox-1",
+        "target": "cons-light",
+        "sourceHandle": "plus",
+        "targetHandle": "plus",
+        "type": "cableEdge",
+        "data": {
+          "length": 3,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "fuseSize": 5,
+          "fuseWarning": false,
+          "fuseType": "anl"
+        }
+      },
+      {
+        "id": "e-auto-8",
+        "source": "fusebox-1",
+        "target": "cons-pump",
+        "sourceHandle": "plus",
+        "targetHandle": "plus",
+        "type": "cableEdge",
+        "data": {
+          "length": 3,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 2.5,
+          "dropWarning": false,
+          "fuseSize": 5,
+          "fuseWarning": false,
+          "fuseType": "anl"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "kind": "unroutable_without_blocker",
+    "atLeast": 1
+  },
+  "firstSeen": "2026-11-11",
+  "routingVersion": "routing-core@bd83847",
+  "inputHash": "sha256:1e1a3e58dd669c72c58978089c1cc8c9a8822eb7b5df6efddceb4c1ae6ff3b0c",
+  "minimized": true,
+  "reproducible": true,
+  "notes": "R-ERR-3: der Kern meldet 'keine kollisionsfreie Route im Gitter (55x70)' ohne Bauteil oder Anschluss zu benennen. Genau diese Formulierung hat den A*-Indexfehler kaschiert (AB-REPORT §5)."
+}

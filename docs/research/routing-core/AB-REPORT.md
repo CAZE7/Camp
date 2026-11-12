@@ -150,3 +150,55 @@ Erreichbarkeits-Gegentest (BFS ohne Richtung), sonst ist „kein Pfad“ nicht v
    I1/I2/I3 = 0 auf allen sechs Plänen ist ein Kandidat für Phase 4.
 4. Diese Datei bei jedem neuen Lauf überschreiben, nicht ergänzen — ein Bericht,
    der alte Zahlen mitschleppt, ist keine Messung.
+
+---
+
+## 7. Nachtrag 2026-11-11: Messkorrektur und Fehlerakten
+
+Mit dem Aufbau der Prüfinstanz (`docs/ROUTING-QUALITY-AND-VERIFICATION.md`,
+V2 + V3) sind zwei Punkte dieses Berichts nachzuziehen. Keine der Zahlen in §2
+ändert sich — aber zwei davon waren vorher aus dem falschen Grund richtig.
+
+### 7.1 Jede Seite wird gegen ihre eigenen Hindernisboxen geprüft
+
+Der Harness hat den Kern gegen die Boxen des **Bestandsrouters**
+(`nodeGeometry` / `nodesToObstacles`) gemessen. Der Kern routet aber gegen die
+Boxen aus `adaptPlan` (`CoreNode.rect`). Das sind zwei verschiedene Freigaben;
+ein Vergleich hätte systematisch danebenliegen können.
+
+Seit dem Nachtrag gilt: **jede Seite misst gegen die Boxen, mit denen sie
+routet.** Ergebnis auf den sechs Plänen: unverändert (solar 27, inverter 17,
+acdc 36 für I3; acdc 11 für I2). Die Zahlen waren also richtig, die Messung war
+es nicht zwangsläufig — das ist der Unterschied, den dieser Nachtrag festhält.
+
+### 7.2 Der erste Lauf der Fehlerakte meldete 36 statt 27
+
+`ROUTE-REG-00001` (Kern, Plan `solar`, I3) ergab im Replay-Lauf zunächst **36**
+Verletzungen, der Harness **27**. Die Ursache war ein Buchhaltungsfehler im
+Replay-Lauf, kein Routingfehler: `CoreRoute` trägt `source`/`target` **nicht**;
+der Replay-Lauf setzte beide auf `undefined`, und deshalb galten die eigenen
+Bauteile jeder Kante als fremd. Nach dem Nachziehen der Endpunkte aus
+`input.edges` meldet der Replay-Lauf 27 — deckungsgleich mit §2.
+
+Festgehalten als Lehre, nicht als Anekdote: **eine Zahl ist erst dann eine
+Messung, wenn zwei unabhängige Wege sie erzeugen.** Genau das war vorher nicht
+der Fall, und genau das prüft die Fehlerakte ab jetzt bei jedem Lauf.
+
+### 7.3 Drei Akten aus diesem Bericht
+
+Die Befunde aus §3 sind jetzt reproduzierbar festgehalten statt beschrieben:
+
+| Akte              | Kern-Befund aus §3                                                  | minimiert auf        |
+| ----------------- | ------------------------------------------------------------------- | -------------------- |
+| `ROUTE-REG-00001` | I3-Verletzungen durch pfadweite Rand-Lockerung (§3.2)               | 2 Kanten, 3 Bauteile |
+| `ROUTE-REG-00002` | I2-Überlappungen durch bepreiste statt gesperrte Überlappung (§3.2) | 2 Kanten, 5 Bauteile |
+| `ROUTE-REG-00003` | `unroutable` ohne benannten Blocker (§3.1, R-ERR-3)                 | 3 Kanten, 4 Bauteile |
+
+Befehl: `npm run test:replay` (Exit 1, sobald eine Akte nicht mehr reproduziert).
+
+### 7.4 Unverändertes Fazit
+
+Der Kern verliert weiterhin (§4). Die neue Prüfinstanz ändert daran nichts —
+sie macht die Niederlage nur **nachprüfbar** statt behauptet. Nach Regel P1
+(`ROUTING-QUALITY-AND-VERIFICATION.md` §14) wird der Kern nicht weitergebaut,
+bevor V4–V5 stehen.

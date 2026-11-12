@@ -56,7 +56,7 @@ const nodeRects = (nodes: readonly RoutableNode[]): NodeRect[] =>
 
 const measure = (
   routes: Map<string, Point[]>,
-  nodes: readonly RoutableNode[],
+  rects: readonly NodeRect[],
   edgeMeta: Map<string, { source: string; target: string }>,
   unroutable: number,
   ms: number
@@ -79,7 +79,7 @@ const measure = (
     target: edgeMeta.get(id)?.target ?? '',
     waypoints,
   }));
-  const report = checkInvariants(routed, nodeRects(nodes));
+  const report = checkInvariants(routed, rects);
   return {
     edges: entries.length,
     length,
@@ -126,7 +126,10 @@ export function runAb(): Row[] {
       const first = legacyRoutes.get(id);
       if (!first || first.waypoints.length !== result.waypoints.length) legacyDeterministic = false;
     }
-    const legacySide = measure(legacyWaypoints, nodes, edgeMeta, legacyFallback, legacyMs);
+    // Jede Seite wird gegen die Hindernisboxen geprüft, gegen die sie selbst
+    // routet. Sonst misst man eine Freigabe gegen eine Geometrie, die der
+    // jeweilige Motor nie gesehen hat (Korrektur 2026-11-11, AB-REPORT §2.1).
+    const legacySide = measure(legacyWaypoints, nodeRects(nodes), edgeMeta, legacyFallback, legacyMs);
     legacySide.deterministic = legacyDeterministic;
 
     // --- Globaler Kern --------------------------------------------------
@@ -147,7 +150,16 @@ export function runAb(): Row[] {
         again.metrics.totalBends === result.metrics.totalBends &&
         again.metrics.totalCrossings === result.metrics.totalCrossings &&
         again.routes.size === result.routes.size;
-      coreSide = measure(coreWaypoints, nodes, edgeMeta, result.unroutable.length, coreMs);
+      // Kern: die Boxen stammen aus dem Adapter — genau die, die der Kern als
+      // Hindernis benutzt (inklusive seiner Freigabe-Logik).
+      const coreRects: NodeRect[] = adapted.input.nodes.map((node) => ({
+        id: node.id,
+        x: node.rect.x,
+        y: node.rect.y,
+        width: node.rect.width,
+        height: node.rect.height,
+      }));
+      coreSide = measure(coreWaypoints, coreRects, edgeMeta, result.unroutable.length, coreMs);
       coreSide.deterministic = deterministic;
     }
     rows.push({ plan: name, legacy: legacySide, core: coreSide });

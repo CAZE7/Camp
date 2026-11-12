@@ -47,7 +47,11 @@
     "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
     "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts",
     "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts",
-    "routing:core:ab": "tsx scripts/routing-core/ab.ts"
+    "routing:core:ab": "tsx scripts/routing-core/ab.ts",
+    "test:oracle": "vitest run test/invariants/oracle-crosscheck.test.ts",
+    "test:replay": "tsx scripts/routing/verification/replay.ts",
+    "routing:replay": "tsx scripts/routing/verification/replay.ts --json",
+    "check:routing": "npm run test:oracle && npm run test:replay && npm run test:invariants && npm run test:regression && npm run routing:audit"
   },
   "engines": {
     "node": ">=22.0.0"

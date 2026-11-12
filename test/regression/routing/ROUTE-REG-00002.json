@@ -1,0 +1,122 @@
+{
+  "failureId": "ROUTE-REG-00002",
+  "category": "overlap",
+  "severity": "hard",
+  "engine": "core",
+  "plan": {
+    "kind": "inline",
+    "nodes": [
+      {
+        "id": "accharger-1",
+        "type": "acBatteryCharger",
+        "position": {
+          "x": 380,
+          "y": 60
+        },
+        "data": {
+          "label": "AC-Ladegerät",
+          "amps": 25
+        }
+      },
+      {
+        "id": "battery-1",
+        "type": "battery",
+        "position": {
+          "x": 380,
+          "y": 320
+        },
+        "data": {
+          "label": "150Ah Lithium",
+          "capacity": 150,
+          "chemistry": "LiFePO4"
+        }
+      },
+      {
+        "id": "inverter-1",
+        "type": "inverter",
+        "position": {
+          "x": 680,
+          "y": 60
+        },
+        "data": {
+          "label": "1500W Inverter",
+          "watts": 1500,
+          "continuousPower": 1500
+        }
+      },
+      {
+        "id": "auto-node:busbar:Plus-Schiene",
+        "type": "busbar",
+        "position": {
+          "x": 288,
+          "y": 576
+        },
+        "data": {
+          "label": "Plus-Schiene",
+          "role": "positive"
+        }
+      },
+      {
+        "id": "auto-node:busbar:Minus-Schiene",
+        "type": "busbar",
+        "position": {
+          "x": 576,
+          "y": 768
+        },
+        "data": {
+          "label": "Minus-Schiene",
+          "role": "negative"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-auto-8",
+        "source": "auto-node:busbar:Plus-Schiene",
+        "target": "inverter-1",
+        "sourceHandle": "plus",
+        "targetHandle": "plus",
+        "type": "cableEdge",
+        "data": {
+          "length": 1,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 70,
+          "dropWarning": false,
+          "fuseWarning": true,
+          "fuseSize": 100,
+          "fuseType": "mrbf"
+        }
+      },
+      {
+        "id": "e-auto-11",
+        "source": "accharger-1",
+        "target": "auto-node:busbar:Minus-Schiene",
+        "sourceHandle": "minus",
+        "targetHandle": "minus",
+        "type": "cableEdge",
+        "data": {
+          "length": 3,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 16,
+          "dropWarning": false,
+          "fuseWarning": false
+        }
+      }
+    ]
+  },
+  "expect": {
+    "kind": "invariant",
+    "invariant": "I2",
+    "atLeast": 1
+  },
+  "firstSeen": "2026-11-11",
+  "routingVersion": "routing-core@bd83847",
+  "inputHash": "sha256:51afb3c74ff6f809558c48e83342c9e35f851a682f42c6389cd51d7fd91de1dd",
+  "minimized": true,
+  "reproducible": true,
+  "notes": "Ueberlappung im Kern: der Verhandlungslauf konvergiert nicht auf maxUsage <= 1, weil Ueberlappung bepreist statt gesperrt wird (AB-REPORT §3.2)."
+}

@@ -2,6 +2,8 @@
 
 **Status:** Verbindliche Spezifikation (Phase V0) · **Datum:** 2026-11-11 ·
 **Branch:** `arena/bbf610a1-camp`
+**Umsetzungsstand:** V0 ✔ · V1-Audit ✔ (§2, §10) · **V2 Orakel ✔** · **V3 Fehlerakten ✔**
+(Ergebnisse in §17) · V4–V8 offen
 
 **Verhältnis zu anderen Dokumenten**
 
@@ -73,15 +75,15 @@ absichtlich konkret: was fehlt, steht als Lücke da, nicht als Absicht.
 
 ### 2.2 Lücken (die diese Spezifikation schließt)
 
-| #   | Lücke                                                                                                                                                                                                        | Beleg                                                       |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| L1  | **Kein unabhängiger Validator.** `checkInvariants` und der Produktiv-A\* teilen sich das Klassifikationsmodell (`rules/collision.ts`, ADR 0019). Ein Fehler im Modell täuscht Prüfung _und_ Router zugleich. | `lib/routing/invariants.ts` Kopfkommentar                   |
-| L2  | **Keine Fehlerakte für Routing.** `ROUTE-002/003/004` sind Schulden, keine reproduzierbaren Einzelfälle mit Replay und Minimierung.                                                                          | `docs/ai/ROUTING-CONTEXT.md`, `docs/KNOWN-PROBLEMS.md`      |
-| L3  | **„unroutable“ ist nicht von „falsch gesucht“ unterscheidbar.** Im Kern-Lauf meldete ein Index/Koordinate-Vertipper im A\* alle neun Kanten als `unroutable`, ohne dass irgendein Gate anschlug.             | `AB-REPORT.md` §5                                           |
-| L4  | **Property-Tests decken die Routing-Geometrie nicht ab.** Zufallspläne mit Verzweigungen, freien Positionen und Hindernissen existieren nicht als Generator.                                                 | `grep fast-check` → 8 Dateien, keine Routing-Geometrie      |
-| L5  | **Mutationsscore unbekannt.** Ein Lauf maß 48,4 % bei 98 % Coverage; Stryker ist nicht installiert, kuratierte Mutanten decken nur ausgewählte Dateien.                                                      | ADR 0039, `mutation-critical.test.ts`                       |
-| L6  | **Kein Fuzzing der Eingabe** (NaN, Infinity, doppelte IDs, fehlende Handles) vor dem Routing.                                                                                                                | `routeContract.ts` prüft nachgelagert, nicht als Gate davor |
-| L7  | **Performance-Gates fehlen** für Routing (nur `benchmarks/*.probe.ts`, kein Schwellenwert im CI).                                                                                                            | `package.json` `perf:*`                                     |
+| #   | Lücke                                                                                                                                                                                                                | Beleg                                                           |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| L1  | **Kein unabhängiger Validator — geschlossen (§17.1).** Orakel mit eigener Geometrie und permanenter Kreuzprobe; auf allen sechs Referenzplänen 0 Divergenzen. Verbleibendes Risiko: geteilte Semantik (R1), bewusst. | `lib/routing/verification/oracle/**`                            |
+| L2  | **Keine Fehlerakte für Routing — geschlossen (§17.2).** Aktenformat, Replay mit Hash-Prüfung, deterministische Minimierung; drei Akten vorhanden.                                                                    | `test/regression/routing/**`, `scripts/routing/verification/**` |
+| L3  | **„unroutable“ ohne Blocker — geschlossen.** R-ERR-3 ist als Akte `ROUTE-REG-00003` festgehalten und wird im Replay geprüft; R-ERR-1 (Erreichbarkeitsgegentest) folgt in V4.                                         | `test/invariants/failure-record.test.ts`                        |
+| L4  | **Property-Tests decken die Routing-Geometrie nicht ab.** Zufallspläne mit Verzweigungen, freien Positionen und Hindernissen existieren nicht als Generator.                                                         | `grep fast-check` → 8 Dateien, keine Routing-Geometrie          |
+| L5  | **Mutationsscore unbekannt.** Ein Lauf maß 48,4 % bei 98 % Coverage; Stryker ist nicht installiert, kuratierte Mutanten decken nur ausgewählte Dateien.                                                              | ADR 0039, `mutation-critical.test.ts`                           |
+| L6  | **Kein Fuzzing der Eingabe** (NaN, Infinity, doppelte IDs, fehlende Handles) vor dem Routing.                                                                                                                        | `routeContract.ts` prüft nachgelagert, nicht als Gate davor     |
+| L7  | **Performance-Gates fehlen** für Routing (nur `benchmarks/*.probe.ts`, kein Schwellenwert im CI).                                                                                                                    | `package.json` `perf:*`                                         |
 
 ### 2.3 Die Lehre aus dem letzten Lauf
 
@@ -641,3 +643,110 @@ selbst ein funktionierender A\* unbemerkt unbrauchbar sein kann.
 > Instanz gegen **harte** Invarianten geprüft wurde; jeder Fehler wird als
 > **reproduzierbare Akte** mit Fixture festgehalten; und der neue Kern wird erst
 > gebaut, wenn diese Absicherung steht.
+
+---
+
+## 17. Umsetzungsnachweis V2 und V3 (gemessen 2026-11-11)
+
+### 17.1 V2 — Unabhängiges Orakel
+
+| Baustein        | Ort                                                            | Umfang                                                                                                                                                             |
+| --------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Primitive       | `lib/routing/verification/oracle/primitives.ts`                | `pointInOpenRect`, `segmentHitsRect`, `segmentRectDistance`, `segmentDistance`, `collinearOverlap`, `segmentsCross`, `boxGap` — eigener Code, nur Typen importiert |
+| Prüfungen I1–I6 | `lib/routing/verification/oracle/index.ts`                     | streng, **ohne** Ausnahmen; eigene Polyline-Vereinfachung, die Kehren **nicht** wegdefiniert                                                                       |
+| Kreuzprobe      | `lib/routing/verification/oracle/crosscheck.ts`                | `crosscheck()` + `compareReports()` (der Vergleich ist selbst prüfbar)                                                                                             |
+| Test            | `test/invariants/oracle-crosscheck.test.ts` (19 Tests, ~0,7 s) | `npm run test:oracle`                                                                                                                                              |
+
+**Messung über die sechs Referenzpläne:**
+
+| Plan     | Produktiv I1–I6 | Orakel I1–I6              | Zusatzbefunde erklärt             | Divergenzen |
+| -------- | --------------- | ------------------------- | --------------------------------- | ----------- |
+| simple   | 0               | 4 (I2) + 2 (I5) + 1 (I6)  | 7 (Port-Bündel 4, Stub-Kürzung 3) | **0**       |
+| camper   | 0               | 10 (I2) + 2 (I5) + 1 (I6) | 13 (10 / 3)                       | **0**       |
+| solar    | 0               | 4 (I2)                    | 4 (4 / 0)                         | **0**       |
+| inverter | 0               | 4 (I2)                    | 4 (4 / 0)                         | **0**       |
+| acdc     | 0               | 10 (I2)                   | 10 (10 / 0)                       | **0**       |
+| complex  | 0               | 12 (I2) + 3 (I3)          | 15 (15 / 0)                       | **0**       |
+| **Σ**    | **0**           | **53**                    | **53**                            | **0**       |
+
+Interpretation, ohne Beschönigung: die Produktivprüfung meldet **nichts**, was
+das Orakel nicht auch sieht (keine erfundenen Befunde), und alles, was das Orakel
+zusätzlich sieht, ist durch eine **dokumentierte** Ausnahme gedeckt. Das ist die
+Aussage der Kreuzprobe — nicht „der Router ist fehlerfrei“.
+
+Zwei Nebenbefunde, die den Wert des Verfahrens schon jetzt zeigen:
+
+1. **Die Orakel-Vereinfachung war zu aggressiv.** Die erste Fassung entfernte
+   Kehren (Punkte außerhalb ihrer Nachbarn) und machte damit I4 unauffindbar —
+   ein stiller Semantikwechsel, der erst durch den I4-Test auffiel. Der
+   Produktivpfad behält Kehren (`simplifyWaypoints` faltet nur monotone
+   Zwischenpunkte). Das Orakel tut das jetzt auch, mit eigener Implementierung.
+2. **Der Detektor ist gegen bekannte Fehler geprüft.** Abschnitt 3 des Tests
+   speist einen absichtlich verstümmelten Bericht ein und verlangt eine
+   Divergenz. Ohne diesen Nachweis wäre „0 Divergenzen“ nur eine Aussage über
+   die Testumgebung.
+
+**Toleranzprüfung:** Die Grenzfälle (`< clearance` gegen `= clearance`) sind als
+eigene Tests festgehalten und leiten die Schwelle aus `ROUTING_TOKENS` ab, nicht
+aus einer Zahl im Test.
+
+### 17.2 V3 — Fehlerakten, Replay, Minimierung
+
+| Baustein          | Ort                                                  | Aufgabe                                                                      |
+| ----------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Schema und Urteil | `lib/routing/verification/failureRecord.ts`          | `validateRecord`, `judgeRecord`, `describeExpectation`, Kategorie→Invariante |
+| Replay            | `scripts/routing/verification/replay.ts`             | Plan bauen, Motor ausführen, Invarianten messen, Hash prüfen, Urteil fällen  |
+| Minimierung       | `scripts/routing/verification/minimize.ts`           | deterministisches Delta Debugging                                            |
+| Akten             | `test/regression/routing/ROUTE-REG-0000{1,2,3}.json` | drei reale Befunde aus dem Kern                                              |
+| Test              | `test/invariants/failure-record.test.ts` (20 Tests)  | Form, Reproduktion, Schema-Gegenprobe, Minimierungs-Idempotenz               |
+
+**Die drei Akten (alle minimiert, alle reproduzieren):**
+
+| Akte            | Motor/Plan    | Kategorie                    | Vorher                | Minimiert | Befund heute          |
+| --------------- | ------------- | ---------------------------- | --------------------- | --------- | --------------------- |
+| ROUTE-REG-00001 | core / solar  | `clearance_violation` (I3)   | 11 Kanten, 8 Bauteile | 2 / 3     | 2 Verletzungen        |
+| ROUTE-REG-00002 | core / acdc   | `overlap` (I2)               | 14 / 10               | 2 / 5     | 1 Verletzung          |
+| ROUTE-REG-00003 | core / simple | `unroutable_without_blocker` | 9 / 7                 | 3 / 4     | 3 Kanten ohne Blocker |
+
+**Wichtige Semantikentscheidung (Hash):** `inputHash` wird über den **verdrahteten**
+Plan gebildet — also über die Kanten, die der Router tatsächlich sieht, nicht über
+den Eingabeplan. Grund: `knownPlans/*.json` enthält **null Kanten**; die Kanten
+entstehen erst in `performAutoWiring`. Ein Hash über die Eingabe wäre blind für
+genau die Änderung, die einen Fehler verschwinden lässt. Entsprechend
+unterscheidet die Akte `plan.kind: 'reference'` (Eingabeplan, AutoWire läuft) von
+`plan.kind: 'inline'` (bereits verdrahtet, Minimierungsergebnis). Die Minimierung
+arbeitet immer auf der verdrahteten Ebene — auf der Eingabeebene gäbe es nichts
+zu entfernen (gemessen: 0 Kanten).
+
+**Erster Fang durch das neue System (Buchhaltungsfehler, ehrlich berichtet):** Der
+erste Replay-Lauf meldete für `ROUTE-REG-00001` **36** I3-Verletzungen, der
+A/B-Harness **27**. Ursache war kein Routingfehler, sondern ein fehlendes Feld:
+`CoreRoute` trägt `source`/`target` nicht, der Replay-Lauf setzte sie auf
+`undefined`, und damit galten die eigenen Bauteile einer Kante als fremd. Nach dem
+Nachziehen der Endpunkte aus `input.edges` meldet der Replay-Lauf **27** —
+deckungsgleich mit dem A/B-Harness. Zwei unabhängige Messungen stimmen jetzt
+überein; vorher stimmten sie scheinbar nicht.
+
+**Zusätzlich gehärtet:** Der A/B-Harness prüft jede Seite jetzt gegen **ihre
+eigenen** Hindernisboxen (Bestand: `nodeGeometry`, Kern: Adapter-Rects). Vorher
+wurde der Kern gegen die Bestandsboxen gemessen — ein Vergleich zweier
+verschiedener Freigaben. Die Zahlen ändern sich dadurch auf diesen Plänen nicht
+(27/17/36 bleiben), aber die Messung ist jetzt logisch korrekt.
+
+**Befehle:**
+
+```bash
+npm run test:oracle                 # Kreuzprobe (19 Tests)
+npm run test:replay                 # alle Akten; Exit 1 bei fixed / drift / ungültig
+npm run test:replay -- --minimize --only ROUTE-REG-00002
+npm run test:replay -- --fix-hashes # nach bewusster Planänderung
+npm run check:routing               # Orakel + Replay + Invarianten + Regression + Audit
+```
+
+### 17.3 Was das **nicht** ist
+
+- Kein Nachweis, dass der Router korrekt ist. Geprüft ist, dass zwei unabhängige
+  Umsetzungen derselben Bedingungen zum selben Urteil kommen.
+- Kein Ersatz für V4 (Property-Generator, Erreichbarkeitsgegentest), V5
+  (Fuzzing, frischer Prozess), V7 (Performance-Schwellen).
+- Keine elektrische Aussage (§1.1).

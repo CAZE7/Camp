@@ -1,0 +1,94 @@
+{
+  "failureId": "ROUTE-REG-00001",
+  "category": "clearance_violation",
+  "severity": "hard",
+  "engine": "core",
+  "plan": {
+    "kind": "inline",
+    "nodes": [
+      {
+        "id": "solar-1",
+        "type": "solar",
+        "position": {
+          "x": 80,
+          "y": 60
+        },
+        "data": {
+          "label": "200W Solar",
+          "watts": 200
+        }
+      },
+      {
+        "id": "mppt-1",
+        "type": "mpptController",
+        "position": {
+          "x": 380,
+          "y": 60
+        },
+        "data": {
+          "label": "MPPT Solarregler",
+          "amps": 20
+        }
+      },
+      {
+        "id": "auto-node:busbar:Minus-Schiene",
+        "type": "busbar",
+        "position": {
+          "x": 576,
+          "y": 768
+        },
+        "data": {
+          "label": "Minus-Schiene",
+          "role": "negative"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-auto-9",
+        "source": "solar-1",
+        "target": "mppt-1",
+        "sourceHandle": "minus",
+        "targetHandle": "minus",
+        "type": "cableEdge",
+        "data": {
+          "length": 5,
+          "lengthIsAssumption": true,
+          "edgeDomain": "Solar",
+          "autoWired": true,
+          "crossSection": 10,
+          "dropWarning": false,
+          "fuseWarning": false
+        }
+      },
+      {
+        "id": "e-auto-11",
+        "source": "mppt-1",
+        "target": "auto-node:busbar:Minus-Schiene",
+        "sourceHandle": "minus",
+        "targetHandle": "minus",
+        "type": "cableEdge",
+        "data": {
+          "length": 2,
+          "lengthIsAssumption": true,
+          "edgeDomain": "DC_12V",
+          "autoWired": true,
+          "crossSection": 6,
+          "dropWarning": false,
+          "fuseWarning": false
+        }
+      }
+    ]
+  },
+  "expect": {
+    "kind": "invariant",
+    "invariant": "I3",
+    "atLeast": 1
+  },
+  "firstSeen": "2026-11-11",
+  "routingVersion": "routing-core@bd83847",
+  "inputHash": "sha256:5bdf72d62b602c410515dba310ab6e8de43bf8324715e4d3e8f33a677f007fb3",
+  "minimized": true,
+  "reproducible": true,
+  "notes": "Neuer Kern (Phase 2) verletzt die Freigabe: die Rand-Lockerung nearPort gilt pfadweit statt stub-lokal (AB-REPORT §3.2). Bestandsrouter haelt I3 auf demselben Plan mit 0."
+}
