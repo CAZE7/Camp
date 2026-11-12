@@ -302,16 +302,12 @@ function AutoWireButton({
       data-testid="action-autowire"
       onClick={onAutoWire}
       disabled={busy !== null}
-      // WCAG 2.5.3 („Label in Name"): Der zugängliche Name muss den sichtbaren
-      // Text enthalten, sonst trifft Sprachsteuerung den Knopf nicht. Sichtbar
-      // sind je nach Breite „Auto", „Automatisch verbinden" und
-      // „Automatisch verbinden · Vorschau" — die längste Fassung enthält alle
-      // drei. Deshalb steht sie hier UND im Wasser-Hinweis voran.
-      aria-label={
-        water
-          ? 'Automatisch verbinden · Vorschau — nur im Elektrikplan verfügbar'
-          : 'Automatisch verbinden · Vorschau'
-      }
+      // WCAG 2.5.3 („Label in Name"): Der zugängliche Name enthält die
+      // sichtbare Beschriftung. Kanonischer Name ist „Automatisch verbinden"
+      // (Spezifikation §16.2) — „Auto“, „Auto-verbinden“ und „Vorschlag
+      // prüfen“ sind als sichtbare Namen verworfen. Der Review-Dialog erklärt
+      // den Vorschlag selbst, der Knopf muss ihn nicht vorwegnehmen.
+      aria-label={water ? 'Automatisch verbinden — nur im Elektrikplan verfügbar' : 'Automatisch verbinden'}
       className={`cad-btn cad-btn--primary min-h-11 shrink-0 whitespace-nowrap ${className}`}
       data-tooltip={
         water
@@ -331,7 +327,7 @@ function AutoWireButton({
       )}
       <span className="tb-label tb-label--kurz">Auto</span>
       <span className="tb-label tb-label--mittel">Automatisch verbinden</span>
-      <span className="tb-label tb-label--lang">Automatisch verbinden · Vorschau</span>
+      <span className="tb-label tb-label--lang">Automatisch verbinden</span>
     </button>
   );
 }
@@ -453,12 +449,13 @@ export function PlannerToolbar({
 
         <div className="cad-toolbar__group cad-toolbar__desktop-group">
           <ToolButton
-            label="Plan prüfen"
-            visibleLabel="Prüfen"
+            label="Prüfung"
+            visibleLabel="Prüfung"
             showLabel
             hint="Befunde und Empfehlungen"
             icon={ScanSearch}
             onClick={onCheck}
+            testId="action-check"
           />
           <ToolButton
             label="Stückliste"

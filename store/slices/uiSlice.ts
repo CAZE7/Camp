@@ -1,5 +1,7 @@
 import { dedupePlannerErrors } from '../../lib/planner/plannerError';
 import type { PlannerSlice, PlannerState } from './types';
+import type { PlannerOverlay, PlannerOverlayId } from '../../components/planner/ui/overlayRoute';
+import { DOMAINS } from '../../lib/domain/plannerDomains';
 
 /**
  * UI-Slice: alles, was die Anordnung/Oberfläche des Planers beschreibt —
@@ -47,7 +49,14 @@ export type UiSlice = Pick<
   | 'setFocusMode'
   | 'plannerMode'
   | 'setPlannerMode'
+  | 'activeDomains'
+  | 'toggleDomain'
   | 'autoWireReport'
+  | 'overlay'
+  | 'openOverlay'
+  | 'closeOverlay'
+  | 'plannerMessage'
+  | 'setPlannerMessage'
   | 'plannerErrors'
   | 'addPlannerError'
   | 'clearPlannerErrors'
@@ -108,6 +117,21 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   highlightedEdgeId: null,
   setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
   setHighlightedEdgeId: (id) => set({ highlightedEdgeId: id }),
+  // Domänen-Filter: alle Domänen standardmäßig aktiv (wie bisher im Canvas).
+  // Mindestens eine bleibt aktiv — sonst wäre der Plan leer und der Nutzer
+  // hätte keinen sichtbaren Weg zurück (Kommentar aus `FlowCanvas`).
+  activeDomains: [...DOMAINS],
+  toggleDomain: (domain) =>
+    set((state) => {
+      const next = new Set(state.activeDomains);
+      if (next.has(domain)) {
+        if (next.size === 1) return {};
+        next.delete(domain);
+      } else {
+        next.add(domain);
+      }
+      return { activeDomains: [...next] };
+    }),
   trunkMode: false,
   setTrunkMode: (enabled) => set({ trunkMode: enabled }),
   backboneGrouping: true,
@@ -137,4 +161,20 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   // Erst ein Auto-Wire-Lauf erzeugt einen Bericht; `null` heißt „noch nie
   // gelaufen“ und ist bewusst von „gelaufen, keine Konflikte“ unterscheidbar.
   autoWireReport: null,
+  // Overlay-Manager: genau eine offene Ebene (siehe `ui/overlayRoute.ts`).
+  // Nicht persistiert — eine offene Ebene nach einem Reload wäre ein Zustand,
+  // den der Nutzer nicht ausgelöst hat.
+  overlay: null,
+  openOverlay: (overlay: PlannerOverlay) =>
+    set((state) => (state.overlay?.id === overlay.id ? state : { overlay })),
+  closeOverlay: (id?: PlannerOverlayId) =>
+    set((state) => {
+      if (!state.overlay) return state;
+      if (id !== undefined && state.overlay.id !== id) return state;
+      return { overlay: null };
+    }),
+  // EINE Meldung im Meldungsplatz. Einstiegstext und Aktionsmeldung liegen
+  // beide hier — eine neue ersetzt die alte, es gibt keine Warteschlange.
+  plannerMessage: null,
+  setPlannerMessage: (message) => set({ plannerMessage: message }),
 });

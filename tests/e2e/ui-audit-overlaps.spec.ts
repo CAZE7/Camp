@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openMenubar } from './helpers';
+import { isPhoneShell, openMenubar, openMoreMenuItem } from './helpers';
 
 /**
  * Regressionen zum UI-Audit 2026-10-24.
@@ -30,6 +30,19 @@ async function openFreshExample(page: Page): Promise<void> {
   await expect(page.locator('[data-designator]').first()).toBeAttached({ timeout: 15_000 });
 }
 
+/**
+ * Die Vorlage ersetzt den aktuellen Plan — vorher fragt der Planer nach
+ * („Bitte bestätigen“). Den Dialog gibt es auf beiden Wegen, am Desktop wie in
+ * der Handy-Hülle; ohne Antwort bliebe die Vorlage ungeladen und die
+ * Erfolgsmeldung aus (im Lauf gemessen: Dialog blieb offen).
+ */
+async function confirmReplace(page: Page): Promise<void> {
+  const confirm = page.getByRole('button', { name: 'Fortfahren' });
+  if ((await confirm.count()) === 0) return;
+  await confirm.click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+}
+
 async function boxOf(locator: Locator) {
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
@@ -56,6 +69,14 @@ function insideViewport(
 }
 
 async function clearPlan(page: Page): Promise<void> {
+  // Handy: Die Aktion ist eine Zeile in „Mehr“ (Spec §6.4), am Desktop ein
+  // Menüeintrag. Die Bestätigung bleibt in beiden Fällen derselbe Dialog.
+  if (await isPhoneShell(page)) {
+    await page.getByTestId('nav-tab-mehr').click();
+    await page.getByTestId('action-reset').click();
+    await page.getByRole('button', { name: 'Plan leeren' }).click();
+    return;
+  }
   await openMenubar(page, 'datei');
   await page.getByRole('menuitem', { name: /Neuen leeren Plan starten/ }).click();
   await page.getByRole('button', { name: 'Plan leeren' }).click();
@@ -64,6 +85,20 @@ async function clearPlan(page: Page): Promise<void> {
 test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
   test('Vorlagenmenü liegt frei im Bild und lädt eine Vorlage', async ({ page }) => {
     await openFreshExample(page);
+    if (await isPhoneShell(page)) {
+      // Handy: Die Vorlagen stehen als Liste in „Mehr“ (Spec §6.4) — kein
+      // Menü, das über den Plan klappt.
+      await page.getByTestId('nav-tab-mehr').click();
+      const template = page.getByTestId('action-template-kastenwagen');
+      await expect(template).toBeVisible();
+      const viewport = page.viewportSize()!;
+      expect(insideViewport(await boxOf(template), viewport)).toBe(true);
+      expect(await template.evaluate((element) => element.scrollWidth <= element.clientWidth + 2)).toBe(true);
+      await template.click();
+      await confirmReplace(page);
+      await expect(page.getByTestId('action-feedback')).toContainText(/Vorlage .* geladen/);
+      return;
+    }
     await page.getByTestId('action-templates').click();
 
     const menu = page.getByRole('menu', { name: 'Vorlage laden' });
@@ -87,6 +122,7 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
 
     await item.click();
     await expect(menu).toBeHidden();
+    await confirmReplace(page);
     await expect(page.getByTestId('action-feedback')).toContainText(/Vorlage .* geladen/);
   });
 
@@ -113,20 +149,18 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     }
   });
 
-  test('Handy-Menü stapelt Hinweise unter das Label, statt es zu überdecken', async ({ page }) => {
-    const width = page.viewportSize()?.width ?? 0;
-    test.skip(width >= 768, 'Gilt nur für das Menü-Blatt unter 768 px.');
+  test('Handy: Hinweise stehen unter dem Label, statt es zu überdecken', async ({ page }) => {
+    test.skip(!(await isPhoneShell(page)), 'Gilt nur für die Handy-Hülle.');
     await openFreshExample(page);
 
-    await page.getByTestId('phone-menu').click();
-    const sheet = page.getByTestId('phone-menu-sheet');
-    await expect(sheet).toBeVisible();
-    await page.getByTestId('menubar-werkzeuge').click();
+    await page.getByTestId('nav-tab-mehr').click();
+    await expect(page.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'mehr');
 
-    const item = page.getByTestId('action-autowire-menu');
+    const item = page.getByTestId('action-autowire');
     await expect(item).toBeVisible();
-    const label = item.locator('span').first();
-    const hint = item.locator('.cad-menu__hint');
+    const label = item.locator('span > span').first();
+    const hint = label.locator('xpath=following-sibling::span').first();
+    await expect(label).toHaveText('Automatisch verbinden');
     await expect(hint).toBeVisible();
     const itemBox = await boxOf(item);
     const labelBox = await boxOf(label);
@@ -136,9 +170,8 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     expect(hintBox.x).toBeGreaterThanOrEqual(itemBox.x - 1);
     expect(hintBox.x + hintBox.width).toBeLessThanOrEqual(itemBox.x + itemBox.width + 1);
 
-    // Die Undo-Leiste darf nicht unter dem offenen Blatt hervorschauen.
-    const history = page.locator('.planner-mobile-history');
-    if ((await history.count()) > 0) await expect(history).toBeHidden();
+    // Die Undo-Leiste der alten Hülle gibt es nicht mehr.
+    await expect(page.locator('.planner-mobile-history')).toHaveCount(0);
   });
 
   test('Tablet: Wasser-Tab liegt neben dem Speicherzustand, Modus und Ansicht überlappen nicht', async ({
@@ -170,25 +203,32 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     }
   });
 
-  test('Einstiegsmeldung verschwindet mit dem Plan und deckt den leeren Zustand nicht', async ({ page }) => {
+  test('Einstiegsmeldung steht im Meldungsplatz und deckt den leeren Zustand nicht', async ({ page }) => {
     await openFreshExample(page);
-    const notice = page.locator('.planner-entry-notice');
-    await expect(notice).toBeVisible();
+    // Spezifikation §5.3: EINE Meldung im Fluss. Die frühere absolute Karte
+    // (`.planner-entry-notice`) ist ersatzlos ersetzt — auf allen Breiten.
+    await expect(page.locator('.planner-entry-notice')).toHaveCount(0);
+    const slot = page.getByTestId('planner-message-slot');
+    await expect(slot).toBeVisible();
+    await expect(slot).toHaveAttribute('data-empty', 'false');
 
-    // Auf Tablet/Desktop sitzt die HUD-Karte direkt unter der Meldung.
+    // Die HUD-Karte sitzt darunter, nicht darin.
     const hud = page.locator('.de-hud-card');
     if (await hud.isVisible()) {
-      expect(overlaps(await boxOf(notice), await boxOf(hud))).toBe(false);
+      expect(overlaps(await boxOf(slot), await boxOf(hud))).toBe(false);
     }
 
     await clearPlan(page);
 
-    await expect(notice).toHaveCount(0);
+    await expect(slot).toHaveAttribute('data-empty', 'false');
+    await expect(page.getByTestId('action-feedback')).toContainText(/Leerer Plan gestartet/);
+    // Handy: Der leere Zustand liegt in der Ansicht „Schaltplan“.
+    if (await isPhoneShell(page)) await page.getByTestId('nav-tab-schaltplan').click();
     await expect(page.getByRole('heading', { name: 'Fang mit deiner Batterie an' })).toBeVisible();
     await expect(page.locator('.react-flow__node')).toHaveCount(0);
   });
 
-  test('Aktionsmeldung erscheint unten und deckt Werkzeugleiste und Modus nicht ab', async ({ page }) => {
+  test('Aktionsmeldung liegt im Fluss und deckt Werkzeugleiste und Modus nicht ab', async ({ page }) => {
     await openFreshExample(page);
     await clearPlan(page);
 
@@ -197,9 +237,28 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     const viewport = page.viewportSize()!;
     const toastBox = await boxOf(toast);
     expect(insideViewport(toastBox, viewport)).toBe(true);
-    expect(toastBox.y).toBeGreaterThan(viewport.height / 2);
+    // Der Platz schiebt den Inhalt nach oben, statt ihn zu überdecken
+    // (Spec §5.3). Wo er sitzt, hängt von der Ansicht ab: Am Desktop oben unter
+    // der Menüleiste, in der Handy-Hülle zwischen Ansicht und Fußleiste („Der
+    // Meldungsplatz steht dann im Fluss darunter“). Beides ist ein Platz im
+    // Fluss — gemessen wird deshalb, dass er die Fläche nicht überlagert.
+    if (await isPhoneShell(page)) {
+      const surface = page.getByTestId('planner-canvas-surface');
+      if ((await surface.count()) > 0) {
+        expect(overlaps(toastBox, await boxOf(surface)), 'fläche').toBe(false);
+      }
+      expect(toastBox.y).toBeGreaterThan(0);
+    } else {
+      expect(toastBox.y).toBeLessThan(viewport.height / 2);
+    }
 
-    for (const id of ['planner-toolbar', 'planner-mode-planung', 'canvas-display-options']) {
+    for (const id of [
+      'planner-toolbar',
+      'planner-mode-planung',
+      'canvas-display-options',
+      'phone-canvas-toolbar',
+      'planner-bottom-nav',
+    ]) {
       const control = page.getByTestId(id);
       if ((await control.count()) === 0 || !(await control.isVisible())) continue;
       expect(overlaps(toastBox, await boxOf(control)), id).toBe(false);
@@ -212,8 +271,7 @@ test.describe('UI-Audit: Überlagerungen und abgeschnittener Text', () => {
     const toast = page.getByTestId('action-feedback');
     await expect(toast).toBeVisible();
 
-    await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-    await page.getByRole('menuitem', { name: /^Stückliste/ }).click();
+    await openMoreMenuItem(page, 'action-bom');
     const dialog = page.getByRole('dialog', { name: 'Stückliste' });
     await expect(dialog).toBeVisible();
     // Der Dialog ist die aktive Ebene; die Meldung darf ihn nicht verdecken.

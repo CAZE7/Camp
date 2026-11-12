@@ -104,6 +104,23 @@ vi.mock('../../store/usePlannerStore', () => ({
         setInspectorOpen: vi.fn(),
         toggleInspector: vi.fn(),
         deleteSelected: vi.fn(),
+        // Overlay-Manager + Meldungsplatz (Spezifikation §16.1): Der Doppel-
+        // Staat braucht die echten Setter, weil Menü und `⋯` jetzt über eine
+        // gemeinsame Route laufen und Meldungen im Platz liegen.
+        overlay: mockOverlay,
+        openOverlay: (overlay: { id: string; key?: string }) => {
+          mockOverlay = overlay as typeof mockOverlay;
+          rerenderDashboard();
+        },
+        closeOverlay: () => {
+          mockOverlay = null;
+          rerenderDashboard();
+        },
+        plannerMessage: mockPlannerMessage,
+        setPlannerMessage: (message: typeof mockPlannerMessage) => {
+          mockPlannerMessage = message;
+          rerenderDashboard();
+        },
       };
       return selector(state);
     }),
@@ -112,6 +129,23 @@ vi.mock('../../store/usePlannerStore', () => ({
     { getState: () => mockState }
   ),
 }));
+
+// Overlay-Route und Meldung sind echte Zustände: Menü und `⋯` teilen sich
+// seit Spezifikation §16.1 eine Ebene, und Meldungen liegen im Meldungsplatz.
+let mockOverlay: { id: string; key?: string } | null = null;
+let mockPlannerMessage: { type: 'success' | 'error' | 'info'; message: string } | null = null;
+let rerenderDashboard: () => void = () => {};
+
+/**
+ * Mountet das Dashboard und hält `rerenderDashboard` aktuell: Die Meldungs- und
+ * Overlay-Zustände liegen (wie in der App) im Store-Double, nicht in der
+ * Komponente — ein Klick muss deshalb neu rendern.
+ */
+const renderDashboard = () => {
+  const view = render(<PlannerDashboard />);
+  rerenderDashboard = () => view.rerender(<PlannerDashboard />);
+  return view;
+};
 
 // Helper to open the overflow ("Mehr") menu where secondary actions live
 const openMoreMenu = () => {
@@ -130,6 +164,8 @@ describe('PlannerDashboard - Core Interactions', () => {
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
     mockWaterWarning = null;
+    mockOverlay = null;
+    mockPlannerMessage = null;
   });
 
   afterEach(() => {
@@ -137,7 +173,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('renders default UI elements correctly', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     // View toggles
     expect(screen.getByText('Elektrik')).toBeInTheDocument();
@@ -152,10 +188,10 @@ describe('PlannerDashboard - Core Interactions', () => {
 
     // Expert actions remain reachable in the overflow menu.
     openMoreMenu();
-    expect(screen.getByRole('menuitem', { name: /Auto-verbinden — Vorschlag prüfen/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Automatisch verbinden/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /^Stückliste/ })).toBeInTheDocument();
-    expect(screen.getByText(/Plan prüfen/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Prüfung/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Am Raster ausrichten/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
     openMenu('planung');
     expect(screen.getByRole('menuitem', { name: 'Sommer' })).toBeInTheDocument();
@@ -165,7 +201,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('bietet Vorlage laden und Teilen schon im geführten Modus an', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     // Einstieg und Ausgang des Planers sind keine Experten-Aktionen: Sie
     // bleiben sichtbar, während die Schrittleiste den Rest führt.
@@ -179,7 +215,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('supports keyboard navigation and focus restoration in the overflow menu', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
     fireEvent.click(trigger);
 
@@ -205,7 +241,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('closes the overflow menu when its trigger is clicked again', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
     fireEvent.click(trigger);
     expect(screen.getByRole('menu', { name: 'Weitere Aktionen' })).toBeInTheDocument();
@@ -219,7 +255,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('supports keyboard navigation and focus restoration in menubar menus', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const trigger = screen.getByTestId('menubar-planung');
     fireEvent.click(trigger);
 
@@ -241,7 +277,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('closes a menubar dropdown when its trigger is clicked again', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const trigger = screen.getByTestId('menubar-planung');
     fireEvent.click(trigger);
     expect(screen.getByRole('menu', { name: 'Menü' })).toBeInTheDocument();
@@ -254,7 +290,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('calls setViewMode when changing view mode', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     fireEvent.click(screen.getByText('Wasser'));
     expect(mockSetViewMode).toHaveBeenCalledWith('water');
@@ -266,7 +302,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('hält den Planbereichswechsel im festen Statusbereich statt im scrollenden Aktionsbereich', () => {
     // UI-Audit 2026-10-24: Am Ende der scrollenden Aktionsgruppe verschwand
     // „Wasser“ bei 768 px hinter dem Speicherzustand.
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     const status = screen.getByTestId('planner-toolbar-status');
     const actions = screen.getByTestId('planner-toolbar').querySelector('.cad-toolbar__actions');
@@ -279,7 +315,7 @@ describe('PlannerDashboard - Core Interactions', () => {
     mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
     mockEdges.push({ id: 'edge-1', source: 'battery-1', target: 'battery-1', data: {} });
     try {
-      render(<PlannerDashboard />);
+      renderDashboard();
       expect(screen.getByText('1 Bauteil · 1 Leitung')).toBeInTheDocument();
     } finally {
       mockEdges.splice(0);
@@ -287,7 +323,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 
   it('calls setSeason when changing season', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     // Die Jahreszeit ist eine Planungsannahme und liegt im Menü „Planung“;
     // ein Menüpunkt schließt das Menü, deshalb wird es erneut geöffnet.
@@ -308,6 +344,8 @@ describe('PlannerDashboard - Action Buttons', () => {
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
     mockWaterWarning = null;
+    mockOverlay = null;
+    mockPlannerMessage = null;
   });
 
   afterEach(() => {
@@ -315,7 +353,7 @@ describe('PlannerDashboard - Action Buttons', () => {
   });
 
   it('dispatches show-bom-modal when clicking Stückliste (BOM liest den Store selbst)', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
@@ -328,7 +366,7 @@ describe('PlannerDashboard - Action Buttons', () => {
 
   it('hält den Prüfbericht im mobilen Werkzeugleisten-Statusbereich erreichbar', () => {
     mockState.nodes = [{ id: 'battery-1', type: 'battery', data: {} }];
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     const mobileAccess = screen.getByTestId('verification-seal-mobile-access');
     expect(mobileAccess.className).toContain('inline-flex');
@@ -348,14 +386,14 @@ describe('PlannerDashboard - Action Buttons', () => {
       suggestedFix: 'Wechsle zur Elektrikansicht.',
     });
 
-    render(<PlannerDashboard />);
+    renderDashboard();
     expect(screen.getByText('Keine Hinweise')).toBeInTheDocument();
     expect(screen.queryByText(/Elektrischer Befund/)).not.toBeInTheDocument();
     mockLockedMutationErrors.splice(0);
   });
 
   it('öffnet Fachwissen sowohl über das Hilfemenü als auch über die Werkzeugleiste', () => {
-    const helpMenuRender = render(<PlannerDashboard />);
+    const helpMenuRender = renderDashboard();
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMenu('hilfe');
@@ -365,7 +403,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     );
 
     helpMenuRender.unmount();
-    render(<PlannerDashboard />);
+    renderDashboard();
     openMoreMenu();
     fireEvent.click(screen.getByRole('menuitem', { name: 'Hilfe & Fachwissen' }));
     expect(dispatchEventSpy.mock.calls.map(([event]) => (event as Event).type)).toEqual([
@@ -375,7 +413,7 @@ describe('PlannerDashboard - Action Buttons', () => {
   });
 
   it('löst Auto-Wire über den Knopf in der Werkzeugleiste aus', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     fireEvent.click(screen.getByTestId('action-autowire'));
 
@@ -384,11 +422,15 @@ describe('PlannerDashboard - Action Buttons', () => {
   });
 
   it('öffnet die Warn-Zentrale bei vorhandenen Hinweisen statt eines toten Events', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Plan prüfen/));
+    // Der Überlauf rendert denselben Datensatz wie das Werkzeuge-Menü; sichtbar
+    // ist immer nur ein Menü. „Prüfung“ ist der kanonische Name (§16.2).
+    fireEvent.click(
+      within(screen.getByRole('menu', { name: 'Weitere Aktionen' })).getByTestId('action-check')
+    );
 
     // Kein 'check-schematic'-Dispatch mehr (hatte nie einen Listener).
     const types = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
@@ -396,12 +438,12 @@ describe('PlannerDashboard - Action Buttons', () => {
   });
 
   it('calls onLayout with no args when clicking Aufräumen', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     // UX-Reset: „Aufräumen" ist keine Toolbar-Aktion mehr (drei Layout-Begriffe
     // nebeneinander) — erreichbar bleibt sie im ⋯-Menü.
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Aufräumen/));
+    fireEvent.click(screen.getByText(/Am Raster ausrichten/));
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
     expect(mockOnLayout).toHaveBeenCalledWith();
@@ -413,27 +455,27 @@ describe('PlannerDashboard - Action Buttons', () => {
    * Test verankert die Verdrahtung, damit er es bleibt.
    */
   it('calls onLayoutV2 when clicking Strukturieren (ELK) and reports the engine', async () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Anordnung angepasst/)).toBeInTheDocument());
   });
 
   it('reports the Dagre fallback honestly instead of claiming ELK', async () => {
     mockOnLayoutV2.mockResolvedValueOnce({ applied: true, engine: 'dagre' });
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
-    await waitFor(() => expect(screen.getByText(/Raster-Anordnung angewendet/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/am Raster ausgerichtet/)).toBeInTheDocument());
   });
 
   it('dispatches planner-fit-view when clicking the Übersicht (fit view) action', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     // Die Übersicht wanderte aus der Toolbar ins ⋯-Menü: Der Canvas trägt
@@ -458,7 +500,7 @@ describe('PlannerDashboard - Action Buttons', () => {
    * „Automatik“ (Menüleiste → Werkzeuge und ⋯).
    */
   it('bietet in der Leiste genau eine Automatikaktion an und ordnet den Plan über das Menü', async () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     // Nutzer-Rückmeldung 2026-10-26: „Vorschlag prüfen“, „Plan automatisch
     // ordnen“ und „Kabel optimieren“ standen gleichzeitig in der Leiste — für
@@ -473,13 +515,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
 
     openMoreMenu();
-    expect(screen.getByTestId('action-layout-v2-menu')).toHaveTextContent('Plan automatisch ordnen');
+    expect(screen.getByTestId('action-layout-v2-menu')).toHaveTextContent('Anordnung anpassen');
     expect(screen.getByTestId('action-optimize-routing')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByText(/Plan automatisch angeordnet/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Anordnung angepasst/)).toBeInTheDocument());
   });
 
   /**
@@ -492,7 +534,7 @@ describe('PlannerDashboard - Action Buttons', () => {
    * Befund nicht zurückkehrt: keine Leiste, dafür ein direkter Knopf.
    */
   it('zeigt keine Schrittleiste, sondern Auto-Verbinden direkt in der Leiste', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     expect(screen.queryByTestId('guided-rail')).not.toBeInTheDocument();
     expect(screen.queryByTestId('guided-primary-action')).not.toBeInTheDocument();
@@ -509,13 +551,13 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('shows tablet undo/redo controls with explicit disabled-capable targets', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     expect(screen.getByTestId('toolbar-undo')).toHaveClass('md:inline-flex');
     expect(screen.getByTestId('toolbar-redo')).toHaveClass('md:inline-flex');
   });
 
   it('shows a saved indicator on every viewport', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const indicator = screen.getByTestId('save-indicator');
     expect(indicator).toHaveAttribute('role', 'status');
     expect(indicator.getAttribute('aria-label')).toMatch(/Zuletzt gespeichert/);
@@ -523,7 +565,7 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
   });
 
   it('offers a five-second undo action after clearing the plan', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     openMoreMenu();
     fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
     fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
@@ -532,18 +574,29 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
     expect(mockUndo).toHaveBeenCalledTimes(1);
   });
 
-  it('lagert die Aktionsmeldung aus dem Dokumentfluss aus (fest über der Statuszeile)', () => {
-    // UI-Audit 2026-10-24: Als `fixed top-20` lag die Meldung mitten im Bild
-    // und deckte Modusleiste bzw. Planungsprüfung ab. Die Lage kommt jetzt aus
-    // `.planner-action-feedback` (unterhalb von Werkzeugleiste und Blättern).
-    render(<PlannerDashboard />);
+  it('zeigt die Aktionsmeldung im reservierten Meldungsplatz statt schwebend über dem Plan', () => {
+    // UI-Audit 2026-10-24 fand die Meldung als `fixed top-20` mitten im Bild;
+    // danach lag sie als `.planner-action-feedback` fest über Zoom, Rückgängig
+    // und Statuszeile (2026-11-10 gemessen: 1826 px² auf den Zoom-Knöpfen).
+    // Seit Spezifikation §16.1 ist der Meldungsplatz Teil des Flusses: eine
+    // Meldung, keine `fixed`-Lage, Höhe 0 wenn leer.
+    const view = renderDashboard();
     openMoreMenu();
     fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
     fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
 
+    const slot = screen.getByTestId('planner-message-slot');
+    expect(slot.getAttribute('data-empty')).toBe('false');
     const feedback = screen.getByTestId('action-feedback');
-    expect(feedback.className).toContain('planner-action-feedback');
-    expect(feedback.className).not.toMatch(/\b(absolute|top-20)\b/);
+    expect(slot.contains(feedback)).toBe(true);
+    expect(feedback.className).not.toMatch(/\b(absolute|fixed|top-20)\b/);
+    // Leerer Platz: Höhe 0, kein `action-feedback` mehr im DOM.
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Meldung schließen' }));
+    });
+    expect(screen.getByTestId('planner-message-slot').getAttribute('data-empty')).toBe('true');
+    expect(screen.queryByTestId('action-feedback')).not.toBeInTheDocument();
+    view.unmount();
   });
 });
 
@@ -554,6 +607,8 @@ describe('PlannerDashboard - Image Export', () => {
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
     mockWaterWarning = null;
+    mockOverlay = null;
+    mockPlannerMessage = null;
   });
 
   afterEach(() => {
@@ -590,7 +645,7 @@ describe('PlannerDashboard - Image Export', () => {
         return el;
       });
 
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Bild exportieren/));
@@ -613,7 +668,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     vi.mocked(toPng).mockClear();
 
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Bild exportieren/));
@@ -632,7 +687,7 @@ describe('PlannerDashboard - Image Export', () => {
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
 
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Bild exportieren/));
@@ -675,7 +730,7 @@ describe('PlannerDashboard - Image Export', () => {
     error.name = 'SecurityError';
     vi.mocked(toPng).mockRejectedValueOnce(error);
 
-    render(<PlannerDashboard />);
+    renderDashboard();
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Bild exportieren/));
@@ -735,7 +790,7 @@ describe('blockierte Änderungen an fixierten Leitungen', () => {
       suggestedFix: 'Leitung entsperren, bevor sie geändert wird.',
     });
 
-    render(<PlannerDashboard />);
+    renderDashboard();
     fireEvent.click(screen.getByRole('button', { name: /Planungsprüfung öffnen/ }));
 
     const finding = screen.getByText('Änderung an fixierter Leitung blockiert').closest('li');
@@ -779,7 +834,7 @@ describe('PlannerDashboard — ein Prüf-Einstieg in der Leiste', () => {
   });
 
   it('zeigt genau eine Prüf-Plakette statt zweier Zahlen', () => {
-    render(<PlannerDashboard />);
+    renderDashboard();
     const status = screen.getByTestId('planner-toolbar-status');
 
     expect(within(status).getAllByRole('button', { name: /Planungsprüfung öffnen/ })).toHaveLength(1);
@@ -791,7 +846,7 @@ describe('PlannerDashboard — ein Prüf-Einstieg in der Leiste', () => {
   it('lässt die Trassenprüfung im Wasserplan außen vor', () => {
     mockState.viewMode = 'water';
     mockWaterWarning = null;
-    render(<PlannerDashboard />);
+    renderDashboard();
     const status = screen.getByTestId('planner-toolbar-status');
 
     expect(within(status).queryByRole('button', { name: /Planungsprüfung öffnen/ })).toBeNull();

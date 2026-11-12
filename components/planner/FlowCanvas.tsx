@@ -39,6 +39,7 @@ import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer, useMediaQuery } from './hooks/useMediaCapabilities';
+import { PHONE_CHROME_QUERY } from './ui/breakpoints';
 import { usePlannerDarkMode } from './hooks/usePlannerTheme';
 import { useSaveFailure } from './hooks/useSaveFailure';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
@@ -52,7 +53,6 @@ import { CanvasContextMenu, type ContextMenuState } from './ui/CanvasContextMenu
 import { applyFocusHighlight } from './utils/focusHighlight';
 import {
   applyDomainFilter,
-  DOMAINS,
   type Domain,
   nodeMinimapColorFrom,
   resolveMinimapPalette,
@@ -337,7 +337,14 @@ function TouchZoomFix() {
 }
 
 export function FlowCanvas() {
-  const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport, zoomTo } =
+    useReactFlow();
+
+  /** Grenzen wie am Canvas (`PLANNER_MIN_ZOOM`/`PLANNER_MAX_ZOOM`), eine Quelle. */
+  const clampZoom = React.useCallback(
+    (zoom: number) => Math.min(PLANNER_MAX_ZOOM, Math.max(PLANNER_MIN_ZOOM, zoom)),
+    []
+  );
   const viewportZoom = useStore((state) => state.transform[2]);
   const reactFlowStyle: React.CSSProperties & { '--planner-viewport-zoom': number } = {
     backgroundColor: 'var(--canvas-bg)',
@@ -350,13 +357,40 @@ export function FlowCanvas() {
   // trotzdem Touch. Alle Interaktions-Props hängen hieran, nicht am Layout.
   const coarsePointer = useCoarsePointer();
   const compactViewport = useMediaQuery('(max-width: 1023.98px)');
+  // Handy-Hülle: Zoom und Übersicht stehen in der Werkzeugzone im Fluss
+  // (Spec §6.2). Die React-Flow-`Controls` und die `MiniMap` werden dort nicht
+  // gerendert — eine Bedienung, ein Ort, keine zwei Zoom-Knöpfe übereinander.
+  const phoneChrome = useMediaQuery(PHONE_CHROME_QUERY);
   const isDarkPlanner = usePlannerDarkMode();
-  const fitMinZoom = coarsePointer || compactViewport ? 0.5 : PLANNER_INITIAL_FIT_MIN_ZOOM;
+  /*
+   * Der automatische Fit rechnet mit dem Platz, der NACH den schwebenden
+   * Bedienelementen bleibt. Am Desktop sind das Kopf-Panels (Modus, Ansicht,
+   * Attribution) und unten Zoom/MiniMap — M11: 128/84 px, damit der Plan sie
+   * nicht unterläuft.
+   *
+   * In der Handy-Hülle gibt es diese schwebenden Elemente nicht (Spec §6.2:
+   * „Die React-Flow-Controls und die MiniMap werden unter der Handy-Grenze
+   * nicht gerendert“); Zoom und Übersicht stehen IM Fluss in der Werkzeugzone.
+   * Der Desktop-Abstand frisst dort trotzdem 212 von 298 px Fläche. Gemessen
+   * am 2026-11-10 (375 × 667, Vorlage „Kastenwagen“): Der Plan ist 2440 × 816
+   * Einheiten groß, der Fit blieb auf der Untergrenze 0,5 stehen und setzte
+   * ihn bei x = -422 px ab — ein Drittel lag links außerhalb, Antippen
+   * unmöglich. Deshalb: kleine Innenabstände und eine Untergrenze, die den
+   * ganzen Plan zeigen DARF (der bewusste „Ganzes Bild“-Knopf ohnehin).
+   */
+  const fitMinZoom = phoneChrome
+    ? PLANNER_MIN_ZOOM
+    : coarsePointer || compactViewport
+      ? 0.5
+      : PLANNER_INITIAL_FIT_MIN_ZOOM;
   // M11: Asymmetrischer Innenabstand hält schwebende Kopf-Panels (Modus/Ansicht/Attribution)
   // und untere Steuerelemente (Zoom/MiniMap) beim automatischen Einpassen frei.
   const fitPanelPadding = useMemo(
-    () => ({ top: '128px' as const, right: '24px' as const, bottom: '84px' as const, left: '24px' as const }),
-    []
+    () =>
+      phoneChrome
+        ? { top: '16px' as const, right: '16px' as const, bottom: '16px' as const, left: '16px' as const }
+        : { top: '128px' as const, right: '24px' as const, bottom: '84px' as const, left: '24px' as const },
+    [phoneChrome]
   );
   const interaction = useMemo(
     () => getFlowInteractionProps(pointerModeFromCoarse(coarsePointer)),
@@ -365,7 +399,6 @@ export function FlowCanvas() {
   const armedNodeId = useLongPressNodeDrag(interaction.requiresDragHandle);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [collidingNodeId, setCollidingNodeId] = useState<string | null>(null);
-  const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
   /**
    * Hinweis „Dachplaner-Daten erkannt“ (Designkonzept 2026-10, Regel 6):
    * Das war ein Dauerpanel über der Zeichenfläche — auf dem Telefon lag es
@@ -374,12 +407,17 @@ export function FlowCanvas() {
    */
   const [solarNoticeDismissed, setSolarNoticeDismissed] = useState(false);
   const connectionAttempt = useRef(false);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showConnectionFeedback = React.useCallback((message: string, timeout = 4000) => {
-    setConnectionFeedback(message);
-    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-    if (timeout > 0) feedbackTimer.current = setTimeout(() => setConnectionFeedback(null), timeout);
+  const showConnectionFeedback = React.useCallback((message: string, timeout = 0) => {
+    // EIN Meldungsplatz für alle Hinweise (Overlay-Regel 3). Der Verbindungs-
+    // Hinweis war ein eigenes, fest zentriertes `<div>` über dem Plan
+    // (`.planner-mobile-feedback`, Ist-Befund 2026-11-10) und konnte Zoom,
+    // Strompfad und andere Toasts gleichzeitig überdecken. Er läuft jetzt über
+    // dieselbe Meldung wie „Vorlage geladen“ — eine neue ersetzt die alte.
+    // `timeout` bleibt als Signatur erhalten, wird aber nicht mehr gebraucht:
+    // Der Platz räumt sich selbst (5 s) bzw. wartet auf den Schließen-Knopf.
+    void timeout;
+    window.dispatchEvent(new CustomEvent('planner-action-feedback', { detail: { type: 'info', message } }));
   }, []);
 
   const openTouchContextMenu = React.useCallback((state: ContextMenuState) => {
@@ -390,13 +428,12 @@ export function FlowCanvas() {
   React.useEffect(() => {
     const onInputError = (event: Event) =>
       showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
-    const onNodeArmed = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail, 3000);
+    const onNodeArmed = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail);
     window.addEventListener('planner-input-error', onInputError);
     window.addEventListener('planner-node-armed', onNodeArmed);
     return () => {
       window.removeEventListener('planner-input-error', onInputError);
       window.removeEventListener('planner-node-armed', onNodeArmed);
-      if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     };
   }, [showConnectionFeedback]);
 
@@ -444,13 +481,30 @@ export function FlowCanvas() {
         );
       }
     };
+    /**
+     * Zoom aus der Handy-Werkzeugzone (Spec §6.2).
+     *
+     * Dort gibt es die React-Flow-`Controls` nicht mehr — die Zone liegt im
+     * Fluss über der Fläche. Damit Zoom trotzdem EIN Codepfad bleibt, lösen
+     * die Knöpfe dieselben React-Flow-Aufrufe aus wie die eingebauten.
+     */
+    const zoomBy = (factor: number) => {
+      const current = getViewport().zoom;
+      void zoomTo(clampZoom(current * factor), { duration: 120 });
+    };
+    const handleZoomIn = () => zoomBy(1.25);
+    const handleZoomOut = () => zoomBy(0.8);
     window.addEventListener('planner-fit-view', handleFitView);
     window.addEventListener('planner-focus-element', handleFocusElement);
+    window.addEventListener('planner-zoom-in', handleZoomIn);
+    window.addEventListener('planner-zoom-out', handleZoomOut);
     return () => {
       window.removeEventListener('planner-fit-view', handleFitView);
       window.removeEventListener('planner-focus-element', handleFocusElement);
+      window.removeEventListener('planner-zoom-in', handleZoomIn);
+      window.removeEventListener('planner-zoom-out', handleZoomOut);
     };
-  }, [fitView, getNode, setCenter, fitMinZoom, fitPanelPadding]);
+  }, [fitView, getNode, setCenter, fitMinZoom, fitPanelPadding, getViewport, zoomTo, clampZoom]);
 
   const {
     viewMode,
@@ -487,6 +541,7 @@ export function FlowCanvas() {
     plannerErrors,
     isLayoutPending,
     autoStructurePending,
+    templateStructurePending,
     structureAutoWiring,
   } = usePlannerStore(
     useShallow((state) => ({
@@ -524,6 +579,7 @@ export function FlowCanvas() {
       plannerErrors: state.plannerErrors,
       isLayoutPending: state.isLayoutPending,
       autoStructurePending: state.autoStructurePending,
+      templateStructurePending: state.templateStructurePending,
       structureAutoWiring: state.structureAutoWiring,
     }))
   );
@@ -549,9 +605,12 @@ export function FlowCanvas() {
   );
 
   React.useEffect(() => {
-    if (!autoStructurePending || !allNodesMeasured) return;
+    // Zwei Auslöser, ein Lauf: „Automatisch verbinden“ und eine frisch
+    // geladene Vorlage (die denselben Verbindungspfad nimmt, aber ohne
+    // Review-Dialog). Beide warten auf gemessene Kartenmaße.
+    if ((!autoStructurePending && !templateStructurePending) || !allNodesMeasured) return;
     void structureAutoWiring();
-  }, [autoStructurePending, allNodesMeasured, structureAutoWiring]);
+  }, [autoStructurePending, templateStructurePending, allNodesMeasured, structureAutoWiring]);
 
   React.useEffect(() => {
     if (previousViewMode.current === null) {
@@ -736,26 +795,19 @@ export function FlowCanvas() {
     ] as [[number, number], [number, number]];
   }, [rawNodes]);
 
-  // Domänen-Filter (nur Elektrik): alle Domänen standardmäßig aktiv.
-  const [activeDomains, setActiveDomains] = useState<Set<Domain>>(() => new Set(DOMAINS));
+  // Domänen-Filter (nur Elektrik): Der Zustand liegt seit der Handy-Hülle im
+  // Store — die Werkzeugzone DORT (Spec §6.2) und die Chip-Reihe am Desktop
+  // müssen dieselben Schalter bedienen. Der Canvas liest nur noch.
+  const activeDomainList = usePlannerStore((state) => state.activeDomains);
+  const toggleDomainStore = usePlannerStore((state) => state.toggleDomain);
+  const activeDomains = React.useMemo(() => new Set<Domain>(activeDomainList), [activeDomainList]);
   const [minimapOpen, setMinimapOpen] = useState(false);
   React.useEffect(() => {
     const handleToggleMinimap = () => setMinimapOpen((open) => !open);
     window.addEventListener('planner-toggle-minimap', handleToggleMinimap);
     return () => window.removeEventListener('planner-toggle-minimap', handleToggleMinimap);
   }, []);
-  const toggleDomain = React.useCallback((domain: Domain) => {
-    setActiveDomains((prev) => {
-      const next = new Set(prev);
-      if (next.has(domain)) {
-        if (next.size === 1) return prev; // mindestens eine Domäne aktiv lassen
-        next.delete(domain);
-      } else {
-        next.add(domain);
-      }
-      return next;
-    });
-  }, []);
+  const toggleDomain = React.useCallback((domain: Domain) => toggleDomainStore(domain), [toggleDomainStore]);
 
   // Hover- und Selektions-Hervorhebung. Beim Hover einer Kante werden deren
   // Endknoten als Seeds verwendet, damit alle verbundenen Kabel hervorgehoben werden.
@@ -1160,12 +1212,14 @@ export function FlowCanvas() {
               Canvas) und mit !left-16 neben den 44-px-Zoom-Controls.
               Bei leerem Plan blendet sie sonst als leere Schwarze/Weiße
               Kachel — sie wird nur mit Inhalt gerendert. */}
-            <Controls
-              showInteractive={false}
-              className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
-            />
+            {!phoneChrome && (
+              <Controls
+                showInteractive={false}
+                className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
+              />
+            )}
             <TouchZoomFix />
-            {rawNodes.length > 0 && (
+            {!phoneChrome && rawNodes.length > 0 && (
               <MiniMap
                 position="bottom-left"
                 className={`planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block ${minimapOpen ? 'planner-minimap--open' : ''}`}
@@ -1188,8 +1242,11 @@ export function FlowCanvas() {
             )}
 
             {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
-              beantwortet, welche Frage gerade bearbeitet wird. */}
-            {viewMode === 'electric' && (
+              beantwortet, welche Frage gerade bearbeitet wird.
+              In der Handy-Hülle liegt er in der Werkzeugzone im Fluss
+              (Spec §6.2). Hier wäre er ein zweiter Satz Knöpfe über derselben
+              Fläche — und mit doppelten `data-testid`s. */}
+            {!phoneChrome && viewMode === 'electric' && (
               <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
                 <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
                 {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
@@ -1214,7 +1271,10 @@ export function FlowCanvas() {
               </Panel>
             )}
 
-            {viewMode === 'electric' && (
+            {/* Wie der Modusschalter: In der Handy-Hülle liegt „Darstellung“
+                in der Werkzeugzone (Spec §6.2), im Fluss über der Fläche.
+                Hier wäre sie ein zweites Klapp-Popover mit derselben Kennung. */}
+            {!phoneChrome && viewMode === 'electric' && (
               <Panel
                 position="top-right"
                 className="planner-display-options-panel pointer-events-none m-2 flex flex-col items-end gap-2 sm:m-3"
@@ -1280,20 +1340,6 @@ export function FlowCanvas() {
           </ReactFlow>
         </div>
       </DesignatorContext.Provider>
-
-      <div
-        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 text-center md:bottom-6"
-        aria-live="polite"
-        role="status"
-      >
-        {(firstTappedHandle || connectionFeedback) && (
-          <span className="inline-block border border-rule-strong bg-ink px-3 py-2 text-sm text-paper">
-            {firstTappedHandle
-              ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.'
-              : connectionFeedback}
-          </span>
-        )}
-      </div>
 
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 

@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openMenubar } from './helpers';
 
 /**
  * Geometrie auf einem frischen Beispielplan.
@@ -28,6 +27,13 @@ async function openFreshExample(page: Page): Promise<void> {
     await expect(dialog).toBeHidden();
   }
   await expect(page.locator('[data-designator]').first()).toBeAttached({ timeout: 15_000 });
+  // Diese Datei misst Geometrie AUF DER FLÄCHE (Knoten, Kanten, Werkzeugzone).
+  // In der Handy-Hülle liegt beim Öffnen die Ansicht „Bauteile“ davor und die
+  // Fläche ist `inert` (Spec §5/§6.1) — Klicks und Messungen liefen deshalb
+  // gegen eine unsichtbare Ebene. Der Wechsel ist Teil der Vorbereitung, nicht
+  // der Prüfung: Messbar ist die Fläche in der Ansicht „Schaltplan“.
+  const canvasTab = page.getByTestId('nav-tab-schaltplan');
+  if (await canvasTab.isVisible()) await canvasTab.click();
 }
 
 function boxesOverlap(
@@ -73,13 +79,34 @@ async function settledCritical(page: Page): Promise<number> {
   return value;
 }
 
+/**
+ * Zahl kritischer Befunde.
+ *
+ * Am Desktop steht sie in der Statuszeile, auf dem Handy trägt sie der Badge
+ * an „Prüfung“ im Fuß (Spec §5.2) — zusätzlich im `aria-label`, damit sie
+ * nicht nur eine Farbe ist.
+ */
 async function criticalCount(page: Page): Promise<number> {
+  const badge = page.getByTestId('nav-tab-pruefung');
+  if (await badge.isVisible().catch(() => false)) {
+    // Das `aria-label` trägt die genaue Zahl; der sichtbare Badge kürzt ab
+    // 10 auf „9+“ und taugt deshalb nicht zum Zählen.
+    const label = (await badge.getAttribute('aria-label')) ?? '';
+    const labelled = label.match(/(\d+)\s+kritisch/);
+    return labelled ? Number(labelled[1]) : 0;
+  }
   const text = await page.locator('.planner-statusbar').innerText();
   const match = text.match(/(\d+)\s+kritisch/);
   return match ? Number(match[1]) : 0;
 }
 
+/** Zoom-Stand in Prozent — Handy: in der Werkzeugzone, Desktop: Statuszeile. */
 async function zoomPercent(page: Page): Promise<number> {
+  const phoneZoom = page.getByTestId('phone-zoom');
+  if (await phoneZoom.isVisible().catch(() => false)) {
+    const text = (await phoneZoom.innerText()).match(/(\d+)/);
+    return text ? Number(text[1]) : Number.NaN;
+  }
   const text = await page.locator('.planner-statusbar').innerText();
   const match = text.match(/Zoom\s+(\d+)/);
   return match ? Number(match[1]) : Number.NaN;
@@ -141,7 +168,7 @@ test.describe('Frischstart nach geleertem Speicher', () => {
       );
     });
     await page.reload();
-    await expect(page.getByText('QA-FREMD')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('QA-FREMD').first()).toBeVisible({ timeout: 15_000 });
 
     await page.evaluate(async () => {
       localStorage.clear();
@@ -179,15 +206,18 @@ for (const viewport of [
 
       const phoneChrome = viewport.width < 768 || viewport.height <= 500;
       if (phoneChrome) {
-        await expect(page.locator('.cad-menubar')).toBeHidden();
-        const phone = page.getByTestId('phone-menu');
-        const toolbar = page.getByTestId('planner-toolbar');
-        await expect(phone).toBeVisible();
-        const phoneBox = await boxOf(phone);
-        const toolbarBox = await boxOf(toolbar);
-        expect(phoneBox.y).toBeGreaterThanOrEqual(toolbarBox.y - 1);
-        expect(phoneBox.y + phoneBox.height).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height + 1);
-        expect(toolbarBox.height).toBeLessThanOrEqual(56);
+        // Handy-Hülle (Spezifikation §5.1): keine Menüleiste, keine
+        // Werkzeugleiste — eine Kopfzeile mit Home, Projektname und
+        // Speicherzustand, darunter die vier Ansichten.
+        await expect(page.locator('.cad-menubar')).toHaveCount(0);
+        await expect(page.getByTestId('planner-toolbar')).toHaveCount(0);
+        const header = page.getByTestId('planner-phone-header');
+        await expect(header).toBeVisible();
+        const headerBox = await boxOf(header);
+        expect(insideViewport(headerBox, viewport)).toBe(true);
+        // Eine Zeile: 48 px plus Safe-Area, nie höher als 64 px.
+        expect(headerBox.height).toBeLessThanOrEqual(64);
+        await expect(page.getByTestId('planner-bottom-nav')).toBeVisible();
       } else {
         for (const id of ['ansicht', 'hilfe']) {
           const item = page.getByTestId(`menubar-${id}`);
@@ -206,6 +236,11 @@ for (const viewport of [
         );
       }
 
+      // Werkzeugzone und Fläche liegen nur in der Ansicht „Schaltplan“
+      // (Spezifikation §6.2). Vorher steht die Startansicht „Bauteile“.
+      await page.getByTestId('nav-tab-schaltplan').click();
+      await expect(page.getByTestId('planner-canvas-column')).toBeVisible();
+
       await expect(page.getByTestId('mobile-overview')).toHaveCount(1);
       const overview = page.getByTestId('mobile-overview');
       const undo = page.getByTestId('mobile-undo');
@@ -223,8 +258,11 @@ for (const viewport of [
       });
       expect(overviewHit).toBe(true);
 
-      const zoomIn = page.locator('.react-flow__controls-zoomin');
+      // Zoom liegt in derselben Zone; die React-Flow-`Controls` gibt es in der
+      // Handy-Hülle nicht mehr (eine Bedienung, ein Ort).
+      const zoomIn = page.getByTestId('phone-zoom-in');
       await expect(zoomIn).toBeVisible();
+      await expect(page.locator('.react-flow__controls-zoomin')).toBeHidden();
       expect(insideViewport(await boxOf(zoomIn), viewport)).toBe(true);
       expect(boxesOverlap(await boxOf(overview), await boxOf(zoomIn))).toBe(false);
       const hit = await zoomIn.evaluate((element) => {
@@ -234,12 +272,9 @@ for (const viewport of [
       });
       expect(hit).toBe(true);
 
-      const status = page.locator('.planner-statusbar');
-      const shown = await status.evaluate((element) => getComputedStyle(element).display !== 'none');
-      expect(shown).toBe(true);
-      const statusBox = await boxOf(status);
-      expect(statusBox.height).toBeGreaterThan(8);
-      expect(insideViewport(statusBox, viewport)).toBe(true);
+      // Statuszeile entfällt in der Hülle (Spec §5.2: der Fuß trägt die
+      // Prüfzahl) — sie ist gar nicht mehr im DOM.
+      await expect(page.locator('.planner-statusbar')).toHaveCount(0);
 
       const canvas = page.getByTestId('planner-canvas-column');
       const canvasBox = await boxOf(canvas);
@@ -276,17 +311,32 @@ for (const viewport of [
       expect(boxesOverlap(boxes[0]!, boxes[1]!)).toBe(false);
       expect(boxesOverlap(boxes[1]!, boxes[2]!)).toBe(false);
       if (viewport.width < 768 || viewport.height <= 500) {
-        const panel = page.locator('.planner-mode-switch-panel');
-        const group = page.getByRole('group', { name: 'Arbeitsmodus' });
-        const panelBox = await boxOf(panel);
+        // In der Hülle liefert die Werkzeugzone die Gruppe (Spec §6.2); das
+        // Panel auf der Fläche gibt es dort nicht mehr (sonst zwei Sätze
+        // Knöpfe mit derselben Kennung).
+        await expect(page.locator('.planner-mode-switch-panel')).toHaveCount(0);
+        const group = page.getByTestId('phone-canvas-toolbar').getByRole('group', { name: 'Arbeitsmodus' });
         const groupBox = await boxOf(group);
-        expect(panelBox.width).toBeLessThanOrEqual(groupBox.width + 4);
-        const hint = page.getByTestId('planner-mode-caption');
-        if (await hint.isVisible()) {
-          const hintBox = await boxOf(hint);
-          expect(hintBox.width).toBeGreaterThan(20);
-          expect(hintBox.width).toBeLessThanOrEqual(groupBox.width + 4);
+        // Die Modusgruppe steht in der Werkzeugzone. Im flachen Querformat ist
+        // die Zone EINE waagerecht scrollbare Zeile (Spec §6.2, AT-13): Ein
+        // Ziel darf außerhalb des ersten Blickfelds liegen, muss aber durch
+        // Scrollen der Zone erreichbar sein. Im Hochformat stehen die beiden
+        // Zeilen untereinander und passen ganz ins Bild.
+        const zone = await boxOf(page.getByTestId('phone-canvas-toolbar'));
+        const flatLandscape = viewport.height <= 500 && viewport.width > viewport.height;
+        const scrolls = await page
+          .getByTestId('phone-canvas-toolbar')
+          .evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+        if (!(flatLandscape && scrolls)) {
+          expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(viewport.width + 1);
         }
+        expect(groupBox.y + groupBox.height).toBeLessThanOrEqual(zone.y + zone.height + 1);
+        // Nach dem Scrollen ist die Gruppe ganz im Bild und wird nicht
+        // verdeckt (AT-13: „jedes Ziel nach dem Scrollen treffbar“).
+        await group.scrollIntoViewIfNeeded();
+        const scrolledBox = await boxOf(group);
+        expect(scrolledBox.x).toBeGreaterThanOrEqual(-1);
+        expect(scrolledBox.x + scrolledBox.width).toBeLessThanOrEqual(viewport.width + 1);
       }
       const ansicht = page.getByTestId('canvas-display-options');
       if (await ansicht.isVisible()) {
@@ -295,56 +345,33 @@ for (const viewport of [
       }
     });
 
-    test('Auto-verbinden-Symbol unter 480 px liegt frei in der Leiste', async ({ page }) => {
-      test.skip(viewport.width >= 480, 'nur die schmale Leiste');
+    test('„Automatisch verbinden“ liegt in „Mehr“ frei und ungeschnitten', async ({ page }) => {
       await openFreshExample(page);
+      // Kanonischer Name (Spec §16.2): „Automatisch verbinden“ — nicht mehr
+      // „Auto-verbinden“ und nicht mehr „Vorschlag prüfen“.
+      await page.getByTestId('nav-tab-mehr').click();
       const wire = page.getByTestId('action-autowire');
       await expect(wire).toBeVisible();
+      await expect(wire).toContainText('Automatisch verbinden');
       const wireBox = await boxOf(wire);
       expect(insideViewport(wireBox, viewport)).toBe(true);
-      const icon = wire.locator('svg').first();
-      const iconBox = await boxOf(icon);
-      expect(iconBox.x).toBeGreaterThanOrEqual(wireBox.x - 1);
-      expect(iconBox.y).toBeGreaterThanOrEqual(wireBox.y - 1);
-      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(wireBox.x + wireBox.width + 1);
-      expect(iconBox.y + iconBox.height).toBeLessThanOrEqual(wireBox.y + wireBox.height + 1);
-      const toolbarBox = await boxOf(page.getByTestId('planner-toolbar'));
-      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(toolbarBox.x + toolbarBox.width + 1);
-      for (const id of ['action-more', 'action-templates', 'save-indicator', 'verification-seal-toggle']) {
-        const other = page.getByTestId(id);
-        if (!(await other.isVisible())) continue;
-        expect(boxesOverlap(wireBox, await boxOf(other)), id).toBe(false);
-        expect(boxesOverlap(iconBox, await boxOf(other)), id).toBe(false);
-      }
-      const warn = page.locator('.de-warning-center > button');
-      if (await warn.isVisible()) {
-        expect(boxesOverlap(iconBox, await boxOf(warn))).toBe(false);
-      }
-    });
-
-    test('Auto-verbinden bleibt im Menü vollständig lesbar', async ({ page }) => {
-      await openFreshExample(page);
-
-      await openMenubar(page, 'werkzeuge');
-      const menuItem = page.getByTestId('action-autowire-menu');
-      await expect(menuItem).toBeVisible();
-      await expect(menuItem).toContainText('Auto-verbinden');
-      const menuClipped = await menuItem.evaluate((element) => element.scrollWidth > element.clientWidth + 2);
-      expect(menuClipped).toBe(false);
-      await page.keyboard.press('Escape');
-
-      await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-      const overflowItem = page.getByRole('menuitem', { name: /Auto-verbinden/ });
-      await expect(overflowItem).toBeVisible();
-      const overflowClipped = await overflowItem.evaluate(
-        (element) => element.scrollWidth > element.clientWidth + 2
-      );
-      expect(overflowClipped).toBe(false);
+      const clipped = await wire.evaluate((element) => element.scrollWidth > element.clientWidth + 2);
+      expect(clipped).toBe(false);
+      // Große Trefferfläche auch in der Liste (≥ 44 px).
+      expect(wireBox.height).toBeGreaterThanOrEqual(44);
+      // Jede Aktion genau einmal (AC-K1): kein zweiter Einstieg in derselben
+      // Ansicht und keine Werkzeugleiste daneben.
+      await expect(page.getByTestId('action-autowire')).toHaveCount(1);
+      await expect(page.getByTestId('planner-toolbar')).toHaveCount(0);
+      const nav = page.getByTestId('planner-bottom-nav');
+      expect(boxesOverlap(wireBox, await boxOf(nav))).toBe(false);
     });
 
     test('zweiter Zoom-Tipp vergrößert, die Karte lässt sich am Körper ziehen', async ({ page }) => {
       await openFreshExample(page);
-      const zoomIn = page.locator('.react-flow__controls-zoomin');
+      // Handy-Hülle: Zoom steht in der Werkzeugzone (Spec §6.2); die
+      // React-Flow-`Controls` werden dort nicht gerendert.
+      const zoomIn = page.getByTestId('phone-zoom-in');
       const before = await zoomPercent(page);
       expect(before).toBeGreaterThan(0);
       await zoomIn.click();
@@ -395,7 +422,7 @@ for (const viewport of [
     test('Kabel optimieren meldet sich und erhöht die kritischen Befunde nicht', async ({ page }) => {
       await openFreshExample(page);
       const before = await settledCritical(page);
-      await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+      await page.getByTestId('nav-tab-mehr').click();
       const optimize = page.getByTestId('action-optimize-routing');
       await expect(optimize).toBeEnabled({ timeout: 20_000 });
       await optimize.click();
@@ -408,8 +435,8 @@ for (const viewport of [
     test('Stückliste, Prüfbericht und Fachwissen bleiben im Bild', async ({ page }) => {
       await openFreshExample(page);
 
-      await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-      await page.getByRole('menuitem', { name: /^Stückliste/ }).click();
+      await page.getByTestId('nav-tab-mehr').click();
+      await page.getByTestId('action-bom').click();
       const bom = page.getByRole('dialog', { name: 'Stückliste' });
       await expect(bom).toBeVisible();
       const subtitle = bom.locator('.planner-dialog__description');
@@ -434,9 +461,15 @@ for (const viewport of [
       }
       await bom.getByRole('button', { name: 'Dialog schließen' }).click();
 
+      // Nach dem Bericht steht die Ansicht „Mehr“ wieder da (das Blatt war
+      // über ihr). Für den Klick auf ein Bauteil erst zurück auf den
+      // Schaltplan — dort liegt die Fläche.
+      await page.getByTestId('nav-tab-schaltplan').click();
       await clickVisiblePart(page, viewport);
-      await openMenubar(page, 'hilfe');
-      await page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ }).click();
+      // Hilfe liegt auf dem Handy in „Mehr“ (Spec §6.4), nicht in einem Menü.
+      await page.getByTestId('nav-tab-mehr').click();
+      await page.getByTestId('action-help').click();
+      await expect(page.getByTestId('planner-phone-view')).toHaveCount(0);
       const expert = page.getByTestId('expert-panel-open');
       await expect(expert).toBeVisible();
       const expertBox = await boxOf(expert);
@@ -450,86 +483,74 @@ for (const viewport of [
       await expect(expert).not.toContainText('Wähle eine Komponente für passende Tipps.');
       await page.getByTestId('expert-panel-close').click();
 
-      const seal = page.getByTestId('verification-seal-toggle');
-      if (await seal.isVisible()) {
-        await seal.click();
-      } else {
-        await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-        await page.getByRole('menuitem', { name: /Prüfbericht/ }).click();
-      }
-      const report = page.getByTestId('verification-seal-panel');
-      await expect(report).toBeVisible();
-      const reportHeader = report.locator('p').first();
-      await page.getByRole('button', { name: /Planungsprüfung öffnen/ }).click();
-      const hints = page.getByRole('dialog', { name: 'Planungsprüfung' });
-      await expect(hints).toBeVisible();
-      expect(boxesOverlap(await boxOf(hints), await boxOf(reportHeader))).toBe(false);
+      // Der Prüfbericht ist auf dem Handy eine eigene Ansicht (Spec §6.3) —
+      // kein Blatt über dem Plan, keine zweite Prüfplakette daneben.
+      await page.getByTestId('nav-tab-pruefung').click();
+      await expect(page.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'pruefung');
+      const verdict = page.getByTestId('phone-check-verdict');
+      await expect(verdict).toBeVisible();
+      expect(insideViewport(await boxOf(verdict), viewport)).toBe(true);
+      const heading = page.getByRole('heading', { name: 'Prüfung', level: 2 });
+      expect(insideViewport(await boxOf(heading), viewport)).toBe(true);
     });
 
-    test('Prüfbericht und Hilfe liegen frei und haben eine nutzbare Höhe', async ({ page }) => {
+    test('Prüfung und Hilfe sind volle Ansichten und bleiben im Bild', async ({ page }) => {
       await openFreshExample(page);
-      const minBody = viewport.height < 500 ? 100 : viewport.height < 750 ? 180 : 240;
 
-      const ansicht = page.getByTestId('canvas-display-options');
+      // Die Zeichenfläche füllt die Fläche unter Kopf und Fuß — auch in der
+      // kleinsten gemessenen Größe (375×667) bleibt genug Plan übrig.
+      await page.getByTestId('nav-tab-schaltplan').click();
+      const canvas = await boxOf(page.getByTestId('planner-canvas-column'));
+      expect(canvas.height).toBeGreaterThan(150);
+
+      // Werkzeugzone: Erklärung und Darstellung liegen IM Fluss, nicht darüber.
       const caption = page.getByTestId('planner-mode-caption');
-      if ((await ansicht.isVisible()) && (await caption.isVisible())) {
-        expect(boxesOverlap(await boxOf(ansicht), await boxOf(caption))).toBe(false);
-      }
-      const trace = page.getByTestId('circuit-trace-info');
-      if (await trace.isVisible()) {
-        if (await ansicht.isVisible())
-          expect(boxesOverlap(await boxOf(trace), await boxOf(ansicht))).toBe(false);
-        if (await caption.isVisible())
-          expect(boxesOverlap(await boxOf(trace), await boxOf(caption))).toBe(false);
-      }
+      await expect(caption).toBeVisible();
+      const displayToggle = page.getByTestId('phone-display-toggle');
+      await expect(displayToggle).toBeVisible();
+      expect(boxesOverlap(await boxOf(caption), await boxOf(displayToggle))).toBe(false);
+      await expect(page.getByTestId('canvas-display-options')).toHaveCount(0);
 
-      const template = page.getByTestId('action-templates');
-      await expect(template).toBeVisible();
-      const templateClipped = await template.evaluate(
-        (element) => element.scrollWidth > element.clientWidth + 2
-      );
-      expect(templateClipped).toBe(false);
-      expect(boxesOverlap(await boxOf(template), await boxOf(page.getByTestId('save-indicator')))).toBe(
-        false
-      );
-      const autowire = page.getByTestId('action-autowire');
-      if ((await autowire.count()) > 0 && (await autowire.isVisible())) {
-        expect(boxesOverlap(await boxOf(autowire), await boxOf(page.getByTestId('action-more')))).toBe(false);
-      }
+      // Aufklappen vergrößert die Zone und verkleinert die Fläche — sie
+      // überdeckt sie nicht (Spec §6.2). Gemessen wird die FLÄCHE selbst
+      // (`planner-canvas-surface`), nicht die Spalte: Die ist `flex-1` und
+      // behält ihre Höhe, während die Fläche darin schrumpft.
+      const surface = () => boxOf(page.getByTestId('planner-canvas-surface'));
+      const surfaceBefore = await surface();
+      await displayToggle.click();
+      await expect(page.getByTestId('phone-display-options')).toBeVisible();
+      const surfaceWithPanel = await surface();
+      const zone = page.getByTestId('phone-canvas-toolbar');
+      const zoneBox = await boxOf(zone);
+      // Zwei zulässige Ausgänge, beide „im Fluss“ (Spec §6.2):
+      //  · es ist Platz → die Zone wächst und die Fläche schrumpft;
+      //  · die Zone ist am Höhendeckel (flaches Querformat) → der Rest
+      //    scrollt IN der Zone, die Fläche bleibt nutzbar.
+      const grewAndPushed = surfaceWithPanel.height < surfaceBefore.height;
+      const cappedAndScrolls =
+        zoneBox.height <= Math.round(viewport.height / 3) + 2 &&
+        (await zone.evaluate((element) => element.scrollHeight > element.clientHeight + 1)) &&
+        surfaceWithPanel.height > 0;
+      expect(
+        grewAndPushed || cappedAndScrolls,
+        `Zone ${zoneBox.height} px, Fläche ${surfaceWithPanel.height} px`
+      ).toBe(true);
+      // Kein `fixed`-Popover: Der Bereich liegt innerhalb der Zone.
+      const optionsInsideZone = await page
+        .getByTestId('phone-display-options')
+        .evaluate((element) => element.closest('[data-testid="phone-canvas-toolbar"]') !== null);
+      expect(optionsInsideZone).toBe(true);
+      await displayToggle.click();
+      await expect(page.getByTestId('phone-display-options')).toHaveCount(0);
 
-      await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-      const overflowLabel = page
-        .getByRole('menuitem', { name: /Auto-verbinden/ })
-        .locator('span')
-        .first();
-      await expect(overflowLabel).toBeVisible();
-      const labelLines = await overflowLabel.evaluate((element) => {
-        const line = parseFloat(getComputedStyle(element).lineHeight);
-        const linePx = Number.isFinite(line) ? line : 18;
-        return element.getBoundingClientRect().height / linePx;
-      });
-      expect(labelLines).toBeLessThanOrEqual(2.2);
-      await page.keyboard.press('Escape');
-
-      // 2026-11-06: Der Menüeintrag „Expertenmodus" ist mit der Schrittleiste
-      // entfallen. Auto-Wire steht jetzt ohne Umschalten direkt in der Leiste.
-      const autoBtn = page.getByTestId('action-autowire');
-      await expect(autoBtn).toBeVisible();
-      expect(boxesOverlap(await boxOf(autoBtn), await boxOf(page.getByTestId('action-more')))).toBe(false);
-
-      await openMenubar(page, 'hilfe');
-      const hilfe = page.getByRole('menuitem', { name: /Hilfe & Fachwissen/ });
-      await expect(hilfe).toBeVisible();
-      const hilfeBox = await boxOf(hilfe);
-      expect(hilfeBox.y).toBeGreaterThanOrEqual(0);
-      expect(insideViewport(hilfeBox, viewport)).toBe(true);
-      await hilfe.click();
-
+      // Hilfe: bestehendes Experten-Panel als eigene Ebene über der Ansicht.
+      await page.getByTestId('nav-tab-mehr').click();
+      await page.getByTestId('action-help').click();
       const expert = page.getByTestId('expert-panel-open');
       await expect(expert).toBeVisible();
-      const expertBody = page.getByTestId('expert-sheet-body');
-      expect(await expertBody.evaluate((element) => element.clientHeight)).toBeGreaterThan(minBody);
-      await assertClearOfChrome(page, expert);
+      const expertBox = await boxOf(expert);
+      expect(insideViewport(expertBox, viewport)).toBe(true);
+      expect(expertBox.height).toBeGreaterThan(120);
       const headerHit = await expert.locator('h3').evaluate((element) => {
         const rect = element.getBoundingClientRect();
         const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -537,28 +558,17 @@ for (const viewport of [
       });
       expect(headerHit).toBe(true);
       await page.getByTestId('expert-panel-close').click();
+      await expect(expert).toBeHidden();
 
-      const seal = page.getByTestId('verification-seal-toggle');
-      if (await seal.isVisible()) await seal.click();
-      else {
-        await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-        await page.getByRole('menuitem', { name: /Prüfbericht/ }).click();
-      }
-      const report = page.getByTestId('verification-seal-panel');
-      await expect(report).toBeVisible();
-      const reportBody = page.getByTestId('verification-sheet-body');
-      expect(await reportBody.evaluate((element) => element.clientHeight)).toBeGreaterThan(minBody);
-      await assertClearOfChrome(page, report);
-      const reportHeader = report.locator('.planner-sheet-header');
-      const reportHeaderHit = await reportHeader.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        const top = document.elementFromPoint(rect.left + 12, rect.top + rect.height / 2);
-        return element.contains(top);
-      });
-      expect(reportHeaderHit).toBe(true);
+      // Prüfung: eigene Ansicht mit Verdikt, kein Blatt über dem Plan.
+      await page.getByTestId('nav-tab-pruefung').click();
+      const verdict = page.getByTestId('phone-check-verdict');
+      await expect(verdict).toBeVisible();
+      expect(insideViewport(await boxOf(verdict), viewport)).toBe(true);
+      await expect(page.getByRole('dialog', { name: 'Planungsprüfung' })).toHaveCount(0);
     });
 
-    test('Menü-Abschnitte bleiben im Blatt und die Seite rutscht nicht seitlich', async ({ page }) => {
+    test('„Mehr“ bleibt im Bild und die Seite rutscht nicht seitlich', async ({ page }) => {
       test.skip(viewport.width >= 768 && viewport.height > 500, 'nur der kompakte Kopf');
       await openFreshExample(page);
       const metrics = () =>
@@ -568,94 +578,65 @@ for (const viewport of [
         }));
       expect((await metrics()).overflow).toBeLessThanOrEqual(1);
 
-      await page.getByTestId('phone-menu').click();
-      const sheet = page.getByTestId('phone-menu-sheet');
-      await expect(sheet).toBeVisible();
-      await page.getByTestId('menubar-planung').click();
-      const menu = page.getByRole('menu', { name: 'Planung' });
-      await expect(menu).toBeVisible();
-      const sheetBox = await boxOf(sheet);
-      const item = page.getByRole('menuitem', { name: /Prüfbericht öffnen/ });
-      await expect(item).toBeVisible();
-      const itemBox = await boxOf(item);
-      expect(itemBox.x).toBeGreaterThanOrEqual(sheetBox.x - 1);
-      expect(itemBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
-      expect(itemBox.x + itemBox.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width + 1);
-      expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
-      expect(boxesOverlap(await boxOf(page.getByTestId('menubar-planung')), itemBox)).toBe(false);
-      const sectionLabel = menu.locator('.cad-menu__label').first();
-      if (await sectionLabel.count()) {
-        const family = await sectionLabel.evaluate((element) => getComputedStyle(element).fontFamily);
-        expect(family.toLowerCase()).not.toContain('mono');
+      await page.getByTestId('nav-tab-mehr').click();
+      const view = page.getByTestId('planner-phone-view');
+      await expect(view).toHaveAttribute('data-phone-view', 'mehr');
+      expect(insideViewport(await boxOf(view), viewport)).toBe(true);
+
+      // Jede sichtbare Zeile liegt im Blatt und ist nicht seitlich
+      // abgeschnitten — auch die längsten Beschriftungen.
+      const rows = page.getByTestId('planner-phone-view').locator('section button');
+      const count = await rows.count();
+      for (let index = 0; index < count; index += 1) {
+        const row = rows.nth(index);
+        if (!(await row.isVisible())) continue;
+        const box = await boxOf(row);
+        expect(box.x).toBeGreaterThanOrEqual(-1);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+        const clipped = await row.evaluate((element) => element.scrollWidth > element.clientWidth + 2);
+        expect(clipped, `Zeile ${index} ist abgeschnitten`).toBe(false);
       }
-      const opaque = await menu.evaluate((element) => {
-        const bg = getComputedStyle(element).backgroundColor;
-        const match = bg.match(/rgba?\(([^)]+)\)/);
-        const body = match?.[1];
-        if (!body) return bg !== 'transparent';
-        const parts = body.split(',').map((part) => part.trim());
-        const alpha = parts.length === 4 ? Number(parts[3]) : 1;
-        return alpha > 0.9;
-      });
-      expect(opaque).toBe(true);
 
       const shift = await metrics();
       expect(shift.x).toBeLessThanOrEqual(1);
       expect(shift.overflow).toBeLessThanOrEqual(1);
-      expect((await boxOf(page.getByTestId('phone-menu'))).x).toBeGreaterThanOrEqual(-1);
 
-      await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
-      await expect(sheet).toBeHidden();
+      // Zurück in die Startansicht — kein hängendes Blatt.
+      await page.getByTestId('nav-tab-bauteile').click();
+      await expect(view).toHaveAttribute('data-phone-view', 'bauteile');
     });
 
-    test('Einstiegsmeldung deckt Modus und Werkzeugleiste nicht', async ({ page }) => {
+    test('Einstiegsmeldung liegt im Meldungsplatz und deckt keine Bedienung', async ({ page }) => {
       await openFreshExample(page);
-      await expectNoticeClearsControls(page);
+      // Spezifikation §5.3: EINE Meldung im Fluss. Die frühere absolute Karte
+      // (`.planner-entry-notice`) lag über den Karten und ist ersatzlos weg.
+      await expect(page.locator('.planner-entry-notice')).toHaveCount(0);
+      await expect(page.getByTestId('planner-message-slot')).toBeVisible();
+      await expect(page.getByTestId('planner-message-slot')).toHaveAttribute('data-empty', 'false');
+      await expect(page.getByTestId('action-feedback')).toBeVisible();
+      await expectMessageClearsControls(page);
     });
 
-    test('Einstiegsmeldung im Querformat liegt frei und lässt sich aufklappen', async ({ page }) => {
+    test('Meldungsplatz im Querformat liegt frei und bleibt bedienbar', async ({ page }) => {
       test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
       await openFreshExample(page);
-      const notice = page.locator('.planner-entry-notice');
-      await expect(notice).toBeVisible();
-      const text = notice.locator('.planner-entry-notice__text');
-      const clipped = await text.evaluate((element) => element.scrollHeight > element.clientHeight + 2);
-      expect(clipped).toBe(false);
-      const noticeBox = await boxOf(notice);
-      for (const id of ['planner-mode-caption', 'canvas-display-options', 'planner-mode-planung']) {
+      const slot = page.getByTestId('planner-message-slot');
+      await expect(slot).toBeVisible();
+      expect(insideViewport(await boxOf(slot), viewport)).toBe(true);
+      for (const id of ['planner-mode-caption', 'phone-display-toggle', 'planner-mode-planung']) {
         const other = page.getByTestId(id);
-        if (await other.isVisible()) expect(boxesOverlap(noticeBox, await boxOf(other)), id).toBe(false);
+        if (await other.isVisible())
+          expect(boxesOverlap(await boxOf(slot), await boxOf(other)), id).toBe(false);
       }
-      await text.click();
-      await expect(text).toContainText('neu starten');
-      const expandedClipped = await text.evaluate(
-        (element) => element.scrollHeight > element.clientHeight + 2
-      );
-      expect(expandedClipped).toBe(false);
-      const expanded = await boxOf(notice);
-      expect(insideViewport(expanded, viewport)).toBe(true);
-      const caption = page.getByTestId('planner-mode-caption');
-      if (await caption.isVisible()) expect(boxesOverlap(expanded, await boxOf(caption))).toBe(false);
-    });
-
-    test('Übersicht blendet im Querformat die Miniaturkarte ein', async ({ page }) => {
-      test.skip(!(viewport.width >= 768 && viewport.height <= 500), 'kurzes Querformat');
-      await openFreshExample(page);
-      const minimap = page.locator('.react-flow__minimap');
-      await expect(minimap).toBeHidden();
-      await page.getByTestId('mobile-overview').click();
-      await expect(minimap).toBeVisible();
-      expect(insideViewport(await boxOf(minimap), viewport)).toBe(true);
     });
   });
 }
 
-async function expectNoticeClearsControls(page: Page): Promise<void> {
-  const notice = page.locator('.planner-entry-notice');
+async function expectMessageClearsControls(page: Page): Promise<void> {
+  const slot = page.getByTestId('planner-message-slot');
   // Der Beispielplan kann aus dem Speicher zurückkommen, ohne die Meldung
   // noch einmal zu setzen. Dann einmal sauber neu laden.
-  if (!(await notice.isVisible().catch(() => false))) {
+  if ((await slot.count()) === 0 || !(await slot.isVisible().catch(() => false))) {
     await page.addInitScript(() => {
       localStorage.clear();
       sessionStorage.clear();
@@ -671,20 +652,20 @@ async function expectNoticeClearsControls(page: Page): Promise<void> {
       await expect(dialog).toBeHidden();
     }
   }
-  await expect(notice).toBeVisible();
-  const noticeBox = await boxOf(notice);
+  await expect(slot).toBeVisible();
+  await expect(page.getByTestId('action-feedback')).toBeVisible();
+  const slotBox = await boxOf(slot);
   for (const id of [
     'planner-mode-planung',
     'planner-mode-physisch',
     'planner-mode-pruefung',
     'planner-mode-caption',
-    'canvas-display-options',
-    'planner-toolbar',
-    'phone-menu',
+    'phone-display-toggle',
+    'planner-bottom-nav',
   ]) {
     const control = page.getByTestId(id);
     if ((await control.count()) === 0 || !(await control.isVisible())) continue;
-    expect(boxesOverlap(noticeBox, await boxOf(control)), id).toBe(false);
+    expect(boxesOverlap(slotBox, await boxOf(control)), id).toBe(false);
   }
   const mode = page.getByTestId('planner-mode-physisch');
   const hit = await mode.evaluate((element) => {
@@ -695,15 +676,6 @@ async function expectNoticeClearsControls(page: Page): Promise<void> {
   expect(hit).toBe(true);
   await mode.click();
   await expect(page.getByTestId('planner-mode-caption')).toContainText('Physisch');
-}
-
-async function assertClearOfChrome(page: Page, panel: Locator): Promise<void> {
-  const panelBox = await boxOf(panel);
-  for (const id of ['mobile-overview', 'mobile-undo', 'canvas-display-options']) {
-    const control = page.getByTestId(id);
-    if (!(await control.isVisible())) continue;
-    expect(boxesOverlap(panelBox, await boxOf(control))).toBe(false);
-  }
 }
 
 test.describe('Assistent im kurzen Fenster', () => {
@@ -736,17 +708,25 @@ test.describe('Bauteil aus der Bibliothek im Querformat', () => {
 
   test('das neue Bauteil wird angezeigt und angesagt', async ({ page }) => {
     await openFreshExample(page);
-    await page.getByTestId('nav-tab-sidebar').click();
+    // Katalog als Ebene über der Ansicht „Bauteile“ (Spec §6.1, Schritt 1).
+    await page.getByTestId('nav-tab-bauteile').click();
+    await page.getByTestId('phone-add').click();
     const tile = page.getByTestId('sidebar-item').first();
     await expect(tile).toBeVisible();
     const label = (await tile.getAttribute('data-component-label')) ?? '';
     const before = await page.locator('.react-flow__node').count();
     await tile.click();
-    const toast = page.locator('.planner-mobile-feedback');
-    await expect(toast).toContainText('hinzugefügt', { timeout: 8_000 });
-    const toastBox = await boxOf(toast.locator('span').last());
-    expect(insideViewport(toastBox, { width: 852, height: 393 })).toBe(true);
+
+    // Nach dem Hinzufügen liegt das DETAIL des neuen Bauteils offen
+    // (Spec §6.1, Schritt 2) — nicht wieder der Katalog, kein schwebender
+    // Toast über der Zeichenfläche. Der Knoten zählt im DOM, auch wenn die
+    // Ebene ihn gerade verdeckt (die Fläche bleibt montiert, Spec §5).
+    await expect(page.getByTestId('inspector-panel')).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator('.planner-mobile-feedback')).toHaveCount(0);
     await expect(page.locator('.react-flow__node')).toHaveCount(before + 1);
+
+    // Der Schaltplan zeigt den neuen Knoten im Bild (Schritt 3).
+    await page.getByTestId('nav-tab-schaltplan').click();
     const added = page.locator('.react-flow__node', { hasText: label }).last();
     await expect(added).toBeVisible();
     const addedBox = await boxOf(added);
@@ -754,9 +734,21 @@ test.describe('Bauteil aus der Bibliothek im Querformat', () => {
     expect(addedBox.y).toBeLessThan(393);
     expect(addedBox.x + addedBox.width).toBeGreaterThan(0);
     expect(addedBox.x).toBeLessThan(852);
-    const ansicht = page.getByTestId('canvas-display-options');
-    if (await ansicht.isVisible()) {
-      expect(boxesOverlap(addedBox, await boxOf(ansicht))).toBe(false);
+
+    // Die Ansage steht im Meldungsplatz — im Bild und ohne Überdeckung.
+    const slot = page.getByTestId('planner-message-slot');
+    await expect(slot).toBeVisible();
+    const slotBox = await boxOf(slot);
+    expect(insideViewport(slotBox, { width: 852, height: 393 })).toBe(true);
+    // Spec §5.3: Der Meldungsplatz schneidet BEDIENUNG nicht — Werkzeugzone,
+    // Fußleiste und Zoom. Plan-Knoten darf er berühren (er schiebt die Ansicht
+    // nach oben; bei 393 px Höhe bleibt daneben wenig Fläche).
+    const toolbar = page.getByTestId('phone-canvas-toolbar');
+    expect(boxesOverlap(slotBox, await boxOf(toolbar))).toBe(false);
+    const nav = page.getByTestId('planner-bottom-nav');
+    expect(boxesOverlap(slotBox, await boxOf(nav))).toBe(false);
+    for (const id of ['phone-zoom-in', 'phone-zoom-out', 'mobile-undo', 'mobile-overview']) {
+      expect(boxesOverlap(slotBox, await boxOf(page.getByTestId(id))), id).toBe(false);
     }
   });
 });
@@ -784,15 +776,25 @@ test.describe('Einstiegsmeldung bei 1440', () => {
     test.skip(testInfo.project.name !== 'desktop-1440', 'einmal, im Projekt desktop-1440');
   });
 
-  test('deckt Modus, Ansicht und Werkzeugleiste nicht', async ({ page }) => {
+  test('liegt im Fluss unter der Werkzeugleiste und deckt nichts', async ({ page }) => {
     await openFreshExample(page);
-    await expectNoticeClearsControls(page);
-    await page.getByTestId('planner-mode-pruefung').click();
-    await expect(page.getByTestId('planner-mode-caption')).toContainText('Prüfung');
-    const notice = page.locator('.planner-entry-notice');
-    expect(boxesOverlap(await boxOf(notice), await boxOf(page.getByTestId('planner-mode-caption')))).toBe(
-      false
-    );
+    // Am Desktop ist die absolute Einstiegskarte ersetzt: dieselbe Meldung,
+    // derselbe Platz wie auf dem Handy, nur unter der Chrome-Leiste (Spec
+    // §5.3). Sie schiebt den Plan nach unten, statt ihn zu überdecken.
+    await expect(page.locator('.planner-entry-notice')).toHaveCount(0);
+    const slot = page.getByTestId('planner-message-slot');
+    await expect(slot).toBeVisible();
+    await expect(page.getByTestId('action-feedback')).toBeVisible();
+    const slotBox = await boxOf(slot);
+    expect(insideViewport(slotBox, { width: 1440, height: 900 })).toBe(true);
+    for (const id of ['planner-toolbar', 'canvas-display-options', 'planner-mode-planung']) {
+      const control = page.getByTestId(id);
+      if (!(await control.isVisible())) continue;
+      expect(boxesOverlap(slotBox, await boxOf(control)), id).toBe(false);
+    }
+    const canvas = page.getByTestId('planner-canvas-column');
+    const canvasBox = await boxOf(canvas);
+    expect(canvasBox.y).toBeGreaterThanOrEqual(slotBox.y + slotBox.height - 1);
   });
 });
 
@@ -829,17 +831,26 @@ test.describe('Auto-verbinden abbrechen', () => {
 
   test('der Dialog spricht Klartext und Abbrechen ändert die Befunde nicht', async ({ page }) => {
     await openFreshExample(page);
-    const probe = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    // Der Prüfplaketten-Knopf („Planungsprüfung öffnen“) ist Bedienung der
+    // Desktop-Menüleiste. Auf dem Handy ist die Prüfung die eigene Ansicht
+    // „Prüfung“ (Spec §6.3) — dort steht dieselbe Zahl.
+    await page.getByTestId('nav-tab-pruefung').click();
+    const probe = page.getByTestId('phone-check-verdict');
     await expect(probe).toBeVisible();
-    const before = await probe.getAttribute('aria-label');
-    await page.getByTestId('action-more').click();
-    await page.getByTestId('action-autowire-menu').click();
+    const before = await probe.innerText();
+    await page.getByTestId('nav-tab-schaltplan').click();
+    // Auf dem Handy gibt es kein `action-more` (das ist die Werkzeugleiste der
+    // Desktop-Chrome): Die Aktionen stehen direkt in „Mehr“ (Spec §6.4).
+    await page.getByTestId('nav-tab-mehr').click();
+    await page.getByTestId('action-autowire').click();
     const dialog = page.getByRole('dialog', { name: /Vorschlag prüfen/ });
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     const text = await dialog.innerText();
     expect(text).not.toMatch(/AUTO-[A-Z0-9-]+|%20|auto-node:|ul248-classT|\bi2A\b/);
     await dialog.getByRole('button', { name: 'Vorschlag verwerfen' }).click();
     await expect(dialog).toBeHidden();
-    await expect(probe).toHaveAttribute('aria-label', before ?? '');
+    // Zurück in die Prüfansicht: dieselbe Zahl wie vor dem Abbruch.
+    await page.getByTestId('nav-tab-pruefung').click();
+    await expect(probe).toHaveText(before);
   });
 });

@@ -13,7 +13,9 @@ import { LEGACY_PLANNER_STORAGE_KEY, PLANNER_STORAGE_KEY } from '@/lib/storageKe
 import {
   isStarterPlan,
   planFingerprint,
+  primeStarterPlanFingerprint,
   shouldLoadStarterPlan,
+  PLANNER_TEMPLATES,
   STARTER_TEMPLATE_ID,
   templateIdFromSearch,
   TEMPLATES_DICT,
@@ -167,6 +169,36 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       window.history.replaceState(null, '', buildCleanEntryUrl(window.location));
     };
 
+    /**
+     * Meldung nach dem Laden einer Vorlage: EINE Wahrheit über den Pfad.
+     * Seit 2026-11-10 lädt jede offizielle Vorlage schon verbunden und
+     * strukturiert (siehe `applyTemplate` im Graph-Slice) — der Text sagt das,
+     * statt den Nutzer den ersten Klick selbst machen zu lassen.
+     */
+    const vorlagenMeldung = (label: string | undefined, id: string) => ({
+      type: 'success' as const,
+      message: label
+        ? `Vorlage „${label}“ geladen und automatisch verbunden — alle Werte lassen sich direkt anpassen.`
+        : `Vorlage „${id}“ geladen und automatisch verbunden — alle Werte lassen sich direkt anpassen.`,
+    });
+
+    /**
+     * Lädt eine offizielle Vorlage. `applyTemplate` gibt `false` zurück, wenn
+     * fest verdrahtete Leitungen den Planwechsel blockieren — dann bleibt der
+     * Plan stehen und die Meldung nennt den Grund, statt still nichts zu tun.
+     */
+    const applyTemplateOrNotify = (templateId: string): boolean => {
+      const applied = usePlannerStore.getState().applyTemplate(templateId);
+      if (!applied) {
+        setNotice({
+          type: 'error',
+          message:
+            'Die Vorlage wurde nicht geladen: Der aktuelle Plan enthält fest verdrahtete Leitungen. Siehe Warnungen — oder löse die Fixierung und lade erneut.',
+        });
+      }
+      return applied;
+    };
+
     const loadSharedPlan = async (): Promise<boolean> => {
       if (!window.location.hash.includes('plan=')) return false;
       const result = await decodeSharePlan(window.location.hash);
@@ -218,23 +250,41 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       return true;
     };
 
+    /**
+     * „Lag beim Öffnen schon ein Plan im Speicher?“ — VOR jedem `await`
+     * gemessen.
+     *
+     * Die Zustand-Persistenz schreibt den (noch leeren) Plan in derselben
+     * Mikrotask-Kette nach `localStorage`, sobald der erste `await` den
+     * Einstieg verlässt. Ein späteres `hasPersistedPlan()` sieht dann diesen
+     * frisch geschriebenen Leerstand und hält den Starter für „schon
+     * vorhanden“ — der Beispielplan lädt nie (Ist-Befund 2026-11-10, im
+     * Browser gemessen: `persisted: true, nodes: 0`). Der Wert wird deshalb
+     * hier einmal festgehalten und unten nur noch gelesen.
+     */
+    const persistedAtEntry = hasPersistedPlan();
+
     void (async () => {
+      // Der Starter-Fingerprint braucht den strukturierten Graphen (AutoWire +
+      // ELK). Er wird hier EINMAL im Hintergrund gebaut, damit die Prüfung
+      // „ist das noch der unveränderte Starter?“ nicht auf den Rohstand
+      // zurückfällt und einen frisch geladenen Starter als eigenen Plan
+      // behandelt (Rückfrage ohne Anlass).
+      await primeStarterPlanFingerprint();
       if (await loadSharedPlan()) return;
 
       const rawTemplateParam = new URLSearchParams(window.location.search).get('template');
       const templateId = templateIdFromSearch(window.location.search);
       if (templateId) {
         const targetTemplate = TEMPLATES_DICT[templateId];
+        const targetLabel = PLANNER_TEMPLATES.find((entry) => entry.id === templateId)?.label;
         const alreadyLoaded =
           targetTemplate !== undefined && isSameAsCurrentPlan(targetTemplate.nodes, targetTemplate.edges);
         if (alreadyLoaded || (await confirmReplace('Die Vorlage'))) {
-          usePlannerStore.getState().applyTemplate(templateId);
+          applyTemplateOrNotify(templateId);
           setHasOnboarded(true);
           scheduleFit();
-          setNotice({
-            type: 'success',
-            message: 'Vorlage geladen — alle Werte lassen sich direkt anpassen.',
-          });
+          setNotice(vorlagenMeldung(targetLabel, templateId));
         }
         clearEntryFromUrl();
         return;
@@ -245,13 +295,13 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
         const current = usePlannerStore.getState();
         if (
           shouldLoadStarterPlan({
-            hasPersistedPlan: hasPersistedPlan(),
+            hasPersistedPlan: persistedAtEntry,
             nodeCount: current.nodes.length,
             waterNodeCount: current.waterNodes.length,
             hasEntryPlan: false,
           })
         ) {
-          current.applyTemplate(STARTER_TEMPLATE_ID);
+          applyTemplateOrNotify(STARTER_TEMPLATE_ID);
           scheduleFit();
           setNotice({
             type: 'info',
@@ -269,18 +319,18 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       const current = usePlannerStore.getState();
       if (
         shouldLoadStarterPlan({
-          hasPersistedPlan: hasPersistedPlan(),
+          hasPersistedPlan: persistedAtEntry,
           nodeCount: current.nodes.length,
           waterNodeCount: current.waterNodes.length,
           hasEntryPlan: false,
         })
       ) {
-        current.applyTemplate(STARTER_TEMPLATE_ID);
+        applyTemplateOrNotify(STARTER_TEMPLATE_ID);
         scheduleFit();
         setNotice({
           type: 'info',
           message:
-            'Beispiel geladen: klassisches Kastenwagen-Setup (100 Ah LiFePO4, 200 W Solar, 30 A Ladebooster). Werte anklicken und anpassen — oder oben über „Vorlage laden“ neu starten.',
+            'Beispiel geladen: klassisches Kastenwagen-Setup (100 Ah LiFePO4, 200 W Solar, 30 A Ladebooster) — bereits automatisch verbunden und angeordnet. Werte anklicken und anpassen oder über „Vorlage laden“ neu starten.',
         });
       }
     })();

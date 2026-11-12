@@ -21,6 +21,14 @@ on:
         required: false
         default: false
         type: boolean
+      visual:
+        description: >-
+          Pixel-Vergleich mitlaufen lassen. Aus (Standard) spart bei jedem Lauf
+          einen kompletten Build samt Browser-Installation. Bewusst NICHT
+          blockierend, wenn er läuft (siehe Job `visual`).
+        required: false
+        default: false
+        type: boolean
     outputs:
       artifact-size:
         description: "Größe des Static Exports"
@@ -301,6 +309,16 @@ jobs:
   # ── Visuelles Gate: melden, nicht blockieren ────────────────────────────────
   visual:
     name: Visuelles Gate (nicht blockierend)
+    # Läuft nur auf Zuruf (`workflow_dispatch` mit `visual: true`) oder wenn der
+    # Aufrufer ihn anfordert (`deploy.yml` auf dem Default-Branch, dort an
+    # `inputs.visual` gebunden). Bei einem PR ist er aus.
+    #
+    # Ursprünglich aus Minutennot geboren (privates Repo, 2.000/Monat). Seit
+    # 2026-11-12 ist das Repo öffentlich, die Minuten sind unbegrenzt — die
+    # Bedingung bleibt trotzdem: Der Job blockiert nie (`continue-on-error`),
+    # ein roter Pixel-Diff bei jedem PR wäre also nur Rauschen. Geprüft wird
+    # er vor dem Deploy, wo er etwas bedeutet.
+    if: ${{ inputs.visual }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Bewusst kein `needs`: dieser Job startet parallel zum funktionalen E2E und

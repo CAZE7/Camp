@@ -5,6 +5,9 @@ import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes
 import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
 import type { AutoWireReport } from '../../lib/autoWire/conflicts';
 import type { PlannerError } from '../../lib/planner/plannerError';
+import type { PlannerOverlay, PlannerOverlayId } from '../../components/planner/ui/overlayRoute';
+import type { PlannerMessage } from '../../components/planner/ui/PlannerMessageSlot';
+import type { Domain } from '../../lib/domain/plannerDomains';
 
 export type { PlannerFlowNode };
 
@@ -89,6 +92,21 @@ export interface PlannerState {
   addLockedMutationError: (error: PlannerError) => void;
   clearLockedMutationErrors: (edgeId?: string) => void;
 
+  /**
+   * Overlay-Manager: die eine offene Ebene (Menü, Bericht, Hilfe, Handy-Ebene,
+   * Dialog). `null` = keine. Siehe `components/planner/ui/overlayRoute.ts`.
+   */
+  overlay: PlannerOverlay | null;
+  openOverlay: (overlay: PlannerOverlay) => void;
+  /** Schließt die Ebene — nur, wenn sie der genannten ID entspricht (falls angegeben). */
+  closeOverlay: (id?: PlannerOverlayId) => void;
+  /**
+   * Die eine Meldung im Meldungsplatz (Erfolg, Fehler, Hinweis). Nicht
+   * persistiert; `null` = Platz leer (Höhe 0).
+   */
+  plannerMessage: PlannerMessage | null;
+  setPlannerMessage: (message: PlannerMessage | null) => void;
+
   nodes: PlannerFlowNode[];
   edges: Edge<CableEdgeData>[];
   setNodes: (nodes: PlannerFlowNode[] | ((nds: PlannerFlowNode[]) => PlannerFlowNode[])) => void;
@@ -125,6 +143,16 @@ export interface PlannerState {
   setHighlightedNodeId: (id: string | null) => void;
   setHighlightedEdgeId: (id: string | null) => void;
 
+  /**
+   * Domänen-Filter des Elektrikplans (12V / 230V / Solar).
+   *
+   * Vorher war der Filter lokaler `useState` IN `FlowCanvas` — die
+   * Werkzeugzone der Handy-Hülle konnte ihn deshalb nicht bedienen, obwohl
+   * die Schalter dort stehen (Spec §6.2). Jetzt liegt er im Store: beide
+   * Leisten schreiben, der Canvas liest.
+   */
+  activeDomains: Domain[];
+  toggleDomain: (domain: Domain) => void;
   trunkMode: boolean;
   setTrunkMode: (enabled: boolean) => void;
   backboneGrouping: boolean;
@@ -256,6 +284,13 @@ export interface PlannerState {
    * gelaufen ist (oder verworfen wurde — Undo, Template, anderes Layout).
    */
   autoStructurePending: boolean;
+  /**
+   * Steht nach dem Laden einer offiziellen Vorlage auf `true`, bis die
+   * ELK-Strukturierung gelaufen ist. Getrennt von `autoStructurePending`, weil
+   * der Starter-Fingerprint eine fertig strukturierte Vorlage erkennen muss —
+   * ein noch nicht strukturierter Zwischenstand wäre sonst schon „Starter“.
+   */
+  templateStructurePending: boolean;
   onLayout: () => void;
   /**
    * ELK-Layout (ADR 0018): globaler Layout-Pass für Knotenpositionen.
@@ -273,7 +308,8 @@ export interface PlannerState {
     screenToFlowPosition: (client: { x: number; y: number }) => { x: number; y: number }
   ) => void;
   addNode: (type: string, label: string, position: { x: number; y: number }, watts?: number) => void;
-  applyTemplate: (templateId: string) => void;
+  /** Lädt eine offizielle Vorlage über den Auto-Wire-Pfad; `false`, wenn sie nicht ersetzt werden durfte. */
+  applyTemplate: (templateId: string) => boolean;
   /**
    * Kumulierter Spannungsfall bis zu einem Knoten — in Volt (typsicher).
    * Aufrufer, die weiterhin mit `number` rechnen, funktionieren unverändert,

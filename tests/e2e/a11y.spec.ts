@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-import { dismissOnboarding } from './helpers';
+import { addComponent, dismissOnboarding } from './helpers';
 
 /**
  * Automatisiertes Barrierefreiheits-Gate (ersetzt das frühere, händische
@@ -91,8 +91,8 @@ for (const { path, name } of PAGES) {
  */
 test.describe('axe: Planer-Blätter auf dem Handy', () => {
   for (const step of [
-    { name: 'Bauteilkatalog-Blatt', open: 'nav-tab-sidebar' },
-    { name: 'Eigenschaften-Blatt', open: 'nav-tab-inspector' },
+    { name: 'Bauteilkatalog-Ebene', open: 'nav-tab-bauteile', trigger: 'phone-add' },
+    { name: 'Eigenschaften-Ebene', open: 'nav-tab-schaltplan', trigger: 'phone-open-detail' },
   ] as const) {
     test(`${step.name} ohne kritische/schwere Verstöße`, async ({ page }) => {
       const width = page.viewportSize()?.width ?? 0;
@@ -104,8 +104,31 @@ test.describe('axe: Planer-Blätter auf dem Handy', () => {
       // Klicks ab — er ist selbst Teil der Startprüfung oben, hier geht es um
       // die Blätter dahinter.
       await dismissOnboarding(page);
+      // Handy-Hülle (Spezifikation §5.2/§7): Die Ebene öffnet aus der Ansicht
+      // heraus. Ein Fußziel schließt sie wieder — `aria-expanded` gibt es
+      // deshalb nicht mehr; geprüft wird die sichtbare Ebene selbst.
       await page.getByTestId(step.open).click();
-      await expect(page.getByTestId(step.open)).toHaveAttribute('aria-expanded', 'true');
+      const trigger = page.getByTestId(step.trigger);
+      if (step.trigger === 'phone-open-detail') {
+        // „Details“ ist ohne Auswahl absichtlich deaktiviert — erst ein
+        // Bauteil setzen und in „Bauteile“ auswählen (Spec §7).
+        if (!(await trigger.isEnabled().catch(() => false))) {
+          await addComponent(page, 'battery');
+          await page.getByTestId('nav-tab-bauteile').click();
+          await page.getByTestId('phone-parts-list').getByRole('button').first().click();
+          await page.getByTestId('nav-tab-schaltplan').click();
+        }
+        await expect(trigger).toBeEnabled();
+        await trigger.click();
+      } else if (await trigger.isVisible()) {
+        await trigger.click();
+      } else {
+        // Leerer Plan: Der Einstieg heißt „Batterie hinzufügen“.
+        await page.getByTestId('phone-add-battery').click();
+      }
+      await expect(
+        page.getByTestId(step.trigger === 'phone-add' ? 'sidebar' : 'inspector-panel')
+      ).toBeVisible();
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -121,8 +144,20 @@ test.describe('axe: Planer-Blätter auf dem Handy', () => {
     await page.goto('/planer/');
     await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30_000 });
     await dismissOnboarding(page);
-    await page.getByTestId('action-more').click();
-    await expect(page.getByRole('menu', { name: 'Weitere Aktionen' })).toBeVisible();
+    if (
+      await page
+        .getByTestId('nav-tab-mehr')
+        .isVisible()
+        .catch(() => false)
+    ) {
+      // Handy-Hülle: „Weitere Aktionen“ ist die Ansicht „Mehr“ (§6.4), kein
+      // ⋯-Menü — und damit kein `role="menu"`.
+      await page.getByTestId('nav-tab-mehr').click();
+      await expect(page.getByTestId('planner-phone-view')).toBeVisible();
+    } else {
+      await page.getByTestId('action-more').click();
+      await expect(page.getByRole('menu', { name: 'Weitere Aktionen' })).toBeVisible();
+    }
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

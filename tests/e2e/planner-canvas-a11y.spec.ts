@@ -17,6 +17,11 @@ async function openExampleCanvas(page: Page): Promise<void> {
   await expect(page.locator('.react-flow__node:not(.react-flow__node-backboneGroup)').first()).toBeVisible({
     timeout: 15_000,
   });
+  // Handy-Hülle: Die Startansicht ist „Bauteile“, die Zeichenfläche darunter
+  // ist `inert` (Spec §5) — ohne den Wechsel zum Schaltplan ist kein Knoten
+  // fokussierbar.
+  const schaltplan = page.getByTestId('nav-tab-schaltplan');
+  if (await schaltplan.isVisible().catch(() => false)) await schaltplan.click();
 }
 
 test.describe('Planer-Canvas: Barrierefreiheit', () => {
@@ -115,8 +120,14 @@ test.describe('Planer-Canvas: Barrierefreiheit', () => {
     page,
   }) => {
     await openExampleCanvas(page);
-    const sidebarTab = page.getByTestId('nav-tab-sidebar');
-    if (await sidebarTab.isVisible()) await sidebarTab.click();
+    // Auf dem Handy liegt der Katalog hinter „Hinzufügen“ in der Ansicht
+    // Bauteile (Spezifikation §6.1); ab 768 px ist er eine Spalte.
+    const sidebarTab = page.getByTestId('nav-tab-bauteile');
+    if (await sidebarTab.isVisible()) {
+      await sidebarTab.click();
+      const add = page.getByTestId('phone-add');
+      if (await add.isVisible()) await add.click();
+    }
     const search = page.getByTestId('sidebar-search');
     await search.fill('Leerrohr');
     const conduit = page.locator('[data-testid="sidebar-item"][data-component-type="conduit"]').first();

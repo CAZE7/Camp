@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider, useStore as useFlowStore } from '@xyflow/react';
 import { usePlannerDarkMode } from './planner/hooks/usePlannerTheme';
 import '@xyflow/react/dist/style.css';
@@ -10,6 +10,18 @@ import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
 import { PlannerStatusBar } from './planner/ui/PlannerStatusBar';
 import { usePlannerEntryPlan } from './planner/hooks/usePlannerEntryPlan';
+import {
+  PlannerPhoneHeader,
+  PlannerPhoneLayer,
+  PlannerPhoneMessageBar,
+  PlannerPhoneNav,
+  PHONE_CHROME_QUERY,
+  PHONE_SHELL_ATTRIBUTE,
+  type PhoneView,
+} from './planner/ui/PlannerPhoneShell';
+import { PhoneCanvasTools } from './planner/ui/PhoneCanvasTools';
+import { PHONE_EXPERT_OPEN_ATTRIBUTE } from './planner/ui/breakpoints';
+
 import { ErrorBoundary } from './ErrorBoundary';
 import { PlannerCrashFallback } from './planner/ui/PlannerCrashFallback';
 import { ExpertPanel } from './planner/ExpertPanel';
@@ -17,22 +29,13 @@ import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
 import { ConfirmDialogHost, requestConfirm } from './ui/ConfirmDialog';
 import { CanvasSkeleton } from './ui/Skeleton';
-import {
-  Frame,
-  Layers,
-  Map as MapIcon,
-  Minimize2,
-  Settings2,
-  Droplets,
-  X,
-  Undo2,
-  Redo2,
-  Zap,
-} from 'lucide-react';
+import { Minimize2, X } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 import { forgetAuxiliaryBrowserStorage, hasPlannerStorage, restoreFirstVisit } from '../store/freshVisit';
 import { subscribePlannerStorageCleared } from '../store/storage';
+import { useLiveValidation, useVerificationReport } from './planner/hooks/useLiveValidation';
+import { warningToPlannerError } from './planner/PlannerDashboard';
 
 /**
  * Layout-Container des Planers — drei Geräteklassen, ein DOM-Baum.
@@ -89,29 +92,127 @@ export default function PlannerInner() {
 
 function PlannerShell() {
   const [activeTab, setActiveTab] = useState<'sidebar' | 'canvas' | 'inspector'>('canvas');
+  /**
+   * Handy-Ansicht (Spezifikation §5–§7): Startansicht ist **Bauteile**.
+   *
+   * Der Zustand liegt hier und nicht im Store: Er ist reine Darstellung des
+   * Geräts, nicht Teil des Plans, und darf einen Reload nicht überleben
+   * (ein gespeicherter „Mehr“-Zustand wäre beim nächsten Öffnen eine
+   * Überraschung). Ein Ansichtswechsel wird nicht persistiert.
+   */
+  const [phoneView, setPhoneView] = useState<PhoneView>('bauteile');
+  const [phoneChrome, setPhoneChrome] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(PHONE_CHROME_QUERY);
+    const apply = () => setPhoneChrome(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+  /**
+   * Befunde → Store (`plannerErrors`) — EINE Quelle für Badge am Fuß,
+   * Warnzentrale und Prüfbericht.
+   *
+   * Die Synchronisation stand in `PlannerDashboard`; das wird in der Handy-Hülle
+   * nicht gerendert. Auf dem Handy fehlte deshalb nicht nur die Zahl am
+   * „Prüfung“-Knopf, sondern der ganze Bestand (im Browser gemessen
+   * 2026-11-10: `aria-label` ohne Zahl, obwohl die Ansicht „Prüfung“
+   * Befunde zeigte). Die Shell lebt auf beiden Geräteklassen.
+   */
+  const plannerNodes = usePlannerStore((state) => state.nodes);
+  const plannerEdges = usePlannerStore((state) => state.edges);
+  const autoWireReport = usePlannerStore((state) => state.autoWireReport);
+  const setPlannerErrors = usePlannerStore((state) => state.setPlannerErrors);
+  const verificationReport = useVerificationReport(plannerNodes, plannerEdges);
+  const liveWarnings = useLiveValidation(plannerNodes, plannerEdges, verificationReport, autoWireReport);
+  useEffect(() => {
+    setPlannerErrors(liveWarnings.map((warning) => warningToPlannerError(warning)));
+  }, [liveWarnings, setPlannerErrors]);
+
+  /**
+   * Ansichtswechsel → Fläche neu einpassen.
+   *
+   * Die Handy-Ansichten liegen ÜBER der Fläche: In „Bauteile“, „Prüfung“ und
+   * „Mehr“ ist die Fläche zwar montiert und gemessen, aber nur so hoch wie der
+   * freie Rest (im Browser gemessen 2026-11-10: 483 px in der Startansicht,
+   * 298 px im Schaltplan). React Flow setzt den Viewport einmal beim Einhängen;
+   * ein späteres Größenupdate verschiebt ihn nicht mit (auch `resize` half
+   * nicht). Der Plan lag danach bei x = -422 px, also links außerhalb des
+   * Bildes, und ließ sich nicht anklicken. Der Wechsel in den Schaltplan passt
+   * deshalb einmal neu ein — mit der Zoom-Untergrenze, wie jeder automatische
+   * Fit (Nachtest Bug 25); danach bleibt der Ausschnitt des Nutzers stehen.
+   */
+  const previousPhoneView = useRef<PhoneView | null>(null);
+  useEffect(() => {
+    const previous = previousPhoneView.current;
+    previousPhoneView.current = phoneView;
+    if (previous === null || previous === phoneView || phoneView !== 'schaltplan') return;
+    if (typeof window === 'undefined') return;
+    const frame = window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')))
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [phoneView]);
+
   const hasOnboarded = useAppStore((state) => state.hasOnboarded);
-  const setViewMode = usePlannerStore((state) => state.setViewMode);
   const viewMode = usePlannerStore((state) => state.viewMode);
   const isInspectorOpen = usePlannerStore((state) => state.isInspectorOpen);
   const setInspectorOpen = usePlannerStore((state) => state.setInspectorOpen);
   const focusMode = usePlannerStore((state) => state.focusMode);
   const setFocusMode = usePlannerStore((state) => state.setFocusMode);
-  const selectionCount = usePlannerStore((state) => state.selectedNodes.length + state.selectedEdges.length);
-  const canUndo = usePlannerStore((state) => state.canUndo);
-  const canRedo = usePlannerStore((state) => state.canRedo);
-  const undo = usePlannerStore((state) => state.undo);
-  const redo = usePlannerStore((state) => state.redo);
-  const showMobileOverview = usePlannerStore((state) =>
-    state.viewMode === 'water' ? state.waterNodes.length > 8 : state.nodes.length > 8
-  );
   const zoom = useFlowStore((state) => state.transform[2] ?? 1);
   // Einstieg: geteilter Plan (#plan=) → Vorlage (?template=) → Beispiel-Setup
   // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
-  const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
-  const entryNoticeExpanded = entryNotice?.message != null && expandedNotice === entryNotice.message;
   const plannerNodeCount = usePlannerStore((state) => state.nodes.length);
   const plannerWaterNodeCount = usePlannerStore((state) => state.waterNodes.length);
+
+  /**
+   * Einstiegsmeldung → Meldungsplatz.
+   *
+   * Vorher lag „Beispiel geladen: …“ als absolut positionierter Streifen über
+   * den Karten, blieb nach einem Vorlagenwechsel stehen und widersprach der
+   * Erfolgsmeldung der neuen Vorlage (Ist-Befund 2026-11-10). Jetzt schreibt
+   * der Einstieg in DENSELBEN Platz wie jede Aktionsmeldung; eine frische
+   * Aktionsmeldung hat Vorrang (`resolvePlannerMessage`), und der Text ist an
+   * den aktuellen Plan gebunden (der Hook verwirft ihn beim Leeren).
+   */
+  const setPlannerMessage = usePlannerStore((state) => state.setPlannerMessage);
+
+  /**
+   * Der eine Kanal für Aktionsmeldungen (`planner-action-feedback`) und für
+   * „Plan gespeichert“ (`planner-save`).
+   *
+   * Der Listener stand in `PlannerDashboard` — und das wird in der Handy-Hülle
+   * gar nicht gerendert. Auf dem Handy kam deshalb KEINE Aktionsmeldung im
+   * Meldungsplatz an (im Browser gemessen 2026-11-10: „Kabel optimieren“
+   * feuerte das Ereignis, im Platz stand weiter die Einstiegsmeldung). Die
+   * Shell lebt auf beiden Geräteklassen; hier ist der Kanal für beide.
+   */
+  useEffect(() => {
+    const onActionFeedback = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: 'success' | 'error' | 'info'; message?: string }>).detail;
+      if (!detail?.message) return;
+      setPlannerMessage({ type: detail.type ?? 'info', message: detail.message });
+    };
+    const onSave = () =>
+      setPlannerMessage({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
+    window.addEventListener('planner-action-feedback', onActionFeedback);
+    window.addEventListener('planner-save', onSave);
+    return () => {
+      window.removeEventListener('planner-action-feedback', onActionFeedback);
+      window.removeEventListener('planner-save', onSave);
+    };
+  }, [setPlannerMessage]);
+
+  useEffect(() => {
+    if (!entryNotice) return;
+    setPlannerMessage({
+      type: entryNotice.type,
+      message: entryNotice.message,
+    });
+  }, [entryNotice, setPlannerMessage]);
 
   // „Beispiel geladen“ beschreibt den Plan auf der Fläche. Wird er geleert
   // (Assistent, Datei → Neuer Plan), ist die Aussage falsch — sie lag dann
@@ -225,28 +326,35 @@ function PlannerShell() {
     // direkt nach dem Hinzufügen per Touch gewählt werden soll. Fehlermeldungen
     // bleiben dagegen stehen, bis sie ausdrücklich geschlossen werden.
     if (entryNotice && entryNotice.type !== 'error') {
-      setExpandedNotice(null);
       dismissEntryNotice();
     }
-    setActiveTab('canvas');
-  };
-
-  /**
-   * Blatt-Umschaltung der Fußleiste (Handy).
-   *
-   * `Bauteile` und `Details` sind dort keine Seiten mehr, sondern Blätter über
-   * der Zeichenfläche: Ein zweiter Tipp auf denselben Eintrag schließt wieder,
-   * ein Tipp auf `Elektrik`/`Wasser` ebenfalls. Auf Tablet und Desktop werden
-   * dieselben Schalter zu Spalten-/Overlay-Schaltern — deshalb setzt jede
-   * Aktion zusätzlich den Store-Zustand, den die Geräteklassen ab 768 px lesen.
-   */
-  const togglePanel = (panel: 'sidebar' | 'inspector') => {
-    setActiveTab((current) => (current === panel ? 'canvas' : panel));
-    if (panel === 'sidebar') usePlannerStore.getState().setSidebarOpen(true);
-    if (panel === 'inspector') usePlannerStore.getState().setInspectorOpen(true);
+    // Handy: Nach dem Hinzufügen öffnet sich das Detail des neuen Bauteils
+    // (Spec §6.1, Schritt 2). Der Auswahl-Effekt hat den Inspector bereits
+    // geöffnet — hier wird nur die Ebene sichtbar, in der er liegt.
+    setActiveTab(phoneChrome ? 'inspector' : 'canvas');
   };
 
   const closePanels = () => setActiveTab('canvas');
+
+  /**
+   * Handy: Katalog und Detail sind volle Ebenen über der Ansicht.
+   *
+   * Der Katalog ist der BESTEHENDE (`Sidebar`) — dieselbe Suche, dieselben
+   * Kategorien, dieselbe Einfügeposition („am sichtbaren Mittelpunkt“). Er
+   * wird nur anders geöffnet: als Blatt über der Ansicht, nicht als Spalte.
+   * Nach dem Hinzufügen schließt `handleMobileAdd` das Blatt und die Ansicht
+   * „Schaltplan“ zeigt den neuen Knoten dort, wo er eingefügt wurde
+   * (Spec §6.1, Schritt 1–3 übernimmt der bestehende Auswahl-Effekt).
+   */
+  const openPhoneCatalog = () => {
+    setActiveTab('sidebar');
+    usePlannerStore.getState().setSidebarOpen(true);
+    window.requestAnimationFrame(() => document.getElementById('component-search')?.focus());
+  };
+  const openPhoneDetail = () => {
+    setActiveTab('inspector');
+    usePlannerStore.getState().setInspectorOpen(true);
+  };
 
   /**
    * „Bauteile hinzufügen" aus der Schrittleiste (UX-Reset 2026-09).
@@ -270,11 +378,6 @@ function PlannerShell() {
   }, []);
 
   // 56 px Kantenlänge – deutlich über den geforderten 44 px Touch-Target.
-  const navClass = (active: boolean) =>
-    `relative flex min-h-14 min-w-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-      active ? 'bg-accent text-foreground' : 'text-muted-foreground'
-    }`;
-
   /**
    * Eigenschaften-Spalte: auf jeder Geräteklasse dieselbe Box, drei Zustände.
    *
@@ -303,6 +406,35 @@ function PlannerShell() {
 
   const isDarkPlanner = usePlannerDarkMode();
 
+  const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
+  const entryMessage = entryNotice ? { type: entryNotice.type, message: entryNotice.message } : null;
+  /** Katalog/Detail sind auf dem Handy volle Ebenen (Spec §7) — dann schweigt die Ansicht. */
+  const sheetOpen = activeTab !== 'canvas';
+  /**
+   * Ist das Expertenblatt offen? Auf dem Handy ist es eine eigene volle Ebene
+   * (Spec §7) — dann schweigt die Ansicht darunter. Der Zustand liegt im
+   * `ExpertPanel` selbst; beobachtet wird sein DOM-Merkmal, statt denselben
+   * Zustand ein zweites Mal zu halten.
+   */
+  const [expertOpen, setExpertOpen] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const sync = () =>
+      setExpertOpen(document.querySelector(`[${PHONE_EXPERT_OPEN_ATTRIBUTE}='true']`) !== null);
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [PHONE_EXPERT_OPEN_ATTRIBUTE],
+    });
+    return () => observer.disconnect();
+  }, []);
+  const activeDomainList = usePlannerStore((state) => state.activeDomains);
+  const toggleDomain = usePlannerStore((state) => state.toggleDomain);
+  const activeDomains = useMemo(() => new Set(activeDomainList), [activeDomainList]);
+
   /**
    * Dokument-Sperre: Der Planer IST das Dokument auf `/planer/`, kein Abschnitt
    * einer Seite. `html`/`body` dürfen deshalb nicht mitscrollen — sonst schiebt
@@ -322,6 +454,9 @@ function PlannerShell() {
       data-testid="planner-shell"
       data-panel-open={activeTab === 'canvas' ? 'false' : 'true'}
       data-active-tab={activeTab}
+      // Handy-Hülle: Der Arbeitsbereich bleibt montiert, aber die schwebenden
+      // Canvas-Griffe gehören zur Desktop-Bedienung und entfallen (CSS).
+      {...{ [PHONE_SHELL_ATTRIBUTE]: phoneChrome ? 'true' : 'false' }}
       className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans ${focusMode ? 'planner-shell--focus' : ''} ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
     >
       {!hasOnboarded && <OnboardingWizard />}
@@ -340,8 +475,19 @@ function PlannerShell() {
         </button>
       )}
 
-      {/* Chrome: Menüleiste + Werkzeugleiste (+ geführte Schrittleiste). */}
-      <PlannerDashboard />
+      {/*
+        Zwei Geräteklassen, ein Baum: Ab `md` (und ohne flaches Fenster) steht
+        die bestehende Chrome-Leiste. Darunter übernimmt die Handy-Hülle mit
+        eigener Kopfzeile, vier Ansichten und Fußleiste (Spezifikation §5).
+        Beide lesen denselben Store; die Grenze ist derselbe Ausdruck wie in
+        `PHONE_CHROME_QUERY` — kein zweites Kriterium.
+      */}
+      {!phoneChrome && (
+        <div data-testid="planner-desktop-chrome" className="flex shrink-0 flex-col">
+          <PlannerDashboard />
+        </div>
+      )}
+      {phoneChrome && <PlannerPhoneHeader projectName={projectName} />}
 
       <div
         data-testid="planner-workspace"
@@ -373,62 +519,84 @@ function PlannerShell() {
           data-testid="planner-canvas-column"
           className="isolate flex min-h-0 min-w-0 flex-1 flex-col xl:min-w-[600px]"
         >
+          {/* Werkzeugzone des Handy-Schaltplans: liegt IM Fluss über der
+              Fläche (Spec §6.2) und nur in der Ansicht „Schaltplan“ — sonst
+              wäre sie hinter Katalog/Detail eine zweite, unsichtbare Leiste.
+              Bei offenem Fokusmodus entfällt sie wie Kopf und Fuß. */}
+          {phoneChrome && phoneView === 'schaltplan' && !focusMode && (
+            <PhoneCanvasTools
+              zoomPercent={zoom * 100}
+              onFitView={() =>
+                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }))
+              }
+              onOpenDetail={openPhoneDetail}
+              activeDomains={activeDomains}
+              onToggleDomain={toggleDomain}
+            />
+          )}
+          {/*
+            `inert` + `aria-hidden` gehören auf DIE FLÄCHE, nicht auf den
+            Workspace und nicht auf die Shell: Liegt eine Handy-Ansicht ODER
+            eine volle Ebene (Katalog, Detail) darüber, ist die Zeichenfläche
+            unsichtbar und nicht bedienbar (Spec §5/§7) — die Ebene selbst bleibt Geschwister dieses Blocks
+            und damit anklickbar. (Lag `inert` auf dem Workspace, ignorierte
+            der Browser jeden Klick in der Ebene; `pointer-events: none` auf
+            `<main>` nahm zusätzlich der ganzen Seite die Klicks — beides im
+            Browser gemessen 2026-11-10.)
+          */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            {/* Einstiegs-Meldung in derselben Stapel-Ebene wie die Zeichenfläche.
-                Außerhalb läge sie über dem Fachwissen-Blatt, weil die Spalte
-                `isolate` ist und die Meldung dann eine höhere Ebene hat. */}
-            {entryNotice && (
-              <div
-                role={entryNotice.type === 'error' ? 'alert' : 'status'}
-                aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
-                className={`planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-popover flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground ${entryNoticeExpanded ? 'planner-entry-notice--expanded' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="planner-entry-notice__text"
-                  aria-expanded={entryNoticeExpanded}
-                  onClick={() =>
-                    setExpandedNotice((value) => (value === entryNotice.message ? null : entryNotice.message))
-                  }
-                >
-                  {entryNotice.message}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Meldung schließen"
-                  onClick={() => {
-                    setExpandedNotice(null);
-                    dismissEntryNotice();
-                  }}
-                  className="cad-btn pointer-events-auto shrink-0 px-1"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            )}
-            <React.Suspense fallback={<CanvasSkeleton />}>
-              {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
+            <div
+              data-testid="planner-canvas-surface"
+              className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+              inert={phoneChrome && (phoneView !== 'schaltplan' || sheetOpen) ? true : undefined}
+              aria-hidden={phoneChrome && (phoneView !== 'schaltplan' || sheetOpen) ? true : undefined}
+            >
+              <React.Suspense fallback={<CanvasSkeleton />}>
+                {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
                   reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
                   Store/localStorage und bleibt über Katalog und Export
                   erreichbar. */}
-              <ErrorBoundary
-                fallback={(reset) => (
-                  <PlannerCrashFallback
-                    title="Die Planansicht konnte nicht dargestellt werden."
-                    description="Dein Plan ist nicht verloren — sichere die gespeicherten Rohdaten als Backup oder setze den Plan zurück."
-                    onRetry={reset}
-                  />
-                )}
-              >
-                <FlowCanvas />
-              </ErrorBoundary>
-            </React.Suspense>
+                <ErrorBoundary
+                  fallback={(reset) => (
+                    <PlannerCrashFallback
+                      title="Die Planansicht konnte nicht dargestellt werden."
+                      description="Dein Plan ist nicht verloren — sichere die gespeicherten Rohdaten als Backup oder setze den Plan zurück."
+                      onRetry={reset}
+                    />
+                  )}
+                >
+                  <FlowCanvas />
+                </ErrorBoundary>
+              </React.Suspense>
+            </div>
+            {/*
+              Handy-Ansichten über der FLÄCHE (Spec §5, §7) — nicht über der
+              ganzen Shell: Der Bezug ist dieser relative Block, also bleiben
+              Kopfzeile und Fußleiste sichtbar und bedienbar. (Vorher lag die
+              Ebene `absolute inset-0` in der Shell und fing die Klicks auf die
+              Fußleiste ab — im Browser gemessen 2026-11-10.)
+            */}
+            {/* Expertenwissen („Hilfe & Fachwissen“ aus „Mehr“): Auf dem Handy
+                liegt es als EIGENE EBENE über der Fläche wie Katalog und
+                Detail — läge es im `inert`-Block der Fläche, wäre es
+                unsichtbar und nicht bedienbar; als Karte in der 346-px-Fläche
+                blieb davon 0×0 px (im Browser gemessen 2026-11-10). */}
             <ExpertPanel />
+            {phoneChrome && !expertOpen && phoneView !== 'schaltplan' && !sheetOpen && (
+              <PlannerPhoneLayer
+                view={phoneView}
+                onSelectView={setPhoneView}
+                onOpenCatalog={openPhoneCatalog}
+                onOpenDetail={openPhoneDetail}
+              />
+            )}
           </div>
 
           {/* Statuszeile unter der Zeichenfläche: Cursor, Zoom, Raster,
-              Prüfstatus — wie in Konstruktionswerkzeugen üblich. */}
-          <PlannerStatusBar zoom={zoom} />
+              Prüfstatus — wie in Konstruktionswerkzeugen üblich. In der
+              Handy-Hülle gibt es sie nicht: Dort trägt die Werkzeugzone den
+              Zoom, der Fuß die Prüfzahl (Spec §5.2). */}
+          {!phoneChrome && <PlannerStatusBar zoom={zoom} />}
         </div>
 
         {/* Backdrop nur im Slide-over-Bereich (768–1279 px). Ab 1280 px ist der
@@ -472,149 +640,33 @@ function PlannerShell() {
         </aside>
       </div>
 
-      {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die fünf
-          Bottom-Tabs auf 375 px zusammenzuquetschen. Sichtbar deaktivierte
-          Zustände spiegeln die History des Stores unmittelbar. */}
-      {activeTab === 'canvas' && (
-        <div
-          className="planner-mobile-history absolute bottom-20 left-3 z-chrome flex gap-1 md:hidden"
-          role="group"
-          aria-label="Änderungen rückgängig machen oder wiederholen"
-        >
-          <button
-            type="button"
-            data-testid="mobile-undo"
-            onClick={undo}
-            disabled={!canUndo}
-            className="cad-btn cad-btn--line h-12 w-12 justify-center"
-            aria-label="Rückgängig"
-            title="Rückgängig"
-          >
-            <Undo2 size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            data-testid="mobile-redo"
-            onClick={redo}
-            disabled={!canRedo}
-            className="cad-btn cad-btn--line h-12 w-12 justify-center"
-            aria-label="Wiederholen"
-            title="Wiederholen"
-          >
-            <Redo2 size={18} aria-hidden="true" />
-          </button>
-          {showMobileOverview && (
-            <button
-              type="button"
-              data-testid="mobile-overview"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
-                window.dispatchEvent(new CustomEvent('planner-toggle-minimap'));
-              }}
-              className="cad-btn cad-btn--line flex h-12 items-center gap-2 px-3"
-              aria-label="Planübersicht anzeigen"
-              title="Planübersicht anzeigen"
-            >
-              <MapIcon size={18} aria-hidden="true" />
-              Übersicht
-            </button>
-          )}
-        </div>
+      {/*
+        Handy-Ansichten über der Fläche (Spec §6). Die Zeichenfläche bleibt
+        darunter montiert und gemessen; sie wird `inert`, solange eine andere
+        Ansicht sichtbar ist — genau eine Ebene ist bedienbar. „Schaltplan“
+        braucht keine eigene Ansicht: Dort IST die Fläche die Ansicht.
+      */}
+      {/* Auf dem Schaltplan ist die Fläche selbst die Ansicht — der
+          Meldungsplatz steht dann im Fluss darunter, nicht in einer Ebene
+          darüber (Spec §5.3). */}
+      {/* Genau EIN Meldungsplatz, immer in der Hülle: Auf dem Schaltplan
+          zwischen Fläche und Fußleiste, unter den anderen Ansichten unter der
+          Ansicht — in beiden Fällen schiebt er den Inhalt nach oben, statt ihn
+          zu überdecken (Spec §5.3). Vorher lag er zusätzlich im Layer, und
+          nach dem Schließen eines Blattes fehlte er in der Hülle. */}
+      {phoneChrome && <PlannerPhoneMessageBar entryMessage={entryMessage} />}
+
+      {phoneChrome && (
+        <PlannerPhoneNav
+          activeView={phoneView}
+          // Ein Fußziel schließt offene Blätter (Katalog/Detail): Danach ist
+          // genau die gewählte Ansicht sichtbar (Spec §7, „eine Ebene“).
+          onSelectView={(view) => {
+            closePanels();
+            setPhoneView(view);
+          }}
+        />
       )}
-
-      {/* Fußleiste: nur Handy. Fünf Ziele in einer Zeile —
-          `planner-bottom-nav` ergänzt die iOS-Safe-Area, damit der
-          Home-Indicator nichts überdeckt.
-
-          `Bauteile` und `Details` sind Blatt-Schalter (`aria-expanded`), keine
-          Seiten: Die Zeichenfläche bleibt darunter im Layout und montiert.
-          `Elektrik`/`Wasser` wählen den Planbereich und schließen ein offenes
-          Blatt mit — vorher war der Bereichswechsel auf dem Handy hinter dem
-          Katalog „versteckt“, weil der Katalog die Zeichenfläche ersetzte. */}
-      <nav
-        data-testid="planner-bottom-nav"
-        className="planner-bottom-nav z-chrome flex shrink-0 items-center border-t border-border bg-surface-panel md:hidden"
-        aria-label="Planerbereiche"
-      >
-        <button
-          type="button"
-          data-testid="nav-tab-sidebar"
-          onClick={() => togglePanel('sidebar')}
-          className={navClass(activeTab === 'sidebar')}
-          aria-expanded={activeTab === 'sidebar'}
-          aria-controls="component-palette-panel"
-        >
-          <Layers size={20} aria-hidden="true" />
-          <span>Bauteile</span>
-        </button>
-        <button
-          type="button"
-          data-testid="nav-tab-electric"
-          onClick={() => {
-            closePanels();
-            setViewMode('electric');
-          }}
-          className={navClass(activeTab === 'canvas' && viewMode === 'electric')}
-          aria-current={activeTab === 'canvas' && viewMode === 'electric' ? 'page' : undefined}
-        >
-          <Zap size={20} aria-hidden="true" />
-          <span>Elektrik</span>
-        </button>
-        <button
-          type="button"
-          data-testid="nav-tab-water"
-          onClick={() => {
-            closePanels();
-            setViewMode('water');
-          }}
-          className={navClass(activeTab === 'canvas' && viewMode === 'water')}
-          aria-current={activeTab === 'canvas' && viewMode === 'water' ? 'page' : undefined}
-        >
-          <Droplets size={20} aria-hidden="true" />
-          <span>Wasser</span>
-        </button>
-        <button
-          type="button"
-          data-testid="nav-tab-inspector"
-          onClick={() => togglePanel('inspector')}
-          className={navClass(activeTab === 'inspector')}
-          aria-expanded={activeTab === 'inspector'}
-          aria-controls="inspector-panel"
-          // Ohne Auswahl bleibt der sichtbare Name „Details“ der zugängliche
-          // Name — mit Auswahl nennt die Ansage Zahl und Ziel.
-          aria-label={
-            selectionCount > 0
-              ? `Eigenschaften öffnen, ${selectionCount} Element${selectionCount === 1 ? '' : 'e'} ausgewählt`
-              : undefined
-          }
-        >
-          <Settings2 size={20} aria-hidden="true" />
-          <span>Details</span>
-          {selectionCount > 0 && (
-            <span
-              className="absolute top-1 right-1 flex min-h-4 min-w-4 items-center justify-center border border-border bg-surface-panel px-0.5 text-xs leading-none text-foreground"
-              aria-hidden="true"
-            >
-              {selectionCount > 9 ? '9+' : selectionCount}
-            </span>
-          )}
-        </button>
-        {/* Fokusmodus auch auf dem Handy: der Planer nimmt sich den
-            Bildschirm, wenn der Nutzer das will — kein Zwangs-Vollbild. */}
-        <button
-          type="button"
-          data-testid="nav-tab-focus"
-          onClick={() => setFocusMode(!focusMode)}
-          className={navClass(focusMode)}
-          // `aria-pressed` trägt den Zustand; der sichtbare Name „Fokus“ bleibt
-          // der zugängliche Name (kein Label, das ihn überschreibt).
-          aria-pressed={focusMode}
-          title={focusMode ? 'Fokusmodus verlassen' : 'Vollbild (Fokusmodus)'}
-        >
-          {focusMode ? <Minimize2 size={20} aria-hidden="true" /> : <Frame size={20} aria-hidden="true" />}
-          <span>Fokus</span>
-        </button>
-      </nav>
     </div>
   );
 }

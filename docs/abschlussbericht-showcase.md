@@ -8,13 +8,13 @@ Durchführender Agent: Antigravity
 
 ## 1. Zusammenfassung
 
-Alle technischen und infrastrukturellen Schritte zur Herstellung der **Showcase-Readiness** wurden gemäß Runbook ([`docs/default-branch-auf-main-umstellen.md`](file:///c:/Users/jonas/Favorites/Camp/docs/default-branch-auf-main-umstellen.md)) erfolgreich und ohne Unterbrechung der Verfügbarkeit umgesetzt.
+Alle technischen und infrastrukturellen Schritte zur Herstellung der **Showcase-Readiness** wurden gemäß Runbook ([`docs/default-branch-auf-main-umstellen.md`](default-branch-auf-main-umstellen.md)) erfolgreich und ohne Unterbrechung der Verfügbarkeit umgesetzt.
 
 - Der Default-Branch des Repositories ist jetzt **`main`**.
 - Der GitHub-Pages-Deploy läuft jetzt vollautomatisch von **`main`**.
 - Der Deploy wurde mit Run **`38285940920`** belegt: alle 5 Jobs grün, Smoke-Check erfolgreich (9 von 9 Bundles ausgeliefert, Asset HTTP 200).
 - Beide Live-Seiten (`/` und `/planer/`) antworten mit HTTP 200.
-- **Branch Protection** auf `main` ist gemäß [`docs/CI.md`](file:///c:/Users/jonas/Favorites/Camp/docs/CI.md) § 4 aktiv (Strict Status Checks, 1 Approval, Enforce Admins, Force Push / Deletion blockiert).
+- **Branch Protection** auf `main` ist gemäß [`docs/CI.md`](CI.md) § 4 aktiv (Strict Status Checks, 1 Approval, Enforce Admins, Force Push / Deletion blockiert).
 - Das Impressum wurde gemäß Betreiber-Vorgabe nicht mit erfundenen Daten befüllt und verbleibt als einziger offener Punkt für die Bereitstellung realer Betreiberdaten.
 
 ---
@@ -113,15 +113,15 @@ Alle technischen und infrastrukturellen Schritte zur Herstellung der **Showcase-
     - `allow_force_pushes`: `false`
     - `allow_deletions`: `false`
 - **Dokumentation:**
-  - [`docs/showcase-readiness-checkliste.md`](file:///c:/Users/jonas/Favorites/Camp/docs/showcase-readiness-checkliste.md) aktualisiert (Erledigte Punkte abgehakt, gemessene Zahlen hinterlegt).
-  - [`docs/branch-inventory-2026-10-12.md`](file:///c:/Users/jonas/Favorites/Camp/docs/branch-inventory-2026-10-12.md) um Hinweis auf vollzogene `main`-Umstellung und Betreiber-Entscheidung ergänzt.
+  - [`docs/showcase-readiness-checkliste.md`](showcase-readiness-checkliste.md) aktualisiert (Erledigte Punkte abgehakt, gemessene Zahlen hinterlegt).
+  - [`docs/branch-inventory-2026-10-12.md`](branch-inventory-2026-10-12.md) um Hinweis auf vollzogene `main`-Umstellung und Betreiber-Entscheidung ergänzt.
 
 ---
 
 ## 3. Offene Punkte
 
 1. **Impressum mit echten Daten füllen:**
-   - In [`lib/siteLegal.ts`](file:///c:/Users/jonas/Favorites/Camp/lib/siteLegal.ts) die 5 Pflichtfelder (`providerName`, `street`, `postalCodeAndCity`, `email`, `contentResponsible`) mit ladungsfähigen Daten belegen.
-   - Die sichtbaren Normzitate in [`app/impressum/page.tsx`](file:///c:/Users/jonas/Favorites/Camp/app/impressum/page.tsx) auf DDG / MStV anpassen.
+   - In [`lib/siteLegal.ts`](../lib/siteLegal.ts) die 5 Pflichtfelder (`providerName`, `street`, `postalCodeAndCity`, `email`, `contentResponsible`) mit ladungsfähigen Daten belegen.
+   - Die sichtbaren Normzitate in [`app/impressum/page.tsx`](../app/impressum/page.tsx) auf DDG / MStV anpassen.
    - Impressum-Baselines neu aufnehmen (`npx playwright test tests/e2e/visual.spec.ts --update-snapshots`).
-   - `LEGAL_NOTICE_GATE: block` in [`.github/workflows/deploy.yml`](file:///c:/Users/jonas/Favorites/Camp/.github/workflows/deploy.yml) aktivieren.
+   - `LEGAL_NOTICE_GATE: block` in [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) aktivieren.

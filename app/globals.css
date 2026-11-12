@@ -1635,6 +1635,11 @@ body:has(.de-warning-center [role='dialog']) .planner-action-feedback {
 .planner-shell--focus [data-testid='inspector-backdrop'],
 .planner-shell--focus .planner-statusbar,
 .planner-shell--focus .planner-bottom-nav,
+/* Die Handy-Kopfzeile gehört zum ablenkungsfreien Modus wie der Fuß: Beide
+   verschwinden. Der sichtbare Ausstieg ist der Fokus-Knopf auf der Fläche
+   (`planner-focus-exit`) — ein Kopf ohne Ansichten darunter wäre ein Ziel
+   ohne Wirkung. */
+.planner-shell--focus .planner-phone-header,
 .planner-shell--focus .planner-mobile-history,
 .planner-shell--focus .planner-expert-panel,
 .planner-shell--focus .de-hud-card,
@@ -3796,9 +3801,13 @@ html.planner-root-active body {
     padding-block: 0;
   }
 
-  /* Die Modus-Erklärung ist zwei Zeilen hoch und liegt bei 150 px
-     Zeichenfläche auf den Zoom-Griffen. Die drei Modus-Knöpfe bleiben. */
-  [data-testid='planner-mode-caption'] {
+  /* Die Modus-Erklärung ist zwei Zeilen hoch und lag als schwebende Karte bei
+     150 px Zeichenfläche auf den Zoom-Griffen. In der Handy-Hülle steht sie
+     dagegen IM FLUSS in der Werkzeugzone (Spec §6.2) und überdeckt nichts —
+     dort bleibt sie sichtbar. Ausgeblendet wird nur die schwebende Karte der
+     Zeichenfläche (`.planner-mode-switch-panel`), und die gibt es in der
+     Hülle nicht mehr. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     display: none;
   }
 
@@ -4189,7 +4198,10 @@ html.planner-root-active body {
     --planner-phone-sheet-top: 7.25rem;
   }
 
-  [data-testid='planner-mode-caption'] {
+  /* Ebenso im flachen Querformat: Die Erklärung steht in der Werkzeugzone im
+     Fluss (Spec §6.2, „eine Zeile, gekürzt mit ellipsis“), nicht mehr als
+     Karte über den Zoom-Griffen. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     display: none;
   }
 
@@ -4987,7 +4999,10 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
     right: auto !important;
     transform: none !important;
   }
-  [data-testid='planner-mode-caption'] {
+  /* Nur die schwebende Karte auf der Fläche: Sie muss die Karte rechts
+     freihalten. In der Werkzeugzone der Handy-Hülle ist die Erklärung eine
+     Zeile der Zone (Spec §6.2) und nutzt die volle Breite. */
+  .react-flow__panel [data-testid='planner-mode-caption'] {
     max-width: min(22rem, calc(100vw - 30rem));
     text-align: left;
   }
@@ -5129,5 +5144,185 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
 
   .hover-row:hover {
     background-color: var(--surface-hover);
+  }
+}
+
+/* --- Handy-Hülle: vier Ansichten, eine Fläche, keine schwebenden Griffe ----
+
+   Die Hülle (Spezifikation §5–§8) bringt eigene Werkzeuge mit: Zoom und
+   Verlauf in der Werkzeugzone, den Modus im Fluss, die Prüfzahl am Fuß.
+   Deshalb entfallen auf dem Handy alle schwebenden Canvas-Griffe — sie lägen
+   sonst als zweite Bedienung über der Fläche und verdeckten den Plan.
+
+   Die Grenze ist dieselbe wie in `PlannerInner`/`PHONE_CHROME_QUERY`:
+   `(max-width: 767px), (max-height: 500px)`. Das Attribut setzt die Shell,
+   damit CSS und JS nicht auseinanderlaufen können. */
+
+.planner-shell[data-phone-shell='true'] .planner-controls,
+.planner-shell[data-phone-shell='true'] .planner-minimap,
+.planner-shell[data-phone-shell='true'] .planner-mode-switch-panel,
+.planner-shell[data-phone-shell='true'] .planner-display-options-panel,
+.planner-shell[data-phone-shell='true'] .planner-mobile-history,
+.planner-shell[data-phone-shell='true'] .planner-expert-panel {
+  display: none !important;
+}
+
+/* Der Fokus-Ausstieg bleibt AUCH auf dem Handy sichtbar (Spec §6.2): Dort gibt
+   es keinen `Controls`-Block und keine Werkzeugzone im Fokus, also wäre ein
+   verdeckter Ausstieg ein Fokusmodus ohne Rückweg — nur die Escape-Taste
+   hätte ihn beendet. Im Normalzustand ist der Knopf gar nicht gerendert. */
+
+/* Kopf und Fuß der Hülle: 48 px plus Safe-Area (Spec §5.1/§5.2). Der
+   Home-Indicator darf nichts überdecken. */
+.planner-phone-header {
+  min-height: 48px;
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Der Meldungsplatz im Fluss ist höchstens 4,5 rem hoch; längerer Text
+   scrollt in der Meldung statt die Ansicht zusammenzudrücken (Spec §5.3). */
+.planner-message-slot--phone > * {
+  max-height: 4.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Übergang der Ansichten: nur Deckkraft, höchstens 150 ms — und nur, wenn
+   der Nutzer Bewegung nicht abbestellt hat (Spec §8). */
+@media (prefers-reduced-motion: no-preference) {
+  .planner-phone-view {
+    animation: planner-phone-view-in 150ms ease-out;
+  }
+}
+
+@keyframes planner-phone-view-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-phone-view {
+    animation: none;
+  }
+}
+
+/*…… aber das OFFENE Expertenblatt („Hilfe & Fachwissen“ aus „Mehr“) ist auf
+   dem Handy eine eigene volle Ebene wie Katalog und Detail (Spec §7): Es
+   beginnt unter der Kopfzeile, endet über der Fußleiste und füllt die Breite.
+   Die Desktop-Karte (`bottom-28`, `w-11/12`) ließe in der 346-px-Fläche
+   0×0 px übrig — gemessen 375×667. */
+.planner-shell[data-phone-shell='true'] .planner-expert-panel--open {
+  display: flex !important;
+  /* Eine Stufe über der Ansicht. Ein bloßes `z-index` am Panel genügt nicht:
+     Es sitzt in einem eigenen Stapelkontext der Canvas-Spalte, die Ansicht
+     daneben in einem anderen — deshalb wird die Ansicht hier aktiv
+     zurückgesetzt, solange das Expertenblatt offen ist (gemessen 375×667:
+     das Blatt lag unter der Ansicht und war nicht bedienbar). */
+  z-index: calc(var(--z-sheet) + 1);
+  top: calc(3rem + env(safe-area-inset-top) + 0.25rem) !important;
+  right: 0.25rem !important;
+  bottom: calc(var(--cad-nav-h, 3.5rem) + env(safe-area-inset-bottom) + 0.25rem) !important;
+  left: 0.25rem !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.planner-shell[data-phone-shell='true'] .planner-expert-panel--open > div {
+  max-height: 100%;
+}
+
+.planner-shell[data-phone-shell='true']:has(.planner-expert-panel--open) [data-testid='planner-phone-layer'] {
+  z-index: calc(var(--z-sheet) - 1);
+}
+
+/* Im flachen Querformat ist die Höhe das knappe Gut (393 px). Der aufgeklappte
+   Bereich „Darstellung“ darf die Zeichenfläche nicht auf null drücken: Die
+   Zone bleibt auf ein Drittel der Fensterhöhe begrenzt, der Rest scrollt in
+   ihr. Gemessen 852×393: 197 px Zone ließen 19 px Fläche übrig. */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Meldungsplatz: Bei 320 px Fensterhöhe fraß die vierzeilige
+     Einstiegsmeldung 84 px — ein Viertel des Bildes, die Zeichenfläche
+     behielt 38 px. Deshalb sind es hier höchstens zwei Zeilen; der Rest
+     bleibt über den Scroll im Meldungstext erreichbar (Spec §5.3: „danach
+     scrollt der Text in der Meldung“). */
+  .planner-message-slot--phone > * {
+    max-height: 3rem;
+  }
+
+  .planner-phone-toolbar {
+    /* Spec §6.2: Im flachen Querformat ist die Werkzeugzone EINE Zeile,
+       waagerecht scrollbar. Gestapelt (drei Zeilen à 48/57/9 px) fraß sie bei
+       640×320 114 px von 320 — die Zeichenfläche behielt 66 px. Als eine Zeile
+       bleiben ihr 48 px, die Fläche bekommt den Rest (AT-13: > 96 px). */
+    flex-direction: row;
+    align-items: center;
+    max-height: none;
+  }
+
+  /* Die Zeilen behalten ihre Knopfhöhe. Ohne `flex-shrink: 0` verteilt der
+     Flex-Container den knappen Platz auf die Zeilen: Bei 640×320 wurde die
+     Knopfzeile 29 px hoch, die 44-px-Knöpfe ragten oben aus der Zeile
+     (y = 41 statt 49) und lagen hinter der Kopfzeile. */
+  .planner-phone-toolbar > div {
+    flex-shrink: 0;
+  }
+
+  /* In der einen Zeile stehen die Bausteine nebeneinander: Knopfzeile,
+     Modus-Zeile, Erklärung. Die Trennlinien wandern von oben nach links.
+     `overflow-x: auto` ist geerbt — die Zeile scrollt waagerecht (Spec §6.2
+     und AT-13: „Werkzeugzeile scrollbar“); Ziele dürfen außerhalb des ersten
+     Blickfelds liegen. */
+  .planner-phone-toolbar > * {
+    flex-shrink: 0;
+    border-top: 0;
+    border-left: 1px solid var(--rule, rgb(0 0 0 / 0.1));
+  }
+
+  .planner-phone-toolbar > *:first-child {
+    border-left: 0;
+  }
+
+  /* Der Modus-Satz soll nicht über den Rand hinausragen, wenn man ihn
+     erreicht: Er bleibt am Stück, die Zeile scrollt. */
+  .planner-phone-toolbar > div:has([role='group'][aria-label='Arbeitsmodus']) {
+    scroll-margin-right: 0.5rem;
+  }
+
+  /* Der aufgeklappte Bereich „Darstellung“ bleibt in der Zone: Er bekommt
+     eine eigene Spalte mit begrenzter Höhe und scrollt in sich, statt die
+     eine Zeile beliebig hoch zu machen. */
+  .planner-phone-toolbar > [data-testid='phone-display-options'] {
+    max-height: calc(6.5rem - 8px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Kopf und Fuß der Hülle schrumpfen auf 40 px. Der Desktop geht im flachen
+     Querformat denselben Weg (Werkzeugleiste 36 px, dokumentierte Abweichung
+     unter der 44-px-Kante, WCAG 2.5.8 verlangt 24 px); hier ist es der
+     einzige Hebel, der die Zeichenfläche über 96 px (AT-13) hält: Bei
+     640×320 waren es mit 48+44 px nur 62 px. */
+  .planner-phone-header {
+    min-height: 40px;
+  }
+
+  /* Der Heim-Knopf trägt `min-h-11` (44 px) im Markup; `min-height` allein
+     reicht deshalb nicht, er gibt die Höhe der Kopfzeile vor. Die Ziele der
+     Werkzeugzone bleiben bei 44 px — Spec §8 verlangt sie dort ausdrücklich
+     (die 36-px-Ausnahme gilt nur für die alte Desktop-Leiste). */
+  .planner-phone-header .cad-btn {
+    min-height: 40px;
+  }
+}
+
+/* Flaches Querformat: EINE Zeile, waagerecht scrollbar (Spec §6.2). Im
+   Hochformat bricht die Zeile um — dort ist Scrollen nicht vorgesehen. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .planner-phone-toolbar > div:first-child {
+    flex-wrap: nowrap;
   }
 }

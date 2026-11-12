@@ -1,6 +1,7 @@
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { nodesWithUniqueDesignators } from '../nodes/designatorModel';
+import { getNodeLayoutSize } from './utils/layout';
 
 /**
  * Konventioneller Auslösestrom der in den Vorlagen verwendeten 40-A-MIDI-
@@ -814,6 +815,44 @@ function starterPlanFingerprint(): string {
 }
 
 /**
+ * Der Starter sieht seit dem Auftrag „Vorlagen wie nach Automatisch verbinden“
+ * nicht mehr wie `TEMPLATE_KASTENWAGEN` aus, sondern wie dessen Rohgraph nach
+ * AutoWire **und** ELK-Struktur. Diese Karte wird nicht von Hand gepflegt: Das
+ * Layout rechnet mit gemessenen Kartenmaßen (`nodeHeight`/`nodeWidth` aus der
+ * Render-Geometrie) und genau den Maßen, die `applyAdvancedLayout` im Browser
+ * bekommt, wenn der Plan zum ersten Mal sichtbar wird. Die Berechnung ist
+ * deterministisch (kein Zufall, keine Zeit), deshalb ist der Fingerprint-Text
+ * über Aufrufe hinweg stabil.
+ *
+ * Erst nach dieser Struktur gilt ein Plan als „unveränderter Starter“; ein
+ * Zwischenstand während der Messung darf nicht als Starter zählen (sonst
+ * würde ein Benutzerplan ohne Rückfrage ersetzt).
+ */
+type StarterStructuredPlan = { nodes: Node[]; edges: Edge<CableEdgeData>[] };
+let cachedStarterStructured: StarterStructuredPlan | null = null;
+
+/**
+ * Erzeugt den strukturierten Starter-Graphen: derselbe Pfad wie
+ * `applyTemplate` im Store (performAutoWiring) plus ELK/Dagre-Layout mit den
+ * gemessenen Ersatzmaßen. Exportiert, damit Tests und der E2E-Vertrag dieselbe
+ * Funktion benutzen statt einer zweiten Kopie der Logik.
+ */
+export async function buildStructuredStarterPlan(): Promise<StarterStructuredPlan> {
+  if (cachedStarterStructured) return cachedStarterStructured;
+  const { performAutoWiring } = await import('../../lib/autoWire');
+  const { applyAdvancedLayout } = await import('../../lib/planner/routingV2Adapter');
+  const wired = performAutoWiring(TEMPLATE_KASTENWAGEN.nodes, TEMPLATE_KASTENWAGEN.edges);
+  const source = wired ? { nodes: wired.nodes, edges: wired.edges } : TEMPLATE_KASTENWAGEN;
+  const sized = source.nodes.map((node) => {
+    const size = getNodeLayoutSize(node);
+    return { ...node, measured: { width: size.width, height: size.height } };
+  });
+  const layout = await applyAdvancedLayout(sized, source.edges, 'LR');
+  cachedStarterStructured = { nodes: layout.nodes, edges: layout.edges };
+  return cachedStarterStructured;
+}
+
+/**
  * Ist der aktuelle Plan noch das unveränderte Beispiel-Setup? Dann ist er
  * kein eigener Plan: Ersetzen oder Leeren braucht keine Rückfrage. Sobald ein
  * Wert, eine Position oder eine Leitung geändert wurde (z. B. Batterie auf
@@ -835,7 +874,53 @@ export function isStarterPlan(
     data?: unknown;
   }[]
 ): boolean {
+  // Zwei gültige Stände: die Rohvorlage (vor dem ersten AutoWire-Lauf) und
+  // der strukturierte Starter (nach Laden und ELK). Beide sind „unverändert“;
+  // jede Änderung an Werten, Leitungen oder Positionen fällt aus beiden
+  // Vergleichen heraus.
+  if (isRawStarterPlan(nodes, edges)) return true;
+  const structured = cachedStarterStructured;
+  if (!structured) return false;
+  if (nodes.length !== structured.nodes.length || edges.length !== structured.edges.length) return false;
+  return planFingerprint(nodes, edges) === structuredFingerprint(structured);
+}
+
+function isRawStarterPlan(
+  nodes: readonly { id: string; type?: string; position?: { x: number; y: number }; data?: unknown }[],
+  edges: readonly {
+    id: string;
+    source?: string;
+    target?: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+    data?: unknown;
+  }[]
+): boolean {
   const starter = TEMPLATE_KASTENWAGEN;
   if (nodes.length !== starter.nodes.length || edges.length !== starter.edges.length) return false;
   return planFingerprint(nodes, edges) === starterPlanFingerprint();
+}
+
+let cachedStructuredFingerprint: string | null = null;
+function structuredFingerprint(plan: StarterStructuredPlan): string {
+  if (cachedStructuredFingerprint === null) {
+    cachedStructuredFingerprint = planFingerprint(plan.nodes, plan.edges);
+  }
+  return cachedStructuredFingerprint;
+}
+
+/**
+ * Wärmt den strukturierten Starter-Fingerprint vor, sobald der Planer läuft.
+ * `isStarterPlan` bleibt synchron (viele Aufrufer lesen es im Render); dieser
+ * Aufruf füllt den Cache im Hintergrund, damit die erste Prüfung im
+ * Einstiegs-Hook bereits den strukturierten Stand kennt.
+ */
+export async function primeStarterPlanFingerprint(): Promise<void> {
+  try {
+    const plan = await buildStructuredStarterPlan();
+    structuredFingerprint(plan);
+  } catch {
+    // Kein Layout möglich (z. B. Testumgebung ohne ELK-CJS): Der Rohstand
+    // bleibt die gültige Referenz — kein stiller Fehler im Renderpfad.
+  }
 }

@@ -11,6 +11,26 @@ name: CI
 on:
   pull_request:
     branches: ["**"]
+    # Seit dem 2026-11-12 ist das Repo öffentlich; die Actions-Minuten sind
+    # damit unbegrenzt (vorher: 2.000/Monat). Die Ausnahmen bleiben trotzdem:
+    # Ein Doku-PR braucht kein Gate. Es ist keine Ersparnis mehr, sondern
+    # weniger Warteschlange und ein schnelleres Häkchen.
+    #
+    # Bewusst NICHT ausgenommen: `app/`, `components/`, `lib/`, `store/`,
+    # `tests/`, `scripts/`, `package*.json` und alles unter `.github/`.
+    # Ein Lauf, der bei einem Workflow-Fehler nicht startet, wäre blind —
+    # gerade die Änderung an dieser Datei soll geprüft werden.
+    #
+    # Ebenso bewusst NICHT ausgenommen: `*.md` unter `app/` und `components/`
+    # sowie `docs/`. Ein Test (`scripts/ci/workflows.test.ts`) hält fest, dass
+    # die Ausnahmen nur Doku und Bilder treffen und nichts Ausführbares.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "public/**"
+      - "audit-out/**"
+      - ".gitignore"
+      - "LICENSE"
   workflow_dispatch:
 
 permissions:

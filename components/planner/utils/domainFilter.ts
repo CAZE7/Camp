@@ -4,6 +4,7 @@ import { getEdgeDomain } from '../../../lib/electrical';
 import { getComponentSpec } from '../../registry';
 import { cssToken } from '../../edges/utils/edgeColors';
 import { withClassFlag } from './classFlags';
+import { DOMAINS, DOMAIN_LABELS, type Domain } from '../../../lib/domain/plannerDomains';
 
 /**
  * Domänen-Filter für den Elektrikplan (12V DC, 230V AC, Solar).
@@ -13,15 +14,12 @@ import { withClassFlag } from './classFlags';
  * Zusammenhang des Plans erhalten bleibt.
  */
 
-export type Domain = 'DC_12V' | 'AC_230V' | 'Solar';
-
-export const DOMAINS: Domain[] = ['DC_12V', 'AC_230V', 'Solar'];
-
-export const DOMAIN_LABELS: Record<Domain, string> = {
-  DC_12V: '12V',
-  AC_230V: '230V',
-  Solar: 'Solar',
-};
+// Typ und Liste liegen in `lib/domain/plannerDomains` (importfrei): Der Store
+// braucht die Liste für den Standardwert und darf dafür keinen Zyklus über die
+// Elektrik-Regeln ziehen. Hier werden sie unverändert weitergegeben — und
+// zusätzlich importiert, weil sie in DIESER Datei selbst gebraucht werden.
+export { DOMAINS, DOMAIN_LABELS };
+export type { Domain };
 
 /** Chips-Farben (CSS-Tokens) für die Filterleiste — passend zur Leitungsfarbe. */
 export const DOMAIN_COLORS: Record<Domain, string> = {

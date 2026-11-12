@@ -27,6 +27,55 @@ vi.mock('./planner/OnboardingWizard', () => ({
   OnboardingWizard: () => <div data-testid="onboarding" />,
 }));
 
+/**
+ * Handy-Hülle: Die Hülle selbst hat ihre eigene Suite
+ * (`PlannerPhoneShell.test.tsx`) — hier zählt nur, WANN sie erscheint und was
+ * sie vom Arbeitsbereich fernhält. Kopf, Ansicht, Meldungsplatz und Fuß werden
+ * deshalb durch Kennungen ersetzt.
+ */
+vi.mock('./planner/ui/PlannerPhoneShell', () => ({
+  PHONE_CHROME_QUERY: '(max-width: 767px), (max-height: 500px)',
+  PHONE_SHELL_ATTRIBUTE: 'data-phone-shell',
+  PlannerPhoneHeader: ({ projectName }: { projectName: string }) => (
+    <div data-testid="planner-phone-header">{projectName}</div>
+  ),
+  // Der Schaltplan ist die Fläche selbst — die echte Ebene rendert dafür
+  // Der Schaltplan ist die Fläche selbst — die echte Ebene rendert dafür
+  // keine Ansicht. Der Stub hält denselben Vertrag.
+  // Die echte Ebene rendert NUR die Ansicht — den Meldungsplatz nicht mehr
+  // (er liegt einmal in der Hülle). Der Stub hält denselben Vertrag.
+  PlannerPhoneLayer: ({ view }: { view: string }) => (
+    <div data-testid="planner-phone-view" data-phone-view={view} />
+  ),
+  PlannerPhoneMessageBar: ({ entryMessage }: { entryMessage: unknown }) => (
+    <div data-testid="planner-phone-message" data-entry={entryMessage ? 'yes' : 'no'} />
+  ),
+  PlannerPhoneNav: ({
+    activeView,
+    onSelectView,
+  }: {
+    activeView: string;
+    onSelectView: (v: string) => void;
+  }) => (
+    <nav data-testid="planner-phone-nav" aria-label="Planerbereiche" data-active={activeView}>
+      {['bauteile', 'schaltplan', 'pruefung', 'mehr'].map((view) => (
+        <button key={view} type="button" onClick={() => onSelectView(view)}>
+          {view}
+        </button>
+      ))}
+    </nav>
+  ),
+}));
+vi.mock('./planner/ui/PhoneCanvasTools', () => ({
+  PhoneCanvasTools: () => <div data-testid="phone-canvas-tools" />,
+}));
+
+/**
+ * Geräteklasse steuern: `viewportMock.phone` schaltet die MediaQueryList-Antwort.
+ * Standard ist „Desktop“ — die Layout-Suiten prüfen die drei Spalten.
+ */
+const viewportMock = vi.hoisted(() => ({ phone: false }));
+
 // Einstiegsmeldung: Der echte Hook würde den Beispielplan laden. Für die
 // Layout-Suite genügt ein steuerbarer Zustand — der Dismiss-Aufruf ist der
 // Regressionstest für „Meldung bleibt nach dem Leeren stehen“.
@@ -65,7 +114,21 @@ const plannerState: Record<string, unknown> = {
   canUndo: false,
   canRedo: false,
   deleteSelected: vi.fn(),
+  // Meldungsplatz (Spezifikation §16.1): Der Einstiegstext schreibt in den
+  // einen Meldungszustand des Stores, nicht mehr in ein absolutes Overlay.
+  setPlannerMessage: vi.fn(),
+  plannerMessage: null,
+  // Befund-Synchronisation (Badge am Fuß, Warnzentrale, Prüfbericht): Die
+  // Shell schreibt die Live-Warnungen in den Store. Ohne die Aktion würde
+  // jeder Renderschritt mit „setPlannerErrors is not a function“ brechen.
+  setPlannerErrors: vi.fn(),
+  autoWireReport: null,
 };
+
+vi.mock('./planner/hooks/useLiveValidation', () => ({
+  useLiveValidation: () => [],
+  useVerificationReport: () => null,
+}));
 
 vi.mock('../store/usePlannerStore', () => ({
   usePlannerStore: Object.assign(
@@ -96,95 +159,128 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.canRedo = false;
     entryPlanMock.notice = null;
     entryPlanMock.dismissNotice.mockClear();
+    viewportMock.phone = false;
+    // Die Shell fragt `matchMedia(PHONE_CHROME_QUERY)`; der globale Stub in
+    // `vitest.setup.ts` antwortet immer `false`. Hier wird die eine Abfrage
+    // steuerbar, alle anderen bleiben beim Stub.
+    window.matchMedia = ((query: string) => ({
+      matches: viewportMock.phone && query.includes('max-width: 767px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
   });
 
-  it('A1 (375 px): Bottom-Tabs mit ≥44 px Touch-Targets und Safe-Area', () => {
+  it('A1 (375 px): zeigt die Handy-Hülle statt der Chrome-Leiste', () => {
+    viewportMock.phone = true;
     render(<PlannerInner />);
-    const nav = screen.getByRole('navigation', { name: 'Planerbereiche' });
 
-    // Safe-Area-Klasse (padding-bottom: max(.25rem, env(safe-area-inset-bottom)))
-    expect(nav).toHaveClass('planner-bottom-nav');
-    // Ab 768 px verschwindet die Leiste — sie ist Flex-Geschwister, überlappt
-    // den Canvas also nie.
-    expect(nav).toHaveClass('md:hidden');
+    expect(screen.getByTestId('planner-phone-header')).toHaveTextContent('Elektrikplan');
+    expect(screen.getByTestId('planner-phone-nav')).toHaveAttribute('aria-label', 'Planerbereiche');
+    expect(screen.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'bauteile');
+    expect(screen.getByTestId('planner-phone-message')).toHaveAttribute('data-entry', 'no');
+    // Die Chrome-Leiste ist auf dem Handy nicht montiert — kein zweiter Weg
+    // zu denselben Aktionen (AC-K1).
+    expect(screen.queryByTestId('planner-dashboard')).not.toBeInTheDocument();
+  });
 
-    const tabs = ['Bauteile', 'Elektrik', 'Wasser', 'Details', 'Fokus'];
-    tabs.forEach((label) => {
-      const button = screen.getByRole('button', { name: label });
-      // min-h-14 / min-w-14 = 56 px, deutlich über den geforderten 44 px.
-      expect(button.className).toContain('min-h-14');
-      expect(button.className).toContain('min-w-14');
+  it('A1: die Fußleiste wechselt zwischen den vier Ansichten', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'pruefung' }));
+    expect(screen.getByTestId('planner-phone-view')).toHaveAttribute('data-phone-view', 'pruefung');
+    expect(screen.getByTestId('planner-phone-nav')).toHaveAttribute('data-active', 'pruefung');
+
+    // Werkzeugzone nur auf dem Schaltplan (Spec §6.2).
+    expect(screen.queryByTestId('phone-canvas-tools')).not.toBeInTheDocument();
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'schaltplan' }));
+    });
+    expect(screen.getByTestId('phone-canvas-tools')).toBeInTheDocument();
+    // Der Schaltplan ist die Fläche selbst — keine Ebene darüber, aber der
+    // Meldungsplatz bleibt im Fluss (Spec §5.3).
+    expect(screen.queryByTestId('planner-phone-view')).not.toBeInTheDocument();
+    expect(screen.getByTestId('planner-phone-message')).toBeInTheDocument();
+    // Die Zeichenfläche bleibt in jeder Ansicht montiert (Spec §5).
+    expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
+  });
+
+  /**
+   * Regressionen aus dem ersten echten Browser-Lauf (2026-11-10). Jeder Test
+   * hält einen Fehler fest, der auf dem Handy wirklich auftrat — nicht eine
+   * Annahme über das Markup.
+   */
+  it('Handy: Kopf und Fuß bleiben bedienbar — die Ansicht liegt NUR über der Fläche', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    const surface = screen.getByTestId('planner-canvas-surface');
+    // Der Stub der Ebene trägt `planner-phone-view` (die echte trägt beides).
+    const layer = screen.getByTestId('planner-phone-view');
+    // Die Ebene ist Geschwister der Fläche, nicht der Shell: Läge sie in der
+    // Shell mit `absolute inset-0`, fängt sie die Klicks auf die Fußleiste ab
+    // (gemessen 390×844: `elementFromPoint` im Tab traf die Ebene).
+    expect(surface.contains(layer)).toBe(false);
+    expect(screen.getByTestId('planner-phone-header').contains(layer)).toBe(false);
+    expect(screen.getByTestId('planner-phone-nav').contains(layer)).toBe(false);
+    // Die Fläche ist unter der Ansicht gesperrt — und nur sie.
+    expect(surface).toHaveAttribute('inert');
+    expect(screen.getByTestId('planner-phone-header').closest('[inert]')).toBeNull();
+    expect(screen.getByTestId('planner-phone-nav').closest('[inert]')).toBeNull();
+  });
+
+  it('Handy: auf dem Schaltplan ist die Fläche nicht gesperrt', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'schaltplan' }));
+    });
+    expect(screen.getByTestId('planner-canvas-surface')).not.toHaveAttribute('inert');
+  });
+
+  it('Handy: die Aktionsmeldung landet im Meldungsplatz (Kanal lebt in der Shell)', () => {
+    viewportMock.phone = true;
+    render(<PlannerInner />);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-action-feedback', {
+          detail: { type: 'info', message: 'Kabelführung verbessert.' },
+        })
+      );
+    });
+
+    // Vorher lauschte nur `PlannerDashboard` auf das Ereignis — und das ist auf
+    // dem Handy nicht montiert. Die Meldung kam nie an. Nachweis über den
+    // Store: Der Kanal hat geschrieben (die Anzeige selbst ist der echte
+    // Meldungsplatz, im E2E geprüft).
+    expect(plannerState.setPlannerMessage).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Kabelführung verbessert.',
     });
   });
 
-  it('M3.1 (375 px): bietet Touch-Undo/Redo mit sichtbarem Disabled-State', () => {
-    const { rerender } = render(<PlannerInner />);
-    const undoButton = screen.getByTestId('mobile-undo');
-    const redoButton = screen.getByTestId('mobile-redo');
-    expect(undoButton).toBeDisabled();
-    expect(redoButton).toBeDisabled();
-    expect(undoButton).toHaveClass('h-12', 'w-12');
-
-    plannerState.canUndo = true;
-    plannerState.canRedo = true;
-    rerender(<PlannerInner />);
-    fireEvent.click(screen.getByTestId('mobile-undo'));
-    fireEvent.click(screen.getByTestId('mobile-redo'));
-    expect(plannerState.undo).toHaveBeenCalledTimes(1);
-    expect(plannerState.redo).toHaveBeenCalledTimes(1);
-  });
-
-  it('platziert die mobile Planübersicht neben Undo/Redo und passt sie an die aktive Ansicht an', () => {
-    plannerState.nodes = Array.from({ length: 9 }, (_, index) => ({ id: `node-${index}` }));
-    const { rerender } = render(<PlannerInner />);
-    const overview = screen.getByTestId('mobile-overview');
-    const history = screen.getByTestId('mobile-undo').parentElement;
-    expect(history).toContainElement(overview);
-    expect(overview).toHaveClass('h-12');
-
-    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-    fireEvent.click(overview);
-    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'planner-fit-view' }));
-
-    plannerState.nodes = Array.from({ length: 8 }, (_, index) => ({ id: `node-${index}` }));
-    rerender(<PlannerInner />);
-    expect(screen.queryByTestId('mobile-overview')).not.toBeInTheDocument();
-  });
-
-  it('A1: der Canvas ist der Standard-Tab und lässt sich umschalten', () => {
+  it('Desktop: derselbe Kanal funktioniert unverändert', () => {
     render(<PlannerInner />);
-    expect(column('flow-canvas')).toBeTruthy();
+    (plannerState.setPlannerMessage as ReturnType<typeof vi.fn>).mockClear();
 
-    // Die Canvas-Spalte trägt eine eigene Kennung: Die Werkzeugleiste sitzt seit
-    // dem Umbau über dem Arbeitsbereich, `planner-dashboard` ist also nicht mehr
-    // ihr Elternelement.
-    const canvasColumn = screen.getByTestId('planner-canvas-column');
-    expect(canvasColumn.className).toContain('flex');
-    expect(canvasColumn.className).not.toContain('hidden');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('planner-save', { detail: {} }));
+    });
+    expect(plannerState.setPlannerMessage).toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bauteile' }));
-    const sidebarColumn = column('planner-sidebar');
-    expect(sidebarColumn.className).toContain('flex');
-
-    // M12 — bewusste Vertragsänderung der Layout-Runde:
-    // Vorher wechselte die Shell auf dem Handy zwischen zwei Spalten
-    // (`hidden` ↔ `md:flex`): Der Katalog nahm der Zeichenfläche den Platz,
-    // React Flow wurde nach jedem Wechsel neu vermessen und der Plan sprang.
-    // Jetzt bleibt die Zeichenfläche auf jeder Breite montiert; der Katalog
-    // liegt als Blatt (`max-md:absolute`) darüber. Deshalb steht hier keine
-    // `hidden`-Erwartung mehr — dafür prüfen wir, dass das Blatt wirklich ein
-    // Blatt ist und der Shell-Zustand es ankündigt (der CSS-Anker
-    // `data-panel-open` blendet die schwebenden Canvas-Griffe aus).
-    expect(canvasColumn.className).not.toContain('hidden');
-    expect(sidebarColumn.className).toContain('max-md:absolute');
-    expect(sidebarColumn.className).toContain('max-md:z-sheet');
-    expect(shell()).toHaveAttribute('data-panel-open', 'true');
-
-    // Zurück auf die Zeichenfläche: Blatt zu, Canvas weiter im Aufbau.
-    fireEvent.click(screen.getByRole('button', { name: 'Elektrik' }));
-    expect(shell()).toHaveAttribute('data-panel-open', 'false');
-    expect(column('planner-sidebar').className).toContain('hidden');
-    expect(screen.getByTestId('planner-canvas-column').className).not.toContain('hidden');
+  it('A2/Desktop: Chrome-Leiste statt Handy-Hülle', () => {
+    render(<PlannerInner />);
+    expect(screen.getByTestId('planner-dashboard')).toBeInTheDocument();
+    expect(screen.queryByTestId('planner-phone-header')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('planner-phone-nav')).not.toBeInTheDocument();
   });
 
   it('A2 (768 px): Sidebar + Canvas nebeneinander, Inspector als Overlay', () => {
@@ -306,6 +402,12 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.nodes = [{ id: 'battery-1' }];
     rerender(<PlannerInner />);
     expect(entryPlanMock.dismissNotice).not.toHaveBeenCalled();
+
+    // Und der Text steht im Meldungsplatz — nicht mehr als absolute Karte
+    // über der Zeichenfläche (Ist-Befund 2026-11-10: Streifen über den Karten).
+    const setMessage = plannerState.setPlannerMessage as unknown as ReturnType<typeof vi.fn>;
+    expect(setMessage).toHaveBeenCalledWith(expect.objectContaining({ message: 'Beispielplan geladen.' }));
+    expect(document.querySelector('.planner-entry-notice')).toBeNull();
   });
 
   it('fängt Strg+S ab und meldet stattdessen den Autosave-Status', () => {

@@ -241,7 +241,7 @@ Messdoku §14.
 
 - **Node 22 ist Pflicht.** `node` auf PATH ist v20.20.2, und Vitest stirbt damit
   an `webidl.util.markAsUncloneable is not a function`. Vor jedem Lauf:
-  `export PATH="/c/Users/jonas/AppData/Local/hermes/node:$PATH"` (v22.23.1,
+  `export PATH="/c/Users/<name>/AppData/Local/hermes/node:$PATH"` (v22.23.1,
   passend zu `.nvmrc`). Für den Pre-Push-Hook den winget-Pfad nehmen, sonst
   findet der Hook `npm.cmd` nicht.
 - **Playwright mißt den gebauten Export** (`playwright.config.ts:72` serviert
