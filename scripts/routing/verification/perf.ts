@@ -26,7 +26,7 @@ import { performAutoWiring } from '../../../lib/autoWire';
 import { routeAllCables, type RouteEdgeRef } from '../../../components/edges/utils/routeAll';
 import type { RoutableNode } from '../../../components/edges/utils/nodeGeometry';
 import { GOLDEN_PLANS } from '../../goldenmaster/plans';
-import { generatePlan } from '../../../lib/routing/verification/planGenerator';
+import { generatePlan } from '../../../scripts/verification/routing/planGenerator';
 
 const PLAN_BUDGET_MS = 300;
 /** Ziel für den Skalenplan (Spezifikation §4.7). */

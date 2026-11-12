@@ -26,8 +26,8 @@ import {
   pathLength,
   simplifyWaypoints,
   type Point,
-} from '../routing/geometry';
-import { compareIds } from '../sortOrder';
+} from '../../../../lib/routing/geometry';
+import { compareIds } from '../../../../lib/sortOrder';
 import { gridAStar } from './astar';
 import {
   applyRoute,

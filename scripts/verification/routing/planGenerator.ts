@@ -25,7 +25,7 @@
 
 import type { RouteEdgeRef } from '../../../components/edges/utils/routeAll';
 import type { RoutableNode } from '../../../components/edges/utils/nodeGeometry';
-import type { Point } from '../geometry';
+import type { Point } from '../../../lib/routing/geometry';
 
 export type PortSide = 'left' | 'right' | 'top' | 'bottom';
 

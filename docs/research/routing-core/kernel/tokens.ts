@@ -10,7 +10,7 @@
  * abweichenden Gewichten.
  */
 
-import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../routing/tokens';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../../lib/routing/tokens';
 
 export type CoreTokens = {
   /** Aufblähung der Hindernis-Rechtecke (px) — größte Freigabe-Stufe. */

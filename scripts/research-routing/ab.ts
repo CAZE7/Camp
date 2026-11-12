@@ -1,6 +1,6 @@
 /**
  * A/B-Vergleich: Bestandsrouter (`routeAllCables`) gegen den globalen Kern
- * (`lib/routing-core`), auf denselben Eingaben.
+ * (`docs/research/routing-core/kernel`), auf denselben Eingaben.
  *
  *   npm run routing:core:ab            Tabelle auf stdout
  *   npm run routing:core:ab -- --json  maschinenlesbar
@@ -23,7 +23,7 @@ import type { RoutableNode } from '../../components/edges/utils/nodeGeometry';
 import { checkInvariants, type NodeRect } from '../../lib/routing/invariants';
 import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth } from '../../components/edges/utils/nodeGeometry';
 import { countBends, pathLength, type Point } from '../../lib/routing/geometry';
-import { routeCore, crossingPairs } from '../../lib/routing-core';
+import { routeCore, crossingPairs } from '../../docs/research/routing-core/kernel';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 import { adaptPlan } from './adapt';
 

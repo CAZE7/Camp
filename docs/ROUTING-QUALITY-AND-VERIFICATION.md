@@ -90,15 +90,15 @@ absichtlich konkret: was fehlt, steht als Lücke da, nicht als Absicht.
 
 ### 2.2 Lücken (die diese Spezifikation schließt)
 
-| #   | Lücke                                                                                                                                                                                                                | Beleg                                                                                |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| L1  | **Kein unabhängiger Validator — geschlossen (§17.1).** Orakel mit eigener Geometrie und permanenter Kreuzprobe; auf allen sechs Referenzplänen 0 Divergenzen. Verbleibendes Risiko: geteilte Semantik (R1), bewusst. | `lib/routing/verification/oracle/**`                                                 |
-| L2  | **Keine Fehlerakte für Routing — geschlossen (§17.2).** Aktenformat, Replay mit Hash-Prüfung, deterministische Minimierung; drei Akten vorhanden.                                                                    | `test/regression/routing/**`, `scripts/routing/verification/**`                      |
-| L3  | **„unroutable“ ohne Blocker — geschlossen.** R-ERR-3 ist als Akte `ROUTE-REG-00003` festgehalten und wird im Replay geprüft; R-ERR-1 (Erreichbarkeitsgegentest) folgt in V4.                                         | `test/invariants/failure-record.test.ts`                                             |
-| L4  | **Property-Tests decken die Routing-Geometrie nicht ab.** Zufallspläne mit Verzweigungen, freien Positionen und Hindernissen existieren nicht als Generator.                                                         | `grep fast-check` → 8 Dateien, keine Routing-Geometrie                               |
-| L5  | **Mutationsscore unbekannt.** Ein Lauf maß 48,4 % bei 98 % Coverage; Stryker ist nicht installiert, kuratierte Mutanten decken nur ausgewählte Dateien.                                                              | ADR 0039, `mutation-critical.test.ts`                                                |
-| L6  | **Kein Fuzzing der Eingabe — geschlossen (§17.4).** `validateRoutingInput` prüft vor dem Router; 9 Mutationsarten × 25 Pläne als Gate.                                                                               | `lib/routing/verification/inputValidator.ts`, `test/properties/routing-fuzz.test.ts` |
-| L7  | **Performance-Gates fehlen — geschlossen, mit offenem Ziel (§17.5).** Gate vorhanden; der Skalenplan (100 Kanten) liegt mit 10,3 s über dem Ziel 2 s und wird über einen Ratchet gehalten.                           | `scripts/routing/verification/perf.ts`                                               |
+| #   | Lücke                                                                                                                                                                                                                | Beleg                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| L1  | **Kein unabhängiger Validator — geschlossen (§17.1).** Orakel mit eigener Geometrie und permanenter Kreuzprobe; auf allen sechs Referenzplänen 0 Divergenzen. Verbleibendes Risiko: geteilte Semantik (R1), bewusst. | `scripts/verification/routing/oracle/**`                                                 |
+| L2  | **Keine Fehlerakte für Routing — geschlossen (§17.2).** Aktenformat, Replay mit Hash-Prüfung, deterministische Minimierung; drei Akten vorhanden.                                                                    | `test/regression/routing/**`, `scripts/routing/verification/**`                          |
+| L3  | **„unroutable“ ohne Blocker — geschlossen.** R-ERR-3 ist als Akte `ROUTE-REG-00003` festgehalten und wird im Replay geprüft; R-ERR-1 (Erreichbarkeitsgegentest) folgt in V4.                                         | `test/invariants/failure-record.test.ts`                                                 |
+| L4  | **Property-Tests decken die Routing-Geometrie nicht ab.** Zufallspläne mit Verzweigungen, freien Positionen und Hindernissen existieren nicht als Generator.                                                         | `grep fast-check` → 8 Dateien, keine Routing-Geometrie                                   |
+| L5  | **Mutationsscore unbekannt.** Ein Lauf maß 48,4 % bei 98 % Coverage; Stryker ist nicht installiert, kuratierte Mutanten decken nur ausgewählte Dateien.                                                              | ADR 0039, `mutation-critical.test.ts`                                                    |
+| L6  | **Kein Fuzzing der Eingabe — geschlossen (§17.4).** `validateRoutingInput` prüft vor dem Router; 9 Mutationsarten × 25 Pläne als Gate.                                                                               | `scripts/verification/routing/inputValidator.ts`, `test/properties/routing-fuzz.test.ts` |
+| L7  | **Performance-Gates fehlen — geschlossen, mit offenem Ziel (§17.5).** Gate vorhanden; der Skalenplan (100 Kanten) liegt mit 10,3 s über dem Ziel 2 s und wird über einen Ratchet gehalten.                           | `scripts/routing/verification/perf.ts`                                                   |
 
 ### 2.3 Die Lehre aus dem letzten Lauf
 
@@ -142,7 +142,7 @@ Unabhängigkeit darf nicht durch Semantik-Duplikate erkauft werden. Deshalb:
 
 - **Semantik:** einmal definiert (geteilt). MUSS so bleiben.
 - **Implementierung:** **zweimal**. Ein bewusst naiver **Orakel-Validator**
-  (`lib/routing/verification/oracle/*`, neu) prüft dieselben Bedingungen mit
+  (`scripts/verification/routing/oracle/*`, neu) prüft dieselben Bedingungen mit
   einer unabhängigen, absichtlich langsamen Umsetzung: Achsenvergleich,
   Rechtecküberlappung, Abstand Punkt-zu-Strecke — ohne Spatial Index, ohne
   gemeinsame Hilfsfunktionen mit dem Produktivpfad.
@@ -177,9 +177,9 @@ oder im Filtern (die häufigste reale Fehlerklasse) wird sofort sichtbar.
 
 | Rolle                                                                | Darf                                               | Darf nicht                                                 |
 | -------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
-| Router (`routeAll.ts`, `lib/routing-core/**`)                        | Wege berechnen, Kosten abwägen, reparieren         | Veröffentlichen, Prüfregeln lockern, Invarianten „umgehen“ |
+| Router (`routeAll.ts`, `docs/research/routing-core/kernel/**`)       | Wege berechnen, Kosten abwägen, reparieren         | Veröffentlichen, Prüfregeln lockern, Invarianten „umgehen“ |
 | Produktivprüfung (`lib/routing/invariants.ts`, `finalValidation.ts`) | Verletzungen melden, `INVALID` erzeugen            | Reparieren, Routen verändern                               |
-| Orakel (`lib/routing/verification/oracle/**`)                        | unabhängig nachrechnen                             | in den Produktionspfad gelangen                            |
+| Orakel (`scripts/verification/routing/oracle/**`)                    | unabhängig nachrechnen                             | in den Produktionspfad gelangen                            |
 | Freigabe (`lib/routing/publication.ts`)                              | Ergebnis wählen oder letzten gültigen Stand halten | ein `INVALID` durchreichen                                 |
 | Renderer (React Flow)                                                | darstellen                                         | rechnen, prüfen, entscheiden                               |
 
@@ -497,7 +497,7 @@ Der Vergleich Bestand vs. neuer Kern ist selbst Teil der Verifikation:
 - **beide Seiten vollständig berichtet**, auch Niederlagen,
 - **keine Σ-Zeile ohne Fußnote**, wenn eine Seite unvollständig ist.
 
-Vorlage: `scripts/routing-core/ab.ts`, Bericht:
+Vorlage: `scripts/research-routing/ab.ts`, Bericht:
 `docs/research/routing-core/AB-REPORT.md`. Ein neuer Kern gilt erst als
 Kandidat für die Integration, wenn er auf **allen** Referenzplänen
 I1/I2/I3 = 0 liefert und die Schwellen aus dem Bericht einhält.
@@ -515,10 +515,10 @@ zweite, widersprüchliche Routing-Infrastruktur entstehen.
 werden dort eingehängt, nicht daneben gebaut.
 
 **Regel D3:** Der Orakel-Validator ist ein **eigener** Zweig mit eigenem Code
-(`lib/routing/verification/oracle/**`), teilt aber die Semantik-Quelle aus D2.
+(`scripts/verification/routing/oracle/**`), teilt aber die Semantik-Quelle aus D2.
 Er darf keine Such-, Index- oder Kostenlogik enthalten.
 
-**Regel D4:** Der neue Kern (`lib/routing-core/**`) bleibt ein eigenständiges
+**Regel D4:** Der neue Kern (`docs/research/routing-core/kernel/**`) bleibt ein eigenständiges
 Paket. Er darf `lib/routing/**` importieren (Geometrie, Tokens, Invarianten),
 aber **nicht** umgekehrt.
 
@@ -630,7 +630,7 @@ messbares Austrittskriterium; ohne dieses wird die nächste nicht begonnen.
 | **V7-Differential** | Bestand vs. Kern, vollständiger Bericht                                                                                | messbarer Sieg oder dokumentierte Niederlage           |
 | **V8-Production**   | Adapter, nur bei Sieg                                                                                                  | keine Invariantenregression, Golden Master unverändert |
 
-**Nächster konkreter Schritt (V2):** `lib/routing/verification/oracle/*` mit den
+**Nächster konkreter Schritt (V2):** `scripts/verification/routing/oracle/*` mit den
 vier Primitiven aus §3.2.1, dazu `npm run test:oracle` als Kreuzprobe gegen
 `checkInvariants` auf den sechs Referenzplänen plus den Golden-Master-Plänen.
 Erst wenn dort keine Divergenz auftritt, ist die Prüfinstanz belastbar.
@@ -670,9 +670,9 @@ selbst ein funktionierender A\* unbemerkt unbrauchbar sein kann.
 
 | Baustein        | Ort                                                            | Umfang                                                                                                                                                             |
 | --------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Primitive       | `lib/routing/verification/oracle/primitives.ts`                | `pointInOpenRect`, `segmentHitsRect`, `segmentRectDistance`, `segmentDistance`, `collinearOverlap`, `segmentsCross`, `boxGap` — eigener Code, nur Typen importiert |
-| Prüfungen I1–I6 | `lib/routing/verification/oracle/index.ts`                     | streng, **ohne** Ausnahmen; eigene Polyline-Vereinfachung, die Kehren **nicht** wegdefiniert                                                                       |
-| Kreuzprobe      | `lib/routing/verification/oracle/crosscheck.ts`                | `crosscheck()` + `compareReports()` (der Vergleich ist selbst prüfbar)                                                                                             |
+| Primitive       | `scripts/verification/routing/oracle/primitives.ts`            | `pointInOpenRect`, `segmentHitsRect`, `segmentRectDistance`, `segmentDistance`, `collinearOverlap`, `segmentsCross`, `boxGap` — eigener Code, nur Typen importiert |
+| Prüfungen I1–I6 | `scripts/verification/routing/oracle/index.ts`                 | streng, **ohne** Ausnahmen; eigene Polyline-Vereinfachung, die Kehren **nicht** wegdefiniert                                                                       |
+| Kreuzprobe      | `scripts/verification/routing/oracle/crosscheck.ts`            | `crosscheck()` + `compareReports()` (der Vergleich ist selbst prüfbar)                                                                                             |
 | Test            | `test/invariants/oracle-crosscheck.test.ts` (19 Tests, ~0,7 s) | `npm run test:oracle`                                                                                                                                              |
 
 **Messung über die sechs Referenzpläne:**
@@ -712,7 +712,7 @@ aus einer Zahl im Test.
 
 | Baustein          | Ort                                                  | Aufgabe                                                                      |
 | ----------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Schema und Urteil | `lib/routing/verification/failureRecord.ts`          | `validateRecord`, `judgeRecord`, `describeExpectation`, Kategorie→Invariante |
+| Schema und Urteil | `scripts/verification/routing/failureRecord.ts`      | `validateRecord`, `judgeRecord`, `describeExpectation`, Kategorie→Invariante |
 | Replay            | `scripts/routing/verification/replay.ts`             | Plan bauen, Motor ausführen, Invarianten messen, Hash prüfen, Urteil fällen  |
 | Minimierung       | `scripts/routing/verification/minimize.ts`           | deterministisches Delta Debugging                                            |
 | Akten             | `test/regression/routing/ROUTE-REG-0000{1,2,3}.json` | drei reale Befunde aus dem Kern                                              |
@@ -780,7 +780,7 @@ npm run check:routing               # alles oben + Invarianten + Regression + Au
 
 ### 18.1 V5 — Generator, Eigenschaften, Erreichbarkeitsgegentest
 
-**Der Plan-Generator** (`lib/routing/verification/planGenerator.ts`) erzeugt
+**Der Plan-Generator** (`scripts/verification/routing/planGenerator.ts`) erzeugt
 Bauteile mit `mulberry32` aus einem Seed — deterministisch, ohne echten Zufall.
 Zwei Fehler beim Bau sind dokumentiert, weil sie beide zu falschen Testergebnissen
 geführt haben und beide in dieselbe Kategorie fallen (_der Test prüft den Prüfer_):
@@ -824,7 +824,7 @@ weil er auf 120 Seeds skaliert wird und nicht auf 200 — er ist kein Freibrief 
 88 Verletzungen, sondern die Grenze, ab der ein neuer Fehler auffällt.
 
 **Der Erreichbarkeitsgegentest ist mit Absicht großzügig**
-(`lib/routing/verification/reachability.ts`): er findet einen Weg, wenn einer
+(`scripts/verification/routing/reachability.ts`): er findet einen Weg, wenn einer
 existiert, und „erreichbar" heißt **nicht** „der Router hätte routen müssen".
 Nur die Gegenrichtung ist eine Aussage: findet die Maske keinen Weg und der
 Router liefert trotzdem eine Route, ist das ein Fehler (R-ERR-1). Ein kurzes
@@ -833,7 +833,7 @@ Hindernis ist umgehbar — der Test prüft genau das an drei Fällen (kurze Wand
 
 ### 18.2 V1 + V6 + V4 — Fuzzing der Eingabe und Determinismus im frischen Prozess
 
-`lib/routing/verification/inputValidator.ts` prüft die Eingabe **vor** dem
+`scripts/verification/routing/inputValidator.ts` prüft die Eingabe **vor** dem
 Router und liefert benannte Codes. Neun Mutationen × 25 Pläne, jede muss genau
 ihren Code erzeugen, kein Plan darf einen falschen Code auslösen, und der Router
 darf auf geprüfter Eingabe nicht werfen:
@@ -958,3 +958,56 @@ Das ist eine gute Nachricht und trotzdem ein rotes Gate — weil niemand die
 Akte angepasst hat. Der rote Lauf zwingt zu einer Entscheidung (Akte
 archivieren, `expect` verschärfen, Hash neu setzen) statt dazu, dass die Akte
 still veraltet und später niemand mehr weiß, ob sie noch etwas bedeutet.
+
+---
+
+## 20. Was der erste vollständige Testlauf gefunden hat (2026-11-11)
+
+Bis hierhin waren alle Gates einzeln grün — weil sie einzeln liefen. Der erste
+vollständige `npm run test:coverage` über die ganze Suite (4 456 Tests) fand
+**vier rote Dateien**, davon drei mit echtem Architekturbezug:
+
+| Befund                                                                                | Ursache                                                                                                                                          | Behebung                                                                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `scripts/routing/architecture.test.ts` — „zweite Engine darf nicht importiert werden" | Der Forschungs-Kern lag in `lib/routing-core/` — also **im Produktionspfad**. Genau den Zustand, den ADR 0014 verhindert, nur mit anderem Namen. | Kern nach `docs/research/routing-core/kernel/` verschoben; Regel G in zwei Adressaten geteilt (unten)    |
+| `scripts/architecture/libBoundary.test.ts` — „lib importiert nicht aus components"    | `planGenerator.ts` und `inputValidator.ts` importierten `RoutableNode`/`RouteEdgeRef` aus `components/edges/utils/**`                            | Verifikationswerkzeug nach `scripts/verification/routing/` verschoben (Werkzeug darf beide Seiten sehen) |
+| `scripts/ci/workflows.test.ts` — Workflows 1:1 gespiegelt                             | `docs/ci/workflows/` ist die lesbare Kopie von `.github/workflows/`                                                                              | `quality.yml` und `routing-perf.yml` kopiert                                                             |
+| `format:check` (nicht rot im Lauf, aber vorher)                                       | Phase-2-Code war nie Prettier-formatiert                                                                                                         | formatiert; die gebaute KKT-Referenz-HTML begründet ausgenommen                                          |
+
+**Die Lehre ist nicht „ein Test war falsch", sondern: Einzelläufe beweisen
+nichts über das Ganze.** Jedes Gate war für sich grün, und trotzdem war die
+Architektur verletzt — weil die Regel, die es prüft, in einem _anderen_ Gate
+steht. Die Pipeline aus §4 prüft Prüfstufen, nicht Zuständigkeiten; für
+Zuständigkeiten gibt es die Architekturgates, und die laufen im selben Lauf.
+
+### 20.1 Regel G, geteilt nach Adressat
+
+Die alte Regel las sich „`routing-v2`/`routing-core` werden nirgends
+importiert". Das war zu streng für Werkzeug und zu schwach für Produktion: sie
+hätte den von der Nutzeranforderung verlangten A/B-Vergleich verboten und
+gleichzeitig nicht zwischen Forschung und Produktion unterschieden.
+
+| Regel                                     | Geltung                                                                                | Aussage                                       |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------- |
+| G (routing-v2)                            | **überall**, auch in Werkzeug                                                          | Die gelöschte Engine kehrt nicht zurück       |
+| G (gelöschter `lib/planner/routing-core`) | überall                                                                                | ebenso                                        |
+| G2 (`findResearchKernelImports`)          | **nur Produktionspfade** (`app/`, `components/`, `lib/`, `store/`, `hooks/`, `types/`) | Kein Produktionscode lädt den Forschungs-Kern |
+
+Beide Richtungen sind geprüft: `rulesSelfCheck.test.ts` schreibt erfundene
+Verstöße, und `architecture.test.ts` enthält eine **Nicht-Vakuositätsprobe** —
+„Werkzeug lädt den Kern tatsächlich" —, damit G2 nicht deshalb grün ist, weil
+der Kern gar nicht mehr benutzt wird.
+
+### 20.2 Wo Forschungscode liegt
+
+```text
+docs/research/routing-core/kernel/     Forschungs-Kern (Phase 2), nur von Werkzeug geladen
+scripts/research-routing/              A/B-Harness (adapt, ab)
+scripts/verification/routing/          Prüfwerkzeug: Orakel, Generator, BFS, Validator, Akten
+```
+
+Die Trennung hat drei Folgen, die alle gewollt sind: der Kern liegt nicht mehr
+im Coverage-Gate für `lib/**` (er ist Forschung, nicht Domänencode), er ist
+nicht mehr vom Produktions-Typecheck ausgeschlossen (er wird weiter geprüft),
+und ein Wiedereinbau in die Produktion erfordert jetzt eine bewusste Änderung
+an Regel G2 statt eines Import-Satzes.

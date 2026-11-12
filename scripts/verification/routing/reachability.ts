@@ -22,7 +22,7 @@
  * Urteil.
  */
 
-import type { Point } from '../geometry';
+import type { Point } from '../../../lib/routing/geometry';
 
 export type BoxObstacle = { id: string; x: number; y: number; width: number; height: number };
 

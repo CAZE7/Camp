@@ -1,7 +1,7 @@
 /**
  * Adapter: Produktiv-Datenmodell → Eingabe des Routing-Kerns.
  *
- * Lebt bewusst in der App-Schicht (Regel A): `lib/routing-core/` darf nichts
+ * Lebt bewusst in der App-Schicht (Regel A): `docs/research/routing-core/kernel/` darf nichts
  * aus `components/` importieren. Der Adapter ist die **einzige** Stelle, die
  * beide Welten kennt — dadurch ist der Kern ohne React Flow testbar und der
  * A/B-Vergleich benutzt für beide Engines dieselben Port-Punkte
@@ -17,7 +17,13 @@ import {
   type RoutableNode,
 } from '../../components/edges/utils/nodeGeometry';
 import { resolveHandlePoint, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
-import type { CoreEdge, CoreHandle, CoreInput, CoreNode, CoreSide } from '../../lib/routing-core';
+import type {
+  CoreEdge,
+  CoreHandle,
+  CoreInput,
+  CoreNode,
+  CoreSide,
+} from '../../docs/research/routing-core/kernel';
 
 const NODE_W = 192;
 const NODE_H = 120;

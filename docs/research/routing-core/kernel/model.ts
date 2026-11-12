@@ -13,7 +13,7 @@
  * gleichen Zahlen ergibt immer dasselbe Ergebnis.
  */
 
-import type { Point, Rect } from '../routing/geometry';
+import type { Point, Rect } from '../../../../lib/routing/geometry';
 
 /** Austrittsseite eines Anschlusses — strukturgleich zu React Flows `Position`. */
 export type CoreSide = 'left' | 'right' | 'top' | 'bottom';

@@ -20,16 +20,20 @@
  * Ausnahme zu?“ wird ausgeliehen, die Geometrieprüfung nicht.
  */
 
-import type { InvariantViolation, NodeRect, RoutedEdge } from '../../invariants';
-import { checkInvariants, requiredStubLength, type InvariantReport } from '../../invariants';
+import type { InvariantViolation, NodeRect, RoutedEdge } from '../../../../lib/routing/invariants';
+import {
+  checkInvariants,
+  requiredStubLength,
+  type InvariantReport,
+} from '../../../../lib/routing/invariants';
 import {
   isPortBundleOverlap,
   isPortBundleProximity,
   portBundleSizes,
   routedPathGeometry,
-} from '../../rules/portBundle';
-import type { Segment } from '../../geometry';
-import { ROUTING_TOKENS, type RoutingTokens } from '../../tokens';
+} from '../../../../lib/routing/rules/portBundle';
+import type { Segment } from '../../../../lib/routing/geometry';
+import { ROUTING_TOKENS, type RoutingTokens } from '../../../../lib/routing/tokens';
 import {
   oracleReport,
   segmentsOf,

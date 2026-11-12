@@ -1,0 +1,61 @@
+name: Routing-Performance (nächtlich)
+
+# Warum dieses Gate NICHT im Merge-Gate steht
+# ===========================================
+# Die Laufzeit hängt von der CPU des Runners ab, nicht nur vom Code. Ein
+# 300-ms-Gate auf einem geteilten Runner ist entweder flaky (und wird nach zwei
+# Fehlalarmen abgeschaltet) oder es wird so großzügig gesetzt, dass es nichts
+# mehr fängt. Beides ist schlechter als ein nächtlicher Lauf, der einen Trend
+# sichtbar macht.
+#
+# Was blockiert, ist der Ratchet in scripts/routing/verification/perf.ts:
+# 12 000 ms auf dem Skalenplan. Wird er gerissen, ist dieser Workflow rot und
+# das ist ein Befund, kein Rauschen — die Grenze liegt weit über der
+# Runner-Streuung.
+#
+# Ziel bleibt 2 000 ms (docs/ROUTING-QUALITY-AND-VERIFICATION.md §4.7, §18.3).
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # täglich 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf-gate:
+    name: Performance-Gate (Median, Ziel und Ratchet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install (reproduzierbar)
+        run: npm ci
+
+      - name: Messung protokollieren (JSON)
+        # --out statt Umleitung: der Router schreibt Fortschrittszeilen auf
+        # stdout, eine Umleitung ergäbe ungültiges JSON.
+        run: npm run perf:gate -- --out=artifacts/perf.json
+
+      - name: Gate (Exit 1 bei Ratchet-Überschreitung)
+        run: npm run perf:gate
+
+      - name: Ergebnis als Artefakt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: routing-perf
+          path: artifacts/perf.json
+          retention-days: 30

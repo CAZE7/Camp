@@ -22,9 +22,9 @@
  * docs/ROUTING-QUALITY-AND-VERIFICATION.md §5.1.
  */
 
-import type { Point, Segment } from '../../geometry';
-import type { InvariantViolation, RoutedEdge } from '../../invariants';
-import { ROUTING_TOKENS, type RoutingTokens } from '../../tokens';
+import type { Point, Segment } from '../../../../lib/routing/geometry';
+import type { InvariantViolation, RoutedEdge } from '../../../../lib/routing/invariants';
+import { ROUTING_TOKENS, type RoutingTokens } from '../../../../lib/routing/tokens';
 import {
   collinearOverlap,
   segmentDistance,

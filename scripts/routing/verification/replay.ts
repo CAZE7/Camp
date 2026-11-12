@@ -28,15 +28,15 @@ import { routeAllCables, type RouteEdgeRef } from '../../../components/edges/uti
 import type { RoutableNode } from '../../../components/edges/utils/nodeGeometry';
 import { nodesToObstacles } from '../../../components/edges/utils/pathfinding';
 import { GOLDEN_PLANS } from '../../goldenmaster/plans';
-import { adaptPlan } from '../../routing-core/adapt';
-import { routeCore } from '../../../lib/routing-core';
+import { adaptPlan } from '../../research-routing/adapt';
+import { routeCore } from '../../../docs/research/routing-core/kernel';
 import { checkInvariants, type NodeRect, type RoutedEdge } from '../../../lib/routing/invariants';
 import {
   judgeRecord,
   validateRecord,
   type FailureRecord,
   type ReplayOutcome,
-} from '../../../lib/routing/verification/failureRecord';
+} from '../../../scripts/verification/routing/failureRecord';
 import { minimizePlan, type MinimizePlan } from './minimize';
 
 const RECORD_DIR = join(process.cwd(), 'test', 'regression', 'routing');

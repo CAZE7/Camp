@@ -9,7 +9,7 @@
  * Indexierung, in einem Filter oder in einer Toleranz täuscht Router und
  * Prüfung zugleich.
  *
- * Deshalb prüft dieses Orakel (`lib/routing/verification/oracle/`) dieselben
+ * Deshalb prüft dieses Orakel (`scripts/verification/routing/oracle/`) dieselben
  * Bedingungen mit eigener, absichtlich naiver Geometrie — ohne Ausnahmen. Der
  * Vergleich verlangt:
  *
@@ -33,14 +33,14 @@ import type { RoutableNode } from '../../components/edges/utils/nodeGeometry';
 import { nodesToObstacles } from '../../components/edges/utils/pathfinding';
 import { GOLDEN_PLANS } from '../../scripts/goldenmaster/plans';
 import { checkInvariants, type NodeRect, type RoutedEdge } from '../../lib/routing/invariants';
-import { compareReports, crosscheck } from '../../lib/routing/verification/oracle/crosscheck';
-import { oracleReport, type OracleReport } from '../../lib/routing/verification/oracle';
+import { compareReports, crosscheck } from '../../scripts/verification/routing/oracle/crosscheck';
+import { oracleReport, type OracleReport } from '../../scripts/verification/routing/oracle';
 import {
   collinearOverlap as oracleCollinearOverlap,
   segmentDistance as oracleSegmentDistance,
   segmentHitsRect as oracleSegmentHitsRect,
   segmentRectDistance as oracleSegmentRectDistance,
-} from '../../lib/routing/verification/oracle/primitives';
+} from '../../scripts/verification/routing/oracle/primitives';
 import {
   collinearOverlap as productionCollinearOverlap,
   distanceBetweenDisjointSegments,

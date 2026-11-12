@@ -24,7 +24,7 @@ import {
   judgeRecord,
   validateRecord,
   type FailureRecord,
-} from '../../lib/routing/verification/failureRecord';
+} from '../../scripts/verification/routing/failureRecord';
 import { replayRecord, namesBlocker } from '../../scripts/routing/verification/replay';
 import { minimizePlan } from '../../scripts/routing/verification/minimize';
 

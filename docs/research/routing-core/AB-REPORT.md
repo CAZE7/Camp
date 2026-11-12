@@ -1,7 +1,7 @@
 # A/B-Bericht: neuer Kern vs. Bestandsrouter
 
 Stand: 2026-11-11 · Branch `arena/bbf610a1-camp` · erzeugt mit `npm run routing:core:ab`
-(dasselbe in Code: `npx tsx scripts/routing-core/ab.ts`, `--json` für Maschinenlesbarkeit)
+(dasselbe in Code: `npx tsx scripts/research-routing/ab.ts`, `--json` für Maschinenlesbarkeit)
 
 **Ergebnis in einem Satz:** Der neue Kern ist **nicht** besser als der Bestandsrouter.
 Er ist auf drei von sechs Referenzplänen sogar schlechter (Clearance- und

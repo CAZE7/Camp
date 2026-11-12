@@ -17,7 +17,7 @@
  * Semantik, nicht Implementierung.
  */
 
-import type { Point, Rect, Segment } from '../../geometry';
+import type { Point, Rect, Segment } from '../../../../lib/routing/geometry';
 
 export const EPS = 1e-6;
 

@@ -19,7 +19,7 @@
  * als `unroutable`. Kein Gate schlug an: es gab keine Route, an der etwas zu
  * verletzen gewesen wäre. Der Fehler war unsichtbar, weil „kein Weg“ und
  * „falsch gesucht“ gleich aussahen. P2 gibt dem „kein Weg“ eine zweite Meinung
- * (`lib/routing/verification/reachability.ts`, BFS ohne Kosten und Richtung).
+ * (`scripts/verification/routing/reachability.ts`, BFS ohne Kosten und Richtung).
  *
  * Die Ratchets (I2/I3) sind **keine Freigabe**: sie halten bekannte Schuld
  * fest, damit sie nicht wächst. Belegt durch die Akten `ROUTE-REG-00004`
@@ -35,8 +35,8 @@ import {
   nodeRectOf,
   translatePlan,
   type GeneratedPlan,
-} from '../../lib/routing/verification/planGenerator';
-import { reachable } from '../../lib/routing/verification/reachability';
+} from '../../scripts/verification/routing/planGenerator';
+import { reachable } from '../../scripts/verification/routing/reachability';
 import { pathLength, countBends } from '../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import type { Point } from '../../lib/routing/geometry';

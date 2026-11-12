@@ -17,7 +17,7 @@
  *   ein Enden am Knoten (T-Stoß) ist keine.
  */
 
-import type { Point, Rect, Segment } from '../routing/geometry';
+import type { Point, Rect, Segment } from '../../../../lib/routing/geometry';
 import type { CoreHandle, CoreNode } from './model';
 import { CORE_TOKENS } from './tokens';
 

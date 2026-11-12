@@ -40,9 +40,30 @@ export const productionOnly = (files: SourceFile[]): SourceFile[] =>
 // ── Regel G: die abgeschaltete Routing-Engine darf nicht zurückkehren ────────
 
 /**
+ * Verzeichnisse, in denen Quelltext beim Nutzer landet oder ihn speist.
+ * `scripts/**` ist **nicht** dabei: Werkzeug darf Forschungscode laden,
+ * Produktion nicht.
+ */
+export const PRODUCTION_SOURCE_PREFIXES = ['app/', 'components/', 'lib/', 'store/', 'hooks/', 'types/'];
+
+export const isProductionSource = (file: string): boolean =>
+  PRODUCTION_SOURCE_PREFIXES.some((prefix) => file.startsWith(prefix));
+
+/**
  * Findet JEDE Ladeanweisung auf routing-v2/routing-core: `from '…'`,
  * Side-Effect-`import '…'`, `import('…')`, `require('…')` — mit oder ohne
  * abschließenden Slash. Der Slash war die Lücke (AUDIT G2).
+ *
+ * Regel G hat zwei Adressaten, und sie werden getrennt geprüft:
+ *
+ *   · **routing-v2** ist gelöscht (ADR 0014) und darf **nirgends** wieder
+ *     auftauchen — auch nicht in Werkzeug. Wer die alte Engine zurückholt,
+ *     holt den Zustand zurück, in dem zwei Engines um denselben Renderer
+ *     konkurrierten.
+ *   · **routing-core** ist der Forschungs-Kern (Phase 2). Er liegt deshalb
+ *     unter `docs/research/routing-core/kernel/` und darf ausschließlich von
+ *     Werkzeugen geladen werden. In Produktionspfaden ist er verboten
+ *     (Regel G2: `findResearchKernelImports`).
  */
 export function findRoutingV2Loaders(files: SourceFile[]): string[] {
   const RE =
@@ -51,7 +72,32 @@ export function findRoutingV2Loaders(files: SourceFile[]): string[] {
   for (const file of productionOnly(files)) {
     const text = stripComments(file.text);
     for (const match of text.matchAll(RE)) {
-      hits.push(`${file.file} → ${match[1]}${match[2]}`);
+      const path = `${match[1] ?? ''}${match[2] ?? ''}`;
+      // `docs/research/routing-core/…` ist der Forschungs-Kern, nicht die
+      // gelöschte Engine. Für ihn gilt G2 (nur Produktionscode ist verboten).
+      // Die Ausnahme steht hier als Bedingung und ist in
+      // `rulesSelfCheck.test.ts` in beide Richtungen geprüft.
+      if (path.includes('docs/research/')) continue;
+      hits.push(`${file.file} → ${path}`);
+    }
+  }
+  return hits;
+}
+
+/**
+ * Regel G2: kein Produktionspfad lädt den Forschungs-Kern. Der Aufrufer
+ * übergibt die Produktionsmenge; die Funktion schlägt aber auch auf jeden
+ * anderen Pfad an, damit ein späterer Umzug den Schutz nicht stillschweigend
+ * aufhebt.
+ */
+export function findResearchKernelImports(files: SourceFile[]): string[] {
+  const RE =
+    /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]*routing-core[^'"]*)['"]/g;
+  const hits: string[] = [];
+  for (const file of files) {
+    const text = stripComments(file.text);
+    for (const match of text.matchAll(RE)) {
+      hits.push(`${file.file} → ${match[1]}`);
     }
   }
   return hits;

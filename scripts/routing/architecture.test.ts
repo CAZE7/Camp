@@ -5,7 +5,9 @@ import {
   findCableClearanceLiterals,
   findFiniteOverlapValues,
   findPersistedGeometryReads,
+  findResearchKernelImports,
   findRoutingV2Loaders,
+  isProductionSource,
   type SourceFile,
 } from '../architecture/rules';
 
@@ -126,7 +128,7 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
   });
 
   /** Die abgeschaltete Engine darf nicht zurückkehren (jede Ladeform). */
-  it('die zweite Routing-Engine ist entfernt und wird nirgends importiert', () => {
+  it('die zweite Routing-Engine (routing-v2) ist entfernt und wird nirgends geladen', () => {
     const importers = findRoutingV2Loaders(SOURCE_FILES);
 
     expect(
@@ -136,6 +138,25 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
         importers.join('\n  ')
     ).toEqual([]);
   });
+
+  /**
+   * Der Forschungs-Kern (Phase 2) liegt unter `docs/research/routing-core/kernel`.
+   * Er darf von Werkzeugen geladen werden — von Produktionscode **nicht**.
+   *
+   * Die Trennung ist der Punkt: eine Regel „nichts darf das je laden" hätte den
+   * A/B-Vergleich verhindert, den die Nutzeranforderung verlangt; eine Regel
+   * „Werkzeug und Produktion gleich behandeln" hätte den Schutz aufgegeben.
+   */
+  it('Produktionscode lädt den Forschungs-Kern nicht', () => {
+    const offenders = findResearchKernelImports(SOURCE_FILES.filter((file) => isProductionSource(file.file)));
+
+    expect(
+      offenders,
+      'Der Kern unter docs/research/routing-core/kernel ist Forschung, nicht Produktion.\n' +
+        'Produktionscode erreicht Kabelgeometrie ausschließlich über routeAllCables() (ADR 0014).\n  ' +
+        offenders.join('\n  ')
+    ).toEqual([]);
+  });
 });
 
 describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => {
@@ -143,6 +164,15 @@ describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => 
    * Geteilte Abstände kommen aus `lib/routing/tokens.ts`. Layout-Tokens
    * dürfen daraus ableiten, aber keine eigenen Zahlen dafür führen.
    */
+  it('die Regel G2 kann fallen: Werkzeug lädt den Kern tatsächlich', () => {
+    const tooling = findResearchKernelImports(SOURCE_FILES.filter((file) => !isProductionSource(file.file)));
+
+    // Ohne diesen Fall wäre „Produktionscode lädt den Kern nicht" auch dann
+    // grün, wenn der Kern gar nicht mehr importiert würde — die Regel wäre
+    // dann nicht falsch, sondern leer.
+    expect(tooling.length, 'Kein Werkzeug lädt den Kern: G2 prüft nichts mehr.\n').toBeGreaterThan(0);
+  });
+
   it('es gibt genau eine Token-Datei, die Abstände definiert', () => {
     const definingFiles = findCableClearanceLiterals(SOURCE_FILES);
 

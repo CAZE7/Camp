@@ -186,6 +186,14 @@ jobs:
         # Browser-Unterschiede. Das hält die Laufzeit des Gates niedrig.
         run: npx playwright install --with-deps chromium
 
+      - name: M-13 Routing-Verifikationspipeline (Orakel, Properties, Fuzzing, Akten, frischer Prozess)
+        # Die Prüfstufen V1-V7 aus docs/ROUTING-QUALITY-AND-VERIFICATION.md.
+        # Die Vitest-Dateien laufen zusätzlich im Coverage-Schritt; hier stehen
+        # sie trotzdem, weil ein rotes Gate danach sucht, wer es rot gemacht hat:
+        # ein Schritt, der "Routing-Verifikation" heißt, findet man, "test:coverage"
+        # nicht. Die tsx-Skripte (Replay, frischer Prozess) laufen nur hier.
+        run: npm run ci:verify-routing
+
       - name: M-14 Accessibility (axe a11y)
         run: npx playwright test tests/e2e/a11y.spec.ts
 

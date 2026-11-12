@@ -22,8 +22,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { routeAllCables } from '../../components/edges/utils/routeAll';
-import { generatePlan } from '../../lib/routing/verification/planGenerator';
-import { validateRoutingInput, type InputViolationCode } from '../../lib/routing/verification/inputValidator';
+import { generatePlan } from '../../scripts/verification/routing/planGenerator';
+import {
+  validateRoutingInput,
+  type InputViolationCode,
+} from '../../scripts/verification/routing/inputValidator';
 
 type Mutation = {
   name: string;

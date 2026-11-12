@@ -122,7 +122,7 @@ nicht wegwerfen** — deshalb ist der Katalog Teil der Spezifikation (§5.1, Stu
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Der Kern (Schichten 1–6) lebt in `lib/routing-core/` und importiert **kein** React,
+Der Kern (Schichten 1–6) lebt in `docs/research/routing-core/kernel/` und importiert **kein** React,
 **kein** App-Modul und **kein** Bestandsrouting. Er benutzt ausschließlich:
 
 - `lib/routing/tokens.ts` (Abstände),
@@ -290,7 +290,7 @@ gefordert (der Kern ist kein Render-Pfad). Gemessene Werte: §8.
 
 Beide Engines erhalten **dieselbe** Eingabe: `performAutoWiring(GOLDEN_PLANS[p])`
 → `RoutableNode[]`/`RouteEdgeRef[]` → Adapter → Gerüst. Gemessen wird mit **einer**
-Metrik-Implementierung (`scripts/routing-core/ab.ts`), die für beide Seiten dieselbe
+Metrik-Implementierung (`scripts/research-routing/ab.ts`), die für beide Seiten dieselbe
 Geometrie-Auswertung benutzt (Länge, Knicke, Kreuzungspaare, Segmentabstände).
 
 Abnahmekriterien für eine spätere Integration (alle gleichzeitig):
@@ -317,8 +317,8 @@ Die Zahlen stehen im Abschnitt 8.3 des Ergebnisberichts am Dateiende — bewusst
 | Phase | Inhalt                                                                           | Berührung des Bestands    |
 | ----- | -------------------------------------------------------------------------------- | ------------------------- |
 | 1     | Diese Spezifikation + Baseline-Messung                                           | keine                     |
-| 2     | `lib/routing-core/` implementiert, Unit-Tests                                    | keine (neues Verzeichnis) |
-| 3     | `scripts/routing-core/ab.ts` misst beide Engines auf sechs Plänen                | keine (Skript)            |
+| 2     | `docs/research/routing-core/kernel/` implementiert, Unit-Tests                   | keine (neues Verzeichnis) |
+| 3     | `scripts/research-routing/ab.ts` misst beide Engines auf sechs Plänen            | keine (Skript)            |
 | 4     | Adapter `components/edges/utils/coreRoutingAdapter.ts` + Feature-Flag            | nur lesend                |
 | 5     | Umschalten je Plan, Regressions-SVGs neu erfassen **nur** bei belegter Besserung | Golden Master             |
 

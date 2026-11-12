@@ -14,7 +14,12 @@ export default defineConfig({
     environment: 'jsdom',
     // Playwright-Specs laufen NICHT unter Vitest: sie brauchen einen echten
     // Browser und den gebauten Static Export (npm run e2e).
-    exclude: ['node_modules/**', 'dist/**', '.next/**', 'out/**', 'tests/e2e/**'],
+    // `**/node_modules/**` statt `node_modules/**`: die Forschungswerkzeuge unter
+    // docs/research/kkt-routing-engine/verify haben eigene Abhängigkeiten, und
+    // `node_modules/**` fängt nur das Wurzelverzeichnis. Ohne das Glob lief die
+    // Suite in ein fremdes Spec-File (entities) und meldete eine rote Datei,
+    // die mit diesem Repo nichts zu tun hat.
+    exclude: ['**/node_modules/**', 'dist/**', '.next/**', 'out/**', 'tests/e2e/**'],
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
     testTimeout: 15000,

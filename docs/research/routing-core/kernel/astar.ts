@@ -22,7 +22,7 @@
  * enden ließ.
  */
 
-import type { Point } from '../routing/geometry';
+import type { Point } from '../../../../lib/routing/geometry';
 import type { Dir, Grid } from './grid';
 import type { ObstacleIndex, Occupancy, StubReservation } from './grid';
 import { DIRS, stubBlocks } from './grid';
