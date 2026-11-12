@@ -28,17 +28,21 @@ push (default) ─► deploy.yml ─► quality.yml
 Weil `deploy.yml` denselben wiederverwendbaren Workflow aufruft wie `ci.yml`,
 kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
 
-### 1.1 Minutenbudget (privates Repo)
+### 1.1 Minutenbudget
 
-Das Repository ist privat; damit zählt jeder Lauf gegen die 2.000 Actions-Minuten
-des Monats. Ein voller Lauf kostet rund 25 Minuten (fünf Jobs, davon zwei mit
-eigenem Build). Zwei Änderungen senken den Verbrauch, ohne eine Prüfung zu
-verlieren:
+Das Repository war bis 2026-11-12 privat; damals zählte jeder Lauf gegen die
+2.000 Actions-Minuten des Monats (ein voller Lauf kostet rund 25, fünf Jobs,
+davon zwei mit eigenem Build). **Seit der Umstellung auf öffentlich sind die
+Minuten unbegrenzt.**
 
-| Änderung                                                                        | Wirkung                                          | Warum es keine Lücke ist                                                                                                                                                                                                                                        |
-| ------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml` → `paths-ignore` für `**/*.md`, `docs/**`, `public/**`, `audit-out/**` | Ein reiner Doku-PR startet kein Gate             | Übersprungen wird nur, was das Gate nicht kippen kann. Quellordner, Tests, Paketdateien und `.github/**` sind ausdrücklich **nicht** ausgenommen — ein Lauf, der bei einem Workflow-Fehler ausbliebe, wäre blind. `scripts/ci/workflows.test.ts` hält das fest. |
-| `quality.yml` → Job `visual` nur bei `inputs.visual`                            | Jeder PR-Lauf spart Build + Browser-Installation | Der Job war schon vorher `continue-on-error: true`, konnte also nie blockieren. Beim Deploy läuft er weiter (dort hängt er am Schalter, Standard an), weil ein Deploy die Oberfläche ausliefert.                                                                |
+Die beiden Änderungen bleiben trotzdem — nicht mehr als Sparmaßnahme, sondern
+weil ein Doku-PR kein Gate braucht und ein Pixel-Diff bei jedem PR nur Rauschen
+wäre. Sie kosten keine Prüfung:
+
+| Änderung                                                                        | Wirkung                                                                  | Warum es keine Lücke ist                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml` → `paths-ignore` für `**/*.md`, `docs/**`, `public/**`, `audit-out/**` | Ein reiner Doku-PR startet kein Gate; das Häkchen kommt schneller        | Übersprungen wird nur, was das Gate nicht kippen kann. Quellordner, Tests, Paketdateien und `.github/**` sind ausdrücklich **nicht** ausgenommen — ein Lauf, der bei einem Workflow-Fehler ausbliebe, wäre blind. `scripts/ci/workflows.test.ts` hält das fest. |
+| `quality.yml` → Job `visual` nur bei `inputs.visual`                            | Kein Build + keine Browser-Installation für einen Job, der nie blockiert | Der Job war schon vorher `continue-on-error: true`. Beim Deploy läuft er weiter (dort hängt er am Schalter, Standard an), weil ein Deploy die Oberfläche ausliefert.                                                                                            |
 
 Aufruf des Pixel-Vergleichs von Hand: Actions → _Quality Gate_ → **Run workflow**
 mit `visual: true`; für den Deploy: Actions → _Deploy_ → `visual` (Standard an).

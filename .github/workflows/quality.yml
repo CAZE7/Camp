@@ -311,9 +311,13 @@ jobs:
     name: Visuelles Gate (nicht blockierend)
     # Läuft nur auf Zuruf (`workflow_dispatch` mit `visual: true`) oder wenn der
     # Aufrufer ihn anfordert (`deploy.yml` auf dem Default-Branch, dort an
-    # `inputs.visual` gebunden). Bei einem PR ist er aus: Er kostet einen
-    # kompletten Build samt Browser-Installation, und er blockiert ohnehin nie
-    # — ein privates Repo bezahlt diese Minuten aus den 2.000 im Monat.
+    # `inputs.visual` gebunden). Bei einem PR ist er aus.
+    #
+    # Ursprünglich aus Minutennot geboren (privates Repo, 2.000/Monat). Seit
+    # 2026-11-12 ist das Repo öffentlich, die Minuten sind unbegrenzt — die
+    # Bedingung bleibt trotzdem: Der Job blockiert nie (`continue-on-error`),
+    # ein roter Pixel-Diff bei jedem PR wäre also nur Rauschen. Geprüft wird
+    # er vor dem Deploy, wo er etwas bedeutet.
     if: ${{ inputs.visual }}
     runs-on: ubuntu-latest
     timeout-minutes: 30

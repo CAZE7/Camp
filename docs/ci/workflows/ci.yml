@@ -11,9 +11,10 @@ name: CI
 on:
   pull_request:
     branches: ["**"]
-    # Kein Test, keine Minute: Änderungen, die keinen ausführbaren Code
-    # berühren, können das Gate nicht kippen. Das spart bei einem privaten
-    # Repo die 2.000 Monatsminuten (ein voller Lauf kostet ~25).
+    # Seit dem 2026-11-12 ist das Repo öffentlich; die Actions-Minuten sind
+    # damit unbegrenzt (vorher: 2.000/Monat). Die Ausnahmen bleiben trotzdem:
+    # Ein Doku-PR braucht kein Gate. Es ist keine Ersparnis mehr, sondern
+    # weniger Warteschlange und ein schnelleres Häkchen.
     #
     # Bewusst NICHT ausgenommen: `app/`, `components/`, `lib/`, `store/`,
     # `tests/`, `scripts/`, `package*.json` und alles unter `.github/`.
