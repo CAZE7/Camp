@@ -8,7 +8,7 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "pretest": "node scripts/check-node-version.mjs",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --exclude test/invariants/failure-record.test.ts --exclude test/invariants/oracle-crosscheck.test.ts --exclude test/properties/routing-fuzz.test.ts --exclude test/properties/routing-properties.test.ts",
     "test:watch": "vitest",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run typecheck:tests && npm run test:coverage",
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
@@ -46,7 +46,15 @@
     "audit:dead-code": "knip --no-progress",
     "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
     "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts",
-    "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts"
+    "test:gates": "vitest run test/invariants/silent-pass-gate.test.ts test/invariants/mutation-critical.test.ts",
+    "test:oracle": "vitest run test/invariants/oracle-crosscheck.test.ts",
+    "test:replay": "tsx scripts/routing/verification/replay.ts",
+    "test:failure-records": "vitest run test/invariants/failure-record.test.ts",
+    "test:properties:routing": "vitest run test/properties/routing-properties.test.ts",
+    "test:fuzz:routing": "vitest run test/properties/routing-fuzz.test.ts",
+    "test:autark-routing": "playwright test tests/e2e/autark-auto-wire-routing.spec.ts --project=desktop-1440",
+    "test:determinism:process": "tsx scripts/routing/verification/determinism.ts",
+    "ci:verify-routing": "npm run test:oracle && npm run test:properties:routing && npm run test:fuzz:routing && npm run test:failure-records && npm run test:replay && npm run test:determinism:process && npm run test:autark-routing"
   },
   "engines": {
     "node": ">=22.0.0"
