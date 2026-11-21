@@ -45,7 +45,9 @@ describe('HeatingCalculatorPage', () => {
     render(<HeatingCalculatorPage />);
 
     // Check main titles and headers
-    expect(screen.getByText(/Heizlast-Rechner/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Heizlastrechner Camper: 2 kW oder 4 kW?' })
+    ).toBeInTheDocument();
     expect(screen.getByText(/Wunsch-Temperatur/i)).toBeInTheDocument();
     expect(screen.getByText(/Außen-Temperatur/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Isolierung/i).length).toBeGreaterThan(0);

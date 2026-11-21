@@ -16,8 +16,9 @@ describe('SEO-Metadaten und Inventar', () => {
       expect(page.title.trim(), page.path).not.toBe('');
       expect(page.description.trim(), page.path).not.toBe('');
       expect(metadata.description, page.path).toBe(page.description);
-      expect(metadata.alternates?.canonical, page.path).toBe(siteUrl(page.path));
-      expect(metadata.openGraph?.url, page.path).toBe(siteUrl(page.path));
+      const canonical = siteUrl(page.canonicalPath ?? page.path);
+      expect(metadata.alternates?.canonical, page.path).toBe(canonical);
+      expect(metadata.openGraph?.url, page.path).toBe(canonical);
       expect(metadata.openGraph?.title, page.path).toBe(page.title);
       expect(metadata.openGraph?.description, page.path).toBe(page.description);
       expect(metadata.twitter?.title, page.path).toBe(page.title);
@@ -32,16 +33,16 @@ describe('SEO-Metadaten und Inventar', () => {
     for (const page of nonIndexablePages()) {
       expect(metadataForPage(page.path).robots, page.path).toEqual({ index: false, follow: true });
     }
-    // `/ueber-werft/` und `/ueber-elektroplaner/` sind Umleitungen früherer
-    // Vertrauensadressen: Sie antworten weiter, damit bestehende Verweise
-    // nicht ins Leere laufen, dürfen aber nicht als zweite Seite zur selben
-    // Aussage in den Index geraten.
-    expect(nonIndexablePages().map((page) => page.path)).toEqual([
-      '/design-system/',
-      '/ueber-werft/',
-      '/ueber-elektroplaner/',
-      '/ki-assistent/',
-    ]);
+    // Weiterleitungsadressen bleiben ohne noindex, signalisieren aber das
+    // aktuelle Ziel als Canonical und stehen weiterhin nicht in der Sitemap.
+    expect(nonIndexablePages().map((page) => page.path)).toEqual(['/design-system/', '/ki-assistent/']);
+    for (const path of ['/ueber-werft/', '/ueber-elektroplaner/']) {
+      const page = PAGES.find((entry) => entry.path === path)!;
+      expect(page.indexability).toBe('index');
+      expect(page.canonicalPath).toBe('/ueber-12v-planer/');
+      expect(page.sitemap).toBeUndefined();
+      expect(metadataForPage(path).robots).toMatchObject({ index: true, follow: true });
+    }
   });
 
   it('stoppt unbekannte Routen und abweichende Inhaltsmetadaten', () => {

@@ -12,7 +12,7 @@
  * sind als solche gekennzeichnet.
  */
 
-import { sizeCable } from '@/lib/cableSizing';
+import { maxCurrentForPlanLimit, sizeCable } from '@/lib/cableSizing';
 import {
   FUSE_MAP,
   VDE_AMPACITY,
@@ -45,27 +45,77 @@ const NORM_ROWS = VDE_SIZES.map((size) => [
   `${FUSE_MAP[size] ?? '—'} A`,
 ]);
 
+const AMPERE_CURRENTS = [5, 10, 15, 20, 25, 30, 32, 40, 50, 60, 80, 100] as const;
+const AMPERE_LENGTHS = [1, 2, 3, 5, 7.5, 10] as const;
+
+/**
+ * Nur zum Erkennen der mit * markierten Aufschläge. 0,75 / 1 / 95 mm² sind
+ * KEINE Größen des Belastbarkeitsmodells dieser Seite; die veröffentlichte
+ * Tabelle bleibt bei 1,5–70 mm² plus dem ausdrücklich markierten 95-mm²-Ausweg.
+ */
+const VOLTAGE_DROP_ROUNDING_SIZES = [0.75, 1, 1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95] as const;
+
+const formatCrossSection = (size: number): string =>
+  size.toFixed(Number.isInteger(size) ? 0 : 1).replace('.', ',');
+
+/**
+ * Ampere × Leitungslänge-Tabelle aus demselben Dimensionierungsmodell wie der
+ * Rechner: Spannungsfall, thermische Belastbarkeit und Sicherungsgrenze.
+ * 95 mm² wird nur als außer-Modell-Größe für die Spannungsfallrechnung gezeigt;
+ * bei mehr als 95 mm² wird die Zelle ausdrücklich als nicht ausreichend markiert.
+ */
+const AMPERE_ROWS = AMPERE_CURRENTS.map((current) => [
+  `${current} A`,
+  ...AMPERE_LENGTHS.map((length) => {
+    const sizing = sizeCable(current, length);
+    const rawVoltageDropArea = current / maxCurrentForPlanLimit(1, length);
+    const dropOnlySize = VOLTAGE_DROP_ROUNDING_SIZES.find((size) => size >= rawVoltageDropArea);
+
+    if (!dropOnlySize) return '—†';
+    if (sizing.exceedsStandardRange) return rawVoltageDropArea <= 95 ? '95‡' : '—†';
+
+    const chosen = sizing.crossSectionMm2;
+    const upliftMarker = chosen > dropOnlySize ? '*' : '';
+    return `${formatCrossSection(chosen)}${upliftMarker}`;
+  }),
+]);
+
 export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
   path: '/camper-elektrik/kabelquerschnitt/',
   slug: 'kabelquerschnitt',
   topicId: 'kabelquerschnitt',
   kind: 'cluster',
-  title: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge mit PDF',
+  title: 'Kabelquerschnitt-Tabelle 12 V nach Ampere: Rechner & Formel',
   absoluteTitle: true,
   description:
-    'Kabelquerschnitt-Tabelle 12 V für Camper und Wohnmobile: Formel, Normreihe, PDF-Speicherung und Rechenbeispiele. Berechnet mit dem eigenen 12V-Planer.',
-  h1: 'Kabelquerschnitt-Tabelle 12 V: Strom × Länge',
-  lead: 'Bei 12 V entscheidet bei längeren Leitungen oft der Spannungsfall über den Querschnitt; bei hohen Strömen und kurzen Wegen bleibt die Strombelastbarkeit maßgeblich. Diese Seite zeigt, wie man den Querschnitt für Strom und Leitungslänge berechnet, welche Normgröße gewählt wird und welche Sicherung dazu gehört.',
+    'Kabelquerschnitt-Tabelle 12 V nach Ampere: Werte von 5 bis 100 A, Formel und Rechner. Max. 3 % Spannungsfall, dann auf die nächste Normgröße aufrunden.',
+  h1: 'Kabelquerschnitt-Tabelle 12 V nach Ampere',
+  lead: 'Den Kabelquerschnitt für 12 V im Camper berechnest du mit der Formel A = (2 · L · I) / (κ · ΔU). Für 10 A über 5 m einfacher Leitung und 0,36 V zulässigem Spannungsfall (3 % von 12 V) ergibt das mit der Kupferleitfähigkeit κ = 58 m/(Ω·mm²) den Wert A = (2 · 5 · 10) / (58 · 0,36) = 4,79 mm² — aufgerundet auf 6 mm² bleibt der tatsächliche Spannungsfall bei 0,287 V (2,4 %).',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.9,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
+    {
+      id: 'ampere-tabelle',
+      heading: 'Kabelquerschnitt-Tabelle nach Ampere und Leitungslänge',
+      body: [
+        'Ob eine geplante oder bereits verlegte Leitung die Grenze einhält, prüfst du im [Spannungsabfall-Rechner für 12 V](/rechner/spannungsabfall-12v/): Strom, einfache Länge und Querschnitt eintragen und den Verlust in Volt und Prozent ablesen.',
+        'Plane mit höchstens 3 % Spannungsfall (0,36 V bei 12 V), setze für L die einfache Länge von der Batterie bis zum Verbraucher ein — der Faktor 2 in der Formel berücksichtigt Hin- und Rückleiter — und runde auf die nächste Normgröße auf. Bei empfindlichen Verbrauchern wie einer Kompressor-Kühlbox, einem Funkgerät oder einem Laderegler sind 2 % (0,24 V) die bessere Zielmarke.',
+        'Die Tabelle listet den gewählten Querschnitt nach Ampere und einfacher Länge, einschließlich 32 A. Bei 12 V entscheidet bei längeren Leitungen oft der Spannungsfall; bei hohen Strömen und kurzen Wegen bleibt die Strombelastbarkeit maßgeblich.',
+      ],
+      table: {
+        caption:
+          'Gewählter Kabelquerschnitt in mm² bei 12 V und höchstens 3 % Spannungsfall (0,36 V), gerechnet mit κ = 58 m/(Ω·mm²). L ist die einfache Länge; Hin- und Rückleiter stecken im Faktor 2 der Formel. Aufgerundet auf die nächste Normgröße.',
+        head: ['Strom', '1 m', '2 m', '3 m', '5 m', '7,5 m', '10 m'],
+        rows: AMPERE_ROWS,
+        note: '* Größer als der reine Spannungsfall, weil im Fahrzeug mindestens 1,5 mm² gelten (DIN VDE 0100-721) oder die Strombelastbarkeit des Modells mehr verlangt. ‡ 95 mm² liegt außerhalb der modellierten Belastbarkeitsreihe (1,5 bis 70 mm²). † Bei 100 A über 10 m reicht auch 95 mm² nicht: Der Spannungsfall wäre 0,363 V (3,02 %). Dann helfen eine kürzere Strecke, eine aufgeteilte Leitung oder ein 24-V-Bordnetz.',
+      },
+    },
     {
       id: 'kernantwort',
       heading: 'Wie dick muss das Kabel sein?',
       body: [
-        'Der nötige Querschnitt folgt aus Betriebsstrom und einfacher Leitungslänge. Gerechnet wird mit der Formel A = (2 · L · I) / (κ · ΔU), wobei L die einfache Länge von der Batterie bis zum Verbraucher ist und der Faktor 2 die Rückführung berücksichtigt. Bei 12 V planen wir mit 0,36 V zulässigem Spannungsfall (3 %).',
         'Ein konkretes Beispiel: Eine Kompressor-Kühlbox mit 4,5 A Betriebsstrom auf 5 m einfacher Leitung benötigt rechnerisch 2,16 mm². Die nächste verfügbare Normgröße ist 2,5 mm². Damit bleibt der Spannungsfall bei 0,31 V (2,6 %) — innerhalb der Planungsgrenze.',
         'Die Sicherung folgt der Leitung, nicht dem Verbraucher. Für 2,5 mm² erlaubt das Modell höchstens 16 A (Design-Belastbarkeit × Derating 0,7). Wird nur 10 A gezogen, wird eine 10-A-Sicherung gewählt — nie die größte mögliche.',
       ],
@@ -203,9 +253,24 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
   ],
   faq: [
     {
+      question: 'Wie berechne ich den Kabelquerschnitt für 12 V im Camper?',
+      answer:
+        'Mit der Formel A = (2 · L · I) / (κ · ΔU). L ist die einfache Länge in Metern, I der Betriebsstrom in Ampere, κ = 58 m/(Ω·mm²) die Leitfähigkeit von Kupfer bei 20 °C und ΔU der zulässige Spannungsfall — bei 3 % von 12 V also 0,36 V. Das Ergebnis rundest du auf die nächste Normgröße auf und prüfst zusätzlich die Strombelastbarkeit. Beispiel: 10 A über 5 m ergeben 4,79 mm², gewählt wird 6 mm².',
+    },
+    {
+      question: 'Ist L die einfache Länge oder der Hin- und Rückweg?',
+      answer:
+        'L ist die einfache Länge von der Batterie bis zum Verbraucher. Hin- und Rückleiter stecken bereits im Faktor 2 der Formel. Wer die einfache Länge einsetzt und den Faktor 2 vergisst, halbiert den Querschnitt.',
+    },
+    {
+      question: 'Welcher Querschnitt für 32 A bei 12 V?',
+      answer:
+        'Das hängt von der einfachen Leitungslänge ab. Bei 12 V, höchstens 3 % Spannungsfall (0,36 V) und κ = 58 m/(Ω·mm²) brauchst du für 32 A über 2 m oder 3 m 10 mm², über 5 m 16 mm², über 7,5 m 25 mm² und über 10 m 35 mm². Auf nur 1 m würde der Spannungsfall 4 mm² erlauben (A = 64 / 20,88 = 3,07 mm²); die Strombelastbarkeit des Modells verlangt aber mindestens 10 mm², weil 6 mm² im Modell nur 26,6 A Design-Belastbarkeit und 25 A größte Sicherung hat, 10 mm² dagegen 36,4 A und 32 A.',
+    },
+    {
       question: 'Welcher Kabelquerschnitt ist im Camper für 12 V üblich?',
       answer:
-        'Für Beleuchtung und kleine Verbraucher bis 5 A reichen 1,5 bis 2,5 mm². Kühlbox und Wasserpumpe liegen bei 2,5 bis 4 mm², Standheizungen und Wechselrichter-Zuleitungen bei 6 bis 16 mm² — bei 12 V bestimmt der Spannungsfall über die Leitungslänge die Wahl, nicht die Strombelastbarkeit.',
+        'Für Beleuchtung und kleine Verbraucher bis 5 A reichen 1,5 bis 2,5 mm². Kühlbox und Wasserpumpe liegen bei 2,5 bis 4 mm², Standheizungen und Wechselrichter-Zuleitungen bei 6 bis 16 mm² — bei längeren Leitungen entscheidet oft der Spannungsfall, bei hohen Strömen und kurzen Wegen die Strombelastbarkeit.',
     },
     {
       question: 'Rechnet man mit 3 % oder 2 % Spannungsfall?',

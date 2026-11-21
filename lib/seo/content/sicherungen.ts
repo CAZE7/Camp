@@ -42,22 +42,49 @@ const RATING_ROWS = STANDARD_FUSE_SIZES.filter((rating) => rating <= 60).map((ra
   ];
 });
 
+const EXAMPLE_CURRENTS = [4, 8, 12, 18, 22, 28, 35, 45] as const;
+const EXAMPLE_FUSE_ROWS = EXAMPLE_CURRENTS.map((current) => {
+  const fuse = STANDARD_FUSE_SIZES.find((rating) => rating >= current);
+  if (fuse === undefined) throw new Error(`Keine Normsicherung für ${current} A im Beispieldatensatz`);
+  const crossSection = VDE_SIZES.find((size) => (FUSE_MAP[size] ?? 0) >= fuse);
+  return [
+    `${current} A`,
+    `${fuse} A`,
+    crossSection === undefined ? '—' : `${crossSection.toFixed(1).replace('.', ',')} mm²`,
+  ];
+});
+
 export const SICHERUNGEN_CONTENT: SeoPageContent = {
   path: '/camper-elektrik/sicherungen/',
   slug: 'sicherungen',
   topicId: 'sicherungen',
   kind: 'cluster',
-  title: 'Sicherungen im Camper: Ort, Größe und Bauform',
+  title: 'Sicherung berechnen (12 V): Größe, Ort und Bauform im Camper',
   absoluteTitle: true,
   description:
-    'Welche Sicherung gehört an welches Kabel? Ort am Batteriepol, Größe nach Leitungsgrenze, Bauform nach Kurzschlussstrom — mit Tabelle und Beispiel.',
-  h1: 'Sicherungen im Camper richtig dimensionieren',
-  lead: 'Eine Sicherung schützt nicht das Gerät, sondern die Leitung — und sie sitzt so nah wie möglich an der Batterie. Wer diese beiden Sätze beherzigt, hat den größten Teil der Fehlerquellen schon vermieden.',
+    'Sicherung für 12 V berechnen: Betriebsstrom ≤ Sicherung ≤ Belastbarkeit der Leitung. Mit Tabelle je Querschnitt, Beispielen und Sitz am Batteriepol.',
+  h1: 'Sicherung berechnen (12 V): so groß wie nötig, so klein wie möglich',
+  lead: 'Die Sicherung für einen 12-V-Kreis berechnest du in zwei Schritten: Sie muss größer oder gleich dem Betriebsstrom des Verbrauchers sein und darf die Belastbarkeit der Leitung nicht überschreiten (I_B ≤ I_n ≤ I_z). Gewählt wird der kleinste Normwert in diesem Fenster, zum Beispiel 15 A für einen Verbraucher mit 12 A auf 2,5 mm². Sie schützt die Leitung, nicht das Gerät, und sitzt deshalb unmittelbar am Pluspol der Batterie.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.8,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
+    {
+      id: 'berechnungsbeispiele',
+      heading: 'Sicherung berechnen – Beispiele',
+      table: {
+        caption:
+          'Modellwerte: kleinste Normsicherung über dem Betriebsstrom und der dafür nötige Mindestquerschnitt',
+        head: [
+          'Betriebsstrom I_B',
+          'Sicherung I_n (kleinster Normwert ≥ I_B)',
+          'Leitung mindestens (Modell)',
+        ],
+        rows: EXAMPLE_FUSE_ROWS,
+        note: 'Die Spalte „Leitung mindestens“ ist nur die Grenze aus der Strombelastbarkeit. Bei längeren Leitungen verlangt der Spannungsfall oft mehr: Der Kühlschrank mit 8 A über 4 m braucht 4 mm², die Sicherung bleibt trotzdem 10 A. Den Querschnitt rechnest du mit dem [Kabelquerschnitt-Rechner](/camper-elektrik/kabelquerschnitt/) nach.',
+      },
+    },
     {
       id: 'schutzziel',
       heading: 'Was eine Sicherung schützt — und was nicht',

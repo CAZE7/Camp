@@ -61,16 +61,16 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
   slug: 'spannungsabfall-12v',
   topicId: 'spannungsabfall',
   kind: 'rechner',
-  title: 'Spannungsabfall-Rechner für 12 V',
+  title: 'Spannungsabfall-Rechner 12 V online: Leitung sofort prüfen',
   absoluteTitle: true,
   description:
-    'Spannungsabfall für 12-V-Leitungen rechnen: Strom, Länge und Querschnitt eingeben — mit Einordnung in 1 % / 3 % / 4 %, Empfehlung und Beispielen.',
-  h1: 'Spannungsabfall-Rechner für 12 V',
-  lead: 'Dieser Rechner bewertet eine Leitung, die es schon gibt oder geben soll: Strom und Länge eintragen, vorhandenen Querschnitt wählen — und ablesen, ob der Verbraucher genug Spannung bekommt. Die Formel dahinter steht auf der Themenseite, hier steht die Anwendung.',
+    'Spannungsabfall-Rechner für 12 V: Strom, Länge und Querschnitt eingeben, Ergebnis in Volt und Prozent, Einordnung 1/3/4 % und Querschnittsempfehlung.',
+  h1: 'Spannungsabfall-Rechner 12 V (online, kostenlos)',
+  lead: 'Strom, einfache Leitungslänge und Querschnitt eingeben, der Rechner zeigt den Spannungsabfall in Volt und Prozent und ob die Leitung im Zielbereich (1 %), an der Planungsgrenze (3 %) oder darüber liegt. Beispiel: Ein Kompressor-Kühlschrank mit 8 A an 4 m Leitung auf 2,5 mm² verliert 0,44 V (3,68 %), der Rechner empfiehlt 4 mm².',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.8,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
     {
       id: 'rechner',
@@ -79,6 +79,10 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
         'Die Eingabe ist bewusst knapp: Betriebsstrom, einfache Länge und der Querschnitt, der verlegt ist oder verlegt werden soll. Das Ergebnis nennt den Verlust in Volt und Prozent, ordnet ihn ein und schlägt den Querschnitt vor, den die vollständige Bemessung wählen würde.',
       ],
       calculator: 'spannungsabfall',
+      callout: {
+        tone: 'info',
+        text: 'Wie der Wert zustande kommt, mit Formel, Rechenbeispiel und Tabelle für alle Querschnitte, steht unter [Spannungsabfall bei 12 V berechnen](/camper-elektrik/spannungsabfall/).',
+      },
     },
     {
       id: 'beispiele',
@@ -107,9 +111,12 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
           description: `Der Verlust liegt bei höchstens 0,36 V. Das ist die Zielmarke, mit der Camp dimensioniert — für die meisten Verbraucher ausreichend.`,
         },
         {
-          term: `${VOLTAGE_DROP_PCT_CRITICAL} % und darüber`,
-          description:
-            'Der Planer meldet einen Verstoß. Empfindliche Verbraucher — Kompressor-Kühlschränke, Funkgeräte, Wechselrichter — arbeiten dann nicht mehr zuverlässig.',
+          term: `> ${VOLTAGE_DROP_PCT_PLAN_LIMIT} bis ${VOLTAGE_DROP_PCT_CRITICAL} % — Verstoß`,
+          description: `Mehr als ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % bis einschließlich ${VOLTAGE_DROP_PCT_CRITICAL} % gilt im Rechner als Verstoß. Empfindliche Verbraucher — Kompressor-Kühlschränke, Funkgeräte, Wechselrichter — können dann zu wenig Spannung erhalten.`,
+        },
+        {
+          term: `> ${VOLTAGE_DROP_PCT_CRITICAL} % — kritisch`,
+          description: 'Über der kritischen Stufe weist der Rechner den Status als kritisch aus.',
         },
       ],
       callout: {

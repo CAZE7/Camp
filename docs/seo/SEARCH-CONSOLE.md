@@ -76,14 +76,14 @@ steht in `docs/marketing/erste-500-nutzer.md`.
 
 ## Was zu messen ist, wenn die Daten fließen
 
-| Kennzahl                               | Zeitraum | Herkunft                                    | Ziel                                     |
-| -------------------------------------- | -------- | ------------------------------------------- | ---------------------------------------- |
-| Impressionen je Anfrage                | 28 Tage  | Search Console                              | steigende Tendenz je Thema               |
-| Klicks je Anfrage                      | 28 Tage  | Search Console                              | Klicks folgen den Impressionen           |
-| Durchschnittliche Position             | 28 Tage  | Search Console                              | Top-20 für die zehn wichtigsten Anfragen |
-| Indexierte Seiten                      | laufend  | _Abdeckung_ → Seiten                        | alle 26 indexierbaren Seiten             |
-| Aufrufe des Planers aus Suche          | 28 Tage  | Search Console (Seite `/elektrik-planung/`) | steigend gegenüber dem Basiswert         |
-| „Eingeschlossen, aber nicht indexiert“ | laufend  | _Abdeckung_                                 | null für Seiten mit eigenem Inhalt       |
+| Kennzahl                               | Zeitraum | Herkunft                                    | Ziel                                                                                    |
+| -------------------------------------- | -------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Impressionen je Anfrage                | 28 Tage  | Search Console                              | steigende Tendenz je Thema                                                              |
+| Klicks je Anfrage                      | 28 Tage  | Search Console                              | Klicks folgen den Impressionen                                                          |
+| Durchschnittliche Position             | 28 Tage  | Search Console                              | Top-20 für die zehn wichtigsten Anfragen                                                |
+| Indexierte Seiten                      | laufend  | _Abdeckung_ → Seiten                        | alle URLs aus der aktuellen Sitemap; Canonical-Aliase und Noindex-Routen separat prüfen |
+| Aufrufe des Planers aus Suche          | 28 Tage  | Search Console (Seite `/elektrik-planung/`) | steigend gegenüber dem Basiswert                                                        |
+| „Eingeschlossen, aber nicht indexiert“ | laufend  | _Abdeckung_                                 | null für Seiten mit eigenem Inhalt                                                      |
 
 Der Basiswert für den Planer wird beim ersten Abruf schriftlich festgehalten
 (Datum, Wert) — ohne Basiswert ist „mehr“ keine Aussage.

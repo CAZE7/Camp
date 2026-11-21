@@ -265,12 +265,18 @@ describe('checkSitemap', () => {
     `<urlset>${locs.map((loc) => `<url><loc>${loc}</loc></url>`).join('')}</urlset>`;
 
   const exists = (path: string) => ['/', '/a/', '/b/'].includes(path);
-  const options = { indexable: ['/', '/a/', '/b/'], nonIndexable: [] as string[], basePath: BASE, exists };
+  const options = {
+    indexable: ['/', '/a/', '/b/'],
+    sitemapPaths: ['/', '/a/', '/b/'],
+    nonIndexable: [] as string[],
+    basePath: BASE,
+    exists,
+  };
 
-  it('meldet eine fehlende indexierbare Seite', () => {
+  it('meldet ein fehlendes deklariertes Sitemap-Ziel', () => {
     const findings = checkSitemap('f', sitemap([`${ORIGIN}${BASE}/`]), {
       ...options,
-      indexable: ['/', '/a/'],
+      sitemapPaths: ['/', '/a/'],
     });
     expect(findings.map((f) => f.rule)).toContain('sitemap-fehlend');
   });
@@ -284,6 +290,7 @@ describe('checkSitemap', () => {
     const findings = checkSitemap('f', sitemap([`${ORIGIN}${BASE}/a/`, `${ORIGIN}${BASE}/404/`]), {
       ...options,
       indexable: [],
+      sitemapPaths: [],
       nonIndexable: ['/a/', '/404/'],
       exists: (path) => path === '/a/' || path === '/404/',
     });

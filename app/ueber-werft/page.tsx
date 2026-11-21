@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { metadataForPage } from '@/app/seoMetadata';
-import { SITE_BASE_PATH } from '@/lib/site';
+import { SITE_BASE_PATH, siteUrl } from '@/lib/site';
 
 /**
  * app/ueber-werft/page.tsx — Umleitung der alten Vertrauensadresse.
@@ -16,15 +16,19 @@ import { SITE_BASE_PATH } from '@/lib/site';
  * Umleitung steht stattdessen als `meta http-equiv="refresh"` mit 0 Sekunden
  * im Dokument — Suchmaschinen behandeln das wie eine permanente Umleitung —
  * und zusätzlich als gewöhnlicher Verweis für alle, deren Browser der
- * Auffrischung nicht folgt. Diese Adresse steht deshalb auf `noindex` und
- * nicht in der Sitemap (`lib/seo/inventory.ts`).
+ * Auffrischung nicht folgt. Der Canonical zeigt auf das Ziel; ein
+ * widersprüchliches `noindex` wird nicht gesetzt. Die Adresse bleibt trotzdem
+ * aus der Sitemap (`lib/seo/inventory.ts`).
  *
  * Das Ziel ist basispfad-fest: Im Export unter einem Repository-Pfad lautet
  * die Adresse `/Camp/ueber-12v-planer/`, unter der eigenen Domain
  * `/ueber-12v-planer/` — die Zusammensetzung kommt aus `lib/site.ts`, nicht
  * aus einer zweiten Zeichenketten-Verkettung.
  */
-export const metadata: Metadata = metadataForPage('/ueber-werft/');
+export const metadata: Metadata = {
+  ...metadataForPage('/ueber-werft/'),
+  alternates: { canonical: siteUrl('/ueber-12v-planer/') },
+};
 
 const ZIEL = `${SITE_BASE_PATH}/ueber-12v-planer/`;
 

@@ -182,9 +182,9 @@ export type VoltageDropResult = {
   recommendedCrossSectionMm2: number;
   /**
    * true = mit dem gewählten Querschnitt wird die 3-%-Planungsgrenze
-   * überschritten. Ab 4 % meldet der Planer zusätzlich einen Verstoß
-   * (`VOLTAGE_DROP_PCT_CRITICAL`) — die Anzeige entscheidet, wie sie das
-   * benennt (Rule M: keine stille Empfehlung).
+   * überschritten. Mehr als 3 % ist ein Verstoß; Werte über
+   * `VOLTAGE_DROP_PCT_CRITICAL` (4 %) werden als kritisch eingeordnet
+   * (Rule M: keine stille Empfehlung).
    */
   exceedsPlanLimit: boolean;
   /** true = der Strom liegt oberhalb der Belastbarkeitstabelle; keine Querschnittsempfehlung. */

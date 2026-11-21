@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { track } from '@/components/analytics/Analytics';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
@@ -170,6 +171,7 @@ export function BOMModal() {
       );
       return;
     }
+    track('pdf_export', { report: 'druckbericht' });
 
     setReportBusy(true);
     setReportError(null);

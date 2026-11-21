@@ -93,9 +93,12 @@ Aus Ratgebern, Foren-Antworten und Gruppen nie nur auf `/planer/` verlinken:
 
 - Search Console wöchentlich: indexierte Seiten (Ziel: alle aus der
   Sitemap), Impressionen für `/planer/` und `/elektrik-planung/`.
-- Im Planer gibt es bewusst kein Tracking. Der ehrliche Zähler ist deshalb:
-  Wie viele Foren-Antworten verlinken einen `#plan=`-Link zurück, und wie
-  viele PNGs mit Wasserzeichen tauchen ohne eigenes Zutun auf?
+- Nach rechtlicher Prüfung und GA4-Konfiguration misst die Live-Seite nur nach
+  ausdrücklicher Zustimmung `planner_start`, `pdf_export` und `calc_used`.
+  Das Tag wird ausschließlich auf `12v-planer.de` geladen; lokale Tests und
+  Vorschauen senden keinen Traffic. Ohne Zustimmung bleibt der ehrliche
+  Zusatz-Zähler manuell: Wie viele Foren-Antworten verlinken einen `#plan=`-Link
+  zurück, und wie viele PNGs mit Wasserzeichen tauchen ohne eigenes Zutun auf?
 - Nach 4 Wochen entscheiden: Welche Vorlage wird am häufigsten geöffnet
   (aus den Rückfragen ablesen), welcher Beitragstyp bringt aktive Nutzer —
   dorthin die nächste Woche investieren, nicht in neue Kanäle.

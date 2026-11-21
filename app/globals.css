@@ -5131,3 +5131,71 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
     background-color: var(--surface-hover);
   }
 }
+
+/* GA4-Einwilligung: Ablehnen und Akzeptieren sind gleich groß und gleich
+   erreichbar. Der Hinweis erscheint erst nach Hydrierung auf der Live-Domain. */
+.analytics-consent {
+  position: fixed;
+  z-index: var(--z-toast);
+  inset: auto 1rem max(1rem, env(safe-area-inset-bottom));
+  width: calc(100% - 2rem);
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  box-shadow: 0 4px 16px rgb(var(--text-high-rgb) / 0.15);
+}
+
+.analytics-consent a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.analytics-consent-error {
+  margin-top: 0.5rem;
+  color: var(--error);
+}
+
+.analytics-consent-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.analytics-consent-actions button {
+  display: inline-flex;
+  flex: 1 1 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface-panel);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.analytics-consent-actions button:last-child {
+  border-color: var(--oxide);
+  background: var(--oxide);
+  color: var(--on-signal);
+}
+
+.analytics-consent-actions button:focus-visible {
+  outline: 2px solid var(--oxide);
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  .analytics-consent {
+    inset: auto 1.5rem max(1.5rem, env(safe-area-inset-bottom)) auto;
+    width: min(36rem, calc(100% - 3rem));
+    margin-inline: 0;
+  }
+}

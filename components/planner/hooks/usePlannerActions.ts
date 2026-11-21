@@ -32,6 +32,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
+import { track } from '@/components/analytics/Analytics';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { useAppStore } from '../../../lib/store';
 import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../../store/slices/types';
@@ -400,6 +401,7 @@ export function usePlannerActions({
       // Nach der Rückfrage neu lesen: während sie offen ist, kann der Plan
       // weiterbearbeitet worden sein. `current` wäre ein Stand von vorher.
       usePlannerStore.getState().applyTemplate(templateId);
+      track('planner_start', { start_type: 'template', template_id: templateId });
       setHasOnboarded(true);
       fitViewAfterEntry();
       onFeedback({

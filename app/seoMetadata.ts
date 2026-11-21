@@ -20,6 +20,7 @@ export function metadataForPage(path: string): Metadata {
     title: page.title,
     description: page.description,
     path: page.path,
+    ...(page.canonicalPath ? { canonicalPath: page.canonicalPath } : {}),
     absoluteTitle: page.absoluteTitle ?? false,
     index: page.indexability === 'index',
     ...(page.ogImage ? { image: page.ogImage } : {}),

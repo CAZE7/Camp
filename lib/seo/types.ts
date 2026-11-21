@@ -188,7 +188,15 @@ export type PageEntry = {
   /** Repräsentative Anfragen (aus `opportunities.ts`, nicht hier gepflegt). */
   targetQueries: readonly string[];
   structuredData: readonly StructuredDataType[];
-  /** Sitemap-Angaben — nur für indexierbare Seiten gesetzt. */
+  /**
+   * Abweichendes Canonical-Ziel, etwa für statische Weiterleitungsadressen.
+   * Diese Route bleibt erreichbar, signalisiert aber die kanonische Zielseite.
+   */
+  canonicalPath?: string;
+  /**
+   * Sitemap-Angaben. Eine indexierbare Alias-/Weiterleitungsroute kann bewusst
+   * ohne eigenen Eintrag bleiben.
+   */
   sitemap?: { changeFrequency: 'monthly' | 'yearly'; priority: number };
   /** Herkunft der Seite im Quelltext (Nachschlagehilfe für Beitragende). */
   source: string;

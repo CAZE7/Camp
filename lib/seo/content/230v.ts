@@ -48,7 +48,7 @@ export const AC_230V_CONTENT: SeoPageContent = {
   priority: 'P1',
   changeFrequency: 'monthly',
   sitemapPriority: 0.7,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
     {
       id: 'einspeisung',
@@ -56,6 +56,14 @@ export const AC_230V_CONTENT: SeoPageContent = {
       body: [
         'Der Landstromanschluss ist eine Außenstelle des Fahrzeugs und muss mindestens spritzwassergeschützt (IP44), zugentlastet und mechanisch geschützt ausgeführt sein. Üblich ist eine CEE-Einspeisung (blau, 16 A) mit Klappe, von dort geht es zur Verteilung. Ein Adapter von Schuko auf CEE ist für den Dauerbetrieb keine Lösung.',
         'Zwei Dinge gehören in die Planung: eine Trennstelle, mit der sich das Fahrzeug vollständig vom Landstrom lösen lässt, und eine eindeutige Zuordnung von Außenleiter (L), Neutralleiter (N) und Schutzleiter (PE). Das Modell führt die 230-V-Leitung deshalb als 3-adrige Leitung und nicht als Einzelader.',
+      ],
+    },
+    {
+      id: 'landstrom-schaltplan',
+      heading: 'Landstrom-Schaltplan für den Camper: der Weg vom Stecker zur Steckdose',
+      body: [
+        'Ein Landstrom-Schaltplan zeigt die 230-V-Seite in der Reihenfolge, in der der Strom fließt: Von der CEE-Einspeisung (blau, 16 A, mindestens IP44) über die Trennstelle zum FI-Schutzschalter mit 30 mA, dahinter die Leitungsschutzschalter je Stromkreis und erst dann Steckdosen und Ladegerät. Jede Verbindung ist eine 3-adrige Leitung mit L, N und PE; der Schutzleiter hat bis 16 mm² denselben Querschnitt wie der Außenleiter (zum Beispiel 3G2,5). Der Wechselrichter-Kreis ist ein eigener Zweig und wird nicht einfach mit dem Landstrom verbunden.',
+        'Diesen Aufbau kannst du im 12V-Planer als Vorlage öffnen und an dein Fahrzeug anpassen: [Landstrom-Schaltplan im Planer öffnen](/planer/?template=autark). Aufbau und Erstprüfung der 230-V-Anlage gehören trotzdem in die Hände einer Elektrofachkraft.',
       ],
     },
     {

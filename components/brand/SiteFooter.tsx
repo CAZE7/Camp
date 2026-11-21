@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { CookieSettingsLink } from '@/components/analytics/Analytics';
+
 import { Mark } from './Mark';
 
 /**
@@ -82,6 +84,11 @@ export function SiteFooter() {
                     </Link>
                   </li>
                 ))}
+                {column.title === 'Über uns' && (
+                  <li>
+                    <CookieSettingsLink />
+                  </li>
+                )}
               </ul>
             </nav>
           ))}

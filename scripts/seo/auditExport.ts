@@ -21,7 +21,13 @@ import { join, relative, sep } from 'node:path';
 
 import { DEFAULT_PREVIEW_IMAGE } from '../../app/siteMetadata';
 import { SITE_ORIGIN, SITE_BASE_PATH, SITE_NAME, siteUrl } from '../../lib/site';
-import { indexablePages, nonIndexablePages, pageByPath, TECHNICAL_PAGES } from '../../lib/seo/inventory';
+import {
+  indexablePages,
+  nonIndexablePages,
+  pageByPath,
+  SITEMAP_ROUTES,
+  TECHNICAL_PAGES,
+} from '../../lib/seo/inventory';
 import { THIN_CONTENT_KINDS } from '../../lib/seo/types';
 import {
   type Finding,
@@ -181,7 +187,7 @@ function main(): void {
         ? entry.title
         : `${entry.title} | ${SITE_NAME}`
       : undefined;
-    const canonical = `${BASE}${path}`;
+    const canonical = entry?.canonicalPath ? siteUrl(entry.canonicalPath) : `${BASE}${path}`;
     const previewImage = entry?.ogImage ?? DEFAULT_PREVIEW_IMAGE;
     findings.push(
       ...checkPage(page, html, {
@@ -312,6 +318,7 @@ function main(): void {
     findings.push(
       ...checkSitemap(sitemapFile, sitemapXml, {
         indexable: INDEXIERBARE_SEITEN,
+        sitemapPaths: SITEMAP_ROUTES.map((route) => route.path),
         nonIndexable: [...NICHT_INDEXIERBARE_SEITEN, ...TECHNISCHE_SEITEN],
         basePath: SITE_BASE_PATH,
         origin: SITE_ORIGIN,

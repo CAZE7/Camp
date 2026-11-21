@@ -780,20 +780,24 @@ export function checkStructuredData(
 }
 
 /**
- * Prüft Sitemap und Crawler-Anweisung gegeneinander: Jede indexierbare Seite
- * muss in der Sitemap stehen, jede nicht indexierbare darf es nicht – und
- * keine Adresse darf ohne ausgelieferte Datei angeboten werden.
+ * Prüft die Sitemap gegen die ausdrücklich deklarierten Ziele und den
+ * Indexstatus: noindex-Routen dürfen nicht vorkommen, jedes deklariertes
+ * Sitemap-Ziel muss vorhanden sein und eine ausgelieferte Datei besitzen.
+ * Indexierbare Alias-Routen dürfen bewusst ohne Sitemap-Eintrag bleiben.
  *
  * Die Adressen in der Sitemap sind absolut und enthalten den Basis-Pfad der
  * Auslieferung; verglichen wird deshalb immer der Pfad OHNE diesen Präfix,
- * damit `indexable`/`nonIndexable`/`exists` in Export-Schreibweise
- * (`/tools/dach/`) übergeben werden können.
+ * damit `indexable`, `sitemapPaths`, `nonIndexable` und `exists` in
+ * Export-Schreibweise (`/tools/dach/`) übergeben werden können.
  */
 export function checkSitemap(
   file: string,
   sitemapXml: string,
   options: {
+    /** Every route whose robots metadata allows indexing (for canonical checks). */
     indexable: string[];
+    /** Subset explicitly declared for the sitemap; indexable aliases may be omitted. */
+    sitemapPaths: string[];
     nonIndexable: string[];
     basePath: string;
     origin?: string;
@@ -850,9 +854,9 @@ export function checkSitemap(
       add('fehler', 'sitemap-canonical', `${loc} ist nicht kanonisch; erwartet wird ${knownCanonical}.`);
   }
 
-  for (const path of options.indexable) {
+  for (const path of options.sitemapPaths) {
     if (!paths.includes(path))
-      add('fehler', 'sitemap-fehlend', `Indexierbare Seite ${path} fehlt in der Sitemap.`);
+      add('fehler', 'sitemap-fehlend', `Deklariertes Sitemap-Ziel ${path} fehlt in der Sitemap.`);
   }
 
   return findings;

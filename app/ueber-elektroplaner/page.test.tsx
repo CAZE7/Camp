@@ -10,8 +10,8 @@ import UeberElektroplanerUmleitung, { metadata } from './page';
  *
  * Die Adresse ist die frühere der Vertrauensseite. Sie muss zwei Dinge
  * gleichzeitig erfüllen: erreichbar bleiben, damit bestehende Verweise nicht
- * ins Leere laufen — und aus dem Index herausbleiben, damit nicht zwei
- * Adressen dieselbe Aussage tragen.
+ * ins Leere laufen — und per Canonical auf die aktuelle Adresse verweisen.
+ * Die Route bleibt aus der Sitemap, erhält aber kein `noindex`.
  *
  * React 19 schreibt `<meta>` aus einer Route in den Dokumentkopf; geprüft wird
  * deshalb `document.head`, nicht der Container.
@@ -24,10 +24,10 @@ vi.mock('next/link', () => ({
 const INVENTAR = pageByPath('/ueber-elektroplaner/');
 
 describe('Frühere Vertrauensadresse /ueber-elektroplaner/', () => {
-  it('ist im Inventar geführt — als nicht indexierbare Weiterleitung', () => {
+  it('ist im Inventar indexierbar, bleibt aber aus der Sitemap', () => {
     expect(INVENTAR, 'Route /ueber-elektroplaner/ fehlt im SEO-Inventar').toBeDefined();
-    expect(INVENTAR!.indexability).toBe('noindex');
-    // Kein Sitemap-Eintrag: Eine Weiterleitung gehört nicht in die Sitemap.
+    expect(INVENTAR!.indexability).toBe('index');
+    // Die Weiterleitung bleibt ohne Sitemap-Eintrag.
     expect(INVENTAR!.sitemap).toBeUndefined();
     expect(INVENTAR!.structuredData).toEqual([]);
   });
@@ -51,12 +51,8 @@ describe('Frühere Vertrauensadresse /ueber-elektroplaner/', () => {
     expect(refresh!.getAttribute('content')).toMatch(/^0; url=.*\/ueber-12v-planer\/$/);
   });
 
-  it('bleibt auf noindex — die neue Adresse ist die einzige im Index', () => {
-    // Die robots-Anweisung kommt aus den Kopfdaten (Next setzt sie beim Bau
-    // in den Dokumentkopf); im Test wird deshalb der Metadaten-Export geprüft.
-    expect(metadata.robots, 'Weiterleitung ohne robots-Anweisung').toMatchObject({
-      index: false,
-      follow: true,
-    });
+  it('setzt den Canonical aufs Ziel und widerspricht ihm nicht mit noindex', () => {
+    expect(metadata.alternates?.canonical).toBe('https://12v-planer.de/ueber-12v-planer/');
+    expect(metadata.robots).toMatchObject({ index: true, follow: true });
   });
 });

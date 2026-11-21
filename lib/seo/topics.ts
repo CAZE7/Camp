@@ -64,7 +64,7 @@ export const TOPICS: readonly Topic[] = [
   },
   {
     id: 'sicherungen',
-    label: 'Sicherungen',
+    label: 'Sicherung berechnen',
     parent: 'camper-elektrik',
     path: '/camper-elektrik/sicherungen/',
     role: 'cluster',

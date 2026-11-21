@@ -16,7 +16,7 @@ export default function DatenschutzPage() {
       <PageShell variant="article" mainClassName="container-page prose-measure">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
         <p className="caption-sm mt-2 text-ink-soft">
-          {`Stand: 2026-10. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von ${SITE_HOST}.`}
+          {`Stand: 2026-11. Diese Erklärung beschreibt die Datenverarbeitung beim Besuch von ${SITE_HOST}.`}
         </p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
@@ -70,12 +70,35 @@ export default function DatenschutzPage() {
           </p>
         </section>
 
-        <section className="mt-6 space-y-2 text-sm text-ink-soft">
+        <section id="analytics" className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">
-            Keine Cookies, keine Analyse, keine externen Schriften
+            Statistik mit Google Analytics (nur mit Einwilligung)
           </h2>
           <p>
-            Die Seite setzt keine Cookies zu Analyse- oder Marketingzwecken und verwendet kein Web-Tracking.
+            Wenn du im Hinweisbanner „Akzeptieren“ wählst, nutzt diese Seite Google Analytics 4 der Google
+            Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland. Dabei können Cookies gesetzt und
+            Nutzungsdaten — etwa aufgerufene Seiten, die Nutzung von Planer und Rechnern, Gerätetyp und
+            ungefährer Standort — an Google übertragen werden. Google verarbeitet die IP-Adresse zur
+            Standortableitung; sie wird laut Google nicht als Nutzungsmerkmal gespeichert. Eine Übermittlung
+            in die USA ist möglich; Google ist nach dem EU-US Data Privacy Framework zertifiziert.
+          </p>
+          <p>
+            Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG). Ohne
+            Einwilligung wird Google Analytics nicht geladen und es werden keine Nutzungsdaten an Google
+            gesendet. Du kannst deine Einwilligung jederzeit über „Cookie-Einstellungen“ im Fußbereich
+            widerrufen.
+          </p>
+          {/* TODO / Livegang-Blocker: GA4-Aufbewahrungsfrist nach Einstellung in der Property eintragen und
+              diesen Abschnitt rechtlich prüfen lassen, bevor das Tag auf der Live-Domain aktiviert wird. */}
+          <p>
+            Speicherdauer: Die konkrete Frist richtet sich nach der in GA4 eingestellten Datenaufbewahrung;
+            sie wird vor dem Livegang hier ergänzt.
+          </p>
+        </section>
+
+        <section className="mt-6 space-y-2 text-sm text-ink-soft">
+          <h2 className="text-base font-semibold text-ink">Externe Schriften</h2>
+          <p>
             Die verwendeten Schriften werden mit der Seite ausgeliefert; es werden keine Schriftarten von
             Google oder anderen Dritten geladen.
           </p>

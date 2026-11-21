@@ -5,6 +5,7 @@ import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
+import { track } from '@/components/analytics/Analytics';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
 import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions';
@@ -21,6 +22,7 @@ import {
   plannerErrorCategoryFromValidation,
 } from '../../lib/planner/plannerError';
 import { isRouteLocked } from '../../lib/electricalGraph/intent';
+import { isStarterPlan } from './templates';
 
 /**
  * Chrome-Leiste des Planers: Menüleiste + Werkzeugleiste + geführte Schrittleiste.
@@ -114,6 +116,17 @@ export function PlannerDashboard() {
       setFocusMode: state.setFocusMode,
     }))
   );
+
+  // Eigene Pläne starten beim ersten echten Graph-Edit. Das Microtask lässt
+  // den expliziten Template-Aufruf in `usePlannerActions` zuerst messen, damit
+  // ein geladenes Muster nicht fälschlich als eigener Plan etikettiert wird.
+  useEffect(() => {
+    return usePlannerStore.subscribe((state, previousState) => {
+      const graphChanged = state.nodes !== previousState.nodes || state.edges !== previousState.edges;
+      if (!graphChanged || state.nodes.length === 0 || isStarterPlan(state.nodes, state.edges)) return;
+      window.queueMicrotask(() => track('planner_start', { start_type: 'eigener_plan' }));
+    });
+  }, []);
 
   // EIN Prüfbericht für Warn-Liste UND Prüfsiegel: Die Engine rechnet einmal,
   // beide Anzeigen lesen dasselbe Ergebnis (gleicher Hash, gleiche Abdeckung).

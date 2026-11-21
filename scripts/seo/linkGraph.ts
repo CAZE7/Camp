@@ -135,6 +135,9 @@ export function analyzeInternalLinkGraph(input: {
   const edgeKeys = new Set<string>();
 
   for (const source of input.pages) {
+    // Eine indexierbare Weiterleitungsadresse mit Canonical-Ziel ist kein
+    // eigenständiger Navigationsknoten und darf keine Inbound-Links verfälschen.
+    if (source.entry?.canonicalPath) continue;
     const document = documents.get(source.path);
     if (!document) continue;
 
@@ -256,7 +259,9 @@ export function analyzeInternalLinkGraph(input: {
     }
   }
 
-  const indexable = input.pages.filter((page) => page.entry?.indexability === 'index');
+  const indexable = input.pages.filter(
+    (page) => page.entry?.indexability === 'index' && !page.entry.canonicalPath
+  );
   const allInbound = new Map<string, string[]>();
   const contextualInbound = new Map<string, string[]>();
   const outbound = new Map<string, string[]>();

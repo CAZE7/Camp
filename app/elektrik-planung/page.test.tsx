@@ -42,6 +42,15 @@ describe('ElektrikPlanung', () => {
     }
   });
 
+  it('verlinkt die Schritt-für-Schritt-Tabelle zum Sicherungsrechner', () => {
+    render(<ElektrikPlanung />);
+
+    expect(screen.getByRole('link', { name: 'Sicherung berechnen (12 V)' })).toHaveAttribute(
+      'href',
+      '/camper-elektrik/sicherungen/'
+    );
+  });
+
   it('verknüpft jedes Eingabefeld mit Beschriftung und Hilfetext', () => {
     render(<ElektrikPlanung />);
 

@@ -5,8 +5,12 @@ import { act, render, screen, fireEvent, waitFor, within } from '@testing-librar
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlannerDashboard, warningDedupeKey } from './PlannerDashboard';
 import { toPng } from 'html-to-image';
+import { track } from '@/components/analytics/Analytics';
+import { TEMPLATE_KASTENWAGEN } from './templates';
 
 // --- Mocks ---
+
+vi.mock('@/components/analytics/Analytics', () => ({ track: vi.fn() }));
 
 // Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
@@ -54,6 +58,25 @@ const planState = () => ({
   deleteSelected: vi.fn(),
 });
 const mockState = planState();
+
+type GraphSnapshot = {
+  nodes: Array<{
+    id: string;
+    type?: string;
+    position?: { x: number; y: number };
+    data?: unknown;
+  }>;
+  edges: Array<{
+    id: string;
+    source?: string;
+    target?: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+    data?: unknown;
+  }>;
+};
+type GraphListener = (state: GraphSnapshot, previousState: GraphSnapshot) => void;
+let mockGraphListener: GraphListener | null = null;
 
 vi.mock('../../store/usePlannerStore', () => ({
   // AUDIT T1: Der Mock-Zustand ist ein Test-Double eigener Form — der
@@ -107,9 +130,17 @@ vi.mock('../../store/usePlannerStore', () => ({
       };
       return selector(state);
     }),
-    // Der Export-Pfad liest den Store direkt (`getState`) — der Doppel-Staat
-    // muss auch diesen Zugang bedienen, sonst wäre der Test eine Attrappe.
-    { getState: () => mockState }
+    // Der Export-Pfad liest den Store direkt (`getState`); der Dashboard-Test
+    // nutzt zusätzlich die Zustand-Subscription für Planner-Events.
+    {
+      getState: () => mockState,
+      subscribe: (listener: GraphListener) => {
+        mockGraphListener = listener;
+        return () => {
+          if (mockGraphListener === listener) mockGraphListener = null;
+        };
+      },
+    }
   ),
 }));
 
@@ -126,6 +157,7 @@ const openMenu = (id: 'datei' | 'bearbeiten' | 'ansicht' | 'werkzeuge' | 'planun
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGraphListener = null;
     mockState.nodes = [];
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
@@ -134,6 +166,26 @@ describe('PlannerDashboard - Core Interactions', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('tracks the first real graph edit, but not an empty or starter plan', async () => {
+    render(<PlannerDashboard />);
+    const listener = mockGraphListener;
+    expect(listener).not.toBeNull();
+    if (!listener) throw new Error('Planner store subscription was not registered.');
+
+    const empty: GraphSnapshot = { nodes: [], edges: [] };
+    act(() => listener(empty, empty));
+    act(() => listener({ nodes: TEMPLATE_KASTENWAGEN.nodes, edges: TEMPLATE_KASTENWAGEN.edges }, empty));
+    await Promise.resolve();
+    expect(track).not.toHaveBeenCalled();
+
+    const customPlan: GraphSnapshot = {
+      nodes: [{ id: 'custom-battery', type: 'battery', position: { x: 0, y: 0 }, data: {} }],
+      edges: [],
+    };
+    act(() => listener(customPlan, { nodes: TEMPLATE_KASTENWAGEN.nodes, edges: TEMPLATE_KASTENWAGEN.edges }));
+    await waitFor(() => expect(track).toHaveBeenCalledWith('planner_start', { start_type: 'eigener_plan' }));
   });
 
   it('renders default UI elements correctly', () => {
@@ -304,6 +356,7 @@ describe('PlannerDashboard - Core Interactions', () => {
 describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGraphListener = null;
     mockState.nodes = [];
     mockState.waterNodes = [];
     mockState.viewMode = 'electric';
