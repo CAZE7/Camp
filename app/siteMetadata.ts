@@ -54,6 +54,8 @@ type PageMetadataInput = {
   description: string;
   /** Pfad der Seite innerhalb der Auslieferung, z. B. `/tools/dach/`. */
   path: string;
+  /** Optionales Canonical-Ziel einer Alias-/Weiterleitungsroute. */
+  canonicalPath?: string;
   /** Eigenes Vorschaubild; ohne Angabe gilt `DEFAULT_PREVIEW_IMAGE`. */
   image?: PreviewImage;
   /** true = der Titel ist vollständig und wird nicht ergänzt. */
@@ -71,11 +73,12 @@ export function pageMetadata({
   title,
   description,
   path,
+  canonicalPath,
   image = DEFAULT_PREVIEW_IMAGE,
   absoluteTitle = false,
   index = true,
 }: PageMetadataInput): Metadata {
-  const url = siteUrl(path);
+  const url = siteUrl(canonicalPath ?? path);
   const imageUrl = siteUrl(image.path);
 
   return {

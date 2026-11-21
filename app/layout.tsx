@@ -7,6 +7,7 @@ import mono400LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin
 import mono500LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2';
 import type { Metadata, Viewport } from 'next';
 
+import { Analytics } from '@/components/analytics/Analytics';
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
 import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
 
@@ -88,7 +89,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             siehe ADR 0038). */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https: ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self'"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.google-analytics.com https://*.googletagmanager.com; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https: ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self'"
+        />
+        {/* Basic Consent Mode v2: Vor jeder Interaktion ist jede Google-Speicherung
+            abgelehnt. Das Tag selbst wird erst nach „Akzeptieren" geladen und
+            die Komponente zusätzlich auf 12v-planer.de begrenzt. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if(location.hostname==='12v-planer.de'){" +
+              'window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};' +
+              "window.gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});}",
+          }}
         />
         {/* Dark Mode vor dem ersten Paint setzen (kein Flash): Dieselbe
             System-Politik wie usePlannerDarkMode / SystemThemeSync. */}
@@ -117,6 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Zum Hauptinhalt springen
         </a>
         {children}
+        <Analytics />
       </body>
     </html>
   );

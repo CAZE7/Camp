@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Produktionsbild } from '@/lib/seo/bildSitemap';
-import { indexablePages, nonIndexablePages, SITEMAP_ROUTES } from '@/lib/seo/inventory';
+import { nonIndexablePages, SITEMAP_ROUTES } from '@/lib/seo/inventory';
 import { siteUrl } from '@/lib/site';
 
 import sitemap, { sitemapEintraege } from './sitemap';
@@ -11,14 +11,14 @@ const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', '
 /**
  * Die Sitemap entsteht aus dem Seiteninventar. Geprüft wird deshalb beides:
  * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, keine
- * Zeitstempel, gültige Werte) und dass sie zum Inventar passt — eine
- * indexierbare Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne
- * Indexierbarkeit ebenfalls.
+ * Zeitstempel, gültige Werte) und dass sie zum Inventar passt. Eine
+ * indexierbare Weiterleitungsadresse kann bewusst ohne eigenen Sitemap-Eintrag
+ * bleiben; ein Eintrag ohne Indexierbarkeit ist dagegen ein Fehler.
  */
 describe('sitemap', () => {
   const entries = sitemap();
 
-  it('listet jede ausgelieferte Seite genau einmal', () => {
+  it('listet jedes Sitemap-Ziel genau einmal', () => {
     const urls = entries.map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
     expect(urls).toContain(siteUrl('/elektrik-planung/'));
@@ -45,11 +45,9 @@ describe('sitemap', () => {
     }
   });
 
-  it('enthält genau die indexierbaren Seiten des Inventars', () => {
+  it('enthält genau die im Inventar deklarierten Sitemap-Ziele', () => {
     expect(entries.map((entry) => entry.url).sort()).toEqual(
-      indexablePages()
-        .map((page) => siteUrl(page.path))
-        .sort()
+      SITEMAP_ROUTES.map((route) => siteUrl(route.path)).sort()
     );
   });
 

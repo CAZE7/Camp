@@ -147,14 +147,14 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
   },
   {
     path: '/tools/heizung/',
-    label: 'Heizlast-Rechner',
+    label: 'Heizlastrechner Camper: 2 kW oder 4 kW?',
     kind: 'werkzeug',
     indexability: 'index',
-    h1: 'Heizlast-Rechner',
-    title: 'Heizlast-Rechner für Wohnmobil und Camper',
+    h1: 'Heizlastrechner Camper: 2 kW oder 4 kW?',
+    title: 'Heizlastrechner Camper: 2 kW oder 4 kW?',
     description:
-      'Benötigte Heizleistung aus Fahrzeuggröße, Dämmung und Wunschtemperatur berechnen — inklusive Empfehlung, welches Heizgerät passt.',
-    searchIntent: 'die nötige Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur bestimmen.',
+      'Heizlast für Camper berechnen: Fahrzeug, Dämmung und Temperaturen eingeben und sehen, ob eine 2-kW- oder 4-kW-Standheizung (z. B. Autoterm) reicht.',
+    searchIntent: 'die nötige Heizleistung berechnen und zwischen einer 2-kW- und 4-kW-Standheizung wählen.',
     topicId: 'heizlast',
     priority: 'P1',
     structuredData: ['WebPage', 'WebApplication'],
@@ -162,7 +162,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
       path: '/og/heizung.png',
       width: 1200,
       height: 630,
-      alt: 'Heizlast-Rechner für Wohnmobil und Camper',
+      alt: 'Heizlastrechner Camper: 2 kW oder 4 kW?',
     },
     sitemap: { changeFrequency: 'monthly', priority: 0.8 },
     source: 'app/tools/heizung/layout.tsx',
@@ -298,18 +298,15 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     /**
      * Älteste Adresse der Vertrauensseite (`/ueber-werft/`).
      *
-     * Der Pfad trug den früheren Produktnamen; die Seite liegt jetzt unter
-     * `/ueber-12v-planer/`. Diese Route antwortet weiter mit einer
-     * Weiterleitung (meta refresh auf 0 Sekunden), damit bestehende Verweise
-     * nicht ins Leere laufen — sie gehört aber nicht in den Index: Zwei
-     * Adressen mit demselben Inhalt sind für Suchmaschinen Dubletten, und die
-     * Auszeichnung „Weiterleitung" würde in Ergebnislisten nur verwirren.
-     * Deshalb `noindex` und kein Sitemap-Eintrag.
+     * Die Route antwortet mit einem Meta-Refresh auf die aktuelle Adresse
+     * `/ueber-12v-planer/` und setzt zusätzlich deren Canonical. Sie bleibt
+     * deshalb aus der Sitemap, erhält aber kein widersprüchliches `noindex`.
      */
     path: '/ueber-werft/',
+    canonicalPath: '/ueber-12v-planer/',
     label: 'Weiterleitung: Über 12V-Planer',
     kind: 'ansicht',
-    indexability: 'noindex',
+    indexability: 'index',
     h1: 'Weiterleitung: Über 12V-Planer',
     title: 'Über 12V-Planer — Weiterleitung',
     absoluteTitle: true,
@@ -325,15 +322,15 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     /**
      * Frühere Adresse der Vertrauensseite (`/ueber-elektroplaner/`).
      *
-     * Die Seite liegt jetzt unter `/ueber-12v-planer/`. Diese Route antwortet
-     * mit einer Weiterleitung (meta refresh auf 0 Sekunden) und bleibt aus dem
-     * Index, damit nicht zwei Adressen dieselbe Aussage tragen. Deshalb
-     * `noindex` und kein Sitemap-Eintrag.
+     * Die Route antwortet mit einem Meta-Refresh auf `/ueber-12v-planer/` und
+     * setzt zusätzlich den Canonical aufs Ziel. Sie bleibt aus der Sitemap,
+     * erhält aber kein widersprüchliches `noindex`.
      */
     path: '/ueber-elektroplaner/',
+    canonicalPath: '/ueber-12v-planer/',
     label: 'Weiterleitung: Über 12V-Planer',
     kind: 'ansicht',
-    indexability: 'noindex',
+    indexability: 'index',
     h1: 'Weiterleitung: Über 12V-Planer',
     title: 'Über 12V-Planer — frühere Adresse',
     absoluteTitle: true,

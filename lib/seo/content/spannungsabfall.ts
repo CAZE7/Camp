@@ -41,26 +41,17 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
   slug: 'spannungsabfall',
   topicId: 'spannungsabfall',
   kind: 'cluster',
-  title: 'Spannungsabfall bei 12 V: berechnen und begrenzen',
+  title: 'Spannungsabfall 12 V berechnen: Formel, Beispiel & Tabelle',
   absoluteTitle: true,
   description:
-    'Spannungsabfall in der 12-V-Anlage berechnen: Formel, Tabelle je Querschnitt, Grenzwerte und die Frage, ab wann ein Verbraucher zu wenig Spannung bekommt.',
-  h1: 'Spannungsabfall bei 12 V berechnen',
-  lead: 'Eine Leitung ist kein idealer Leiter: Über Hin- und Rückleitung fällt Spannung ab, und was am Verbraucher ankommt, ist weniger als das, was die Batterie liefert. Diese Seite zeigt, wie groß der Verlust ist, wann er zum Problem wird und wie man ihn begrenzt.',
+    'Spannungsabfall bei 12 V berechnen: Formel ΔU = 2·L·I/(κ·A), Rechenbeispiel mit 10 A über 5 m, Tabelle je Querschnitt und die 3-%-Grenze.',
+  h1: 'Spannungsabfall bei 12 V berechnen: Formel und Beispiel',
+  lead: 'Den Spannungsabfall einer 12-V-Leitung berechnest du mit ΔU = (I · 2 · L) / (κ · A), mit κ = 58 m/(Ω·mm²) für Kupfer. Beispiel: 10 A über 5 m einfache Länge auf 2,5 mm² ergeben 0,69 V, das sind 5,75 % von 12 V und damit klar über der Planungsgrenze von 3 % (0,36 V). Mit 6 mm² sind es noch 0,29 V (2,39 %). Unten stehen die Herleitung, die Tabelle je Querschnitt und welche Grenze für welchen Verbraucher gilt.',
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.8,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
-    {
-      id: 'rechner',
-      heading: 'Spannungsfall einer Leitung nachrechnen',
-      body: [
-        'Der Rechner bewertet eine bereits gewählte Leitung: Strom, Länge und Querschnitt eingeben, Ergebnis in Volt und Prozent — eingeteilt in die Grenzen des Modells (1 % / ' +
-          `${VOLTAGE_DROP_PCT_PLAN_LIMIT} % / ${VOLTAGE_DROP_PCT_CRITICAL} %).`,
-      ],
-      calculator: 'spannungsabfall',
-    },
     {
       id: 'formel',
       heading: 'Formel und Größenordnung',
@@ -70,6 +61,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
       },
       body: [
         'Die Formel ist die Umkehrung der Querschnittsbemessung — dieselbe Physik, andere Frage. Wer den Spannungsfall einer bestehenden Leitung kennt, weiß auch, warum ein Verbraucher am Ende einer langen dünnen Leitung schwächer arbeitet: Bei 12 V sind 0,5 V bereits mehr als 4 %.',
+        'Du willst nur eine konkrete Leitung prüfen, ohne selbst zu rechnen? Der [Spannungsabfall-Rechner für 12 V](/rechner/spannungsabfall-12v/) zeigt dir Volt, Prozent und den passenden Querschnitt sofort.',
       ],
     },
     {
@@ -79,7 +71,7 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
         caption: 'Modellrechnung bei 12 V Nennspannung, Kupfer bei 20 °C',
         head: ['Querschnitt', 'ΔU', 'ΔU in Prozent', 'Einordnung'],
         rows: DROP_ROWS,
-        note: `Die Planungsgrenze liegt bei ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % (0,36 V), ab ${VOLTAGE_DROP_PCT_CRITICAL} % meldet der Planer einen Verstoß.`,
+        note: `Die Planungsgrenze liegt bei ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % (0,36 V). Bei mehr als 3 % meldet der Planer einen Verstoß, bei mehr als ${VOLTAGE_DROP_PCT_CRITICAL} % gilt der Status als kritisch.`,
       },
       body: [
         'Die Tabelle macht den eigentlichen Konflikt sichtbar: 2,5 mm² über 5 m verliert bei 10 A fast 6 % der Spannung. Die Leitung bleibt dabei kühl — das Problem ist nicht die Erwärmung, sondern die Spannung, die am Verbraucher fehlt.',
@@ -125,9 +117,12 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
             'Empfindliche Verbraucher: Kompressor-Kühlschränke, Funkgeräte, Laderegler, Wechselrichter-Zuleitungen. In vielen Tabellenwerken auf 0,25 V gerundet.',
         },
         {
-          term: `${VOLTAGE_DROP_PCT_CRITICAL} % — Verstoßgrenze`,
-          description:
-            'Ab mehr als 3 % meldet der Planer einen Verstoß; ab mehr als 4 % gilt die Stufe als kritisch. Ob ein Gerät bei der verbleibenden Spannung abschaltet, steht im Datenblatt — ein pauschaler Gerätegrenzwert lässt sich daraus nicht ableiten.',
+          term: `> ${VOLTAGE_DROP_PCT_PLAN_LIMIT} bis ${VOLTAGE_DROP_PCT_CRITICAL} % — Verstoß`,
+          description: `Mehr als ${VOLTAGE_DROP_PCT_PLAN_LIMIT} % bis einschließlich ${VOLTAGE_DROP_PCT_CRITICAL} % gilt im Rechner als Verstoß. Ob ein Gerät bei der verbleibenden Spannung abschaltet, steht im Datenblatt — ein pauschaler Gerätegrenzwert lässt sich daraus nicht ableiten.`,
+        },
+        {
+          term: `> ${VOLTAGE_DROP_PCT_CRITICAL} % — kritisch`,
+          description: 'Über der kritischen Stufe weist der Rechner den Status als kritisch aus.',
         },
       ],
       callout: {
@@ -152,7 +147,8 @@ export const SPANNUNGSABFALL_CONTENT: SeoPageContent = {
       id: 'naechster-schritt',
       heading: 'Nächster Schritt',
       body: [
-        'Wer den Spannungsfall kennt, kann den Querschnitt wählen — und die Sicherung an die Leitung anpassen. Beides prüft der Planer für jede einzelne Verbindung und meldet Grenzverletzungen, bevor Kabel geschnitten werden.',
+        'Steht der Querschnitt fest, folgt die Absicherung: Wie du die passende [Sicherung für 12 V berechnest](/camper-elektrik/sicherungen/), hängt vom Betriebsstrom und von der Belastbarkeit genau dieser Leitung ab.',
+        'Der Planer prüft Querschnitt, Spannungsfall und Sicherung für jede einzelne Verbindung und meldet Grenzverletzungen, bevor Kabel geschnitten werden.',
       ],
       links: [
         { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },

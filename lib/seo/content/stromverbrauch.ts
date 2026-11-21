@@ -35,16 +35,25 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
   priority: 'P0',
   changeFrequency: 'monthly',
   sitemapPriority: 0.8,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
     {
       id: 'kernantwort',
       heading: 'Wie viel Strom verbraucht ein Camper pro Tag?',
       body: [
-        'Das hängt von den Geräten ab. Im Beispielhaushalt unten sind es 1 074 Wh je Tag — vor allem durch Kühlbox (450 Wh), Standheizungsgebläse (280 Wh) und Laptop (260 Wh). Ohne eigene Liste ist jede Pauschalzahl eine Schätzung.',
-        'Der Rechenweg: P = U · I (Spannung mal Strom ergibt Leistung in Watt) und E = P · t (Leistung mal Stunden ergibt Energie in Wattstunden). Bei 45 W Kühlbox-Leistung über 10 Stunden ergeben sich 450 Wh.',
-        'Für die Batteriedimensionierung ist nicht der Nennwert entscheidend, sondern die niedrigste im Betrieb auftretende Batteriespannung (z. B. 10,7 V bei entladener Bleibatterie unter Last). Bei sinkender Spannung steigt der Strom bei gleicher Leistungsabnahme (I = P / U).',
+        'Kurz: Im Beispielhaushalt dieser Seite sind es 1.074 Wh pro Tag, also etwa 90 Ah bei 12 V. Einen allgemeingültigen Durchschnitt gibt es nicht: Kühlbox, Standheizungsgebläse und Laptop machen in diesem Beispiel zusammen 990 Wh aus, alles andere ist klein. Rechne deshalb mit deinen eigenen Geräten: Watt × Stunden pro Tag = Wattstunden.',
       ],
+      table: {
+        caption: 'Tagesbedarf im Beispielhaushalt (Modellwerte)',
+        head: ['Szenario', 'Rechnung', 'Wh/Tag', '≈ Ah bei 12 V'],
+        rows: [
+          ['Winter, Standheizung 8 h (Beispielhaushalt)', '450 + 60 + 24 + 260 + 280', '1.074', '89,5'],
+          ['Winter, Heizung nachts auf niedriger Stufe', '1.074 − rund 140 (laut Seite)', '≈ 934', '≈ 78'],
+          ['Sommer, ohne Standheizung', '1.074 − 280', '794', '≈ 66'],
+          ['Sommer, ohne Heizung und ohne Laptop', '794 − 260', '534', '44,5'],
+        ],
+        note: 'Beispielwerte aus dem 12V-Planer, keine Messwerte. Zwei autarke Tage im Winter-Beispiel: 2.148 Wh, bei 90 % Entladetiefe (LiFePO4) etwa 200 Ah Nennkapazität, siehe [Batteriekapazität berechnen](/rechner/batteriekapazitaet/).',
+      },
       callout: {
         tone: 'info',
         text: '[Batteriekapazität berechnen](/rechner/batteriekapazitaet/) — eigenen Tagesbedarf eingeben und die nötige Nennkapazität ermitteln.',
@@ -67,6 +76,8 @@ export const STROMVERBRAUCH_CONTENT: SeoPageContent = {
         },
       ],
       body: [
+        'Der Rechenweg: P = U · I (Spannung mal Strom ergibt Leistung in Watt) und E = P · t (Leistung mal Stunden ergibt Energie in Wattstunden). Bei 45 W Kühlbox-Leistung über 10 Stunden ergeben sich 450 Wh.',
+        'Für die Batteriedimensionierung ist nicht der Nennwert entscheidend, sondern die niedrigste im Betrieb auftretende Batteriespannung (z. B. 10,7 V bei entladener Bleibatterie unter Last). Bei sinkender Spannung steigt der Strom bei gleicher Leistungsabnahme (I = P / U).',
         'Die vier Engineering-Nuancen für den Praxisalltag: (1) Bei 10,7 V statt 12 V zieht eine 20 W-USB-Doppelsteckdose (5 V, 2 × 2 A = 20 W Nennleistung) inklusive 20 % Puffer (24 W) bei 10,7 V real 2,24 A statt der theoretischen 1,66 A bei 12 V. (2) Ein 20 % Sicherheitspuffer für Wandlerverluste gehört dazu. (3) Ein Spannungsfall von über 4 % (0,48 V bei 12 V) kann dazu führen, dass empfindliche Geräte wie Kompressor-Kühlboxen, Dieselstandheizungen in der Glühphase oder Wechselrichter wegen Unterspannung abschalten; die Schwelle steht im Datenblatt. (4) Temperatur-Derating im geschlossenen Sitzkasten.',
       ],
     },

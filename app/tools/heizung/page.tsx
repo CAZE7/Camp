@@ -1035,11 +1035,12 @@ export default function HeatingCalculatorPage() {
               outfit.className
             )}
           >
-            Heizlast-Rechner
+            Heizlastrechner Camper: 2 kW oder 4 kW?
           </h1>
           <p className="mt-2 max-w-xl text-sm text-ink-soft">
             Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive
-            Empfehlung, welches Modell passt.
+            Empfehlung, welches Modell passt. Bis etwa 2.200 W Heizlast reicht eine kompakte
+            2-kW-Standheizung, zwischen 2.200 und 4.500 W braucht es 4 kW oder bessere Dämmung.
           </p>
         </div>
 

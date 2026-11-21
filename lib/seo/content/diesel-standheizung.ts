@@ -3,8 +3,9 @@
  *
  * Spoke des Pillars `/heizung-daemmung/`. Alle Zahlen sind die im Projekt
  * bereits verwendeten Modellwerte (Gebläse 2,9 A / 35 W / 8 h = 280 Wh,
- * Betrieb 10–40 W, Spannungsfall-Grenze 4 % = 0,48 V bei 12 V). Keine
- * erfundenen Normwerte: Einbau und Abgas bleiben ausdrücklich außerhalb.
+ * Betrieb 10–57 W; 4 % Spannungsfall entsprechen 0,48 V bei 12 V und sind ein
+ * Beispielwert, nicht die Verstoßgrenze). Keine erfundenen Normwerte: Einbau
+ * und Abgas bleiben ausdrücklich außerhalb.
  */
 
 import type { SeoPageContent } from '../types';
@@ -14,16 +15,16 @@ export const DIESEL_STANDHEIZUNG_CONTENT: SeoPageContent = {
   slug: 'diesel-standheizung',
   topicId: 'diesel-standheizung',
   kind: 'cluster',
-  title: 'Diesel-Standheizung im Camper: 2 kW oder 4 kW?',
+  title: 'Diesel-Standheizung im Camper: Verbrauch, Kosten & Strombedarf',
   absoluteTitle: true,
   description:
-    'Diesel-Standheizung dimensionieren: Heizleistung, Stromverbrauch des Gebläses, Absicherung, Kabelquerschnitt und typische Fehler — mit Rechenweg.',
-  h1: 'Diesel-Standheizung: Leistung, Strom und Absicherung',
+    'Was verbraucht eine Diesel-Standheizung? 0,10–0,51 l Diesel pro Stunde (Autoterm 2D/4D), 10–57 W Strom fürs Gebläse, 6–12 A beim Start – mit Rechenweg.',
+  h1: 'Diesel-Standheizung: Verbrauch, Kosten und Strom',
   lead: 'Eine Diesel-Standheizung heizt mit Kraftstoff aus dem Tank — Strom braucht sie nur für Gebläse, Pumpe und Zündglühen. Genau dieser kleine Verbrauch entscheidet über Kabelquerschnitt, Sicherung und die Frage, wie lange die Batterie im Winter durchhält.',
   priority: 'P1',
   changeFrequency: 'monthly',
   sitemapPriority: 0.6,
-  contentRevision: '2026-10',
+  contentRevision: '2026-11',
   sections: [
     {
       id: 'kernantwort',
@@ -36,6 +37,19 @@ export const DIESEL_STANDHEIZUNG_CONTENT: SeoPageContent = {
       callout: {
         tone: 'info',
         text: '[Heizlast-Rechner öffnen](/tools/heizung/) — Fahrzeugmaße, Dämmung und Wunschtemperatur eingeben und sehen, welche Heizleistung das Fahrzeug wirklich braucht.',
+      },
+    },
+    {
+      id: 'dieselverbrauch-pro-nacht',
+      heading: 'Dieselverbrauch und Kosten pro Nacht',
+      table: {
+        caption: 'Hersteller-Verbrauch auf acht Stunden Laufzeit hochgerechnet',
+        head: ['Gerät', 'Verbrauch laut Hersteller', '8 Stunden Betrieb'],
+        rows: [
+          ['Autoterm Air 2D (2 kW)', '0,10–0,24 l/h', '0,8–1,9 l'],
+          ['Autoterm Air 4D (4 kW)', '0,12–0,51 l/h', '1,0–4,1 l'],
+        ],
+        note: 'Die Literwerte sind Herstellerangaben × 8 Stunden, ohne angesetzten Dieselpreis. Kosten pro Nacht = Liter × aktueller Dieselpreis. Wie viel Diesel anfällt, hängt von der Stufe ab, auf der die Heizung läuft; diese folgt aus der Heizlast. Welche Leistung dein Fahrzeug braucht, rechnet der [Heizlastrechner: 2 kW oder 4 kW?](/tools/heizung/) aus.',
       },
     },
     {

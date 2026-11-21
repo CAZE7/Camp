@@ -148,6 +148,7 @@ export function breadcrumbNode(input: { path: string; items: readonly Breadcrumb
   return {
     '@type': 'BreadcrumbList',
     '@id': pageNodeId(input.path, 'breadcrumb'),
+    name: `Navigationspfad: ${input.items.map((item) => item.name).join(' › ')}`,
     inLanguage: 'de-DE',
     itemListElement: input.items.map((item, index) => ({
       '@type': 'ListItem',

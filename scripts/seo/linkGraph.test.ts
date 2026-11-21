@@ -76,6 +76,26 @@ describe('interner Linkgraph aus dem HTML-Export', () => {
     expect(result.findings.map((finding) => finding.rule)).not.toContain('interner-link-basepath');
   });
 
+  it('ignoriert indexierbare Canonical-Aliase als eigenständige Linkgraph-Knoten', () => {
+    const alias = {
+      ...page('/ueber-werft/', '<main><a href="/ueber-12v-planer/">Überblick</a></main>', true),
+      entry: { ...pageByPath('/ueber-werft/')!, canonicalPath: '/ueber-12v-planer/' },
+    };
+    const result = analyzeInternalLinkGraph({
+      pages: [
+        page('/', '<main><h1>Start</h1></main>'),
+        alias,
+        page('/ueber-12v-planer/', '<main><h1>Über 12V-Planer</h1></main>', true),
+      ],
+      origin: ORIGIN,
+      sitemapPaths: ['/'],
+    });
+
+    expect(result.orphanPages).not.toContain('/ueber-werft/');
+    expect(result.rootUnreachable).not.toContain('/ueber-werft/');
+    expect(result.edges.some((edge) => edge.from === '/ueber-werft/')).toBe(false);
+  });
+
   it('meldet indexierbare Seiten ohne HTML-Eingang auch als Sitemap-only', () => {
     const result = analyzeInternalLinkGraph({
       pages: [page('/camper-elektrik/', '<main><h1>Pillar</h1></main>', true)],

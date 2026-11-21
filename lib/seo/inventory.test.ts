@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { coverageMatrix, coverageSummary, openGaps, undeclaredTargets } from './coverage';
-import { indexablePages, nonIndexablePages, PAGES, pageByPath } from './inventory';
+import { indexablePages, nonIndexablePages, PAGES, pageByPath, SITEMAP_ROUTES } from './inventory';
 import { OPPORTUNITIES } from './opportunities';
 import { childTopics, topicOf, TOPICS, topicTrail } from './topics';
 import { DESCRIPTION_MAX, TITLE_MAX } from '../../scripts/seo/checks';
@@ -31,19 +31,31 @@ describe('Seiteninventar', () => {
     expect(THIN_CONTENT_KINDS).toEqual(expect.arrayContaining(['pillar', 'cluster', 'rechner', 'ratgeber']));
   });
 
-  it('führt jede indexierbare Seite mit eindeutigen Kopfdaten und Sitemap-Angabe', () => {
+  it('führt indexierbare Seiten mit eindeutigen Kopfdaten; Aliase bleiben sitemap-frei', () => {
     const titles = indexablePages().map((page) => page.title);
     const descriptions = indexablePages().map((page) => page.description);
     expect(new Set(titles).size).toBe(titles.length);
     expect(new Set(descriptions).size).toBe(descriptions.length);
 
     for (const page of indexablePages()) {
-      expect(page.sitemap, `Sitemap-Angabe fehlt: ${page.path}`).toBeDefined();
       expect(page.title.trim(), `Titel fehlt: ${page.path}`).not.toBe('');
       expect(page.description.trim(), `Beschreibung fehlt: ${page.path}`).not.toBe('');
       expect(page.title.length).toBeLessThanOrEqual(TITLE_MAX);
       expect(page.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+      if (page.canonicalPath) expect(page.sitemap, `Alias in der Sitemap: ${page.path}`).toBeUndefined();
+      else expect(page.sitemap, `Sitemap-Angabe fehlt: ${page.path}`).toBeDefined();
     }
+  });
+
+  it('führt nur indexierbare Inventarziele in der Sitemap', () => {
+    const sitemapPaths = new Set(SITEMAP_ROUTES.map((route) => route.path));
+    for (const route of SITEMAP_ROUTES) {
+      expect(pageByPath(route.path)?.indexability, `Noindex-Ziel in der Sitemap: ${route.path}`).toBe(
+        'index'
+      );
+    }
+    expect(sitemapPaths.has('/ueber-elektroplaner/')).toBe(false);
+    expect(sitemapPaths.has('/ueber-werft/')).toBe(false);
   });
 
   it('verlangt Titel und Beschreibung auch für noindex-Routen, ohne sie in die Sitemap zu setzen', () => {

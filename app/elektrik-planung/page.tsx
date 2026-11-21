@@ -321,6 +321,13 @@ export default function ElektrikPlanung() {
               „Puffer", sondern bestimmt die Obergrenze der Sicherung — dickere Leitung ist der günstigere Weg
               zu einer größeren Sicherung als eine Sicherung, die im Kurzschlussfall nicht mehr schützt.
             </p>
+            <p className="mt-3 text-md leading-relaxed text-ink-soft">
+              Schritt für Schritt mit Tabelle:{' '}
+              <Link className="underline underline-offset-2" href="/camper-elektrik/sicherungen/">
+                Sicherung berechnen (12 V)
+              </Link>
+              , vom Betriebsstrom über die Leitungsgrenze bis zur Bauform.
+            </p>
             <div className="warn-card warn-card-info mt-4">
               <p className="text-md">
                 Die 230-V-Seite des Fahrzeugs ist ein eigener Fall: Für Landstromanschlüsse gilt die Prüfung
