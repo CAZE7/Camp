@@ -142,8 +142,8 @@ jobs:
       - name: Unit- und Komponententests (mit Coverage-Gate für lib/**)
         # Testlauf inkl. Coverage: unterschreitet der Engine-Kern (lib/**)
         # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
-        # INKLUSIVE test/reference/** und test/invariants/** — die laufen
-        # automatisch mit (vitest.config.ts schließt nur tests/e2e/** aus).
+        # Die M-13-only Oracle-/Property-/Fuzz-/Failure-Record-Dateien sind
+        # hier ausgeschlossen und laufen gebündelt im PR-only Schritt unten.
         run: npm run test:coverage
 
       # G1/G2/G3/G5 laufen im Schritt oben mit. Die zwei Sicherheitsgates mit
@@ -185,6 +185,15 @@ jobs:
         # Nur Chromium: die Suite prüft Anwendungsverhalten, keine
         # Browser-Unterschiede. Das hält die Laufzeit des Gates niedrig.
         run: npx playwright install --with-deps chromium
+
+      - name: M-13 Produktivrouter-Verifikation (PR-only)
+        # M-13 ist ein Pull-Request-Gate. Deploy-/Push-Läufe auf main verwenden
+        # weiterhin Quality, überspringen aber diese zusätzliche Routing-Suite.
+        # Getestet werden nur routeAllCables, Property-/Fuzz-Fälle, Regressionen
+        # und der Planner-Zustand nach „Automatisch verbinden“ mit echten
+        # React-Flow-Messungen im Autark-E2E.
+        if: github.event_name == 'pull_request'
+        run: npm run ci:verify-routing
 
       - name: M-14 Accessibility (axe a11y)
         run: npx playwright test tests/e2e/a11y.spec.ts
