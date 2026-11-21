@@ -4,7 +4,9 @@ import {
   findFiniteOverlapValues,
   findForbiddenLayerImports,
   findPersistedGeometryReads,
+  findResearchKernelImports,
   findRoutingV2Loaders,
+  isProductionSource,
   type SourceFile,
 } from './rules';
 
@@ -35,8 +37,6 @@ describe('Regel G — routing-v2 darf in keiner Ladeform zurückkehren', () => {
   it.each([
     ["import { z } from '../planner/routing-v2';", 'ohne Slash (die reale Form)'],
     ["import { z } from '../planner/routing-v2/index';", 'mit Slash/Pfad'],
-    ["import 'lib/planner/routing-core';", 'Side-Effect-Import'],
-    ["const m = await import('../planner/routing-core/engine');", 'dynamischer Import'],
     ["const m = require('lib/planner/routing-v2');", 'require'],
     ['import style from "../planner/routing-v2.css";', 'Import mit Suffix'],
   ])('erkennt %s (%s)', (snippet) => {
@@ -50,6 +50,30 @@ describe('Regel G — routing-v2 darf in keiner Ladeform zurückkehren', () => {
         test('lib/x.test.ts', "import '../planner/routing-v2';"),
       ])
     ).toEqual([]);
+  });
+});
+
+describe('Regel G2 — routing-core bleibt aus Produktionspfaden heraus', () => {
+  it.each([
+    ["import { routeCore } from '../../docs/research/routing-core/kernel';", 'from-Import'],
+    ["import '../../docs/research/routing-core/kernel';", 'Side-Effect-Import'],
+    ["const core = await import('../../docs/research/routing-core/kernel');", 'dynamischer Import'],
+    ["const core = require('../../docs/research/routing-core/kernel');", 'require'],
+  ])('erkennt einen Forschungsimport in Produktion (%s, %s)', (snippet) => {
+    const production = [prod('components/planner/Planner.tsx', snippet)];
+    expect(
+      findResearchKernelImports(production.filter((file) => isProductionSource(file.file)))
+    ).toHaveLength(1);
+  });
+
+  it('ignoriert dieselben Imports aus Werkzeugpfaden', () => {
+    const tooling = [
+      prod(
+        'scripts/routing/verify.ts',
+        "import { routeCore } from '../../docs/research/routing-core/kernel';"
+      ),
+    ];
+    expect(findResearchKernelImports(tooling.filter((file) => isProductionSource(file.file)))).toEqual([]);
   });
 });
 

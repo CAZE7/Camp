@@ -5,7 +5,9 @@ import {
   findCableClearanceLiterals,
   findFiniteOverlapValues,
   findPersistedGeometryReads,
+  findResearchKernelImports,
   findRoutingV2Loaders,
+  isProductionSource,
   type SourceFile,
 } from '../architecture/rules';
 
@@ -43,7 +45,7 @@ const ROOT = resolve(__dirname, '..', '..');
  * umgangen werden muss, ist kein Gate.
  */
 const rel = (file: string): string => relative(ROOT, file).split(sep).join('/');
-const CODE_DIRS = ['app', 'components', 'lib', 'store', 'scripts'];
+const CODE_DIRS = ['app', 'components', 'contexts', 'hooks', 'lib', 'providers', 'store', 'types', 'scripts'];
 
 function collectSourceFiles(): string[] {
   const out: string[] = [];
@@ -126,14 +128,27 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
   });
 
   /** Die abgeschaltete Engine darf nicht zurückkehren (jede Ladeform). */
-  it('die zweite Routing-Engine ist entfernt und wird nirgends importiert', () => {
+  it('die zweite Routing-Engine (routing-v2) ist entfernt und wird nirgends geladen', () => {
     const importers = findRoutingV2Loaders(SOURCE_FILES);
 
     expect(
       importers,
-      'lib/planner/routing-v2 und lib/planner/routing-core sind bewusst gelöscht (ADR 0014).\n' +
+      'lib/planner/routing-v2 ist abgeschaltet (ADR 0014) und darf in keinem Quellpfad geladen werden.\n' +
         'Geprüft werden ALLE Ladeformen — auch ohne abschließenden Slash, als Side-Effect-Import, per require() und dynamisch.\n  ' +
         importers.join('\n  ')
+    ).toEqual([]);
+  });
+
+  /** G2 ist nur auf Produktionsquellen gerichtet; Forschungswerkzeuge bleiben außerhalb dieser Grenze. */
+  it('G2: kein Produktionspfad lädt den Forschungs-Kern routing-core', () => {
+    const productionSources = SOURCE_FILES.filter((file) => !file.isTest && isProductionSource(file.file));
+    const offenders = findResearchKernelImports(productionSources);
+
+    expect(productionSources.length, 'G2 muss echte Produktionsquellen prüfen.').toBeGreaterThan(0);
+    expect(
+      offenders,
+      'Produktionscode darf routing-core nicht laden; die Regel funktioniert auch ohne Forschungs-Engine im Checkout.\n  ' +
+        offenders.join('\n  ')
     ).toEqual([]);
   });
 });

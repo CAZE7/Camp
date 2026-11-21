@@ -40,18 +40,63 @@ export const productionOnly = (files: SourceFile[]): SourceFile[] =>
 // ── Regel G: die abgeschaltete Routing-Engine darf nicht zurückkehren ────────
 
 /**
- * Findet JEDE Ladeanweisung auf routing-v2/routing-core: `from '…'`,
- * Side-Effect-`import '…'`, `import('…')`, `require('…')` — mit oder ohne
- * abschließenden Slash. Der Slash war die Lücke (AUDIT G2).
+ * Verzeichnisse, in denen Quelltext beim Nutzer landet oder ihn speist.
+ * `scripts/**` ist **nicht** dabei: Werkzeug darf Forschungscode laden,
+ * Produktion nicht.
+ */
+export const PRODUCTION_SOURCE_PREFIXES = [
+  'app/',
+  'components/',
+  'contexts/',
+  'hooks/',
+  'lib/',
+  'providers/',
+  'store/',
+  'types/',
+];
+
+export const isProductionSource = (file: string): boolean => {
+  const normalized = file.replaceAll('\\', '/');
+  return PRODUCTION_SOURCE_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+};
+
+/**
+ * Findet JEDE Ladeanweisung auf die gelöschte Engine `routing-v2`: `from '…'`,
+ * Side-Effect-`import '…'`, `import('…')`, `require('…')`. Der Forschungs-Kern
+ * `routing-core` hat eine eigene Regel G2 und wird nicht mit der gelöschten
+ * Produktions-Engine gleichgesetzt.
  */
 export function findRoutingV2Loaders(files: SourceFile[]): string[] {
-  const RE =
-    /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]*)\b(routing-v2|routing-core)\b(?![-\w])/g;
+  const RE = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
   const hits: string[] = [];
   for (const file of productionOnly(files)) {
     const text = stripComments(file.text);
     for (const match of text.matchAll(RE)) {
-      hits.push(`${file.file} → ${match[1]}${match[2]}`);
+      const target = match[1] ?? '';
+      const segments = target.replaceAll('\\', '/').split('/');
+      if (segments.some((segment) => segment === 'routing-v2' || segment.startsWith('routing-v2.')))
+        hits.push(`${file.file} → ${target}`);
+    }
+  }
+  return hits;
+}
+
+/**
+ * Regel G2: kein Produktionspfad lädt den Forschungs-Kern. Der Aufrufer
+ * übergibt die Produktionsmenge; die Funktion schlägt aber auch auf jeden
+ * anderen Pfad an, damit ein späterer Umzug den Schutz nicht stillschweigend
+ * aufhebt.
+ */
+export function findResearchKernelImports(files: SourceFile[]): string[] {
+  const RE = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
+  const hits: string[] = [];
+  for (const file of files) {
+    const text = stripComments(file.text);
+    for (const match of text.matchAll(RE)) {
+      const target = match[1] ?? '';
+      const segments = target.replaceAll('\\', '/').split('/');
+      if (segments.some((segment) => segment === 'routing-core' || segment.startsWith('routing-core.')))
+        hits.push(`${file.file} → ${target}`);
     }
   }
   return hits;
