@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { autoWire, edgeCount, openPlanner, showCanvas } from './helpers';
 
-const MAX_AUTARK_ROUTING_FINDINGS = 5;
-const MAX_AUTARK_CRITICAL_FINDINGS = 3;
+const MAX_AUTARK_ROUTING_FINDINGS = 4;
+const MAX_AUTARK_CRITICAL_FINDINGS = 2;
 
 function criticalFindingCount(label: string): number {
   const match = label.match(/\b(\d+)(?:\s+von\s+\d+)?\s+kritisch\b/);
