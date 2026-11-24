@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { TEMPLATE_AUTARK } from '@/components/planner/templates';
+import { SCHALTPLAN_BEISPIEL_CONTENT } from '@/lib/seo/content/schaltplan-beispiel';
 
 import { BeispielSchaltplan } from './BeispielSchaltplan';
 
@@ -48,6 +49,27 @@ describe('BeispielSchaltplan', () => {
         );
       }
     }
+  });
+
+  it('füllt die Bauteil-Kästen mit der echten Flächenvariable (kein wirkungsloses var)', () => {
+    const { container } = render(<BeispielSchaltplan />);
+
+    // `--color-paper` existiert im Token-System nicht — die Füllung wäre
+    // wirkungslos und Leitungen schienen durch die Kästen. Quelle der
+    // Wahrheit ist `--paper` (app/globals.css, tailwind `bg-paper`).
+    const fuellGruppen = container.querySelectorAll('g[fill="var(--paper)"]');
+    expect(fuellGruppen.length).toBe(2);
+    for (const gruppe of fuellGruppen) {
+      expect(gruppe.querySelectorAll('rect').length).toBeGreaterThan(0);
+    }
+    expect(container.querySelectorAll('[fill*="--color-paper"]').length).toBe(0);
+  });
+
+  it('widerspricht der 0,2-m-Regel nicht: 0,5 m ist die Leitungslänge, nicht der Sicherungsabstand', () => {
+    const text = JSON.stringify(SCHALTPLAN_BEISPIEL_CONTENT);
+
+    expect(text).not.toContain('0,5 m hinter dem');
+    expect(text).toContain('höchstens 0,2 m ungeschützte Strecke');
   });
 
   it('beschriftet jede Leitung mit dem Querschnitt und der Sicherung der Vorlage', () => {

@@ -38,7 +38,7 @@ export const SCHALTPLAN_BEISPIEL_CONTENT: SeoPageContent = {
       id: 'kurzantwort',
       heading: 'Der Plan in einem Satz',
       body: [
-        'Drei Ladewege — Solar über MPPT-Regler, Lichtmaschine über Ladebooster, Landstrom über den Wechselrichter-Lader — laden eine 200-Ah-LiFePO4-Bordbatterie; verteilt wird über Plus- und Minus-Sammelschiene und einen Sicherungskasten auf die 12-V-Verbraucher, der 600-W-Wechselrichter versorgt den getrennten 230-V-Zweig. Jede Plusleitung ist an ihrer Quelle abgesichert, die Hauptsicherung sitzt 0,5 m hinter dem Batteriepol.',
+        'Drei Ladewege — Solar über MPPT-Regler, Lichtmaschine über Ladebooster, Landstrom über den Wechselrichter-Lader — laden eine 200-Ah-LiFePO4-Bordbatterie; verteilt wird über Plus- und Minus-Sammelschiene und einen Sicherungskasten auf die 12-V-Verbraucher, der 600-W-Wechselrichter versorgt den getrennten 230-V-Zweig. Jede Plusleitung ist an ihrer Quelle abgesichert; die Hauptsicherung sitzt polnah am Batteriepol, die Hauptleitung zur Sammelschiene ist nur 0,5 m lang.',
       ],
     },
     {
@@ -177,7 +177,7 @@ export const SCHALTPLAN_BEISPIEL_CONTENT: SeoPageContent = {
     {
       question: 'Welche Sicherung gehört an die LiFePO4-Bordbatterie?',
       answer:
-        'Im Beispielplan eine 100-A-Class-T-Sicherung in der 70-mm²-Hauptleitung, 0,5 m hinter dem Pluspol. Class T, weil LiFePO4-Batterien sehr hohe Kurzschlussströme liefern und das Abschaltvermögen der Sicherung dazu passen muss; die Lage nahe am Pol folgt der 0,2-m-Regel für ungeschützte Strecken (ISO 13297:2020 § 8.1). Die genaue Größe folgt immer der Belastbarkeit der Leitung, nicht der Batterie allein.',
+        'Im Beispielplan eine 100-A-Class-T-Sicherung in der nur 0,5 m kurzen 70-mm²-Hauptleitung, polnah am Pluspol (höchstens 0,2 m ungeschützte Strecke). Class T, weil LiFePO4-Batterien sehr hohe Kurzschlussströme liefern und das Abschaltvermögen der Sicherung dazu passen muss; die Lage nahe am Pol folgt der 0,2-m-Regel für ungeschützte Strecken (ISO 13297:2020 § 8.1). Die genaue Größe folgt immer der Belastbarkeit der Leitung, nicht der Batterie allein.',
     },
   ],
   related: [

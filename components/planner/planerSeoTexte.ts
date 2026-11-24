@@ -128,7 +128,7 @@ export const PLANER_FAQ: readonly FaqEntry[] = [
   {
     question: 'Welche Sicherungen und Massepunkte brauche ich im 12V-Schaltplan?',
     answer:
-      'Jede Plusleitung wird unmittelbar an ihrer Quelle abgesichert — die Hauptsicherung sitzt höchstens 0,2 m hinter dem Batteriepol (ISO 10133), danach schützt der Sicherungskasten die einzelnen Verbraucherkreise. Die Sicherungsgröße folgt immer der Belastbarkeit der Leitung, nicht dem Verbraucher. Alle Minusleitungen laufen über eine Minus-Sammelschiene (Busbar) und einen zentralen Massepunkt zurück zur Batterie; der Planer verdrahtet diese Rückwege bei „Automatisch verbinden“ gleich mit.',
+      'Jede Plusleitung wird unmittelbar an ihrer Quelle abgesichert — die Hauptsicherung sitzt höchstens 0,2 m hinter dem Batteriepol (ISO 13297:2020 § 8.1), danach schützt der Sicherungskasten die einzelnen Verbraucherkreise. Die Sicherungsgröße folgt immer der Belastbarkeit der Leitung, nicht dem Verbraucher. Alle Minusleitungen laufen über eine Minus-Sammelschiene (Busbar) und einen zentralen Massepunkt zurück zur Batterie; der Planer verdrahtet diese Rückwege bei „Automatisch verbinden“ gleich mit.',
   },
   {
     question: 'Für welche Fahrzeuge und Spannungen passt der Planer?',
