@@ -43,7 +43,7 @@ export type FaqEntry = {
  * (0,36 V bei 12 V, `VOLTAGE_DROP_PCT_PLAN_LIMIT`), Kupfer-Leitfähigkeit
  * κ = 58 m/(Ω·mm²) bei 20 °C (`lib/materials.ts`), Entladetiefen je Chemie
  * (`VDE_BATTERY_DOD`), Schutzorgan innerhalb von 0,2 m ab der Quelle
- * (`FUSE_MAX_UNPROTECTED_LENGTH_M`, ISO 10133:2000 §8.1).
+ * (`FUSE_MAX_UNPROTECTED_LENGTH_M`, ISO 13297:2020 §8.1).
  */
 export const ELEKTRIK_FAQ: readonly FaqEntry[] = [
   {
@@ -64,6 +64,6 @@ export const ELEKTRIK_FAQ: readonly FaqEntry[] = [
   {
     question: 'Wo muss die Sicherung in der 12-V-Anlage sitzen?',
     answer:
-      'Unmittelbar am Pluspol der Batterie, vor der ersten ungeschützten Leitungsstrecke. Der Planer prüft 0,2 m ab der Quelle (ISO 10133:2000 §8.1); DIN VDE 0100-721 verlangt den Überstromschutz nahe der Batterie, ohne eine Länge zu nennen. Die Sicherung schützt die Leitung, nicht das Gerät: Ihre Größe folgt der Belastbarkeit des Querschnitts — im Modell 70 % der Tabellenwerte nach DIN VDE 0298-4, Verlegeart B2 — und nicht dem Verbraucher.',
+      'Unmittelbar am Pluspol der Batterie, vor der ersten ungeschützten Leitungsstrecke. Der Planer prüft 0,2 m ab der Quelle (ISO 13297:2020 §8.1); DIN VDE 0100-721 verlangt den Überstromschutz nahe der Batterie, ohne eine Länge zu nennen. Die Sicherung schützt die Leitung, nicht das Gerät: Ihre Größe folgt der Belastbarkeit des Querschnitts — im Modell 70 % der Tabellenwerte nach DIN VDE 0298-4, Verlegeart B2 — und nicht dem Verbraucher.',
   },
 ];

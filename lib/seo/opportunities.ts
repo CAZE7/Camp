@@ -79,6 +79,21 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     source: 'annahme',
   },
   {
+    // Punkt 2 der KI-Sichtbarkeits-Arbeit: ein anschaubarer fertiger Plan.
+    // Antwortmaschinen zitieren für „wie sieht ein Schaltplan aus"-Fragen
+    // Seiten, auf denen ein Plan zu SEHEN ist — die Anleitung allein
+    // (`schaltplan-camper`) liefert das nicht.
+    id: 'schaltplan-beispiel-landstrom',
+    query: 'schaltplan beispiel camper landstrom lifepo4 solar',
+    intent: 'planung',
+    page: '/camper-elektrik/schaltplan-beispiel/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
     // Die Anwendungsroute (`/planer/`) bedient die Zeichnen-Intention; die
     // Wissensroute (`/elektrik-planung/`) darunter bleibt für „Planer online"
     // mit Rechner und Normtext zuständig (siehe Eintrag `elektroplaner`).

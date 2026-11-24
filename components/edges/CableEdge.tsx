@@ -348,7 +348,7 @@ export const collectEdgeErrors = (input: {
       }
     }
     // 20-cm-Regel (FUSE_MAX_UNPROTECTED_LENGTH_M, Normverankerung in
-    // lib/electrical.ts: ISO 10133:2000 §8.1 = 200 mm; ABYC E-11 = 178 mm)
+    // lib/electrical.ts: ISO 13297:2020 §8.1 = 200 mm; ABYC E-11 = 178 mm)
     // gilt für die Lage der Sicherung am Batteriepol — unabhängig von der
     // Flussrichtung der Kante. Ist die Leitung bereits abgesichert, gilt die
     // Sicherung als am Pol sitzend; die Strecke danach (z. B.

@@ -307,7 +307,7 @@ export function EdgeInspector({
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen — ungeschützte Strecke ≤ 0,2 m
-                (ISO 10133:2000 §8.1 = 200 mm; ABYC E-11: 7 in = 178 mm).
+                (ISO 13297:2020 §8.1 = 200 mm; ABYC E-11: 7 in = 178 mm).
               </p>
             </div>
           )}

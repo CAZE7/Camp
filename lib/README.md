@@ -41,7 +41,7 @@ lib/id.ts               kollisionsarme IDs ohne Secure-Context
 | `calculateCrossSection`, `lookupThermalCrossSection`                                                           | `electrical.ts`      | Querschnitt                             |
 | `selectFuseSize`, `calculateMaxFuse`, `maxFuseForDisplay`, `isFuseFeasible`                                    | `electrical.ts`      | Sicherung                               |
 | `getEdgeDomain`, `getHandleDomain`                                                                             | `electrical.ts`      | Domänenzuordnung (**eine** Quelle)      |
-| `FUSE_MAX_UNPROTECTED_LENGTH_M`                                                                                | `electrical.ts`      | 20-cm-Regel (ISO 10133:2000 §8.1)       |
+| `FUSE_MAX_UNPROTECTED_LENGTH_M`                                                                                | `electrical.ts`      | 20-cm-Regel (ISO 13297:2020 §8.1)       |
 | `calculateConduitFillPercent`, `recommendConduitType`                                                          | `vde-standards.ts`   | Leerrohr (40 %)                         |
 | `solarDesignCurrentOf`, `solarFuseFloorOf`, `solarColdVocOf`, `stringColdVocOf`                                | `solar.ts`           | Solar-Kennwerte                         |
 | `bankShortCircuitCurrentA`, `shortCircuitAtFuseA`, `breakingCapacityAOf`                                       | `shortCircuit.ts`    | Kurzschluss/Abschaltvermögen            |

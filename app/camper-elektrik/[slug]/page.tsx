@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { metadataFor } from '@/app/seoMetadata';
+import { BeispielSchaltplan } from '@/components/seo/BeispielSchaltplan';
 import { LadeboosterVergleich } from '@/components/seo/LadeboosterVergleich';
 import { SeoPage } from '@/components/seo/SeoPage';
 import { itemListNode } from '@/lib/seo/jsonLd';
@@ -85,7 +86,16 @@ export default async function Themenseite({ params }: { params: Promise<{ slug: 
   return (
     <SeoPage
       page={page}
-      afterHeader={slug === 'ladebooster' ? <LadeboosterVergleich /> : null}
+      afterHeader={
+        slug === 'ladebooster' ? (
+          <LadeboosterVergleich />
+        ) : slug === 'schaltplan-beispiel' ? (
+          // Der anschaubare Plan gehört direkt unter die Einleitung: Die
+          // Seite verspricht einen fertigen Schaltplan zum Ansehen — wer
+          // erst fünf Abschnitte lesen muss, findet ihn nicht.
+          <BeispielSchaltplan />
+        ) : null
+      }
       extraJsonLdNodes={ranglisteKnoten}
     />
   );

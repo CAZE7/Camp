@@ -138,6 +138,11 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage im Camper' },
+    {
+      href: '/camper-elektrik/schaltplan-beispiel/',
+      label: 'Beispiel-Schaltplan mit Landstrom, LiFePO4 und Solar',
+      description: 'Ein fertiger Plan zum Ansehen — mit Querschnitten, Sicherungen und „im Planer öffnen".',
+    },
     { href: '/planer/', label: 'kostenlosen Camper-Schaltplan erstellen' },
     { href: '/guides/ausbau-fahrplan/', label: 'Reihenfolge der Gewerke' },
   ],

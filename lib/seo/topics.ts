@@ -144,6 +144,15 @@ export const TOPICS: readonly Topic[] = [
     summary: 'Vom Aufbau des Plans bis zur Stückliste — und wie daraus die Verdrahtung wird.',
   },
   {
+    id: 'schaltplan-beispiel',
+    label: 'Beispiel-Schaltplan',
+    parent: 'schaltplan',
+    path: '/camper-elektrik/schaltplan-beispiel/',
+    role: 'cluster',
+    summary:
+      'Ein fertiger Plan zum Ansehen: Landstrom, 200 Ah LiFePO4 und 400 W Solar — mit Querschnitten und Sicherungen, im Planer zu öffnen.',
+  },
+  {
     id: 'stromverbrauch',
     label: 'Stromverbrauch',
     parent: 'camper-elektrik',

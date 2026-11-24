@@ -22,6 +22,7 @@ import { MPPT_CONTENT } from './mppt';
 import { CAMPER_ELEKTRIK_PILLAR } from './pillar';
 import { RECHNER_HUB_CONTENT } from './rechner-hub';
 import { SCHALTPLAN_CONTENT } from './schaltplan';
+import { SCHALTPLAN_BEISPIEL_CONTENT } from './schaltplan-beispiel';
 import { SICHERUNGEN_CONTENT } from './sicherungen';
 import { SOLARANLAGE_CONTENT } from './solaranlage';
 import { SOLAR_CONTENT } from './solar';
@@ -47,6 +48,7 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   WECHSELRICHTER_CONTENT,
   AC_230V_CONTENT,
   SCHALTPLAN_CONTENT,
+  SCHALTPLAN_BEISPIEL_CONTENT,
   RECHNER_HUB_CONTENT,
   SPANNUNGSABFALL_12V_CONTENT,
   BATTERIEKAPAZITAET_CONTENT,

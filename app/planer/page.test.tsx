@@ -88,6 +88,22 @@ describe('Planer-Seite', () => {
     }
   });
 
+  it('beantwortet „Was ist der 12V-Planer?" als ersten Textblock — zitierfähig und abgegrenzt', () => {
+    render(<PlanerSeite />);
+
+    // Der direkte Antwortabsatz steht vor Anleitung und FAQ: Er ist der
+    // Text, den Antwortmaschinen als Zitat übernehmen sollen.
+    expect(screen.getByRole('heading', { name: 'Der 12V-Planer auf einen Blick' })).toBeInTheDocument();
+    expect(screen.getByText(/ist ein kostenloser Online-Planer für Camper-Schaltpläne/)).toBeInTheDocument();
+    // Früherer Name und Fremdangebot stehen ausdrücklich im Text, damit
+    // keine Antwortmaschine die beiden Angebote vermischt.
+    expect(screen.getAllByText(/früher Elektroplaner Camper/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/camper-elektrik-planer\.de/).length).toBeGreaterThanOrEqual(2);
+    // Anschaubarer Beispiel-Schaltplan ist von hier aus erreichbar.
+    const links = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
+    expect(links).toContain('/camper-elektrik/schaltplan-beispiel/');
+  });
+
   it('verlinkt die drei Vorlagen als Deep-Links in den Planer', () => {
     render(<PlanerSeite />);
 

@@ -157,6 +157,11 @@ export const AC_230V_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/wechselrichter/', label: 'Wechselrichter auslegen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
+    {
+      href: '/camper-elektrik/schaltplan-beispiel/',
+      label: 'Beispiel-Schaltplan mit Landstrom ansehen',
+      description: 'Ein fertiger Plan mit Landstrom, LiFePO4 und Solar — zum Ansehen und im Planer öffnen.',
+    },
     { href: '/planer/', label: '12V-Planer öffnen' },
     { href: '/ueber-12v-planer/', label: 'Über 12V-Planer: Grenzen des Modells' },
   ],

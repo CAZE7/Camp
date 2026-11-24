@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { RechnerLeiste } from '@/components/seo/RechnerLeiste';
 import { pageByPath } from '@/lib/seo/inventory';
 
-import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_SCHRITTE } from './planerSeoTexte';
+import { PLANER_FAQ, PLANER_FUNKTIONEN, PLANER_KURZANTWORT, PLANER_SCHRITTE } from './planerSeoTexte';
 import { PLANNER_TEMPLATES } from './templates';
 
 /**
@@ -76,6 +76,30 @@ export function PlanerSeoContent() {
             </li>
           </ol>
         </nav>
+
+        {/* Die direkte Antwort als erster Textblock der Seite: ein Absatz,
+            der ohne Zusammenhang zitierbar ist („Was ist der 12V-Planer?"),
+            früherer Name und Abgrenzung inklusive. Er steht bewusst VOR der
+            Anleitung — was weiter unten steht, wird von Antwortmaschinen
+            seltener übernommen. Der Link führt zum anschaubaren
+            Beispiel-Schaltplan (Punkt 2 der KI-Sichtbarkeits-Arbeit). */}
+        <section aria-labelledby="planer-kurzantwort-titel">
+          <h2 id="planer-kurzantwort-titel" className="font-display text-2xl font-semibold tracking-tight">
+            Der 12V-Planer auf einen Blick
+          </h2>
+          <p className="mt-3 max-w-3xl leading-relaxed">{PLANER_KURZANTWORT}</p>
+          <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+            Wie ein fertiger Plan aussieht, zeigt der{' '}
+            <Link
+              href="/camper-elektrik/schaltplan-beispiel/"
+              className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
+            >
+              Beispiel-Schaltplan mit Landstrom, LiFePO4 und Solar
+            </Link>{' '}
+            — mit allen Querschnitten, Leitungslängen und Sicherungen und einer Schaltfläche, die genau diesen
+            Plan oben im Planer öffnet.
+          </p>
+        </section>
 
         <section aria-labelledby="planer-anleitung-titel">
           <h2 id="planer-anleitung-titel" className="font-display text-2xl font-semibold tracking-tight">
