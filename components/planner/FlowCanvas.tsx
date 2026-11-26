@@ -41,6 +41,7 @@ import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer, useMediaQuery } from './hooks/useMediaCapabilities';
 import { usePlannerDarkMode } from './hooks/usePlannerTheme';
 import { useSaveFailure } from './hooks/useSaveFailure';
+import type { PlannerHandoff } from '../../lib/handoff';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
 import {
   getFlowInteractionProps,
@@ -366,13 +367,62 @@ export function FlowCanvas() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [collidingNodeId, setCollidingNodeId] = useState<string | null>(null);
   const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
-  /**
-   * Hinweis „Dachplaner-Daten erkannt“ (Designkonzept 2026-10, Regel 6):
-   * Das war ein Dauerpanel über der Zeichenfläche — auf dem Telefon lag es
-   * über den Trassen und blieb stehen, auch wenn man es gelesen hatte. Jetzt
-   * ein Hinweis mit Schließen, der die Fläche freigibt.
-   */
   const [solarNoticeDismissed, setSolarNoticeDismissed] = useState(false);
+
+  /**
+   * R8-08: Werte aus Dach-Planer oder Rechnern in den Plan überführen.
+   * Der bisherige Hinweis „Daten erkannt“ blieb folgenlos (der Plan behielt
+   * seine Solarleistung). Hier wird das erste Solarmodul — sonst neu
+   * angelegt und verdrahtet — auf den übergebenen Wert gesetzt.
+   */
+  const applyHandoff = React.useCallback((werte: PlannerHandoff) => {
+    const state = usePlannerStore.getState();
+    const quelle = werte.quelle ?? 'Rechner';
+    if (state.viewMode !== 'electric') {
+      setConnectionFeedback('Wechsle zuerst in die Elektrik-Ansicht, dann übernehmen wir die Werte.');
+      return;
+    }
+    const zahlen: string[] = [];
+    if (werte.solarWatts !== undefined) {
+      const modul = state.nodes.find((node) => node.type === 'solar');
+      if (modul) {
+        state.updateNodeData(modul.id, { watts: werte.solarWatts });
+        zahlen.push(`Solarmodul auf ${werte.solarWatts} Wp gesetzt`);
+      } else {
+        const bekannteIds = new Set(state.nodes.map((node) => node.id));
+        window.dispatchEvent(
+          new CustomEvent('planner-add-at-canvas-center', {
+            detail: { type: 'solar', label: 'Solarmodul', watts: werte.solarWatts },
+          })
+        );
+        const aktuell = usePlannerStore.getState();
+        const neues = aktuell.nodes.find((node) => node.type === 'solar' && !bekannteIds.has(node.id));
+        if (neues) {
+          aktuell.updateNodeData(neues.id, { watts: werte.solarWatts });
+          void aktuell.autoWireSystem();
+        }
+        zahlen.push(`Solarmodul ${werte.solarWatts} Wp angelegt`);
+      }
+    }
+    if (werte.batteryAh !== undefined || werte.batteryVoltage !== undefined) {
+      const batterie = state.nodes.find((node) => node.type === 'battery');
+      if (batterie) {
+        if (werte.batteryAh !== undefined) {
+          state.updateNodeData(batterie.id, { capacity: werte.batteryAh });
+          zahlen.push(`Bordbatterie auf ${werte.batteryAh} Ah gesetzt`);
+        }
+        if (werte.batteryVoltage !== undefined) {
+          state.updateNodeData(batterie.id, { nominalVoltage: werte.batteryVoltage });
+        }
+      }
+    }
+    setConnectionFeedback(
+      zahlen.length > 0
+        ? `${zahlen.join(', ')} (aus ${quelle}) übernommen.`
+        : 'Im Plan ließ sich nichts übernehmen.'
+    );
+  }, []);
+
   const connectionAttempt = useRef(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -444,13 +494,19 @@ export function FlowCanvas() {
         );
       }
     };
+    const handleHandoff = (event: Event) => {
+      const detail = (event as CustomEvent<PlannerHandoff>).detail;
+      if (detail) applyHandoff(detail);
+    };
+    window.addEventListener('planner-handoff', handleHandoff);
     window.addEventListener('planner-fit-view', handleFitView);
     window.addEventListener('planner-focus-element', handleFocusElement);
     return () => {
+      window.removeEventListener('planner-handoff', handleHandoff);
       window.removeEventListener('planner-fit-view', handleFitView);
       window.removeEventListener('planner-focus-element', handleFocusElement);
     };
-  }, [fitView, getNode, setCenter, fitMinZoom, fitPanelPadding]);
+  }, [fitView, getNode, setCenter, fitMinZoom, fitPanelPadding, applyHandoff]);
 
   const {
     viewMode,
@@ -1205,7 +1261,17 @@ export function FlowCanvas() {
               beantwortet, welche Frage gerade bearbeitet wird. */}
             {viewMode === 'electric' && (
               <Panel position="top-center" className="planner-mode-switch-panel m-2 sm:m-3">
-                <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
+                <PlannerModeSwitch
+                  mode={plannerMode}
+                  onSelect={(mode) => {
+                    setPlannerMode(mode);
+                    // R8-09: Der Pruefmodus fuehrt sichtbar zu den Befunden:
+                    // Gesamtuebersicht statt unveraenderter Ausschnitt.
+                    if (mode === 'pruefung') {
+                      window.dispatchEvent(new CustomEvent('planner-fit-view', { detail: { full: true } }));
+                    }
+                  }}
+                />
                 {/* Nachtest Bug 16: Der aktive Modus erklärt sich sichtbar —
                     vorher wechselten die Knöpfe ohne erkennbaren Effekt. */}
                 <p
@@ -1277,8 +1343,17 @@ export function FlowCanvas() {
                 <div role="status" className="flex items-start gap-2">
                   <p className="min-w-0">
                     <strong className="font-semibold">Dachplaner-Daten erkannt:</strong>{' '}
-                    {calculatedSolarWatts} W Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür
-                    passend dimensioniert sein.
+                    {calculatedSolarWatts} W Solarleistung verfügbar.{' '}
+                    <button
+                      type="button"
+                      data-testid="handoff-apply-solar"
+                      onClick={() =>
+                        applyHandoff({ solarWatts: calculatedSolarWatts, quelle: 'Dach-Planer' })
+                      }
+                      className="font-semibold text-ink underline underline-offset-2 hover:text-copper"
+                    >
+                      Solarleistung {calculatedSolarWatts} Wp in den Plan übernehmen
+                    </button>
                   </p>
                   <button
                     type="button"

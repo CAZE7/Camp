@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { plannerHandoffHref } from '../../lib/handoff';
 
 import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
@@ -222,6 +223,15 @@ export function SolaranlageRechner() {
             <p className="caption-xs text-ink-soft">
               Keine Standortprognose: Neigung, Ausrichtung und Schattenwurf sind über den Abschlag einzugeben.
             </p>
+            <a
+              href={plannerHandoffHref({
+                solarWatts: state.result.recommendedPeakWatts,
+                quelle: 'Solarrechner',
+              })}
+              className="btn-primary inline-flex min-h-11 items-center px-4"
+            >
+              {format(state.result.recommendedPeakWatts, 0)} Wp in den Plan übernehmen
+            </a>
           </div>
         )}
       </div>

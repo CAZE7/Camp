@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppStore } from '../../../lib/store';
+import { isValidHandoff, type PlannerHandoff } from '../../../lib/handoff';
 import { requestConfirm } from '../../ui/ConfirmDialog';
 import { decodeSharePlan } from '../../../store/sharePlan';
 import { usePlannerStore } from '../../../store/usePlannerStore';
@@ -61,9 +62,10 @@ export function buildCleanEntryUrl(location: Pick<Location, 'pathname' | 'search
   const nextSearch = searchParams.toString();
 
   let nextHash = location.hash;
-  if (nextHash.includes('plan=')) {
+  if (nextHash.includes('plan=') || nextHash.includes('uebernahme=')) {
     const hashParams = new URLSearchParams(nextHash.startsWith('#') ? nextHash.slice(1) : nextHash);
     hashParams.delete('plan');
+    hashParams.delete('uebernahme');
     const rest = hashParams.toString();
     nextHash = rest ? `#${rest}` : '';
   }
@@ -167,6 +169,31 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
       window.history.replaceState(null, '', buildCleanEntryUrl(window.location));
     };
 
+    // R8-08: Werte-Uebergabe aus Rechnern/Dach-Planer (#uebernahme=…).
+    // Geparst wird sofort, angewendet erst, wenn der Einstiegsplan steht.
+    const leseHandoff = (): PlannerHandoff | null => {
+      const treffer = /#uebernahme=([^&]+)/.exec(window.location.hash);
+      if (!treffer?.[1]) return null;
+      try {
+        const werte = JSON.parse(decodeURIComponent(treffer[1])) as PlannerHandoff;
+        return isValidHandoff(werte) ? werte : null;
+      } catch {
+        return null;
+      }
+    };
+    const handoff = leseHandoff();
+    const wendeHandoffAn = () => {
+      if (!handoff) return;
+      window.setTimeout(() => {
+        if (!alive) return;
+        window.dispatchEvent(new CustomEvent('planner-handoff', { detail: handoff }));
+        setNotice({
+          type: 'success',
+          message: `Werte aus dem ${handoff.quelle ?? 'Rechner'} wurden in den Plan übernommen.`,
+        });
+      }, 350);
+    };
+
     const loadSharedPlan = async (): Promise<boolean> => {
       if (!window.location.hash.includes('plan=')) return false;
       const result = await decodeSharePlan(window.location.hash);
@@ -219,7 +246,10 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
     };
 
     void (async () => {
-      if (await loadSharedPlan()) return;
+      if (await loadSharedPlan()) {
+        wendeHandoffAn();
+        return;
+      }
 
       const rawTemplateParam = new URLSearchParams(window.location.search).get('template');
       const templateId = templateIdFromSearch(window.location.search);
@@ -237,6 +267,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
           });
         }
         clearEntryFromUrl();
+        wendeHandoffAn();
         return;
       }
 
@@ -283,6 +314,7 @@ export function usePlannerEntryPlan(): { notice: EntryPlanNotice; dismissNotice:
             'Beispiel geladen: klassisches Kastenwagen-Setup (100 Ah LiFePO4, 200 W Solar, 30 A Ladebooster). Werte anklicken und anpassen — oder oben über „Vorlage laden“ neu starten.',
         });
       }
+      wendeHandoffAn();
     })();
     return () => {
       alive = false;

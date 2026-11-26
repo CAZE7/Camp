@@ -1,5 +1,6 @@
 'use client';
 
+import { plannerHrefWithCalculatedSolarWatts } from '../../../lib/handoff';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
@@ -85,6 +86,8 @@ function DachPlanerInner() {
     onNodeResize,
     applyDachState,
   } = useDachNodes(selectedVehicle);
+  const dachPlanerHref =
+    totalRoofSolarWatts > 0 ? plannerHrefWithCalculatedSolarWatts(totalRoofSolarWatts) : '/planer';
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
@@ -313,10 +316,12 @@ function DachPlanerInner() {
               Link kopieren
             </Button>
             <Link
-              href="/planer"
+              href={dachPlanerHref}
               className={cn(buttonVariants({ variant: 'default' }), 'hidden sm:inline-flex')}
             >
-              Im Schaltplan öffnen
+              {totalRoofSolarWatts > 0
+                ? `Mit ${totalRoofSolarWatts} Wp im Schaltplan öffnen`
+                : 'Im Schaltplan öffnen'}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -524,8 +529,10 @@ function DachPlanerInner() {
               <Link2 className="h-4 w-4" aria-hidden="true" />
               Link kopieren
             </Button>
-            <Link href="/planer" className={cn(buttonVariants({ variant: 'default' }), 'flex')}>
-              Im Schaltplan öffnen
+            <Link href={dachPlanerHref} className={cn(buttonVariants({ variant: 'default' }), 'flex')}>
+              {totalRoofSolarWatts > 0
+                ? `Mit ${totalRoofSolarWatts} Wp im Schaltplan öffnen`
+                : 'Im Schaltplan öffnen'}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>

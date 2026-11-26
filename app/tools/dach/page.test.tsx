@@ -173,7 +173,7 @@ describe('DachPlanerPage', () => {
     // Since our mock `useNodesState` utilizes standard React.useState, dropping a new node via `onDrop`
     // updates the state array.
     // Wait for the DOM to update the total watts (200W initial + 200W added = 400W).
-    expect(await screen.findByText(/400 W/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/400 W/i)).length).toBeGreaterThan(0);
 
     const store = useAppStore();
     expect(store.setCalculatedSolarWatts).toHaveBeenCalledWith(400);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { plannerHandoffHref } from '../../lib/handoff';
 
 import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';
@@ -236,6 +237,16 @@ export function BatteriekapazitaetRechner() {
             <p className="caption-xs text-ink-soft">
               Ergebnis ohne Alterungs- und Temperaturmodell; die Reserve ist oben einstellbar.
             </p>
+            <a
+              href={plannerHandoffHref({
+                batteryAh: state.result.recommendedNominalAh,
+                batteryVoltage: Number(voltage) === 24 ? 24 : 12,
+                quelle: 'Batterierechner',
+              })}
+              className="btn-primary inline-flex min-h-11 items-center px-4"
+            >
+              {format(state.result.recommendedNominalAh, 0)} Ah in den Plan übernehmen
+            </a>
           </div>
         )}
       </div>
