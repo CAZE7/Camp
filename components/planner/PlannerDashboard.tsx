@@ -276,9 +276,25 @@ export function PlannerDashboard() {
     const onSave = () =>
       setFeedback({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
     const onActionFeedback = (event: Event) => {
-      const detail = (event as CustomEvent<{ type?: 'success' | 'error' | 'info'; message?: string }>).detail;
+      const detail = (
+        event as CustomEvent<{
+          type?: 'success' | 'error' | 'info';
+          message?: string;
+          actionLabel?: string;
+          action?: string;
+        }>
+      ).detail;
       if (!detail?.message) return;
-      setFeedback({ type: detail.type ?? 'info', message: detail.message });
+      setFeedback({
+        type: detail.type ?? 'info',
+        message: detail.message,
+        ...(detail.action === 'undo'
+          ? {
+              actionLabel: detail.actionLabel ?? 'Rückgängig',
+              onAction: () => usePlannerStore.getState().undo(),
+            }
+          : {}),
+      });
     };
     window.addEventListener('planner-save', onSave);
     window.addEventListener('planner-action-feedback', onActionFeedback);

@@ -629,7 +629,14 @@ export function FlowCanvas() {
       };
       const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
       const position = findNearestFreePosition({ ...candidate, position: initialPosition }, domainNodes);
+      const idsVorher = new Set(domainNodes.map((node) => node.id));
       state.addNode(type, label, position, watts);
+      // R8-13: Das neue Bauteil wird markiert (Auswahl-Ring), damit man
+      // sieht, wo es gelandet ist — vorher meldete nur der Toast darüber.
+      const neues = usePlannerStore
+        .getState()
+        .nodes.find((node) => !idsVorher.has(node.id) && node.type === type);
+      if (neues) usePlannerStore.getState().setSelectedNodes([neues as never]);
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
 
       // `findNearestFreePosition` weicht belegten Flächen aus und darf den
@@ -1281,18 +1288,30 @@ export function FlowCanvas() {
         </div>
       </DesignatorContext.Provider>
 
+      {/* R8-13: Die Rückmeldung sitzt an der Fußleiste statt mitten über
+          dem Plan; im Verbinden-Modus (R8-05) ist sie ein sichtbarer
+          Abbrechen-Chip statt nur ein Hinweis-Satz. */}
       <div
-        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-overlay w-11/12 -translate-x-1/2 text-center md:bottom-6"
+        className="planner-mobile-feedback pointer-events-none absolute bottom-2 left-1/2 z-overlay w-11/12 -translate-x-1/2 text-center"
         aria-live="polite"
         role="status"
       >
-        {(firstTappedHandle || connectionFeedback) && (
-          <span className="inline-block border border-rule-strong bg-ink px-3 py-2 text-sm text-paper">
-            {firstTappedHandle
-              ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.'
-              : connectionFeedback}
+        {firstTappedHandle ? (
+          <span className="pointer-events-auto inline-flex items-center gap-2 border border-rule-strong bg-ink px-3 py-2 text-sm text-paper">
+            Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss.
+            <button
+              type="button"
+              onClick={() => usePlannerStore.getState().setFirstTappedHandle(null)}
+              className="min-h-8 rounded border border-paper/50 px-2 font-semibold hover:bg-paper/10"
+            >
+              Abbrechen
+            </button>
           </span>
-        )}
+        ) : connectionFeedback ? (
+          <span className="inline-block border border-rule-strong bg-ink px-3 py-2 text-sm text-paper">
+            {connectionFeedback}
+          </span>
+        ) : null}
       </div>
 
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}

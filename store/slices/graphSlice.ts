@@ -1227,6 +1227,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         withHistory(state, {
           nodes: templateNodes,
           edges: templateEdges,
+          // R8-05: Ein Vorlagenwechsel beendet den Verbinden-Modus — der
+          // gewählte Anschluss existiert im neuen Plan gar nicht mehr.
+          firstTappedHandle: null,
           // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
           // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
           // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).

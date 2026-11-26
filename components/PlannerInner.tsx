@@ -15,7 +15,7 @@ import { PlannerCrashFallback } from './planner/ui/PlannerCrashFallback';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
-import { ConfirmDialogHost, requestConfirm } from './ui/ConfirmDialog';
+import { ConfirmDialogHost } from './ui/ConfirmDialog';
 import { CanvasSkeleton } from './ui/Skeleton';
 import {
   Frame,
@@ -210,6 +210,13 @@ function PlannerShell() {
           state.setFocusMode(false);
           return;
         }
+        // R8-05: Esc bricht zuerst den Verbinden-Modus ab (vorher blieb
+        // „Erster Anschluss gewählt“ nach Esc und sogar nach einem
+        // Vorlagenwechsel stehen; nur ein Klick ins Leere half).
+        if (state.firstTappedHandle) {
+          state.setFirstTappedHandle(null);
+          return;
+        }
         // Escape hebt zuerst die Auswahl auf (Standard-Bedeutung). Der
         // Inspector schließt dadurch auf allen Geräteklassen über den
         // Auswahl-Effekt — die dritte Spalte selbst bleibt am Desktop als
@@ -217,15 +224,32 @@ function PlannerShell() {
         state.setSelectedNodes([]);
         state.setSelectedEdges([]);
         state.setInspectorOpen(false);
+        // R8-11: Nach dem Abwählen landet der Fokus auf der Zeichenfläche
+        // statt am Seitenanfang (BODY) — Tastatur-Nutzer sind dann weg.
+        document
+          .querySelector<HTMLElement>('[data-testid="planner-canvas-column"]')
+          ?.focus({ preventScroll: true });
       } else if (event.key === 'Delete' || event.key === 'Backspace') {
         const state = usePlannerStore.getState();
         if (state.selectedNodes.length > 0 || state.selectedEdges.length > 0) {
           event.preventDefault();
-          void requestConfirm(
-            'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
-          ).then((ok) => {
-            if (ok) usePlannerStore.getState().deleteSelected();
-          });
+          // R8-12: Löschen braucht keine doppelte Hürde (Bestätigung UND
+          // Undo). Direkt löschen, danach Toast mit „Rückgängig“.
+          const labels = [
+            ...state.selectedNodes.map((node) => node.data?.label || node.type || 'Bauteil'),
+            ...state.selectedEdges.map(() => 'Leitung'),
+          ];
+          usePlannerStore.getState().deleteSelected();
+          window.dispatchEvent(
+            new CustomEvent('planner-action-feedback', {
+              detail: {
+                type: 'info',
+                message: `Gelöscht: ${labels.slice(0, 3).join(', ')}${labels.length > 3 ? ` und ${labels.length - 3} weitere` : ''}.`,
+                actionLabel: 'Rückgängig',
+                action: 'undo',
+              },
+            })
+          );
         }
       }
     };
@@ -385,7 +409,8 @@ function PlannerShell() {
             Handys zeichnen, die eine Ebene höher liegen. */}
         <div
           data-testid="planner-canvas-column"
-          className="isolate flex min-h-0 min-w-0 flex-1 flex-col xl:min-w-[600px]"
+          tabIndex={-1}
+          className="isolate flex min-h-0 min-w-0 flex-1 flex-col outline-none xl:min-w-[600px]"
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {/* Einstiegs-Meldung in derselben Stapel-Ebene wie die Zeichenfläche.

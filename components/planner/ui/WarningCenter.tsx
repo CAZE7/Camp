@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   AlertCircle,
@@ -529,6 +529,14 @@ export function WarningCenter({ warnings, onFix, onConnectNode, includeRouting =
   const [expandedRuleGroups, setExpandedRuleGroups] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // R8-11: Schließen per Esc gibt den Fokus an den Auslöser zurück —
+  // vorher sprang er an den Seitenanfang (BODY).
+  const closeWithFocusReturn = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
+  }, []);
   const sorted = useMemo(
     () => [...warnings].sort((a, b) => SEVERITY_ORDER[a.type] - SEVERITY_ORDER[b.type]),
     [warnings]
@@ -630,7 +638,7 @@ export function WarningCenter({ warnings, onFix, onConnectNode, includeRouting =
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      setOpen(false);
+      closeWithFocusReturn();
     };
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey, true);
@@ -638,7 +646,7 @@ export function WarningCenter({ warnings, onFix, onConnectNode, includeRouting =
       document.removeEventListener('mousedown', onClick);
       document.removeEventListener('keydown', onKey, true);
     };
-  }, [open]);
+  }, [open, closeWithFocusReturn]);
 
   // A6 (Screenreader): Die Live-Region steht VOR den Verzweigungen. Vorher
   // mountete sie erst hinter dem Early-Return für „keine Hinweise“ — ein neu
@@ -707,6 +715,7 @@ export function WarningCenter({ warnings, onFix, onConnectNode, includeRouting =
     <div className="de-warning-center relative" ref={containerRef}>
       {liveRegion}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
