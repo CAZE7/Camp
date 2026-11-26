@@ -148,3 +148,12 @@ describe('Werkzeugleiste — genau eine Automatikaktion', () => {
     expect(name).toContain('nur im Elektrikplan verfügbar');
   });
 });
+
+describe('Rückweg zum Dach-Planer', () => {
+  it('verlinkt aus der Werkzeugleiste auf /tools/dach', () => {
+    renderToolbar();
+    const link = screen.getByTestId('action-roof-planner');
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('/tools/dach');
+  });
+});

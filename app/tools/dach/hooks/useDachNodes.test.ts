@@ -183,3 +183,48 @@ describe('useDachNodes', () => {
     expect(node?.data.isInvalid).toBe(true);
   });
 });
+
+describe('useDachNodes applyDachState (Wiederherstellen)', () => {
+  it('lehnt einen Stand für ein anderes Fahrzeug ab', () => {
+    const { result } = renderHook(() => useDachNodes(mockVehicle));
+    const ok = result.current.applyDachState({ version: 1, vehicleId: 'anderes-fahrzeug', nodes: [] });
+    expect(ok).toBe(false);
+    expect(result.current.nodes).toHaveLength(2);
+  });
+
+  it('stellt Elemente mit Position, Größe und Watt wieder her', () => {
+    const { result } = renderHook(() => useDachNodes(mockVehicle));
+    let ok = false;
+    act(() => {
+      ok = result.current.applyDachState({
+        version: 1,
+        vehicleId: mockVehicle.id,
+        nodes: [
+          {
+            id: 'roofSolar-9',
+            type: 'roofSolar',
+            position: { x: 40, y: 100 },
+            width: 200,
+            height: 120,
+            data: { label: 'Solarpanel', watts: 350, width: 100, height: 60 },
+          },
+          {
+            id: 'roofWindow-9',
+            type: 'roofWindow',
+            position: { x: 40, y: 40 },
+            width: 80,
+            height: 80,
+            data: { label: 'Dachfenster', width: 40, height: 40 },
+          },
+        ],
+      });
+    });
+    expect(ok).toBe(true);
+    expect(result.current.nodes).toHaveLength(3);
+    const solar = result.current.nodes.find((n) => n.id === 'roofSolar-9');
+    expect(solar?.position).toEqual({ x: 40, y: 100 });
+    expect(solar?.data.watts).toBe(350);
+    expect(typeof solar?.data.onNodeResize).toBe('function');
+    expect(result.current.totalRoofSolarWatts).toBe(350);
+  });
+});

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   type Node,
   type NodeChange,
@@ -9,6 +9,7 @@ import {
 import { type OnNodeResize, type RoofNodeData } from '@/components/nodes/types';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 import { SAFE_MARGINS, validateRoofNodes } from '../validation';
+import { saveDachState, serializeDachState, type DachPlanState } from '../dachState';
 import { useAppStore } from '@/lib/store';
 
 export function useDachNodes(selectedVehicle: VehicleTemplate) {
@@ -184,6 +185,54 @@ export function useDachNodes(selectedVehicle: VehicleTemplate) {
     [selectedNode, setNodes, validateNodes]
   );
 
+  /*
+   * Persistenz: Die Anordnung überlebt den Wechsel in den Schaltplan und
+   * zurück (früher blieb nur die Watt-Summe im globalen Store, das Dach
+   * selbst war danach leer). Gespeichert wird erst, wenn der Stand des
+   * aktuellen Fahrzeugs „gesetzt" ist: Der erste Effektlauf nach Mount
+   * oder Fahrzeugwechsel gehört dem Zurücksetzen auf die Startanordnung
+   * bzw. dem Anwenden eines wiederhergestellten Stands — ihn zu speichern
+   * würde den geretteten Stand mit dem Startzustand überschreiben.
+   */
+  const persistArmedRef = useRef(false);
+  useEffect(() => {
+    persistArmedRef.current = false;
+  }, [selectedVehicle.id]);
+  useEffect(() => {
+    if (!persistArmedRef.current) {
+      persistArmedRef.current = true;
+      return;
+    }
+    saveDachState(serializeDachState(selectedVehicle.id, nodes));
+  }, [nodes, selectedVehicle.id]);
+
+  /**
+   * Einen gespeicherten oder per Link geteilten Stand anwenden. Die
+   * Hintergrundfläche kommt immer frisch aus der Fahrzeugvorlage (Maße!),
+   * die platzierten Elemente erhalten Callback und Prüfvermerke neu.
+   * Fremde Fahrzeugstände lehnt die Funktion ab — der Aufrufer stellt
+   * vorher das Fahrzeug um.
+   */
+  const applyDachState = useCallback(
+    (state: DachPlanState): boolean => {
+      if (state.vehicleId !== selectedVehicle.id) return false;
+      const background = initialNodes[0];
+      if (!background) return false;
+      const restored: Node<RoofNodeData>[] = state.nodes.map((saved) => ({
+        id: saved.id,
+        type: saved.type,
+        position: saved.position,
+        width: saved.width,
+        height: saved.height,
+        style: { width: saved.width, height: saved.height },
+        data: { ...saved.data, onNodeResize },
+      }));
+      setNodes(validateNodes([background, ...restored]));
+      return true;
+    },
+    [initialNodes, onNodeResize, selectedVehicle.id, setNodes, validateNodes]
+  );
+
   const totalRoofSolarWatts = useMemo(() => {
     let total = 0;
     for (const n of nodes) {
@@ -210,5 +259,6 @@ export function useDachNodes(selectedVehicle: VehicleTemplate) {
     totalRoofSolarWatts,
     validateNodes,
     onNodeResize,
+    applyDachState,
   };
 }

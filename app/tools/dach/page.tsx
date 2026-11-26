@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -18,7 +18,15 @@ import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { withBauteilAria } from '@/components/planner/utils/bauteilAria';
 import { PageShell } from '@/components/brand/PageShell';
-import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
+import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon, Camera, Link2 } from 'lucide-react';
+import {
+  buildDachShareUrl,
+  loadDachState,
+  parseDachShareHash,
+  serializeDachState,
+  type DachPlanState,
+} from './dachState';
+import { exportDachImage } from './exportDachImage';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
 const outfit = { className: 'font-outfit' };
@@ -75,9 +83,82 @@ function DachPlanerInner() {
     updateSelectedNodeHeight,
     totalRoofSolarWatts,
     onNodeResize,
+    applyDachState,
   } = useDachNodes(selectedVehicle);
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+  /*
+   * Wiederherstellen: Ein geteilter Link (`#dach=…`) schlägt den lokal
+   * gespeicherten Stand, der wiederum den Startzustand schlägt. So bleibt
+   * die Anordnung erhalten, wenn man zwischendurch im Schaltplan ein
+   * Panel löscht und hierher zurückkommt, um die Anordnung anzupassen.
+   */
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const pendingStateRef = useRef<{ state: DachPlanState; fromLink: boolean } | null>(null);
+  const restoreStartedRef = useRef(false);
+  const applyDachStateRef = useRef(applyDachState);
+  useEffect(() => {
+    applyDachStateRef.current = applyDachState;
+  }, [applyDachState]);
+
+  useEffect(() => {
+    if (restoreStartedRef.current) return;
+    restoreStartedRef.current = true;
+    void (async () => {
+      let state: DachPlanState | null = null;
+      let fromLink = false;
+      try {
+        state = await parseDachShareHash(window.location.hash);
+        fromLink = state !== null;
+      } catch (error) {
+        setFeedback({
+          type: 'error',
+          message: error instanceof Error ? error.message : 'Der Dach-Link konnte nicht gelesen werden.',
+        });
+      }
+      if (!state) state = loadDachState();
+      if (!state) return;
+      pendingStateRef.current = { state, fromLink };
+      if (state.vehicleId !== selectedVehicleId) setSelectedVehicleId(state.vehicleId);
+    })();
+    // Nur beim ersten Öffnen auflösen — Fahrzeugwechsel danach sind Nutzerentscheidungen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingStateRef.current;
+    if (!pending || pending.state.vehicleId !== selectedVehicleId) return;
+    if (!applyDachStateRef.current(pending.state)) return;
+    pendingStateRef.current = null;
+    if (pending.fromLink) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+      setFeedback({ type: 'success', message: 'Geteilte Dach-Anordnung geladen.' });
+    }
+  }, [selectedVehicleId, nodes]);
+
+  const shareDach = useCallback(async () => {
+    try {
+      const url = await buildDachShareUrl(
+        serializeDachState(selectedVehicle.id, nodes),
+        `${window.location.origin}/tools/dach/`
+      );
+      await navigator.clipboard.writeText(url);
+      setFeedback({
+        type: 'success',
+        message: 'Link kopiert — er enthält Fahrzeug und Anordnung und öffnet genau dieses Dach.',
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Link konnte nicht kopiert werden.',
+      });
+    }
+  }, [nodes, selectedVehicle.id]);
+
+  const exportDach = useCallback(async () => {
+    setFeedback(await exportDachImage(nodes));
+  }, [nodes]);
 
   const roofWidthCm = selectedVehicle.roofWidth * 100;
   const roofHeightCm = selectedVehicle.roofLength * 100;
@@ -209,6 +290,24 @@ function DachPlanerInner() {
                 {totalRoofSolarWatts} <span className="caption-xs font-semibold text-ink-soft">W</span>
               </p>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void exportDach()}
+              className="hidden min-h-11 sm:inline-flex"
+            >
+              <Camera className="h-4 w-4" aria-hidden="true" />
+              Bild exportieren
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void shareDach()}
+              className="hidden min-h-11 sm:inline-flex"
+            >
+              <Link2 className="h-4 w-4" aria-hidden="true" />
+              Link kopieren
+            </Button>
             <Link
               href="/planer"
               className={cn(buttonVariants({ variant: 'default' }), 'hidden sm:inline-flex')}
@@ -219,6 +318,27 @@ function DachPlanerInner() {
           </div>
         </div>
       </div>
+
+      {feedback && (
+        <div
+          role="status"
+          className={cn(
+            'border-b px-5 py-2.5',
+            feedback.type === 'success'
+              ? 'border-rule bg-warn-info-bg text-warn-info'
+              : 'border-rule bg-warn-critical-bg text-warn-critical'
+          )}
+        >
+          <p className="mx-auto flex max-w-5xl items-center gap-2 text-sm">
+            {feedback.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            )}
+            {feedback.message}
+          </p>
+        </div>
+      )}
 
       {/* Onboarding */}
       {onboardingOpen && placementCount === 0 && (
@@ -235,7 +355,8 @@ function DachPlanerInner() {
                   </li>
                   <li>
                     Position, Größe und Watt rechts anpassen — Gesamt-Watt wandert automatisch in den
-                    Schaltplan.
+                    Schaltplan. Deine Anordnung bleibt gespeichert: Du kannst im Schaltplan weiterarbeiten und
+                    hierher zurückkommen, ohne von vorn zu beginnen.
                   </li>
                 </ol>
               </div>
@@ -389,11 +510,21 @@ function DachPlanerInner() {
             </div>
           )}
 
-          {/* Mobile CTA */}
-          <Link href="/planer" className={cn(buttonVariants({ variant: 'default' }), 'mt-6 flex sm:hidden')}>
-            Im Schaltplan öffnen
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          {/* Mobile Aktionen */}
+          <div className="mt-6 flex flex-col gap-2 sm:hidden">
+            <Button type="button" variant="outline" onClick={() => void exportDach()} className="min-h-11">
+              <Camera className="h-4 w-4" aria-hidden="true" />
+              Bild exportieren
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void shareDach()} className="min-h-11">
+              <Link2 className="h-4 w-4" aria-hidden="true" />
+              Link kopieren
+            </Button>
+            <Link href="/planer" className={cn(buttonVariants({ variant: 'default' }), 'flex')}>
+              Im Schaltplan öffnen
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </aside>
 
         {/* Canvas */}

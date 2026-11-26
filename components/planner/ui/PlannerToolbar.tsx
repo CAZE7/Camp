@@ -18,6 +18,7 @@ import {
   Droplets,
   LayoutTemplate,
   BookOpen,
+  PanelTop,
   Share2,
   ChevronDown,
 } from 'lucide-react';
@@ -424,6 +425,21 @@ export function PlannerToolbar({
                   testId="action-share"
                 />
               )}
+              {/* Rückweg zum Dach-Planer: Wer dort ein Panel löscht und die
+                  Anordnung ändern will, muss hier rauskommen, ohne die
+                  Seite über Startseite oder Menü neu zu suchen. Die
+                  Dach-Anordnung ist dort lokal gespeichert und wartet. */}
+              <a
+                href="/tools/dach"
+                className="cad-btn"
+                data-testid="action-roof-planner"
+                aria-label="Zum Dach-Planer wechseln"
+                data-tooltip="Dach-Anordnung ansehen oder ändern — dein Schaltplan bleibt gespeichert"
+                title="Dach-Anordnung ansehen oder ändern — dein Schaltplan bleibt gespeichert"
+              >
+                <PanelTop className="h-4 w-4" aria-hidden="true" />
+                <span className="tb-label tb-label--mittel">Dach</span>
+              </a>
             </div>
           </>
         )}
