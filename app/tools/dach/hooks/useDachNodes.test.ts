@@ -228,3 +228,25 @@ describe('useDachNodes applyDachState (Wiederherstellen)', () => {
     expect(result.current.totalRoofSolarWatts).toBe(350);
   });
 });
+
+describe('useDachNodes Persistenz (Audit)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('schreibt die Anordnung nach einer Änderung in den Browser-Speicher', () => {
+    const { result } = renderHook(() => useDachNodes(mockVehicle));
+    act(() => {
+      const node = result.current.nodes[1]!;
+      result.current.setNodes([result.current.nodes[0]!, { ...node, position: { x: 60, y: 120 } }]);
+    });
+    const roh = window.localStorage.getItem('12v-planer.dach.v1');
+    expect(roh).toBeTruthy();
+    const stand = JSON.parse(roh!) as { vehicleId: string; nodes: { position: { x: number; y: number } }[] };
+    expect(stand.vehicleId).toBe(mockVehicle.id);
+    expect(stand.nodes).toHaveLength(1);
+    expect(stand.nodes[0]?.position).toEqual({ x: 60, y: 120 });
+    // Kein Callback im Speicherstand.
+    expect(roh).not.toContain('onNodeResize');
+  });
+});

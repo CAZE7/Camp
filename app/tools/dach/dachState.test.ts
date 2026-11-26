@@ -116,3 +116,20 @@ describe('Teilen-Link', () => {
     await expect(parseDachShareHash('#dach=x.abc')).rejects.toThrow(/unbekanntes Format/);
   });
 });
+
+describe('parseDachState Härtung (Audit)', () => {
+  it('lehnt doppelte Knoten-IDs ab', () => {
+    const doppelt: DachPlanState = {
+      version: 1,
+      vehicleId: 'vw-t6-l1h1',
+      nodes: [STAND.nodes[0]!, STAND.nodes[0]!],
+    };
+    expect(parseDachState(doppelt)).toBeNull();
+  });
+
+  it('meldet einen zerrissenen Link verständlich statt mit JSON-Rohfehler', async () => {
+    // Gültiges base64url, aber kein JSON dahinter.
+    const muell = `r.${btoa('das ist kein json').replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')}`;
+    await expect(parseDachShareHash(`#dach=${muell}`)).rejects.toThrow('keine gültige Anordnung');
+  });
+});

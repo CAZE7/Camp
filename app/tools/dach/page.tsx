@@ -119,6 +119,10 @@ function DachPlanerInner() {
       }
       if (!state) state = loadDachState();
       if (!state) return;
+      // Ein Stand zu einem Fahrzeug, das es (so) nicht mehr gibt, darf die
+      // Auswahl nicht auf eine ungueltige Kennung setzen — dann bleibt es
+      // beim normalen Startzustand.
+      if (!vehicleTemplates.some((vehicle) => vehicle.id === state.vehicleId)) return;
       pendingStateRef.current = { state, fromLink };
       if (state.vehicleId !== selectedVehicleId) setSelectedVehicleId(state.vehicleId);
     })();

@@ -95,10 +95,13 @@ export function parseDachState(value: unknown): DachPlanState | null {
   if (!Array.isArray(state.nodes) || state.nodes.length > MAX_NODES) return null;
 
   const nodes: DachSavedNode[] = [];
+  const geseheneIds = new Set<string>();
   for (const raw of state.nodes) {
     if (typeof raw !== 'object' || raw === null) return null;
     const eintrag = raw as Record<string, unknown>;
     if (typeof eintrag.id !== 'string' || eintrag.id.length === 0 || eintrag.id.length > 80) return null;
+    if (geseheneIds.has(eintrag.id)) return null;
+    geseheneIds.add(eintrag.id);
     if (eintrag.type !== 'roofSolar' && eintrag.type !== 'roofWindow') return null;
     const position = eintrag.position as Record<string, unknown> | null;
     if (!position || !isFiniteNumber(position.x) || !isFiniteNumber(position.y)) return null;
@@ -246,7 +249,12 @@ export async function parseDachShareHash(hash: string): Promise<DachPlanState | 
   } else {
     throw new Error('Der Dach-Link hat ein unbekanntes Format.');
   }
-  const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new Error('Der Dach-Link enthält keine gültige Anordnung.');
+  }
   const state = parseDachState(parsed);
   if (!state) throw new Error('Der Dach-Link enthält keine gültige Anordnung.');
   return state;
