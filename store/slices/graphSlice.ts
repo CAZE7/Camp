@@ -4,6 +4,21 @@ import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { collidingNodeIds, findNearestFreePosition } from '../../components/planner/utils/collision';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
+import { clearCableRoutes } from '../../components/edges/utils/cableRouteStore';
+
+/**
+ * R8-02: Ein ersetzter Plan darf den Routing-Prüfstand des alten Plans
+ * nicht erben. Alle Wege, die den Plan als Ganzes austauschen
+ * (Vorlage, Import/Teilen-Link, Leeren, Undo/Redo), laufen über diese
+ * eine Invalidierung: Routen, Final-Validation und Generationen-Stand
+ * werden verworfen, `CableRouteSync` rechnet für den neuen Plan frisch.
+ * Vorher zählte der Warnhinweis-Zähler kurz (oder dauerhaft, wenn der
+ * neue Plan dieselben Knoten-IDs trug) die Befunde des ersetzten Plans
+ * weiter — der erste Plan eines Neulings hieß „13 kritisch“.
+ */
+function invalidateRoutingForReplacedPlan(): void {
+  clearCableRoutes();
+}
 import { designatorMapFor, nodesWithUniqueDesignators } from '../../components/nodes/designatorModel';
 import { getEdgeDomain } from '../../lib/electrical';
 import { isFuseType } from '../../lib/shortCircuit';
@@ -1189,6 +1204,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         }
         return;
       }
+      invalidateRoutingForReplacedPlan();
       set((state) =>
         withHistory(state, {
           nodes: templateNodes,
@@ -1396,6 +1412,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       }
       return;
     }
+    invalidateRoutingForReplacedPlan();
     set((state) => {
       const nextPast = state.historyPast.slice(0, -1);
       const nextFuture = [graphSnapshot(state), ...state.historyFuture].slice(0, HISTORY_LIMIT);
@@ -1426,6 +1443,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       }
       return;
     }
+    invalidateRoutingForReplacedPlan();
     set((state) => {
       const nextPast = [...state.historyPast, graphSnapshot(state)].slice(-HISTORY_LIMIT);
       const nextFuture = state.historyFuture.slice(1);
@@ -1449,6 +1467,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       for (const edge of locked) reportLockedMutation(current, edge, 'replace-plan');
       return;
     }
+    invalidateRoutingForReplacedPlan();
     set((state) =>
       withHistory(state, {
         nodes: [],
@@ -1470,6 +1489,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       for (const edge of locked) reportLockedMutation(current, edge, 'replace-plan');
       return false;
     }
+    invalidateRoutingForReplacedPlan();
     set((state) =>
       withHistory(state, {
         nodes: nodesWithUniqueDesignators(plan.nodes),
