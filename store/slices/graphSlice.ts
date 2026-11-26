@@ -98,6 +98,7 @@ export type GraphSlice = Pick<
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
+  | 'connectNodeAuto'
   | 'previewAutoWire'
   | 'applyAutoWirePreview'
   | 'dismissAutoWirePreview'
@@ -1040,6 +1041,23 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     });
   },
   /** Übernimmt den Preview in den echten Graphen (mit History-Eintrag). */
+  connectNodeAuto: (nodeId: string) => {
+    const current = get();
+    if (current.viewMode === 'water') return false;
+    const result = performAutoWiring(current.nodes, current.edges);
+    if (!result) return false;
+    const vorhandeneIds = new Set(current.edges.map((edge) => edge.id));
+    const neueKanten = result.edges.filter(
+      (edge) => !vorhandeneIds.has(edge.id) && (edge.source === nodeId || edge.target === nodeId)
+    );
+    if (neueKanten.length === 0) return false;
+    set((state) =>
+      withHistory(state, {
+        edges: [...state.edges, ...neueKanten],
+      })
+    );
+    return true;
+  },
   applyAutoWirePreview: () => {
     const current = get();
     const preview = current.autoWirePreview;

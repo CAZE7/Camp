@@ -52,6 +52,14 @@ export interface ValidationWarning {
   /** Ob focusId eine Node oder eine Kante (Leitung) ist. */
   focusType?: 'node' | 'edge';
   /**
+   * R8-03: Ein Gerät ohne jede Leitung bekommt in der Warn-Zentrale einen
+   * eigenen Knopf, der es per Auto-Verkabelung anschließt (nur dieses
+   * Gerät). `connectLabel` sagt, woran es hängt („Mit Sicherungskasten
+   * verbinden“ bzw. „Mit Wechselrichter verbinden“ bei 230 V).
+   */
+  connectNodeId?: string;
+  connectLabel?: string;
+  /**
    * Strukturierte Messwerte (AUDIT UX-001): Gemessener Ist-Wert der Regel,
    * erwarteter Grenzwert und Einheit — statt nur Prosa im message-String.
    * `ruleId` benennt die Regel maschinenlesbar, `source` die fachliche
@@ -285,6 +293,40 @@ export function useLiveValidation(
     // Pre-build target and source edge maps O(E) to eliminate O(N*E) nested array scans
     const edgesByTarget = new Map<string, Edge<CableEdgeData>[]>();
     const edgesBySource = new Map<string, Edge<CableEdgeData>[]>();
+
+    // R8-03: Ein neu hinzugefügtes Gerät ohne Anschluss wurde nirgends
+    // gemeldet — der Plan sagte „Keine Fehler“, obwohl Verbrauch, Sicherung
+    // und Kabel des Geräts in Stückliste und Bilanz fehlten. Jetzt ist es
+    // eine Warnung mit direktem Ausweg (Auto-Verkabelung nur dieses Geräts).
+    {
+      const angeschlossen = new Set<string>();
+      for (const edge of edges) {
+        angeschlossen.add(edge.source);
+        angeschlossen.add(edge.target);
+      }
+      for (const consumer of consumers) {
+        if (angeschlossen.has(consumer.id)) continue;
+        const label = nodeLabel(consumer, 'Gerät');
+        const ist230v = consumer.type === 'consumer230v';
+        warnings.push({
+          id: `unconnected-${consumer.id}`,
+          category: 'topology',
+          type: 'warning',
+          severity: 'warning',
+          status: 'violated',
+          ruleId: 'PLANNER-UNCONNECTED',
+          title: 'Gerät nicht angeschlossen',
+          message: `„${label}“ ist noch nicht angeschlossen und fehlt deshalb in Stückliste und Energiebilanz.`,
+          remedy: ist230v
+            ? 'Verbinde das Gerät mit dem Wechselrichter — oder nutze den Knopf unten, der das automatisch erledigt.'
+            : 'Verbinde das Gerät mit dem Sicherungskasten — oder nutze den Knopf unten, der das automatisch erledigt.',
+          focusId: consumer.id,
+          focusType: 'node',
+          connectNodeId: consumer.id,
+          connectLabel: ist230v ? 'Mit Wechselrichter verbinden' : 'Mit Sicherungskasten verbinden',
+        });
+      }
+    }
 
     // ELE-008: Mischspannungsplan verhindern
     //

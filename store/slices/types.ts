@@ -221,6 +221,8 @@ export interface PlannerState {
   isValidConnection: (connection: Connection | Edge<CableEdgeData>) => boolean;
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
+  /** R8-03: Nur dieses eine Gerät automatisch anschließen (Warn-Zentrale). */
+  connectNodeAuto: (nodeId: string) => boolean;
   /**
    * AUTO-WIRE-REVIEW (Spec #29): Berechnet den Auto-Wire-Vorschlag, wendet
    * ihn aber NOCH NICHT an. Stattdessen liegt der Vorschlag als Preview

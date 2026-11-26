@@ -251,6 +251,19 @@ export function PlannerDashboard() {
     }
   }, []);
 
+  // R8-03: „Mit Sicherungskasten verbinden“ in der Warn-Zentrale.
+  const handleConnectNode = useCallback((nodeId: string) => {
+    const ok = usePlannerStore.getState().connectNodeAuto(nodeId);
+    setFeedback(
+      ok
+        ? {
+            type: 'success',
+            message: 'Gerät automatisch verbunden — Querschnitt und Sicherung sind gesetzt.',
+          }
+        : { type: 'error', message: 'Automatisch verbinden war nicht möglich. Verbinde das Gerät von Hand.' }
+    );
+  }, []);
+
   const actions = usePlannerActions({
     warnings,
     onFeedback: (next) => setFeedback(next),
@@ -371,7 +384,12 @@ export function PlannerDashboard() {
                 <VerificationSeal summary={verification} nextStep={nextStep} />
               </span>
             )}
-            <WarningCenter warnings={warnings} onFix={handleFix} includeRouting={viewMode === 'electric'} />
+            <WarningCenter
+              warnings={warnings}
+              onFix={handleFix}
+              onConnectNode={handleConnectNode}
+              includeRouting={viewMode === 'electric'}
+            />
           </>
         }
       />

@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Check,
   Crosshair,
+  PlugZap,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,8 @@ import { RoutingStatusSummary } from './RoutingStatusSummary';
 interface WarningCenterProps {
   warnings: ValidationWarning[];
   onFix?: (warning: ValidationWarning) => void;
+  /** R8-03: „Gerät verbinden“-Knopf an Befunden mit `connectNodeId`. */
+  onConnectNode?: (nodeId: string) => void;
   /**
    * Kabeltrassen-Befunde mitzählen und im Bericht zeigen (Elektrikplan).
    *
@@ -201,6 +204,7 @@ function FindingCard({
   warning,
   rootCause,
   onFix,
+  onConnectNode,
   onClose,
 }: {
   warning: ValidationWarning;
@@ -210,6 +214,7 @@ function FindingCard({
    */
   rootCause?: { rootCauseId: string; findingCount: number; affectedEdges: readonly string[] };
   onFix?: (warning: ValidationWarning) => void;
+  onConnectNode?: (nodeId: string) => void;
   onClose: () => void;
 }) {
   const [whyOpen, setWhyOpen] = useState(false);
@@ -379,19 +384,35 @@ function FindingCard({
             </div>
           )}
 
-          {warning.focusId && onFix && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                onFix(warning);
-                onClose();
-              }}
-              className="mt-3 min-h-11 gap-1.5 bg-card text-sm"
-            >
-              <Crosshair className="h-4 w-4" />
-              Im Plan zeigen
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {warning.focusId && onFix && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onFix(warning);
+                  onClose();
+                }}
+                className="mt-3 min-h-11 gap-1.5 bg-card text-sm"
+              >
+                <Crosshair className="h-4 w-4" />
+                Im Plan zeigen
+              </Button>
+            )}
+            {warning.connectNodeId && onConnectNode && (
+              <Button
+                variant="default"
+                onClick={() => {
+                  onConnectNode(warning.connectNodeId!);
+                  onClose();
+                }}
+                className="mt-3 min-h-11 gap-1.5 text-sm"
+                data-testid="warning-connect-node"
+              >
+                <PlugZap className="h-4 w-4" />
+                {warning.connectLabel ?? 'Gerät verbinden'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </li>
@@ -494,7 +515,7 @@ function groupCounts(warnings: ValidationWarning[]) {
   return { safety, planning, gaps };
 }
 
-export function WarningCenter({ warnings, onFix, includeRouting = true }: WarningCenterProps) {
+export function WarningCenter({ warnings, onFix, onConnectNode, includeRouting = true }: WarningCenterProps) {
   // Kabeltrassen-Befunde kommen aus derselben Prüfung wie alles andere: Der
   // Router veröffentlicht seinen Final-Validation-Report, dieses Modul liest
   // ihn. Keine zweite Rechnung, keine zweite Zahl-Plakette.
@@ -819,6 +840,7 @@ export function WarningCenter({ warnings, onFix, includeRouting = true }: Warnin
                       ? { rootCause: rootCauses.get(warning.rootCauseId)! }
                       : {})}
                     onFix={onFix}
+                    onConnectNode={onConnectNode}
                     onClose={() => setOpen(false)}
                   />
                 );
@@ -869,6 +891,7 @@ export function WarningCenter({ warnings, onFix, includeRouting = true }: Warnin
                             ? { rootCause: rootCauses.get(warning.rootCauseId)! }
                             : {})}
                           onFix={onFix}
+                          onConnectNode={onConnectNode}
                           onClose={() => setOpen(false)}
                         />
                       ))}
