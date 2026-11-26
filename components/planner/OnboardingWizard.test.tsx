@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { OnboardingWizard, recommendedTemplateId } from './OnboardingWizard';
 import { PLANNER_TEMPLATES } from './templates';
@@ -129,5 +129,26 @@ describe('OnboardingWizard — AUD-002 230-V-Grenze', () => {
     render(<OnboardingWizard />);
     fireEvent.click(screen.getByLabelText('Solar'));
     expect(screen.queryByTestId('onboarding-ac-scope-note')).not.toBeInTheDocument();
+  });
+});
+
+describe('OnboardingWizard Schritt 3 (R8-10)', () => {
+  it('lädt die Basis erst über „Basis übernehmen“, nicht per Kartenklick', () => {
+    render(<OnboardingWizard />);
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    // Auswahl allein darf nichts laden: erst markieren (aria-pressed), dann übernehmen.
+    const karte = screen.getByRole('button', { name: /Autarker Kastenwagen/ });
+    fireEvent.click(karte);
+    expect(karte.getAttribute('aria-pressed')).toBe('true');
+    expect(useAppStore.getState().hasOnboarded).toBe(false);
+
+    const listener = vi.fn();
+    window.addEventListener('planner-onboarding-applied', listener);
+    fireEvent.click(screen.getByTestId('onboarding-apply'));
+    expect(useAppStore.getState().hasOnboarded).toBe(true);
+    expect(listener).toHaveBeenCalled();
+    window.removeEventListener('planner-onboarding-applied', listener);
   });
 });

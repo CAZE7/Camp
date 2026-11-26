@@ -5181,11 +5181,8 @@ body:has(.planner-expert-panel--open) .planner-inspector-toggle {
   font-weight: 600;
 }
 
-.analytics-consent-actions button:last-child {
-  border-color: var(--oxide);
-  background: var(--oxide);
-  color: var(--on-signal);
-}
+/* R8-01: „Ablehnen“ und „Akzeptieren“ sind gleichrangig — kein Knopf trägt
+   die Primärfarbe, damit niemand aus Gewohnheit/Fehltipp zustimmt. */
 
 .analytics-consent-actions button:focus-visible {
   outline: 2px solid var(--oxide);

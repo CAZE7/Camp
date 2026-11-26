@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { requestConfirm } from '@/components/ui/ConfirmDialog';
 import { isStarterPlan, PLANNER_TEMPLATES } from './templates';
 import { AC_230V_PRODUCT_SCOPE_NOTE } from '@/lib/verify/acScope';
+import { setPlannerOnboardingOpen } from '../analytics/onboardingGate';
 
 const STROMQUELLEN = [
   { id: 'solar', label: 'Solar' },
@@ -55,7 +56,15 @@ export function recommendedTemplateId(
 }
 
 export function OnboardingWizard() {
+  // Dem Analytics-Banner melden, dass der Assistent offen ist (R8-01):
+  // Der Banner erscheint erst nach dem Schließen, statt „Weiter“ zu verdecken.
+  useEffect(() => {
+    setPlannerOnboardingOpen(true);
+    return () => setPlannerOnboardingOpen(false);
+  }, []);
+
   const [step, setStep] = useState(1);
+  const [auswahl, setAuswahl] = useState<string | null>(null);
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
 
@@ -104,6 +113,10 @@ export function OnboardingWizard() {
       return;
     applyTemplate(templateId);
     setHasOnboarded(true);
+    // R8-10: Die alte „Beispiel geladen“-Meldung wird durch die neue
+    // Basis-Meldung ersetzt (PlannerInner hört auf dieses Ereignis).
+    const label = PLANNER_TEMPLATES.find((template) => template.id === templateId)?.label ?? templateId;
+    window.dispatchEvent(new CustomEvent('planner-onboarding-applied', { detail: { label } }));
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('planner-fit-view')), 50);
   };
 
@@ -215,7 +228,8 @@ export function OnboardingWizard() {
                   <button
                     type="button"
                     key={template.id}
-                    onClick={() => void handleApplyTemplate(template.id)}
+                    aria-pressed={(auswahl ?? recommendedId) === template.id}
+                    onClick={() => setAuswahl(template.id)}
                     // Ohne aria-label hieße die Schaltfläche „Wochenend-Camper
                     // Empfohlen Ein Wochenende mit …“ — Name, Abzeichen und
                     // Ganztext verschmolzen. Der Name bleibt kurz, der Text wird
@@ -227,7 +241,9 @@ export function OnboardingWizard() {
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                       template.id === recommendedId
                         ? 'border-moss bg-moss/10 ring-1 ring-moss'
-                        : 'border-border hover:bg-accent'
+                        : (auswahl ?? recommendedId) === template.id
+                          ? 'border-primary bg-accent ring-1 ring-primary'
+                          : 'border-border hover:bg-accent'
                     }`}
                   >
                     <span className="font-semibold text-foreground">
@@ -284,6 +300,13 @@ export function OnboardingWizard() {
             </Button>
             <Button variant="ghost" onClick={() => void startEmpty()} className="min-h-11">
               Mit leerem Plan beginnen
+            </Button>
+            <Button
+              onClick={() => void handleApplyTemplate(auswahl ?? recommendedId)}
+              className="min-h-11 px-6"
+              data-testid="onboarding-apply"
+            >
+              Basis übernehmen
             </Button>
           </>
         )}

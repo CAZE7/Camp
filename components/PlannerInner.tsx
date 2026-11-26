@@ -109,6 +109,20 @@ function PlannerShell() {
   // beim ersten Besuch. Keine Stufe überschreibt einen eigenen Plan still.
   const { notice: entryNotice, dismissNotice: dismissEntryNotice } = usePlannerEntryPlan();
   const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+  const [basisNotice, setBasisNotice] = useState<string | null>(null);
+
+  // R8-10: Nach der Basis-Wahl im Assistenten ersetzt diese Meldung die
+  // Einstiegsmeldung („Beispiel geladen …“) statt neben ihr zu stehen.
+  useEffect(() => {
+    const onApplied = (event: Event) => {
+      const label = (event as CustomEvent<{ label?: string }>).detail?.label;
+      if (!label) return;
+      dismissEntryNotice();
+      setBasisNotice(`Basis „${label}“ geladen – als Nächstes: deine Geräte prüfen.`);
+    };
+    window.addEventListener('planner-onboarding-applied', onApplied);
+    return () => window.removeEventListener('planner-onboarding-applied', onApplied);
+  }, [dismissEntryNotice]);
   const entryNoticeExpanded = entryNotice?.message != null && expandedNotice === entryNotice.message;
   const plannerNodeCount = usePlannerStore((state) => state.nodes.length);
   const plannerWaterNodeCount = usePlannerStore((state) => state.waterNodes.length);
@@ -377,7 +391,7 @@ function PlannerShell() {
             {/* Einstiegs-Meldung in derselben Stapel-Ebene wie die Zeichenfläche.
                 Außerhalb läge sie über dem Fachwissen-Blatt, weil die Spalte
                 `isolate` ist und die Meldung dann eine höhere Ebene hat. */}
-            {entryNotice && (
+            {entryNotice && hasOnboarded && (
               <div
                 role={entryNotice.type === 'error' ? 'alert' : 'status'}
                 aria-live={entryNotice.type === 'error' ? 'assertive' : 'polite'}
@@ -400,6 +414,23 @@ function PlannerShell() {
                     setExpandedNotice(null);
                     dismissEntryNotice();
                   }}
+                  className="cad-btn pointer-events-auto shrink-0 px-1"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            {basisNotice && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="planner-entry-notice pointer-events-none absolute inset-x-2 top-2 z-popover flex items-start gap-2 rounded border border-border bg-surface-panel px-3 py-2 text-sm text-foreground"
+              >
+                <span className="flex-1">{basisNotice}</span>
+                <button
+                  type="button"
+                  aria-label="Meldung schließen"
+                  onClick={() => setBasisNotice(null)}
                   className="cad-btn pointer-events-auto shrink-0 px-1"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />

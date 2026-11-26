@@ -8,6 +8,7 @@ import {
   readAnalyticsConsent,
   saveAnalyticsConsent,
 } from './consent';
+import { isPlannerOnboardingOpen, subscribePlannerOnboarding } from './onboardingGate';
 
 const GA_ID = 'G-Q7E3XL4T34';
 
@@ -88,6 +89,12 @@ function calcNameFor(element: Element | null): string | null {
 export function Analytics() {
   const [ask, setAsk] = useState(false);
   const [storageError, setStorageError] = useState(false);
+  // R8-01: Solange der Erstbesuch-Assistent auf /planer/ offen ist, bleibt
+  // der Banner verborgen — er verdeckte sonst dessen Fußzeile, und ein Tipp
+  // auf „Weiter“ traf „Akzeptieren“ (Einwilligung per Fehltipp).
+  const [onboardingOpen, setOnboardingOpen] = useState(isPlannerOnboardingOpen);
+
+  useEffect(() => subscribePlannerOnboarding(() => setOnboardingOpen(isPlannerOnboardingOpen())), []);
 
   useEffect(() => {
     if (!isLive()) return;
@@ -116,7 +123,8 @@ export function Analytics() {
     };
   }, []);
 
-  if (!ask) return null;
+  const aufPlaner = typeof window !== 'undefined' && window.location.pathname.startsWith('/planer');
+  if (!ask || (aufPlaner && onboardingOpen)) return null;
 
   const decide = (granted: boolean) => {
     const saved = saveAnalyticsConsent(granted ? 'granted' : 'denied');
