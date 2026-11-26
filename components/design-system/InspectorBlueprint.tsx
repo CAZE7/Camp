@@ -8,7 +8,7 @@
  * - Visuelle Trennung Nutzer-Input vs. berechneter Wert (ΔU Ampel)
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 
 type Unit = 'V' | 'A' | 'mm²' | 'W' | 'm' | 'Ah' | '%' | '°C';

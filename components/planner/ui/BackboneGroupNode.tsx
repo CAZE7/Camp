@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Node, NodeProps } from '@xyflow/react';
 
 export type BackboneGroupNodeType = Node<{ label?: string }, 'backboneGroup'>;

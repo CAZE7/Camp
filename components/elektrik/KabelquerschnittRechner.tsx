@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { DecimalInput } from '@/components/ui/DecimalInput';
 import { Label } from '@/components/ui/label';

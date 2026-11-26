@@ -1,5 +1,5 @@
 import { requestConfirm } from '../../ui/ConfirmDialog';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   ArrowDown,
   ArrowLeft,

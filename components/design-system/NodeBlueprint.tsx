@@ -12,7 +12,7 @@
  * Motion: 100-160ms ease-out, kein verspieltes Bouncing
  */
 
-import React from 'react';
+import type React from 'react';
 
 type NodeStatus = 'ready' | 'warning' | 'error' | 'offline';
 type PortPolarity = '+' | '-' | 'PE' | 'L' | 'N' | 'CAN_H' | 'CAN_L' | 'DATA';

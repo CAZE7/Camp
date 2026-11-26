@@ -5,7 +5,7 @@
  * Floating Metrics Cards + hierarchisch sortierte Fehlerliste
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 
 interface Metric {

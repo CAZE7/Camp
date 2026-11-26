@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { useAppStore } from '../../../lib/store';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';

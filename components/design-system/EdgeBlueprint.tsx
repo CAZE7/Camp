@@ -9,8 +9,6 @@
  * - Flussindikatoren diskret, animationsarm
  */
 
-import React from 'react';
-
 type EdgeDomain = 'DC_12V' | 'AC_230V' | 'SOLAR' | 'CAN' | 'SENSOR' | 'PIPE_FRESH';
 
 interface EdgeSpec {

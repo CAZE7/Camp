@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useId, useState } from 'react';
+import type React from 'react';
+import { useEffect, useId, useState } from 'react';
 import { BadgeCheck, ChevronDown, Info, ShieldAlert, ShieldQuestion, X } from 'lucide-react';
 import type { VerificationSummary } from '../utils/verificationWarnings';
 

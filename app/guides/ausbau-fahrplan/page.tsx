@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 
 import { metadataForPage } from '@/app/seoMetadata';
-import React from 'react';
 import Link from 'next/link';
 import { PageShell } from '@/components/brand/PageShell';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';

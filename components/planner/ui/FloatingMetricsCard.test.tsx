@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FloatingMetricsCard } from './FloatingMetricsCard';
-import React from 'react';
 import { AUTARKY_NOT_CALCULATED } from '../utils/autarky';
 
 // Mock the stores and hooks

@@ -1,4 +1,3 @@
-import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOUCH_CONTEXT_MENU_MS, useTouchContextMenu } from './useTouchContextMenu';

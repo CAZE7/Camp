@@ -1,7 +1,8 @@
 'use client';
 
 import { requestConfirm } from './ui/ConfirmDialog';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { type Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { MousePointerClick, Trash2 } from 'lucide-react';

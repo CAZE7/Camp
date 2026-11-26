@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { addAtVisibleCenter, handlePointerDown } from './drag';
 import type { Comp } from './catalog';

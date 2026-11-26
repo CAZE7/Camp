@@ -1,4 +1,3 @@
-import React from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Sidebar } from '../Sidebar';
 import { usePlannerStore } from '../../store/usePlannerStore';

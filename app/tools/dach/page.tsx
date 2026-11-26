@@ -1,7 +1,8 @@
 'use client';
 
 import { plannerHrefWithCalculatedSolarWatts } from '../../../lib/handoff';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';

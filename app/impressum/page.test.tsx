@@ -1,4 +1,3 @@
-import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LEGAL_PLACEHOLDER, SITE_LEGAL, type SiteLegal } from '@/lib/siteLegal';

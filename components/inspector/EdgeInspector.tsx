@@ -1,4 +1,3 @@
-import React from 'react';
 import { type Edge } from '@xyflow/react';
 import { InspectorSection } from './InspectorSection';
 import { type CableEdgeData } from '../edges/CableEdge';

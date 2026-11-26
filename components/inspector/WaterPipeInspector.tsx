@@ -1,4 +1,3 @@
-import React from 'react';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { type PlannerWaterEdge } from '../../store/slices/types';

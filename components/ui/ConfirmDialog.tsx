@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AccessibleDialog } from './AccessibleDialog';
 import { Button } from './button';
 

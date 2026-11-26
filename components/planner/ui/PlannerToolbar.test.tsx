@@ -6,7 +6,6 @@
  * der Knopf war sichtbar, das Menü im DOM, aber unsichtbar und nicht
  * anklickbar. Es hängt jetzt am `body`; diese Suite hält das fest.
  */
-import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { PlannerToolbar, type PlannerToolbarProps } from './PlannerToolbar';

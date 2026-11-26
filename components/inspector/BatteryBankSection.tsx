@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useId, useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { InspectorSection } from './InspectorSection';
 // Typen direkt aus der Registry, nicht aus NodeInspectors: diese Sektion wird
 // von BatteryInspector gerendert — ein Import zurück wäre ein Zyklus.

@@ -1,4 +1,5 @@
-import React, { useState, useId, useRef } from 'react';
+import type React from 'react';
+import { useState, useId, useRef } from 'react';
 import { parseDecimalString } from '../../lib/units';
 
 export type ValidationRule = {

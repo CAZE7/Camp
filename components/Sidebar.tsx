@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { SearchX, X } from 'lucide-react';
 import {
   DEFAULT_OPEN_CATEGORY,

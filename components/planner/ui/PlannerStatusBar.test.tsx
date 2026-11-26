@@ -2,7 +2,6 @@
  * M7-3: Statuszeile — Zoom/umfang aus Store, Koordinaten direkt im DOM
  * (kein Re-render pro Maus-Bewegung).
  */
-import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
