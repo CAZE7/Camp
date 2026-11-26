@@ -94,6 +94,19 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     source: 'annahme',
   },
   {
+    // Punkt 4 der KI-Sichtbarkeits-Arbeit: die Vergleichsseite, die
+    // Antwortmaschinen bei „welches Programm"-Fragen zitieren.
+    id: 'schaltplan-programm-vergleich',
+    query: 'welches programm camper schaltplan zeichnen vergleich',
+    intent: 'vergleich',
+    page: '/camper-elektrik/schaltplan-programme/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P1',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
     // Die Anwendungsroute (`/planer/`) bedient die Zeichnen-Intention; die
     // Wissensroute (`/elektrik-planung/`) darunter bleibt für „Planer online"
     // mit Rechner und Normtext zuständig (siehe Eintrag `elektroplaner`).

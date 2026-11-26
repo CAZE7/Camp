@@ -153,6 +153,15 @@ export const TOPICS: readonly Topic[] = [
       'Ein fertiger Plan zum Ansehen: Landstrom, 200 Ah LiFePO4 und 400 W Solar — mit Querschnitten und Sicherungen, im Planer zu öffnen.',
   },
   {
+    id: 'schaltplan-programme',
+    label: 'Programme im Vergleich',
+    parent: 'schaltplan',
+    path: '/camper-elektrik/schaltplan-programme/',
+    role: 'cluster',
+    summary:
+      '12V-Planer, VoltPlan und draw.io nebeneinander: Berechnung, Prüfung, Stückliste — und wofür jedes Werkzeug passt.',
+  },
+  {
     id: 'stromverbrauch',
     label: 'Stromverbrauch',
     parent: 'camper-elektrik',

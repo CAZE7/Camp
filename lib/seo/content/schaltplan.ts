@@ -139,6 +139,11 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage im Camper' },
     {
+      href: '/camper-elektrik/schaltplan-programme/',
+      label: 'Schaltplan-Programme im Vergleich',
+      description: '12V-Planer, VoltPlan und draw.io — welches Werkzeug für welchen Plan passt.',
+    },
+    {
       href: '/camper-elektrik/schaltplan-beispiel/',
       label: 'Beispiel-Schaltplan mit Landstrom, LiFePO4 und Solar',
       description: 'Ein fertiger Plan zum Ansehen — mit Querschnitten, Sicherungen und „im Planer öffnen".',
