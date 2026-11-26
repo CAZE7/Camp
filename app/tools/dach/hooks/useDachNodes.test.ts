@@ -234,12 +234,14 @@ describe('useDachNodes Persistenz (Audit)', () => {
     window.localStorage.clear();
   });
 
-  it('schreibt die Anordnung nach einer Änderung in den Browser-Speicher', () => {
+  it('schreibt die Anordnung nach einer Änderung in den Browser-Speicher', async () => {
     const { result } = renderHook(() => useDachNodes(mockVehicle));
     act(() => {
       const node = result.current.nodes[1]!;
       result.current.setNodes([result.current.nodes[0]!, { ...node, position: { x: 60, y: 120 } }]);
     });
+    // Speichern ist gedrosselt (250 ms): erst der gesetzte Stand landet im Speicher.
+    await new Promise((resolve) => setTimeout(resolve, 350));
     const roh = window.localStorage.getItem('12v-planer.dach.v1');
     expect(roh).toBeTruthy();
     const stand = JSON.parse(roh!) as { vehicleId: string; nodes: { position: { x: number; y: number } }[] };

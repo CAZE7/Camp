@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { vehicleTemplates, DEFAULT_VEHICLE_TEMPLATE } from '@/lib/vehicleTemplates';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { DecimalInput } from '../../../components/ui/DecimalInput';
 import { formatNumberDe } from '@/components/nodes/formatNumber';
+import { loadHeizungState, saveHeizungState, type HeizungEingaben } from './heizungState';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
@@ -935,6 +936,61 @@ export default function HeatingCalculatorPage() {
     [selectedHeaterId]
   );
 
+  /*
+   * Eingaben merken: Wer zwischendurch im Schaltplan die Standheizung als
+   * Verbraucher einplant und zurückkommt, findet seine Regler wieder
+   * (gespeichert wird lokal wie beim Dach-Planer). Der erste Effektlauf
+   * nach dem Öffnen gehört dem Wiederherstellen — erst danach schreiben.
+   */
+  const eingabenGesetztRef = useRef(false);
+  useEffect(() => {
+    // In eine Microtask verschoben: Die Wiederherstellung setzt den
+    // Zustand nicht synchron im Effekt (Lint-Regel gegen Kaskaden-Renders).
+    queueMicrotask(() => {
+      const gespeichert = loadHeizungState(
+        new Set(vehicleTemplates.map((v) => v.id)),
+        new Set(HEATER_CATALOG.map((h) => h.id))
+      );
+      if (gespeichert) {
+        setSelectedVehicleId(gespeichert.vehicleId);
+        setSelectedHeaterId(gespeichert.heaterId);
+        setInsulationThickness(gespeichert.insulationThickness);
+        setTempInside(gespeichert.tempInside);
+        setTempOutside(gespeichert.tempOutside);
+        setWindowArea(gespeichert.windowArea);
+        setInsulationCoverage(gespeichert.insulationCoverage);
+        setQuickHeat(gespeichert.quickHeat);
+      }
+      eingabenGesetztRef.current = true;
+    });
+    // Nur beim ersten Öffnen wiederherstellen.
+  }, []);
+
+  useEffect(() => {
+    if (!eingabenGesetztRef.current) return;
+    const eingaben: HeizungEingaben = {
+      version: 1,
+      vehicleId: selectedVehicleId,
+      heaterId: selectedHeaterId,
+      insulationThickness,
+      tempInside,
+      tempOutside,
+      windowArea,
+      insulationCoverage,
+      quickHeat,
+    };
+    saveHeizungState(eingaben);
+  }, [
+    selectedVehicleId,
+    selectedHeaterId,
+    insulationThickness,
+    tempInside,
+    tempOutside,
+    windowArea,
+    insulationCoverage,
+    quickHeat,
+  ]);
+
   const calc = useMemo(() => {
     const main = calculateThermodynamics({
       selectedVehicle,
@@ -1040,7 +1096,9 @@ export default function HeatingCalculatorPage() {
           <p className="mt-2 max-w-xl text-sm text-ink-soft">
             Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive
             Empfehlung, welches Modell passt. Bis etwa 2.200 W Heizlast reicht eine kompakte
-            2-kW-Standheizung, zwischen 2.200 und 4.500 W braucht es 4 kW oder bessere Dämmung.
+            2-kW-Standheizung, zwischen 2.200 und 4.500 W braucht es 4 kW oder bessere Dämmung. Deine Eingaben
+            bleiben auf diesem Gerät gespeichert — du kannst zwischendurch in den Schaltplan wechseln und hier
+            weitermachen.
           </p>
         </div>
 

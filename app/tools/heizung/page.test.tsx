@@ -39,6 +39,8 @@ if (typeof window !== 'undefined' && !window.PointerEvent) {
 describe('HeatingCalculatorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Der Rechner stellt gespeicherte Eingaben wieder her — Tests starten leer.
+    window.localStorage.clear();
   });
 
   it('renders the initial layout correctly', () => {

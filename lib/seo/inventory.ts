@@ -131,7 +131,7 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     h1: 'Dach-Planer',
     title: 'Dach-Planer: Solar & Dachluken platzieren',
     description:
-      'Solarpanels, Dachluken und Kabeldurchlässe auf der Dachfläche platzieren, Belegung prüfen und die Gesamtleistung in Watt ablesen.',
+      'Solarpanels und Dachluken auf der Dachfläche platzieren, Belegung prüfen, Gesamtleistung ablesen — Anordnung speichern, als Link oder Bild teilen.',
     searchIntent: 'Solarpanels und Dachluken auf der Dachfläche platzieren und die Gesamtleistung ablesen.',
     topicId: 'dachplanung',
     priority: 'P1',

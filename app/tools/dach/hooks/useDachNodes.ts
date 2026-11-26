@@ -203,7 +203,13 @@ export function useDachNodes(selectedVehicle: VehicleTemplate) {
       persistArmedRef.current = true;
       return;
     }
-    saveDachState(serializeDachState(selectedVehicle.id, nodes));
+    // Gedrosselt: Beim Ziehen ändern sich die Knoten viele Male pro
+    // Sekunde — der Speicher bekommt den gesetzten Stand, nicht jeden
+    // Zwischenstand eines Drags.
+    const timer = setTimeout(() => {
+      saveDachState(serializeDachState(selectedVehicle.id, nodes));
+    }, 250);
+    return () => clearTimeout(timer);
   }, [nodes, selectedVehicle.id]);
 
   /**
