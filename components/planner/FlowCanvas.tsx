@@ -579,7 +579,7 @@ export function FlowCanvas() {
    * switch time to reveal the React Flow pane before its bounds are read.
    */
   React.useEffect(() => {
-    type AddAtCanvasCenterDetail = { type?: unknown; label?: unknown; watts?: unknown };
+    type AddAtCanvasCenterDetail = { type?: unknown; label?: unknown; watts?: unknown; hours?: unknown };
     let cancelled = false;
     let rafId = 0;
 
@@ -636,7 +636,14 @@ export function FlowCanvas() {
       const neues = usePlannerStore
         .getState()
         .nodes.find((node) => !idsVorher.has(node.id) && node.type === type);
-      if (neues) usePlannerStore.getState().setSelectedNodes([neues as never]);
+      if (neues) {
+        usePlannerStore.getState().setSelectedNodes([neues as never]);
+        // Selbst angelegtes Gerät (R8-07): Die Stunden/Tag aus dem
+        // Anlegen-Formular gehören zum Gerät, nicht zur Vorlage.
+        if (typeof detail.hours === 'number' && Number.isFinite(detail.hours)) {
+          usePlannerStore.getState().updateNodeData(neues.id, { hours: detail.hours });
+        }
+      }
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
 
       // `findNearestFreePosition` weicht belegten Flächen aus und darf den

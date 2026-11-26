@@ -26,7 +26,7 @@ export function addAtVisibleCenter(comp: Comp, onMobileAdd?: () => void) {
     window.requestAnimationFrame(() => {
       window.dispatchEvent(
         new CustomEvent('planner-add-at-canvas-center', {
-          detail: { type: comp.type, label: comp.label, watts: comp.watts },
+          detail: { type: comp.type, label: comp.label, watts: comp.watts, hours: comp.hours },
         })
       );
     });

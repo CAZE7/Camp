@@ -10,6 +10,9 @@ import {
 } from './sidebar/catalog';
 import { CategorySection } from './sidebar/CategorySection';
 import { SidebarSearch } from './sidebar/SidebarSearch';
+import { searchRank } from './sidebar/catalog';
+import { addAtVisibleCenter } from './sidebar/drag';
+import { Box } from 'lucide-react';
 
 interface SidebarProps {
   mode?: 'electric' | 'water';
@@ -45,11 +48,39 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
   const listRef = useRef<HTMLDivElement>(null);
   const activeComponents = useComponentCatalog(mode);
   const isSearching = searchTerm.trim().length > 0;
-  const matches = (label: string, description: string) =>
-    `${label} ${description}`.toLowerCase().includes(searchTerm.toLowerCase());
-  const filteredComponents = activeComponents.filter((item) => matches(item.label, item.description));
+  // R8-07: Synonyme + Rang (Name vor Beschreibung) statt reiner
+  // Enthalten-Suche über Label+Beschreibung in einem String.
+  const ranked = <T extends { label: string; description: string }>(items: readonly T[]): T[] =>
+    items
+      .map((item) => ({ item, rank: searchRank(item, searchTerm) }))
+      .filter((entry) => entry.rank >= 0)
+      .sort((a, b) => a.rank - b.rank)
+      .map((entry) => entry.item);
+  const filteredComponents = isSearching ? ranked(activeComponents) : activeComponents;
   const filteredDevices =
-    mode === 'electric' ? deviceAssistant.filter((item) => matches(item.label, item.description)) : [];
+    mode === 'electric' ? (isSearching ? ranked(deviceAssistant) : deviceAssistant) : [];
+
+  // „Eigenes Gerät anlegen“ bei 0 Treffern (R8-07): Watt + Stunden/Tag,
+  // dann liegt das Gerät wie jedes andere auf der Fläche.
+  const [customWatts, setCustomWatts] = useState(50);
+  const [customHours, setCustomHours] = useState(2);
+  const addCustomDevice = () => {
+    const label = searchTerm.trim();
+    if (!label) return;
+    addAtVisibleCenter(
+      {
+        type: 'consumer',
+        label,
+        category: 'Geräte-Vorlagen',
+        description: 'Eigenes Gerät',
+        icon: Box,
+        watts: customWatts,
+        hours: customHours,
+      },
+      onMobileAdd
+    );
+    setSearchTerm('');
+  };
 
   const { categories, byCategory } = groupByCategory(filteredComponents);
 
@@ -160,6 +191,44 @@ export function Sidebar({ mode = 'electric', onMobileAdd, onCloseMobile }: Sideb
             <SearchX className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <p className="cad-empty__title">Keine Treffer für „{searchTerm}“</p>
             <p>Prüfe die Schreibweise oder setze den Filter zurück.</p>
+            {mode === 'electric' && (
+              <div className="mt-3 space-y-2 text-left">
+                <p className="text-sm font-medium text-foreground">
+                  Oder lege „{searchTerm.trim()}“ als eigenes Gerät an:
+                </p>
+                <label className="block text-xs text-muted-foreground">
+                  Leistung (Watt)
+                  <input
+                    type="number"
+                    min={1}
+                    max={5000}
+                    value={customWatts}
+                    onChange={(event) => setCustomWatts(Number(event.target.value) || 0)}
+                    className="mt-1 min-h-11 w-full rounded border border-border bg-card px-2 text-sm text-foreground"
+                  />
+                </label>
+                <label className="block text-xs text-muted-foreground">
+                  Nutzung (Stunden pro Tag)
+                  <input
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={0.5}
+                    value={customHours}
+                    onChange={(event) => setCustomHours(Number(event.target.value) || 0)}
+                    className="mt-1 min-h-11 w-full rounded border border-border bg-card px-2 text-sm text-foreground"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={addCustomDevice}
+                  data-testid="sidebar-custom-device"
+                  className="cad-btn cad-btn--primary min-h-11 w-full justify-center"
+                >
+                  Eigenes Gerät „{searchTerm.trim()}“ anlegen
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setSearchTerm('')}

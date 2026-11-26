@@ -20,6 +20,8 @@ export type Comp = {
   description: string;
   icon: React.ElementType;
   watts?: number;
+  /** Nutzungsdauer (h/Tag) — nur für selbst angelegte Geräte (R8-07). */
+  hours?: number;
 };
 
 /**
@@ -165,3 +167,50 @@ export const groupByCategory = (
   }
   return { categories, byCategory };
 };
+
+/**
+ * Alltagswörter je Katalog-Label (R8-07). Die Suche fand „Licht“ nur in
+ * Beschreibungen („Lichtmaschine“, „Sonnenlicht“), aber nicht die
+ * LED-Beleuchtung; „Kühlbox“ und „Inverter“ hatten gar keine Treffer,
+ * obwohl die Bauteile existieren. Synonyme stehen am Label — eine Quelle,
+ * keine zweite Liste, die vom Katalog abweichen kann.
+ */
+export const SUCH_SYNONYME: Readonly<Record<string, readonly string[]>> = {
+  'LED-Beleuchtung': ['licht', 'lampe', 'leuchte', 'beleuchtung', 'deckenlicht'],
+  Kompressorkühlschrank: ['kuhlbox', 'kuhlschrank', 'fridge', 'kuhlung'],
+  Wechselrichter: ['inverter', 'spannungswandler'],
+  Solarmodul: ['solarpanel', 'panel', 'pv', 'photovoltaik', 'solar'],
+  'Ladebooster (DC-DC)': ['booster', 'lichtmaschine', 'dcdc', 'ladewandler'],
+  Sicherungskasten: ['sicherungen', 'verteiler', 'sicherungsverteiler'],
+  Standheizung: ['heizung', 'heizgerat', 'dieselheizung'],
+  Dachventilator: ['lufter', 'ventilator', 'maxxfan', 'dachlufter'],
+  Kaffeemaschine: ['kaffee', 'espresso', 'kaffeeautomat'],
+  Induktionskochfeld: ['herd', 'kochfeld', 'kochen', 'induktion'],
+  Handyladegerät: ['handy', 'usb', 'smartphone', 'laden'],
+  'Laptop-Ladegerät': ['laptop', 'notebook', 'computer'],
+  'Satelliten-Internet': ['starlink', 'internet', 'wlan', 'satellit'],
+  'Elektrische Wasserpumpe': ['pumpe', 'wasserpumpe', 'druckpumpe'],
+  Batterie: ['akku', 'bordbatterie', 'speicher'],
+};
+
+/** Suchnormalisierung: Kleinschreibung, Umlaute und ß angleichen. */
+export function normalizeSearch(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replaceAll('ß', 'ss').trim();
+}
+
+/**
+ * Treffer-Rang eines Katalogeintrags: 0 = Name, 1 = Synonym exakt, 2 = Synonym-Wortteil, 3 = Beschreibung,
+ * -1 = kein Treffer. Namensergebnisse stehen damit immer vor
+ * Beschreibungstreffern (R8-07: „Licht“ lieferte Ladebooster vor LED).
+ */
+export function searchRank(item: Pick<Comp, 'label' | 'description'>, query: string): number {
+  const q = normalizeSearch(query);
+  if (q === '') return -1;
+  if (normalizeSearch(item.label).includes(q)) return 0;
+  const synonyme = (SUCH_SYNONYME[item.label] ?? []).map(normalizeSearch);
+  // Exaktes Alltagswort („Licht“) schlägt Wortteil-Treffer („Lichtmaschine“).
+  if (synonyme.some((wort) => wort === q)) return 1;
+  if (synonyme.some((wort) => wort.includes(q) || q.includes(wort))) return 2;
+  if (normalizeSearch(item.description).includes(q)) return 3;
+  return -1;
+}
