@@ -17,6 +17,19 @@ export function FloatingMetricsCard() {
     }))
   );
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
+  const hatAuswahl = usePlannerStore(
+    (state) => (state.selectedNodes?.length ?? 0) + (state.selectedEdges?.length ?? 0) > 0
+  );
+
+  // R8-06: Eigenschaften und Status-Karte konkurrierten um dieselbe
+  // Flaeche. Sobald ein Bauteil gewaehlt ist (Eigenschaften offen),
+  // klappt die Status-Karte zu — ein Panel zur Zeit. Der Abgleich laeuft
+  // zur Render-Zeit (kein setState im Effekt, Lint-Regel des Projekts).
+  const [syncedAuswahl, setSyncedAuswahl] = useState(hatAuswahl);
+  if (syncedAuswahl !== hatAuswahl) {
+    setSyncedAuswahl(hatAuswahl);
+    if (hatAuswahl) setExpanded(false);
+  }
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   if (viewMode !== 'electric' || nodes.length === 0) return null;

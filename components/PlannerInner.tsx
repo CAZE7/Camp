@@ -124,6 +124,22 @@ function PlannerShell() {
     return () => window.removeEventListener('planner-onboarding-applied', onApplied);
   }, [dismissEntryNotice]);
   const entryNoticeExpanded = entryNotice?.message != null && expandedNotice === entryNotice.message;
+  const selectedCount = usePlannerStore((state) => state.selectedNodes.length + state.selectedEdges.length);
+  const prevSelectedCountRef = React.useRef(0);
+
+  // R8-04: Auf dem Handy oeffnet das Antippen eines Bauteils direkt das
+  // (halbhohe) Eigenschaften-Blatt; Abwaehlen schliesst es wieder, statt
+  // ein leeres Blatt mit „Kein Element ausgewaehlt“ stehen zu lassen.
+  useEffect(() => {
+    const vorher = prevSelectedCountRef.current;
+    prevSelectedCountRef.current = selectedCount;
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 767px)').matches) return;
+    if (vorher === 0 && selectedCount > 0) setActiveTab('inspector');
+    else if (vorher > 0 && selectedCount === 0) {
+      setActiveTab((current) => (current === 'inspector' ? 'canvas' : current));
+    }
+  }, [selectedCount]);
+
   const plannerNodeCount = usePlannerStore((state) => state.nodes.length);
   const plannerWaterNodeCount = usePlannerStore((state) => state.waterNodes.length);
 
@@ -330,7 +346,11 @@ function PlannerShell() {
    */
   const inspectorClass = [
     'min-h-0 flex-col bg-surface-panel',
-    activeTab === 'inspector' ? 'max-md:absolute max-md:inset-0 max-md:z-sheet max-md:flex' : 'max-md:hidden',
+    // R8-04: Auf dem Handy ist das Eigenschaften-Blatt halbhoch (max. 55 %)
+    // statt bildschirmfuellend — der Plan bleibt sichtbar und antippbar.
+    activeTab === 'inspector'
+      ? 'max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[55dvh] max-md:z-sheet max-md:flex max-md:border-t max-md:border-border'
+      : 'max-md:hidden',
     isInspectorOpen
       ? 'md:fixed md:bottom-0 md:right-0 md:top-[calc(var(--cad-menubar-h)+var(--cad-toolbar-h))] md:z-sheet md:flex md:w-80 md:flex-none md:border-l md:border-border'
       : 'md:hidden',
