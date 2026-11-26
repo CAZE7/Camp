@@ -187,6 +187,17 @@ export function PlanerSeoContent() {
               </article>
             ))}
           </div>
+          <p className="mt-4 max-w-3xl leading-relaxed text-muted-foreground">
+            Jede Vorlage gibt es auch als beschriebenes Beispiel mit allen Kabelquerschnitten, Leitungslängen
+            und Sicherungen:{' '}
+            <Link
+              href="/beispiele/"
+              className="font-medium underline underline-offset-2 hover:text-foreground"
+            >
+              alle Schaltplan-Beispiele ansehen
+            </Link>
+            .
+          </p>
         </section>
 
         <section aria-labelledby="planer-rechner-titel">

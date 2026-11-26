@@ -391,11 +391,13 @@ function entryOfContent(page: (typeof CONTENT_PAGES)[number]): PageEntry {
     // wird aus DERSELBEN Datenquelle erzeugt wie Tabelle und Karten; das
     // Inventar muss ihn ankündigen, sonst meldet das Gate json-ld-inventar.
     structuredData:
-      page.path === '/camper-elektrik/ladebooster/'
+      page.path === '/camper-elektrik/ladebooster/' || page.path === '/beispiele/'
         ? [...structuredData, 'ItemList' as const]
         : structuredData,
     sitemap: { changeFrequency: page.changeFrequency, priority: page.sitemapPriority },
-    source: `lib/seo/content/${page.slug}.ts`,
+    source: page.path.startsWith('/beispiele/')
+      ? `lib/seo/content/beispiele/${page.slug}.ts`
+      : `lib/seo/content/${page.slug}.ts`,
     title: page.title,
     description: page.description,
     ...(page.absoluteTitle ? { absoluteTitle: true } : {}),

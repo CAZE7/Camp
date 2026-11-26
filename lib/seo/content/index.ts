@@ -24,6 +24,10 @@ import { RECHNER_HUB_CONTENT } from './rechner-hub';
 import { SCHALTPLAN_CONTENT } from './schaltplan';
 import { SCHALTPLAN_BEISPIEL_CONTENT } from './schaltplan-beispiel';
 import { SCHALTPLAN_PROGRAMME_CONTENT } from './schaltplan-programme';
+import { BEISPIELE_HUB_CONTENT } from './beispiele/hub';
+import { BEISPIEL_WOCHENEND_CONTENT } from './beispiele/wochenend-camper';
+import { BEISPIEL_KASTENWAGEN_CONTENT } from './beispiele/autarker-kastenwagen';
+import { BEISPIEL_AUTARK_CONTENT } from './beispiele/grosses-autark-setup';
 import { SICHERUNGEN_CONTENT } from './sicherungen';
 import { SOLARANLAGE_CONTENT } from './solaranlage';
 import { SOLAR_CONTENT } from './solar';
@@ -51,6 +55,10 @@ export const CONTENT_PAGES: readonly SeoPageContent[] = [
   SCHALTPLAN_CONTENT,
   SCHALTPLAN_BEISPIEL_CONTENT,
   SCHALTPLAN_PROGRAMME_CONTENT,
+  BEISPIELE_HUB_CONTENT,
+  BEISPIEL_WOCHENEND_CONTENT,
+  BEISPIEL_KASTENWAGEN_CONTENT,
+  BEISPIEL_AUTARK_CONTENT,
   RECHNER_HUB_CONTENT,
   SPANNUNGSABFALL_12V_CONTENT,
   BATTERIEKAPAZITAET_CONTENT,

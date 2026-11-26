@@ -17,6 +17,7 @@ import {
   Zap,
   Droplets,
   LayoutTemplate,
+  BookOpen,
   Share2,
   ChevronDown,
 } from 'lucide-react';
@@ -277,6 +278,10 @@ function TemplateMenuButton({ onLoadTemplate }: { onLoadTemplate: (templateId: s
                 <span className="flex-1 truncate">{template.label}</span>
               </button>
             ))}
+            <a href="/beispiele/" role="menuitem" className="cad-menu__item" onClick={() => close()}>
+              <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="flex-1 truncate">Alle Beispiele ansehen</span>
+            </a>
           </div>,
           document.body
         )}

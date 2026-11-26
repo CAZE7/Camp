@@ -162,6 +162,38 @@ export const TOPICS: readonly Topic[] = [
       '12V-Planer, VoltPlan und draw.io nebeneinander: Berechnung, Prüfung, Stückliste — und wofür jedes Werkzeug passt.',
   },
   {
+    id: 'beispiele',
+    label: 'Schaltplan-Beispiele',
+    path: '/beispiele/',
+    role: 'pillar',
+    summary: 'Drei fertig verkabelte Camper-Schaltpläne zum Öffnen und Anpassen.',
+  },
+  {
+    id: 'beispiel-wochenend-camper',
+    label: 'Wochenend-Camper',
+    parent: 'beispiele',
+    path: '/beispiele/wochenend-camper/',
+    role: 'cluster',
+    summary: 'Das kleinste Beispiel: 100 Ah AGM, Sicherungskasten, Licht, USB, Kühlbox — ganz ohne 230 V.',
+  },
+  {
+    id: 'beispiel-autarker-kastenwagen',
+    label: 'Autarker Kastenwagen',
+    parent: 'beispiele',
+    path: '/beispiele/autarker-kastenwagen/',
+    role: 'cluster',
+    summary:
+      '100 Ah LiFePO4, 200 W Solar, 30-A-Ladebooster und 500-W-Wechselrichter — das Erststart-Setup des Planers.',
+  },
+  {
+    id: 'beispiel-grosses-autark-setup',
+    label: 'Großes Autark-Setup',
+    parent: 'beispiele',
+    path: '/beispiele/grosses-autark-setup/',
+    role: 'cluster',
+    summary: '200 Ah LiFePO4, 400 W Solar, Landstrom und Standheizung für lange Standzeiten und Winter.',
+  },
+  {
     id: 'stromverbrauch',
     label: 'Stromverbrauch',
     parent: 'camper-elektrik',
