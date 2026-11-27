@@ -1,5 +1,15 @@
 # Routing-Diagnostic-System
 
+> **Auditstatus 2026-11-27 (R-028):** Die Instrumentierung unten und die
+> CI-Skripte sind zu unterscheiden: `scripts/ci/run-diagnostic.ts` und
+> `generate-golden-master.ts` erzeugen derzeit nur Platzhalter (null/0), keine
+> Messung eines Produktivplans. Der korrigierte CLI-Checker verweigert nun
+> PASS ohne vergleichbare/endliche Metriken sowie bei Messverlust (Exit 2).
+> Die Platzhalterstrecke ist daher ausdrücklich **nicht bestanden**. Echte Routerbelege liefern
+> getrennt `routing:audit`, Golden Master/Regression sowie die PR-only Suite
+> `ci:verify-routing` einschließlich Browser-Messung; letzterer Teil muss in
+> einer browserfähigen Umgebung laufen. Siehe Abschlussbericht PR #609.
+
 ## Übersicht
 
 Das Routing-Diagnostic-System ist eine Instrumentierungs-Infrastruktur für den CAMP Elektroplaner, die es ermöglicht, den vollständigen Optimierungsprozess eines Plans über **fünf definierte Zustände** zu verfolgen und zu analysieren.

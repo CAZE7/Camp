@@ -1,8 +1,17 @@
 # Branch Protection Setup — Camp (Required Status Checks)
 
-**Stand:** 2026-11-05  
-**Verantwortlich:** Repo-Admin (GitHub `workflows:write` / Admin-Rechte erforderlich)  
+**Stand:** 2026-11-05
+
+**Verantwortlich:** Repo-Admin (GitHub `workflows:write` / Admin-Rechte erforderlich)
+
 **Übergeordnet:** `docs/engineering/DEFINITION-OF-DONE.md` (PR-3, PR-5), `docs/CI.md` (§4), `docs/verification/RELEASE-GATES.md` (M-1 bis M-15)
+
+> **Verifikation 2026-11-27:** Die lesende GitHub-API-Abfrage der Protection
+> von `main` liefert `403 Resource not accessible by integration`.
+> Der aktive Schutzstatus ist mit diesen Rechten **nicht verifizierbar**;
+> weder eine Einrichtung noch eine Deaktivierung wird hier behauptet. Es
+> wurden keine Repository-Einstellungen geändert. Repo-Admin muss Required
+> Checks und Reviewpflichten vor Freigabe bestätigen.
 
 ---
 

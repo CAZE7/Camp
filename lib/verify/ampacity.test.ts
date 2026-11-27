@@ -744,3 +744,40 @@ describe('lib/verify/ampacity — conduitFillOutcome (gemeinsame Quelle für Reg
     expect(conduitFillOutcome('EN 20', [Number.NaN])).toEqual({ kind: 'missing-cross-section', index: 0 });
   });
 });
+
+// Der Deklarations-Guard in shortCircuit darf AMP-004 nicht still zu PASS
+// machen: ein verweigertes Quellenmodell bleibt sichtbar unentscheidbar.
+describe('F-609 — widersprüchliche Batteriebank bleibt als offene Prüfung sichtbar', () => {
+  it.each(['declaration-mismatch', 'missing-counts'])(
+    '%s erzeugt UNPROVABLE/UNVERIFIABLE statt einer Sicherheitsfreigabe',
+    (kind) => {
+      const plan = basePlan();
+      const nodes = plan.nodes.map((node) =>
+        node.type === 'battery'
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                bankId: 'audit-bank',
+                bankTopology: kind === 'missing-counts' ? 'series-parallel' : 'series',
+              },
+            }
+          : node
+      );
+      nodes.push(
+        fixtureNode('bat2', 'battery', {
+          bankId: 'audit-bank',
+          bankTopology: kind === 'missing-counts' ? 'series-parallel' : 'parallel',
+          capacity: 100,
+          chemistry: 'LiFePO4',
+        })
+      );
+      const check = checkBreakingCapacity(contextOf({ ...plan, nodes }));
+      expect(check.status).toBe('UNPROVABLE');
+      expect(check.events).toHaveLength(1);
+      expect(check.events[0]?.kind).toBe('UNVERIFIABLE');
+      expect(check.events[0]?.message).toContain('Bankdeklaration');
+      expect(check.events[0]?.autoFixRemedy).toContain('Bankdeklaration');
+    }
+  );
+});

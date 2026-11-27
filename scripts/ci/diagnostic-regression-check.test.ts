@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, unlinkSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { spawnSync } from 'node:child_process';
 import type { RoutingDiagnosticExport } from '@/lib/routing/diagnostic';
 
 // Helper to create mock export
@@ -201,5 +202,87 @@ describe('CI Regression Check', () => {
     // Should skip comparison when metrics are missing
     expect(baseline.metrics.C).toBeNull();
     expect(current.metrics.C).not.toBeNull();
+  });
+
+  // Die bisherigen Tests oben prüfen nur Fixtures/Beispielarithmetik. Diese
+  // Regressionen führen tatsächlich denselben CLI-Einstieg wie CI aus.
+  function runCli(baseline: RoutingDiagnosticExport, current: RoutingDiagnosticExport, extra: string[] = []) {
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    writeFileSync(currentPath, JSON.stringify(current));
+    return spawnSync(
+      process.execPath,
+      [
+        resolve(__dirname, 'diagnostic-regression-check.ts'),
+        `--baseline=${baselinePath}`,
+        `--current=${currentPath}`,
+        `--output=${outputPath}`,
+        ...extra,
+      ],
+      { encoding: 'utf8' }
+    );
+  }
+
+  it('F-609-10: der echte CLI-Aufruf besteht einen unveränderten, vergleichbaren Zustand', () => {
+    const result = runCli(createMockExport(), createMockExport());
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Regression check PASSED');
+    expect(existsSync(outputPath)).toBe(true);
+  });
+
+  it.each([
+    ['totalCableLength', 1100],
+    ['totalBends', 12],
+    ['totalCrossingPairs', 1],
+    ['clearanceViolations', 1],
+    ['edgeNodeViolations', 1],
+  ] as const)('der echte CLI-Aufruf erkennt Verschlechterung von %s', (field, value) => {
+    const baseline = createMockExport();
+    const current = createMockExport({
+      metrics: { ...baseline.metrics, C: { ...baseline.metrics.C!, [field]: value } },
+    });
+    const result = runCli(baseline, current);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('Regression check FAILED');
+  });
+
+  it('F-609-10: kein vergleichbarer Messzustand darf als PASS ausgegeben werden', () => {
+    const empty = createMockExport({ metrics: { A: null, B: null, C: null, D: null, E: null } });
+    const result = runCli(empty, empty);
+    expect(result.status).toBe(2);
+    expect(result.stdout).not.toContain('Regression check PASSED');
+    expect(result.stderr).toContain('Unvollständige Routing-Diagnose');
+  });
+
+  it('F-609-10: weggefallene Metriken dürfen sich nicht durch einen anderen vergleichbaren Zustand verstecken', () => {
+    const baseline = createMockExport();
+    baseline.metrics.E = { ...baseline.metrics.C!, stateId: 'E' };
+    const current = createMockExport({ metrics: { ...baseline.metrics, C: null } });
+    const result = runCli(baseline, current);
+    expect(result.status).toBe(2);
+    expect(result.stdout).not.toContain('Regression check PASSED');
+    expect(result.stderr).toContain('State C');
+  });
+
+  it('F-609-10: ungültige Messzahlen werden nicht durch JS-Arithmetik zu einem PASS', () => {
+    const baseline = createMockExport();
+    // JSON-null ist eine echte mögliche Laufzeiteingabe, aber keine Länge.
+    const invalid = JSON.parse(
+      JSON.stringify(baseline).replace('"totalCableLength":1000', '"totalCableLength":null')
+    ) as RoutingDiagnosticExport;
+    const result = runCli(baseline, invalid);
+    expect(result.status).toBe(2);
+    expect(result.stdout).not.toContain('Regression check PASSED');
+    expect(result.stderr).toContain('totalCableLength');
+  });
+
+  it('ungültiger CLI-Schwellwert NaN darf keine Regression deaktivieren', () => {
+    const baseline = createMockExport();
+    const current = createMockExport({
+      metrics: { ...baseline.metrics, C: { ...baseline.metrics.C!, totalCableLength: 1100 } },
+    });
+    const result = runCli(baseline, current, ['--threshold-cable-length=NaN']);
+    expect(result.status).toBe(2);
+    expect(result.stdout).not.toContain('Regression check PASSED');
+    expect(result.stderr).toContain('Threshold');
   });
 });

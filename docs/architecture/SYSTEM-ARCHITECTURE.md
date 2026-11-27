@@ -1,10 +1,14 @@
 # System-Architektur — Camp (Elektrikplaner)
 
-**Stand:** 2026-11-04  
-**Status:** Verbindlich (Erstfassung, Phase 1 — Architektur & Regelwerk)  
-**Geltungsbereich:** Gesamtes Camp-Repository (`app/`, `components/`, `lib/`, `store/`, `scripts/`, `tests/`, `benchmarks/`).  
-**Verfasser:** Softwarearchitektur / Quality Engineering / Safety Engineering (gemeinsam)  
-**Verwandte Dokumente:** `docs/ai/ARCHITECTURE-RULES.md`, `docs/electrical-architecture.md`, `docs/electrical-graph.md`, `docs/CODE-MAP.md`, `docs/GOVERNANCE.md`, `docs/CI.md`, alle ADRs unter `docs/adr/`.
+**Stand:** 2026-11-27 (Audit PR #609)
+
+**Status:** Verbindlich (Erstfassung, Phase 1 — Architektur & Regelwerk)
+
+**Geltungsbereich:** Gesamtes Camp-Repository (`app/`, `components/`, `lib/`, `store/`, `scripts/`, `tests/`, `benchmarks/`).
+
+**Verfasser:** Softwarearchitektur / Quality Engineering / Safety Engineering (gemeinsam)
+
+**Verwandte Dokumente:** `docs/ai/ARCHITECTURE-RULES.md`, `docs/architecture/ARCHITECTURE-RULES.md`, `docs/electrical-architecture.md`, `docs/electrical-graph.md`, `docs/ai/CODE-MAP.md`, `docs/GOVERNANCE.md`, `docs/CI.md`, alle ADRs unter `docs/adr/`.
 
 ---
 
@@ -256,10 +260,10 @@ Die Regeln werden durch ausführbare Tests erzwungen (eine Regel ohne Test ist e
 
 Dieses Dokument dupliziert nicht die bestehenden, funktionierenden Spezifikationen. Es bezieht sich auf sie:
 
-- `docs/ai/ARCHITECTURE-RULES.md` — Regeln A–N (verbindlich, mit erzwingenden Tests).
+- `docs/ai/ARCHITECTURE-RULES.md` — Regeln A–N (verbindlich, mit erzwingenden Tests) + `docs/architecture/ARCHITECTURE-RULES.md` — dieselben Regeln ergänzt um S-1…S-10 und C-1…C-8.
 - `docs/electrical-architecture.md` — Schichtenmodell der fünf Zusagen (Determinismus, Nutzerabsicht gewinnt, Topologie ≠ Geometrie, keine stillen Annahmen, Konvergenz).
 - `docs/electrical-graph.md` — Die elektrische Wahrheit (`lib/electricalGraph/`).
-- `docs/CODE-MAP.md` — Vollständige Modulkarte (Ist-Zustand).
+- `docs/ai/CODE-MAP.md` — Vollständige Modulkarte (Ist-Zustand).
 - `docs/ai/KNOWN-PROBLEMS.md` — Nachweisbare, offene Probleme (keine Wunschliste).
 - `docs/ARCHITECTURE-V2.md` — FROZEN Spezifikation (Zielbild, nicht Ist-Code).
 - Alle ADRs unter `docs/adr/` (0001–0038, 0026 nie vergeben).

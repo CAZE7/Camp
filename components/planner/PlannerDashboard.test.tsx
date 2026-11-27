@@ -53,6 +53,9 @@ const planState = () => ({
   focusMode: false,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  // Download und Bericht nutzen denselben Aufnahmepfad. getState() muss wie
+  // der echte Store und der Selektor unten auch das Wasser-Kantenarray liefern.
+  waterEdges: [] as Array<{ id: string; selected?: boolean }>,
   edges: [] as Array<{ id: string; selected?: boolean }>,
   focusElement: mockFocusElement,
   deleteSelected: vi.fn(),
@@ -97,7 +100,7 @@ vi.mock('../../store/usePlannerStore', () => ({
         nodes: mockState.nodes,
         edges: mockEdges,
         waterNodes: mockState.waterNodes,
-        waterEdges: [],
+        waterEdges: mockState.waterEdges,
         waterWarning: mockWaterWarning,
         undo: mockUndo,
         redo: mockRedo,

@@ -1,7 +1,15 @@
 # PR-Mergeplan — Camp (Engineering & Quality Framework)
 
-**Stand:** 2026-11-05  
-**Autor:** Agent-Modus (PR #604)  
+> **Historischer Stand — Abgleich 2026-11-27:** Dieses Dokument ist eine
+> Momentaufnahme, keine aktuelle Merge-/Releasefreigabe. PR #604–#606 sind
+> spätestens seit Merge-Commit `1cd4f81d` integriert. Der Default-Branch ist
+> `main`; aktuelle Befunde, tatsächliche CI-Läufe und offene Freigaben stehen
+> in `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
+**Stand:** 2026-11-05
+
+**Autor:** Agent-Modus (PR #604)
+
 **Zweck:** Empfohlene Merge-Reihenfolge für alle offenen PRs im Repo, damit keine Doppelarbeit entsteht und keine Konflikte zwischen Parallel-PRs auftreten.
 
 ---

@@ -1,6 +1,7 @@
 import { getNodesBounds, getViewportForBounds, type Node } from '@xyflow/react';
 
 import { SITE_HOST } from '@/lib/site';
+import type { PlannerState } from '../../../store/usePlannerStore';
 
 /**
  * Bild-Export des Plans (`Datei → Plan als Bild exportieren`).
@@ -67,50 +68,13 @@ function mountWatermark(
 }
 
 export async function exportPlanImage(): Promise<ExportResult> {
-  const [{ toPng }, { usePlannerStore }] = await Promise.all([
-    import('html-to-image'),
-    import('../../../store/usePlannerStore'),
-  ]);
+  const { usePlannerStore } = await import('../../../store/usePlannerStore');
   const state = usePlannerStore.getState();
   const nodes: Node[] =
     state.viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
-
-  // QA B-17: Auswahl-Rahmen gehören nicht ins Bild. Auswahl vor dem Rendern
-  // lösen und danach wiederherstellen.
-  const previousSelection = {
-    nodeIds: state.nodes.filter((n) => n.selected).map((n) => n.id),
-    edgeIds: state.edges.filter((e) => e.selected).map((e) => e.id),
-  };
-  const clearedSelection = previousSelection.nodeIds.length > 0 || previousSelection.edgeIds.length > 0;
-  if (clearedSelection) {
-    usePlannerStore.setState((s) => ({
-      nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
-      edges: s.edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
-      selectedNodes: [],
-      selectedEdges: [],
-    }));
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  }
-  try {
-    return await renderAndDownload(toPng, nodes);
-  } finally {
-    if (clearedSelection) {
-      usePlannerStore.setState((s) => {
-        const nodes = s.nodes.map((n) =>
-          previousSelection.nodeIds.includes(n.id) ? { ...n, selected: true } : n
-        );
-        const edges = s.edges.map((e) =>
-          previousSelection.edgeIds.includes(e.id) ? { ...e, selected: true } : e
-        );
-        return {
-          nodes,
-          edges,
-          selectedNodes: nodes.filter((n) => n.selected),
-          selectedEdges: edges.filter((e) => e.selected),
-        };
-      });
-    }
-  }
+  // Derselbe Aufnahme-/Auswahlschutz für Download und Bericht (keine zweite
+  // Implementierung, insbesondere kein eigener ungeschützter Wasser-Pfad).
+  return renderAndDownload(nodes);
 }
 
 /** Ergebnis einer Plan-Aufnahme ohne Download (AUD-004: Bericht bettet es ein). */
@@ -131,6 +95,17 @@ export type PlanCapture = {
   identity: string;
 };
 
+/** Auswahlidentität ohne verlustbehaftetes join(',') von frei wählbaren IDs. */
+function selectionIdentity(
+  state: Pick<PlannerState, 'nodes' | 'edges' | 'waterNodes' | 'waterEdges'>
+): string {
+  return JSON.stringify(
+    [state.nodes, state.edges, state.waterNodes, state.waterEdges].map((elements) =>
+      elements.filter((element) => element.selected).map((element) => element.id)
+    )
+  );
+}
+
 /**
  * Nimmt die Zeichenfläche als PNG-Data-URL auf — OHNE Wasserzeichen.
  *
@@ -143,7 +118,21 @@ export type PlanCapture = {
  * davon ab, was der Nutzer gerade angeklickt hat, und wäre nicht reproduzierbar.
  * Das gilt für beide Gewerke, nicht nur für die Elektrik.
  */
-export async function capturePlanImage(options?: { watermark?: boolean }): Promise<PlanCapture> {
+let imageCaptureQueue: Promise<void> = Promise.resolve();
+
+export function capturePlanImage(options?: { watermark?: boolean }): Promise<PlanCapture> {
+  // PNG-Renderer, Auswahl und Wasserzeichen teilen EINEN DOM-Canvas. Auch
+  // Aufrufe aus unterschiedlichen Oberflächen dürfen ihn nicht gleichzeitig
+  // verändern. Ein Fehler darf die Warteschlange nicht dauerhaft sperren.
+  const capture = imageCaptureQueue.then(() => capturePlanImageNow(options));
+  imageCaptureQueue = capture.then(
+    () => undefined,
+    () => undefined
+  );
+  return capture;
+}
+
+async function capturePlanImageNow(options?: { watermark?: boolean }): Promise<PlanCapture> {
   const { toPng } = await import('html-to-image');
   const { usePlannerStore } = await import('../../../store/usePlannerStore');
   const { planCaptureIdentity } = await import('./planCaptureIdentity');
@@ -173,26 +162,52 @@ export async function capturePlanImage(options?: { watermark?: boolean }): Promi
       selectedNodes: [],
       selectedEdges: [],
     }));
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   }
 
+  // Noch VOR dem ersten await beobachten. Ein Vergleich erst nach den
+  // vorbereitenden Frames übersieht dortige Nutzeraktionen; ein reiner
+  // Endwertvergleich übersieht Auswahlwechsel mit anschließendem Abwählen
+  // (ABA). Jede beobachtete Auswahländerung beendet unsere Restaurierhoheit.
+  const clearedIdentity = selectionIdentity(usePlannerStore.getState());
+  let selectionChanged = clearedIdentity !== JSON.stringify([[], [], [], []]);
+  const unsubscribe = hadSelection
+    ? usePlannerStore.subscribe((current, previous) => {
+        if (selectionIdentity(current) !== selectionIdentity(previous)) selectionChanged = true;
+      })
+    : () => {};
+
   try {
+    if (hadSelection) {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+    }
     const image = await renderToDataUrl(toPng, nodes, options?.watermark ?? false);
     return { ...image, viewMode, identity };
   } finally {
-    if (hadSelection) {
-      usePlannerStore.setState((s) => ({
-        nodes: s.nodes.map((n) => (selectedNodeIds.includes(n.id) ? { ...n, selected: true } : n)),
-        edges: s.edges.map((e) => (selectedEdgeIds.includes(e.id) ? { ...e, selected: true } : e)),
-        waterNodes: s.waterNodes.map((n) =>
-          selectedWaterNodeIds.includes(n.id) ? { ...n, selected: true } : n
-        ),
-        waterEdges: s.waterEdges.map((e) =>
-          selectedWaterEdgeIds.includes(e.id) ? { ...e, selected: true } : e
-        ),
-        selectedNodes: s.nodes.filter((n) => selectedNodeIds.includes(n.id)),
-        selectedEdges: s.edges.filter((e) => selectedEdgeIds.includes(e.id)),
-      }));
+    unsubscribe();
+    if (hadSelection && !selectionChanged) {
+      usePlannerStore.setState((current) => {
+        if (selectionIdentity(current) !== clearedIdentity) return current;
+        const nodes = current.nodes.map((node) =>
+          selectedNodeIds.includes(node.id) ? { ...node, selected: true } : node
+        );
+        const edges = current.edges.map((edge) =>
+          selectedEdgeIds.includes(edge.id) ? { ...edge, selected: true } : edge
+        );
+        return {
+          nodes,
+          edges,
+          waterNodes: current.waterNodes.map((node) =>
+            selectedWaterNodeIds.includes(node.id) ? { ...node, selected: true } : node
+          ),
+          waterEdges: current.waterEdges.map((edge) =>
+            selectedWaterEdgeIds.includes(edge.id) ? { ...edge, selected: true } : edge
+          ),
+          selectedNodes: nodes.filter((node) => node.selected),
+          selectedEdges: edges.filter((edge) => edge.selected),
+        };
+      });
     }
   }
 }
@@ -249,12 +264,9 @@ async function renderToDataUrl(
   }
 }
 
-async function renderAndDownload(
-  toPng: typeof import('html-to-image').toPng,
-  nodes: Node[]
-): Promise<ExportResult> {
+async function renderAndDownload(nodes: Node[]): Promise<ExportResult> {
   try {
-    const { dataUrl } = await renderToDataUrl(toPng, nodes, true);
+    const { dataUrl } = await capturePlanImage({ watermark: true });
     const link = document.createElement('a');
     link.download = '12v-planer-schaltplan.png';
     link.href = dataUrl;

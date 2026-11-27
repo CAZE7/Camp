@@ -54,6 +54,7 @@ import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
 import type { Node } from './domain/graph';
 import { DEFAULT_SYSTEM_VOLTAGE } from './vde-standards';
 import { normalizeBatteryChemistry } from './peukert';
+import { deriveBatteryBanks } from './electricalGraph/batteryBank';
 
 /**
  * κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010).
@@ -160,11 +161,30 @@ export function batteryShortCircuitCurrentA(node: Node | undefined): number | nu
 }
 
 /**
+ * Widersprüchliche Bankdeklarationen sind keine schätzbare Quelle (F-609-1/3).
+ * Ausschließlich das Bank-Modell beurteilt Topologie und Mitgliederzahlen.
+ * `ambiguous-topology` bleibt der dokumentierte Legacy-Fall: Parallelschätzung
+ * plus Rückfrage in der Warn-Zentrale. Keine neue elektrische Formel.
+ */
+function hasContradictoryHouseBank(batteries: readonly Node[]): boolean {
+  const model = deriveBatteryBanks(batteries);
+  const houseBankIds = new Set(model.banks.filter((bank) => bank.role === 'house').map((bank) => bank.id));
+  return model.questions.some(
+    (question) =>
+      houseBankIds.has(question.bankId) &&
+      (question.kind === 'declaration-mismatch' ||
+        question.kind === 'missing-counts' ||
+        question.kind === 'member-count-mismatch')
+  );
+}
+
+/**
  * Ersatz-Innenwiderstand (mΩ) der reinen Parallelschaltung aller Blöcke
  * (Haus-Bank; Starterbatterien gehören fachlich nicht in den Haus-Kreis).
- * null, wenn kein Block schätzbar ist.
+ * null bei widersprüchlicher Bankdeklaration oder wenn kein Block schätzbar ist.
  */
 export function bankEquivalentRiMilliOhm(batteries: readonly Node[]): number | null {
+  if (hasContradictoryHouseBank(batteries)) return null;
   const house = batteries.filter((b) => {
     const role = dataOf(b)?.role;
     return role !== 'starter';

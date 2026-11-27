@@ -1,9 +1,19 @@
 # Abschlussbericht — PR #604 / Engineering & Quality Framework (Camp)
 
-**Branch:** `arena/949821e6-camp`  
-**Commit-SHA:** `5e22af5`  
-**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN  
-**Stand:** 2026-11-05  
+> **Historischer Stand — Abgleich 2026-11-27:** Dieses Dokument ist eine
+> Momentaufnahme, keine aktuelle Merge-/Releasefreigabe. PR #604–#606 sind
+> spätestens seit Merge-Commit `1cd4f81d` integriert. Der Default-Branch ist
+> `main`; aktuelle Befunde, tatsächliche CI-Läufe und offene Freigaben stehen
+> in `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
+**Branch:** `arena/949821e6-camp`
+
+**Commit-SHA:** `5e22af5`
+
+**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN
+
+**Stand:** 2026-11-05
+
 **Bewertung:** MERGE-READY (siehe Abschnitt 8, Restrisiken dokumentiert)
 
 ---

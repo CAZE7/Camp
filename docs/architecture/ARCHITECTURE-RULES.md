@@ -1,9 +1,13 @@
 # Architektur-Regeln — Camp (verbindlich)
 
-**Stand:** 2026-11-04  
-**Status:** Verbindlich für alle Entwickler und KI-Agenten  
-**Autorität:** Dieses Dokument beschreibt die Regeln; die Durchsetzung liegt in ausführbaren Tests. Eine Regel ohne Test ist eine Konvention und wird als solche markiert.  
-**Basis:** Baut auf `docs/ai/ARCHITECTURE-RULES.md` (Regeln A–N, aus ADRs übernommen) auf und ergänzt sie um sicherheitsrelevante, daten- und prozessbezogene Regeln.  
+**Stand:** 2026-11-27 (Audit PR #609)
+
+**Status:** Verbindlich für alle Entwickler und KI-Agenten
+
+**Autorität:** Dieses Dokument beschreibt die Regeln; die Durchsetzung liegt in ausführbaren Tests. Eine Regel ohne Test ist eine Konvention und wird als solche markiert.
+
+**Basis:** Baut auf `docs/ai/ARCHITECTURE-RULES.md` (Regeln A–N, zusätzlich dort P/Q/R; aus ADRs übernommen) auf und ergänzt sie um sicherheitsrelevante, daten- und prozessbezogene Regeln.
+
 **Verweis:** `docs/architecture/SYSTEM-ARCHITECTURE.md` (Schichtenmodell), `docs/engineering/ENGINEERING-CONSTITUTION.md` (Constitution).
 
 ---
@@ -126,9 +130,10 @@ Die folgenden Regeln ergänzen A–N. Sie sind Teil der `ENGINEERING-CONSTITUTIO
 
 ### Rule S-1 — Eine Stromquelle. **(Konvention, testgestützt)**
 
-Es gibt genau eine Stromquelle für Dimensionierung, Anzeige und Validierung: `calculateEdgeCurrent` (DC) bzw. `acCurrentA` (AC). Nie einen zweiten Strompfad bauen. `I_B ≤ I_n ≤ I_z` per Konstruktion (ein `DERATE_FACTOR` für Sizing + Sicherung).
+Es gibt genau eine Stromquelle für Dimensionierung, Anzeige und Validierung: `getCableCurrents` (Topologie-Strommodell, `lib/electricalGraph/currentFlow.ts`) — DC **und** AC. Nie einen zweiten Strompfad bauen. `I_B ≤ I_n ≤ I_z` per Konstruktion (ein `DERATE_FACTOR` für Sizing + Sicherung).
 
-- Verweis: `ELECTRICAL-CONTEXT.md` §5.2; AUDIT ELE-009 (zweiter AC-Pfad entfernt).
+- Die früheren Heuristiken `calculateEdgeCurrent` (DC) und `acCurrentA` (AC) sind **ersetzt**, nicht mehr Teil des Produktivpfads und in `CableEdge.tsx` per `vde-consistency.test.ts` verboten. `calculateEdgeCurrent` existiert noch als reine Rechenfunktion (eigene Tests), ist aber keine zulässige Stromquelle für Anzeige oder Dimensionierung.
+- Verweis: `docs/ai/ELECTRICAL-CONTEXT.md` §5.2; AUDIT ELE-009 (zweiter AC-Pfad entfernt); `lib/vde-consistency.test.ts` (erzwingt `getCableCurrents` und verbietet die Altpfade in der Anzeige).
 
 ### Rule S-2 — Datenherkunft und Quellenangabe. **(Konvention)**
 
@@ -138,7 +143,7 @@ Jede technische Komponente, jeder Grenzwert und jede Normtabelle trägt eine Que
 
 ### Rule S-3 — Datenlücke ist kein Defekt. **(Konvention, testgestützt)**
 
-Fehlende technische Daten (z. B. kein `fuseType`, keine Panel-Voc, keine `acProtection`) melden „nicht bewertbar“ (`UNVERIFIABLE` / `incomplete`), niemals einen geschätzten Grenzwert. Keine Datenlücke erscheint als `critical`.
+Fehlende technische Daten (z. B. kein `fuseType`, keine Panel-Voc, keine `acProtection`) melden „nicht bewertbar“ (`UNVERIFIABLE` / `incomplete`), niemals einen geschätzten Grenzwert. Keine Datenlücke erscheint als `critical` — **Sollregel mit offener Ausnahme:** `fuse-offset-missing` ist nach dem älteren S-03-Vertrag weiterhin kritisch. Dieser Konflikt ist als R-027 / CL-004/014 offen dokumentiert; der bestehende Check wird ohne Fachentscheidung nicht abgeschwächt.
 
 - Verweis: `VALIDATION-CONTEXT.md` §8.6; `lib/validationSeverity.ts`.
 

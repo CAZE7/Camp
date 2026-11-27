@@ -169,3 +169,103 @@ describe('DOM-002 — Regelanker begründet die Bauformwahl', () => {
     expect(VDE_SOLAR_VMP_VOLTAGE).toBe(18);
   });
 });
+
+/**
+ * PR-609-Audit: Widersprüche werden vom Bank-Modell beurteilt, nicht durch
+ * einen zweiten Rohfeld-Leser. Die Serienformeln aus PR #609 sind NICHT
+ * übernommen: Ohne unabhängigen Fachnachweis bleibt AUD-020 offen.
+ */
+describe('F-609 — Bankdeklaration und bestehende Sicherheitsgrenzen', () => {
+  const declared = (id: string, topology: string, extra: Record<string, unknown> = {}): Node =>
+    battery(id, {
+      capacity: 100,
+      chemistry: 'LiFePO4',
+      nominalVoltage: 12.8,
+      bankId: 'bank-x',
+      bankTopology: topology,
+      ...extra,
+    });
+
+  it('F-609-1: widersprüchliche Topologien derselben Bank sind in beiden Reihenfolgen nicht bewertbar', () => {
+    const nodes = [declared('b1', 'series'), declared('b2', 'parallel')];
+    for (const order of [nodes, [...nodes].reverse()]) {
+      expect(bankEquivalentRiMilliOhm(order)).toBeNull();
+      expect(bankShortCircuitCurrentA(order)).toBeNull();
+      expect(shortCircuitAtFuseA(order, 0.1, 16)).toBeNull();
+    }
+  });
+
+  it.each(['parallel', 'series', 'series-parallel'])(
+    'F-609-2 / K-3: gemischtspannige %s-Bank bleibt in beiden Reihenfolgen nicht bewertbar',
+    (topology) => {
+      const nodes = [
+        declared('b1', topology, { bankSeries: topology === 'parallel' ? 1 : 2, bankParallel: 1 }),
+        declared('b2', topology, {
+          nominalVoltage: 12.0,
+          chemistry: 'AGM',
+          bankSeries: topology === 'parallel' ? 1 : 2,
+          bankParallel: 1,
+        }),
+      ];
+      // Parallel ohne widersprüchliche Zählwerte, damit wirklich die
+      // Spannungsprüfung greift und nicht der neue Deklarations-Guard.
+      if (topology === 'parallel') {
+        for (const node of nodes) node.data.bankParallel = 2;
+      }
+      expect(bankEquivalentRiMilliOhm(nodes)).not.toBeNull();
+      for (const order of [nodes, [...nodes].reverse()]) {
+        expect(bankShortCircuitCurrentA(order)).toBeNull();
+        expect(shortCircuitAtFuseA(order, 0, 16)).toBeNull();
+      }
+    }
+  );
+
+  it('F-609-3: series-parallel ohne Zählwerte ist keine erfundene 1s1p-Bank', () => {
+    const nodes = Array.from({ length: 4 }, (_, index) => declared(`b${index}`, 'series-parallel'));
+    expect(bankEquivalentRiMilliOhm(nodes)).toBeNull();
+    expect(bankShortCircuitCurrentA(nodes)).toBeNull();
+    expect(shortCircuitAtFuseA(nodes, 0.1, 16)).toBeNull();
+  });
+
+  it.each([
+    { topology: 'unbekannt', extra: {} },
+    { topology: 'single', extra: {} },
+    { topology: 'series-parallel', extra: { bankSeries: 2, bankParallel: 2 } },
+    { topology: 'parallel', extra: { bankParallel: -1 } },
+  ])(
+    'SSOT: unbekannte Topologie oder falsche Mitgliederzahlen werden nicht geraten ($topology, $extra)',
+    ({ topology, extra }) => {
+      const nodes = [declared('b1', topology, extra), declared('b2', topology, extra)];
+      expect(bankEquivalentRiMilliOhm(nodes)).toBeNull();
+      expect(bankShortCircuitCurrentA(nodes)).toBeNull();
+    }
+  );
+
+  it('eine widersprüchliche Starterbank sperrt keine unabhängige Aufbaubatterie', () => {
+    const nodes = [
+      battery('house', { capacity: 100, chemistry: 'LiFePO4' }),
+      declared('starter1', 'series', { role: 'starter' }),
+      declared('starter2', 'parallel', { role: 'starter' }),
+    ];
+    expect(bankEquivalentRiMilliOhm(nodes)).toBeCloseTo(3, 10);
+    expect(bankShortCircuitCurrentA(nodes)).toBeCloseTo(4266.67, 2);
+  });
+
+  it('Bestandsschutz: undeklarierte Blöcke behalten ihre Parallelschätzung', () => {
+    const nodes = [
+      battery('b1', { capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
+      battery('b2', { capacity: 200, chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
+    ];
+    expect(bankEquivalentRiMilliOhm(nodes)).toBeCloseTo(1, 10);
+    expect(bankShortCircuitCurrentA(nodes)).toBeCloseTo(12_800, 6);
+  });
+
+  it('keine ungeprüfte Formeländerung: gültige Seriendeklaration behält nur die konservative Bestandsschätzung (AUD-020 offen)', () => {
+    const nodes = [declared('b1', 'series'), declared('b2', 'series')];
+    // KEIN Nachweis für eine Serienauslegung: Die Warn-Zentrale meldet
+    // BANK-SERIES-UNSUPPORTED weiterhin kritisch. Hier wird allein die
+    // unveränderte Legacy-Rechnung festgehalten, nicht fachlich freigegeben.
+    expect(bankEquivalentRiMilliOhm(nodes)).toBeCloseTo(1.5, 10);
+    expect(bankShortCircuitCurrentA(nodes)).toBeCloseTo(8533.33, 1);
+  });
+});

@@ -88,6 +88,12 @@ function parseArgs(): RegressionConfig {
     process.exit(1);
   }
 
+  for (const [name, value] of Object.entries(config.thresholds)) {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error(`Threshold ${name} muss endlich und nichtnegativ sein, erhalten: ${value}`);
+    }
+  }
+
   return config;
 }
 
@@ -207,6 +213,14 @@ function runRegressionCheck(config: RegressionConfig): RegressionResult {
   const summary: RegressionResult['summary'] = [];
 
   const states: DiagnosticStateId[] = ['A', 'B', 'C', 'D', 'E'];
+  let comparedStates = 0;
+  const requiredMetrics = [
+    'totalCableLength',
+    'totalBends',
+    'totalCrossingPairs',
+    'clearanceViolations',
+    'edgeNodeViolations',
+  ] as const;
 
   for (const stateId of states) {
     const baselineMetrics = getMetricsForState(baseline, stateId);
@@ -214,10 +228,24 @@ function runRegressionCheck(config: RegressionConfig): RegressionResult {
 
     summary.push({ baselineMetrics, currentMetrics, stateId });
 
+    if (baselineMetrics && !currentMetrics) {
+      throw new Error(`Unvollständige Routing-Diagnose: State ${stateId} fehlt gegenüber der Baseline.`);
+    }
     if (!baselineMetrics || !currentMetrics) {
       console.log(`⚠️  State ${stateId}: Skipping (missing metrics)`);
       continue;
     }
+    for (const metrics of [baselineMetrics, currentMetrics]) {
+      for (const field of requiredMetrics) {
+        const value = metrics[field];
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+          throw new Error(
+            `Unvollständige Routing-Diagnose: State ${stateId}, ${field} ist keine endliche nichtnegative Messzahl.`
+          );
+        }
+      }
+    }
+    comparedStates += 1;
 
     const violations = compareMetrics(baselineMetrics, currentMetrics, stateId, config.thresholds);
     allViolations.push(...violations);
@@ -230,6 +258,12 @@ function runRegressionCheck(config: RegressionConfig): RegressionResult {
         console.log(`  - ${v.message}`);
       });
     }
+  }
+
+  if (comparedStates === 0) {
+    throw new Error(
+      'Unvollständige Routing-Diagnose: keine vergleichbaren Zustandsmetriken; kein PASS möglich.'
+    );
   }
 
   console.log('');
