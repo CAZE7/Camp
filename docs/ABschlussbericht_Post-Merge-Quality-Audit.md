@@ -12,7 +12,14 @@
 
 **Tatsächliche Basis von PR #609:** `1cd4f81d54f15fc2cf55ad93bbe29ba81451cd34`
 
-**Korrektur-Commit / eigener PR / aktueller CI-Lauf:** wird nach der lokalen Verifikation eingetragen.
+**Korrektur-Commit:** `05883226aa098f956fbadc11fd53903de42f3d64`
+
+**Eigener Audit-PR:** [#618 (Draft)](https://github.com/CAZE7/Camp/pull/618)
+
+**Tatsächlicher CI-Lauf des Korrektur-Commits:** [46055876243](https://github.com/CAZE7/Camp/actions/runs/46055876243), abgeschlossen; Quality/Matrix/E2E erfolgreich, Visual-Job rot (Details §6.2).
+
+Der nachfolgende Berichtsnachtrag dokumentiert diesen tatsächlich abgeschlossenen
+Lauf, ohne den Korrektur-Commit oder seinen Prüfstand umzubenennen.
 
 Dieser Bericht ersetzt den veralteten Abschlussbericht aus PR #609 nicht
 rückwirkend durch vermeintlich damalige Ergebnisse. Er unterscheidet den
@@ -36,8 +43,10 @@ unabhängiger elektrotechnischer Fachnachweis**.
 - Nicht vollständig erfüllte Sicherheitsbehauptungen bleiben offen. Der
   S-03/S-3-Konflikt wird nicht durch eine Herabstufung des Sicherungschecks
   kaschiert. Branch Protection ist mit den verfügbaren Rechten nicht lesbar.
-- Browserbasierte Abnahme ist in dieser Umgebung blockiert; historische
-  E2E-/Pixelzahlen aus einem PR-Bericht sind dafür kein Ersatz.
+- Browserstart ist **lokal** blockiert. Der neue GitHub-Lauf weist jetzt
+  funktionales E2E, M-13 und a11y tatsächlich nach. Visual/Lighthouse sind
+  dort rot; insgesamt grüner Workflow wegen `continue-on-error` ist **keine
+  vollständige grüne Abnahme**. Historische Testzahlen ersetzen das nicht.
 
 Keine Änderungen an `main`, keine fremden Branches überschrieben und kein
 Merge ausgeführt. Die Workflow-Dateien und der neuere M-13-Pflichttest werden
@@ -50,12 +59,12 @@ unverändert beibehalten.
 | `docs/architecture/SYSTEM-ARCHITECTURE.md`                                                                              | `lib/domain/graph.ts`, `getCableCurrents`, elektrische Fachmodule, Store-/UI-Adapter; `scripts/architecture/libBoundary.test.ts`, `scripts/routing/architecture.test.ts` | Layer-Grenze testgestützt; die gesamte UI-/SSOT-Semantik ist nicht durch einen einzelnen Architekturtest bewiesen. Veralteter Code-Map-Link korrigiert.                                                                                                  |
 | `docs/architecture/ARCHITECTURE-RULES.md` und AI-Regeln                                                                 | A/E/G/H/I/J über Architekturtests; K über Doppellauf/Golden/Regression; P/Q/R zusätzlich im AI-Dokument und den dort genannten Tests                                     | Nicht alle Regeln sind harte Gates. D, S-2, S-6, S-9, S-10 und Teile anderer Regeln bleiben Review-/Prozesspflichten. S-1 nannte entfernte Strompfade; korrigiert.                                                                                       |
 | `ENGINEERING-CONSTITUTION.md`                                                                                           | Zwei Typechecks, typbewusstes ESLint, Prettier, Vitest-Coverage; Schwellen `lib/**`: Lines 90, Branches 85, Functions 90, Statements 95                                  | Schwellen stimmen mit Konfiguration überein; Ausnahmen `lib/planner/**`, GPU und Diagnostic-Code sind explizit. ESLint schließt u. a. `scripts/**` aus: kein pauschaler Lintbeweis für jedes Skript. Review/Fachfreigabe nicht durch Coverage ersetzbar. |
-| `DEFINITION-OF-DONE.md`                                                                                                 | Lokale Check-Kette und CI-Gates vorhanden; Sicherheitsreviews, Branch-Aktualität, Adminschutz und Releasefreigabe externe Pflichten                                      | Kein automatisches „Done“ allein aus lokalen Tests. Zwei unabhängige Sicherheitsreviews und tatsächliche grüne Browser-/CI-Nachweise fehlen als Freigabe.                                                                                                |
+| `DEFINITION-OF-DONE.md`                                                                                                 | Lokale Check-Kette und CI-Gates vorhanden; Sicherheitsreviews, Branch-Aktualität, Adminschutz und Releasefreigabe externe Pflichten                                      | Kein automatisches „Done“ allein aus lokalen Tests. Zwei unabhängige Sicherheitsreviews fehlen; tatsächliche CI-Nachweise siehe §6.2, Visual/Lighthouse bleiben rot.                                                                                     |
 | `docs/ELECTRICAL-VERIFICATION-STRATEGY.md`                                                                              | RM-1…RM-5, Differentialtests, elektrische Invarianten, kritische Mutanten, Silent-Pass-Gate und erreichbarer COMPLIANT-Fall vorhanden                                    | §0–§11 sind historische Aufnahme, §12 enthält die Umsetzung; Lesestand jetzt kenntlich gemacht. Referenzcode unabhängig, fachliche/empirische Datenbasis nicht dadurch unabhängig verifiziert. RM-3 ist kein Nachweis für die neue Serienrechnung.       |
 | `docs/verification/VERIFICATION-STRATEGY.md`                                                                            | Differentialprüfung und neun kuratierte Mutantentests sind tatsächlich aktiv                                                                                             | Veraltete Aussagen „keine Mutation im CI“ und Verweise auf zwei vereinheitlichte Strompfade ersetzt. Kein vollständiger Stryker-Score behauptet.                                                                                                         |
 | `PRODUCT-READINESS-AUDIT.md`                                                                                            | Gegen Code, Tests, historische Befunde AUD-011/020 und aktuelle CI-Metadaten abgeglichen                                                                                 | AUD-020 bleibt offen; kritische Serien-Modellgrenze bleibt. Historische PR-Testzahlen ausdrücklich keine aktuellen Messungen.                                                                                                                            |
 | `REQUIREMENTS-MATRIX.md`                                                                                                | Offizielle Tabellen/IDs, Pfade, Klasse-S-Traceability und begrenzter semantischer Abgleich im wiederverwendeten PR-Validator                                             | Falsche Risikozuordnung und `F/S`-Lücke korrigiert; 29 Anforderungen / 18 mit S nach Ergänzung CAMP-REQ-029. Warnungen sind keine bestätigte Freigabe.                                                                                                   |
-| Routing-Verifikation: `docs/ROUTING-INVARIANTS.md`, `docs/ai/ROUTING-CONTEXT.md`, `docs/ai/ROUTING-DIAGNOSTIC.md`, M-13 | Produktivrouter-Audit, Golden Master, SVG-Regression sowie Oracle/Properties/Fuzz/Failure-Replay/Prozessdeterminismus und Browsermessung als PR-only Suite               | Echte Routerprüfungen von den Platzhalter-Diagnostic-Skripten unterscheiden. Letztere sind kein belastbarer Produktionsnachweis (R-028). Browseranteil bleibt offen.                                                                                     |
+| Routing-Verifikation: `docs/ROUTING-INVARIANTS.md`, `docs/ai/ROUTING-CONTEXT.md`, `docs/ai/ROUTING-DIAGNOSTIC.md`, M-13 | Produktivrouter-Audit, Golden Master, SVG-Regression sowie Oracle/Properties/Fuzz/Failure-Replay/Prozessdeterminismus und Browsermessung als PR-only Suite               | Echte Routerprüfungen von den Platzhalter-Diagnostic-Skripten unterscheiden. Letztere sind kein belastbarer Produktionsnachweis (R-028). Browseranteil im eigenen CI bestanden; Visual/Lighthouse separat rot (§6.2).                                    |
 
 **Q-7 / Testfokussierung:** Playwright setzt `forbidOnly` bei `CI`.
 Vitest 4.1.12 besitzt zusätzlich den Standard `allowOnly: !isCI`; das Fehlen
@@ -217,7 +226,8 @@ bewusst nicht zum Planfingerprint. Die Queue umgeht diese Prüfung nicht.
   [Zod Speicherverbrauch](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
   Quellen: npm-Advisory-Antwort und `npm ls undici zod --omit=dev`, Auditdatum.
 - Die alten Berichte nennen lokale bzw. historische Tests, aber keinen
-  tatsächlich grünen #609-Head. Aktueller CI-Nachweis und historische Angaben
+  tatsächlich grünen #609-Head. Der tatsächliche neue Nachweis gehört zu
+  #618 und nicht rückwirkend zu #609. Aktueller CI-Nachweis und historische Angaben
   werden getrennt. Historische Zahlen 4.318/1, 447/277, 76 und Lighthouse
   84/90 sind **nur im damaligen PR-Bericht berichtete Werte**, nicht hier
   unabhängig nachverifizierte Ergebnisse.
@@ -238,7 +248,7 @@ nicht blockierend ist berichtigt (keine Budgetänderung):
 | 5. Determinismus               | Golden-Doppellauf, SVG-Regression, Audit und zusätzliche Prozessdeterminismus-Suite. Widersprüchliche Bankdeklaration jetzt in beiden Reihenfolgen unbewertbar. Zeitpunkt-/Zeitstempel-Felder sind keine elektrische Identität.                                  |
 | 6. Async / Race                | Auswahl-Race einschließlich Frame-/ABA-Fenster und paralleler DOM-Aufnahmen reproduziert und korrigiert. Keine Behauptung einer vollständigen Race-Freiheit aller Store-/Browserinteraktionen.                                                                   |
 | 7. Ungültige / fehlende Daten  | Units werfen; Schemas bereinigen Typen; Bank-Modell stellt Fragen; neue Guards liefern null, AMP-004 bleibt offen. Bestehende explizit dokumentierte Schätzungen bleiben Schätzungen. S-03/S-3-Konflikt offen.                                                   |
-| 8. Export / Planstand          | Gemeinsamer PNG-Pfad; bestehende Fingerprint-/Darstellungsidentitätsprüfung bleibt. Real-Store-Tests und BOM-Report-Konsistenztests statt eines bloßen Mock-Crash-Tests. Echter Browsernachweis fehlt lokal.                                                     |
+| 8. Export / Planstand          | Gemeinsamer PNG-Pfad; bestehende Fingerprint-/Darstellungsidentitätsprüfung bleibt. Real-Store-Tests und BOM-Report-Konsistenztests statt eines bloßen Mock-Crash-Tests. Lokal kein Browserstart; funktionaler Browsernachweis im eigenen GitHub-Lauf (§6.2).    |
 | 9. Schichtengrenzen            | libBoundary, Routing-Architektur und leere Lib-Allowlist unverändert. Neuer Guard importiert nur `lib` aus `lib`; Export bleibt in der UI-/Store-Schicht.                                                                                                        |
 | 10. S-1…S-10 / Security & Data | Einzelbewertung unten. Keine Sicherheitsprüfung abgeschaltet und kein fremder Branch verändert. Kein umfassendes Penetrations- oder Zertifizierungsaudit behauptet.                                                                                              |
 
@@ -297,7 +307,7 @@ Build-/Coverage-/Browserartefakte werden nicht eingecheckt.
 | Production Build / Static Export                    | **Exit 0**, 18:29:02–18:29:57 UTC; Next-Export und SEO-Audit für **42 Seiten** grün, **44 HTML-Dateien / 17 MB** insgesamt. Kein tatsächlicher Deployment-Headernachweis.                                                                                                                         |
 | Funktionales Playwright                             | Startversuch **Exit 1** vor Testausführung: `libnspr4.so` fehlt. Suite selektiert **728** Szenarien, nach erstem Startfehler abgebrochen, **727 nicht ausgeführt**. Kein Featurefehler daraus abgeleitet.                                                                                         |
 | Visuelle Regression                                 | Startversuch **Exit 1** mit derselben Bibliotheksursache; **76** selektiert, **75 nicht ausgeführt**. Kein Pixelergebnis und keine Baseline neu geschrieben.                                                                                                                                      |
-| M-13 Autark-Browser / a11y                          | Autark-Startversuch **Exit 1** vor Browserstart; a11y/Interaktion deshalb nicht unabhängig verifiziert.                                                                                                                                                                                           |
+| M-13 Autark-Browser / a11y                          | Lokaler Autark-Startversuch **Exit 1** vor Browserstart; lokale a11y/Interaktion nicht verifiziert. Tatsächlicher GitHub-Nachweis in §6.2.                                                                                                                                                        |
 | Lighthouse                                          | **Exit 1**; drei Routen erreichen keinen Chrome-Debugging-Port. Kein Score und keine gemessene Budgetüberschreitung der App behauptet. Die Browserumgebung ist nicht lauffähig.                                                                                                                   |
 | `npm audit --omit=dev`                              | **Exit 1**, **2 high / 0 critical**, transitive `undici`/`zod`-Advisories. R-029 offen, kein nachgewiesener App-Exploit behauptet.                                                                                                                                                                |
 
@@ -327,8 +337,59 @@ Die Rohlogs sind lokal/ignoriert, keine eingecheckten Build- oder Testdaten.
 
 <!-- AUDIT-CI-RESULTS-START -->
 
-Noch nicht ausgeführt. Der neue Lauf muss zur **eigenen** Audit-PR und deren
-Commit-SHA gehören; der historische Billing-Lauf ist kein Ersatz dafür.
+**Pull Request:** [#618](https://github.com/CAZE7/Camp/pull/618), eigener Branch,
+Draft; kein Merge. **Head-SHA des gemessenen Laufs:**
+`05883226aa098f956fbadc11fd53903de42f3d64`.
+
+**Lauf:** [46055876243](https://github.com/CAZE7/Camp/actions/runs/46055876243),
+Event `pull_request`, Versuch 1, **2026-11-27 19:19:28–19:35:08 UTC**.
+GitHub meldet insgesamt `completed / success` — **nicht** alle Jobs grün.
+
+| Tatsächlicher Job                   | Check-Run-ID   | Ergebnis und Beleggrenze                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Requirements-Matrix Konsistenzcheck | `140698117106` | **success**, ausgeführt; keine historische Billing-Startverweigerung.                                                                                                                                                                                                                                                                                                |
+| Typecheck, Tests & Build            | `140698117349` | **success**: Install/Lockfile, Architektur, Routing/Golden/Regression, Lint/Format, beide Typechecks, Coverage, G4/G6, Performance, Build und Static Export erfolgreich. **M-13 success**, Autark-Browserannotation **1 passed (5,3 s)**. **M-14 a11y success: 52 passed / 4 bestehende Skips**. Keine Zertifizierung von Elektrik oder vollständiger Accessibility. |
+| End-to-End (Playwright)             | `140698116823` | **success**, **448 passed / 280 skipped (13,6 min)** laut GitHub-Annotation. Keine 728 bestandenen Tests behauptet. Die bedingten Viewport-/Touch-Skips stammen aus unveränderten Tests; exakt dieselben 448/280 meldet bereits der Basislauf.                                                                                                                       |
+| Visuelles Gate (nicht blockierend)  | `140698117186` | **failure**: Pixelprüfung **18 failed / 58 passed (1,5 min)**. Auch Schritt **Lighthouse-Budget** ist `failure`. Sein numerischer Befund / genaue technische Ursache ist aus den verfügbaren Annotations **nicht bestimmbar**; weder Budgetüberschreitung noch Browserbibliotheksfehler unterstellt.                                                                 |
+
+Der grüne Gesamtstatus erklärt sich aus dem **bereits bestehenden**
+`continue-on-error: true` des Visual-Jobs. Diese Konfiguration wurde nicht
+geändert. Insbesondere beweist ein `gh run watch --exit-status` mit Exit 0
+hier **nicht**, dass Visual oder Lighthouse bestanden haben.
+
+**Gegenprobe am tatsächlichen Basiscommit, kein Ursachenraten:**
+[44922014101](https://github.com/CAZE7/Camp/actions/runs/44922014101)
+(Head `43ce7dcfb44b6bb97b612652c3cbee17cd54cecc`) meldet bereits:
+
+- E2E-Check `136899912791`: **448 bestanden / 280 skipped**;
+- Visual-Check `136899912944`: **18 fehlgeschlagen / 58 bestanden**,
+  dieselbe Liste von 18 Szenarien: Startseite, Heizung, Impressum ×
+  light/dark × tablet-768/mobile-375/touch-pixel5;
+- M-14: **52 bestanden / 4 skipped**; Lighthouse-Schritt ebenfalls rot.
+
+Damit sind diese konkreten visuellen Fehlschläge als **bereits vor den
+Korrekturen vorhanden** belegt, nicht ihre technische Ursache und nicht ihre
+Akzeptanz. Beispiel im neuen Lauf: `route-heizung-light.png`, tablet-768,
+**30.214 abweichende Pixel / Verhältnis 0,04**, auch nach Retry. Kein
+Recapture, keine Lockerung von Assertions oder Budgets. Die Diff-Artefakte
+liegen im tatsächlichen GitHub-Lauf als **`visual-diff`** (ID `15226697825`,
+50.893.258 Byte). Binäre Artefakte und rohe Joblogs sind über die verfügbaren
+Downloadpfade hier nicht auswertbar; die Annotations und Stepstatus wurden
+vollständig per REST gelesen. Die visuellen Ursachen bleiben reviewpflichtig.
+
+**Wichtige zeitliche Trennung:** Die Billing-Ursache in §3 betrifft den
+historischen #609-Lauf. Der neue eigene Lauf wurde tatsächlich gestartet und
+ist davon nicht blockiert. Er wird weder als erneuter Billing-Fehler noch als
+vollständig grüne Visual-Abnahme beschrieben. Nachfolgende reine
+Berichtskommit(s) ändern den hier eindeutig identifizierten Prüf-SHA nicht.
+
+Auch der lokale Pre-Push-Hook führte gegen den bereits erstellten
+Korrektur-Commit nochmals `SCALE_250=1 npm run check` erfolgreich aus
+(**4.412 bestanden**, 328 Dateien, kein Skip; 19:02:50–19:19:19 UTC,
+inklusive Push). Ein weiterer Production-Build nach Commit-Erstellung
+(`build-0588322.log`) bestand ebenfalls. Die lokale Browserblockade ist
+weiterhin wahr, wird aber nicht als fehlender GitHub-Browsernachweis ausgegeben.
+
 <!-- AUDIT-CI-RESULTS-END -->
 
 ## 7. Phase 6 — Offene Risiken und Merge-Entscheidung
@@ -342,8 +403,10 @@ Commit-SHA gehören; der historische Billing-Lauf ist kein Ersatz dafür.
    Checker schlägt nun korrekt fehl; vor Freigabe echte Messung anbinden.
    **R-029:** zwei high-Dependency-Advisory-Befunde triagieren und gezielt
    patchen; keine bestätigte Exploitierbarkeit behauptet.
-4. **CI/Browsers:** aktuelle grüne CI- und Browsernachweise müssen vorhanden
-   sein; Billing-/Systembibliotheksgrenzen sind keine bestanden Tests.
+4. **CI/Browsers:** aktuelle Matrix-/Quality-/Funktions-E2E-Nachweise sind
+   für `05883226…` vorhanden, einschließlich Autark/a11y. Visual/Lighthouse
+   bleiben tatsächlich rot (auch bereits in der Basis); vor UI-/Performance-
+   Freigabe Ursachen klären. Lokale Systembibliotheksgrenzen sind keine Tests.
 5. **Reviews/Admin:** zwei Sicherheitsreviews, davon eines unabhängig;
    Required Checks/Branch Protection vom Repo-Admin bestätigen. Der 403-Zugriff
    belegt nur fehlende Leseberechtigung, nicht das Fehlen von Protection.
@@ -353,8 +416,9 @@ Commit-SHA gehören; der historische Billing-Lauf ist kein Ersatz dafür.
 
 **Merge-Empfehlung:** Kein Merge von #609 unverändert. Die begrenzten,
 regressionsgesicherten Korrekturen dieses eigenen Branches getrennt reviewen.
-Auch für sie wird ohne die fehlenden tatsächlichen Gate-/Reviewnachweise
-keine pauschale Mergefreigabe erteilt. Keine direkte Übernahme eines älteren
+Auch für sie wird trotz der jetzt vorhandenen tatsächlichen Kern-/E2E-
+CI-Nachweise ohne Sicherheitsreviews und Klärung der offenen Freigaben keine
+pauschale Mergefreigabe erteilt. Visual/Lighthouse sind nicht grün. Keine direkte Übernahme eines älteren
 Dateibaums über den neueren Stand; insbesondere M-13 unverändert erhalten.
 
 ## 8. Dokumentationsänderungen

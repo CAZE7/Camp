@@ -27,11 +27,17 @@ in #609 (dessen echte Basis: `1cd4f81d`).
   bei parallelen Aufträgen seriell benutzt; Fehler sperren die Queue nicht.
   Restaurierte Auswahl-Caches referenzieren die aktuellen Knoten/Kanten.
 - Dokumentation: aktuelle Strom-SSOT und Links, Gate-Status, historische
-  Merge-/CI-Angaben und M-13-Ausnahme berichtigt. Kein grüner PR-CI-Lauf
-  behauptet: alle vier Jobs von `42475319218` wurden wegen Billing nicht
-  gestartet. S-03/S-3-Konflikt nicht durch eine Sicherheitsabschwächung
+  Merge-/CI-Angaben und M-13-Ausnahme berichtigt. Alle vier Jobs des historischen
+  #609-Laufs `42475319218` wurden wegen Billing nicht gestartet. Dagegen
+  startete der eigene #618-Lauf `46055876243` tatsächlich: Matrix/Quality/E2E
+  grün, Visual/Lighthouse rot (wie schon im Basislauf `44922014101`). S-03/S-3-Konflikt nicht durch eine Sicherheitsabschwächung
   „gelöst“: CL-004/014 Teilweise; Risiken R-026–R-029 und CAMP-REQ-029 / CL-024
   bilden offene Freigaben ab.
+
+**Gate-Dokumentation:** Das vorhandene `perf:edge-routing`-Ratchet wird
+korrekt als blockierend geführt; kein Budget angehoben und das offene
+16-ms-Live-Ziel nicht als erfüllt behauptet. Ein eigener Dokumentregressionstest
+prüft die Abnahmetabelle gegen den bestehenden Workflow-Schritt.
 
 **Zusätzlicher nachgewiesener Diagnostic-Defekt:** Der echte CLI-Checker
 meldete PASS, nachdem sämtliche Zustände wegen fehlender Metriken ausgelassen
@@ -54,7 +60,7 @@ Exploitierbarkeit ohne weiteren Nachweis behauptet und kein blindes Update.
 `lib/verify/ampacity.test.ts` (2),
 `components/planner/utils/exportPlanImage.race.test.ts` (17),
 `verify-requirements-matrix.test.ts` (30 aus #609 plus 5 Nachauditfälle),
-`scripts/architecture/documentationReconciliation.test.ts` (10),
+`scripts/architecture/documentationReconciliation.test.ts` (11),
 `diagnostic-regression-check.test.ts` (10 neue echte CLI-Fälle).
 
 **Verifikation / offene DoD-Punkte:** tatsächliche Ergebnisse, Commit-SHAs,
