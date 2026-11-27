@@ -1,12 +1,16 @@
 # CI-Gate — Aufbau, Belege, Branch Protection & Governance
 
-Stand: 2026-09-02 · Betrifft AGENTS.md **K6**
+Stand: 2026-11-27 · Auditabgleich PR #609; historische Übergabe unten markiert.
 
 ## 0. Aktivierung — aktiv
 
 Die aktiven Workflow-Dateien liegen unter `.github/workflows/`. Die Kopien
 unter `docs/ci/workflows/` bleiben als reviewbare Referenz synchron. Der
-Workflow-Test (`scripts/ci/workflows.test.ts`) prüft die 1:1-Übereinstimmung beider Verzeichnisse.
+Workflow-Test (`scripts/ci/workflows.test.ts`) prüft den Abgleich mit einer
+gezielten Ausnahme: M-13 Produktivrouter-Verifikation läuft nur im aktiven
+PR-Workflow (`ci:verify-routing`). Nur dieser Schritt und seine
+Coverage-Kommentare werden für den Spiegelvergleich normalisiert; sein
+Vorhandensein und seine PR-Bedingung haben einen eigenen Test.
 
 ## 1. Aufbau
 
@@ -26,7 +30,10 @@ push (default) ─► deploy.yml ─► quality.yml
 ```
 
 Weil `deploy.yml` denselben wiederverwendbaren Workflow aufruft wie `ci.yml`,
-kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
+gelten dieselben Basisgates für PR und Deploy. Die zusätzliche
+M-13-Routing-Verifikation ist ausdrücklich PR-only (seit `c0ba909`,
+2026-11-21); sie wird hier nicht entfernt, nur um die ältere
+Dokumentationskopie bytegleich zu machen.
 
 ## 2. Härtungen gegenüber dem Vorgängerstand
 
@@ -46,7 +53,7 @@ kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
 | `branches-ignore: ["gh-pages"]` startete Runs auf jedem Agent-Branch                  | `on.push.branches` enthält nur den aktiven Default-Branch         | Vermeidet Skipped-Rauschen und unnötige Warteschlangen-Einträge                                              |
 | `pages-true` + `cancel-in-progress: true`                                             | gemeinsame Gruppe `pages`, `cancel-in-progress: false`            | Ein laufender Produktiv-Deploy wird bei einem neuen Merge nicht abgebrochen                                  |
 
-## 2.1 Pages-Deploy-Fix — Übergabe erforderlich
+## 2.1 Historische Übergabe des Pages-Deploy-Fixes
 
 Der Fix ist lokal in diesem Branch vorbereitet und durch Regressionstests
 abgesichert. GitHub hat den Push der echten Workflow-Datei mit der Meldung
@@ -57,9 +64,11 @@ als transportierbarer Patch vorhanden. Ein Agent oder Repo-Admin mit
 Übergabe mit den nötigen Settings-Schritten steht in `agent.md` und
 `docs/ci/pages-deploy-handoff-prompt.md`.
 
-Wichtig: Der aktuelle Default-Branch ist
-`feature/react-flow-cable-editor-7322653268250495059`. Der Workflow-Trigger ist
-absichtlich explizit auf diesen Namen begrenzt, weil GitHub-Action-Trigger keine
+**Historischer Stand:** Die folgende Beschreibung bezog sich auf den früheren
+Default-Branch `feature/react-flow-cable-editor-7322653268250495059`.
+**Aktuell ist `main` der Default-Branch** (GitHub-Repository-API, 2026-11-27);
+der aktive Deploy-Trigger verwendet `main`. Damals war der Workflow-Trigger
+absichtlich auf den alten Namen begrenzt, weil GitHub-Action-Trigger keine
 Ausdrücke für `github.event.repository.default_branch` auswerten. Bei einem
 bewussten Wechsel auf `main` müssen Default-Branch, Pages-Quelle,
 `github-pages`-Environment-Regel und Workflow-Liste gemeinsam geändert werden.

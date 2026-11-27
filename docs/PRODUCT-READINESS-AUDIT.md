@@ -703,6 +703,20 @@ Abnahmekriterien · Tests · Aufwand (PT = Personentage) · Abhängigkeiten.
 - **Abnahmekriterien:** Ik konsistent zur Bank-Topologie oder dokumentiert konservativ.
 - **Tests:** `shortCircuit.test.ts`, `batteryBank.test.ts`.
 - **Aufwand:** in AUD-011 enthalten.
+
+**Audit PR #609 (2026-11-27):** Die dort neu eingeführte Serienrechnung wird
+hier **nicht übernommen**: Ein unabhängiger fachlicher Nachweis liegt diesem
+Audit nicht vor. AUD-020 bleibt offen; die Parallelschätzung und
+`BANK-SERIES-UNSUPPORTED` bleiben erhalten. Nachgewiesene ungültige
+Deklarationen (`declaration-mismatch`, `missing-counts`,
+`member-count-mismatch`) liefern nun `null` statt einer Zahl. Die Entscheidung
+stammt ausschließlich aus `deriveBatteryBanks`; AMP-004 meldet den Fall als
+`UNVERIFIABLE`, nicht als PASS. Die K-3-Prüfung gemischter Blockspannungen
+bleibt für alle Deklarationen erhalten. Regressionsschutz:
+`lib/shortCircuit.test.ts`, `lib/verify/ampacity.test.ts`; offenes
+Freigaberisiko R-026. Befunde und Nachweise stehen im
+`docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
 - **Abhängigkeiten:** AUD-001, AUD-011.
 
 ---
@@ -1036,3 +1050,12 @@ gar kein Dokument, sondern eine verständliche Meldung.
 `node.width/height` (Architekturregel: über `nodeGeometry` lesen) und
 `waitForTimeout` im E2E. Beide wurden im **Code** behoben, nicht in der
 Prüfung — ein Beispiel dafür, dass die bestehenden Wächter tragen.
+
+### 9.8 Nachaudit PR #609 (2026-11-27)
+
+Aktueller Nachweis: `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+Die im Bericht von PR #609 genannten 4.318/1 Unit-, 447/277 E2E- und 76
+Pixel-Testfälle sowie Lighthouse 84/90 sind **historische Angaben aus dem
+PR-Bericht**, keine Messung dieses Branches und kein Beleg für einen grünen
+PR-Head. Dessen tatsächlicher CI-Lauf `42475319218` zu `a6cf041d` startete
+keinen der vier Jobs (GitHub-Billing-/Spending-Limit-Annotation).

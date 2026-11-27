@@ -1,9 +1,19 @@
 # Audit-Ergebnisse — Engineering & Quality Framework (Camp)
 
-**Stand:** 2026-11-05  
-**Branch:** `arena/949821e6-camp`  
-**PR:** #604 (https://github.com/CAZE7/Camp/pull/604)  
-**Basis:** Commit `90ce95a` (aufbauend auf `2b8fd91`)  
+> **Historischer Stand — Abgleich 2026-11-27:** Dieses Dokument ist eine
+> Momentaufnahme, keine aktuelle Merge-/Releasefreigabe. PR #604–#606 sind
+> spätestens seit Merge-Commit `1cd4f81d` integriert. Der Default-Branch ist
+> `main`; aktuelle Befunde, tatsächliche CI-Läufe und offene Freigaben stehen
+> in `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
+**Stand:** 2026-11-05
+
+**Branch:** `arena/949821e6-camp`
+
+**PR:** #604 (https://github.com/CAZE7/Camp/pull/604)
+
+**Basis:** Commit `90ce95a` (aufbauend auf `2b8fd91`)
+
 **Prüfgegenstand:** 12 Dokumente (11 Framework-Dokumente + AUDIT-ERGEBNISSE.md) + bestehende Artefakte (AGENTS.md, ADRs, package.json, GitHub Actions, Tests, neuer Konsistenzcheck)
 
 ---

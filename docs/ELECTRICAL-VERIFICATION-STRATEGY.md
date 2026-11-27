@@ -1,5 +1,11 @@
 # Verifikationsstrategie Elektrik — nachweisbare Zuverlässigkeit statt Testabdeckung
 
+> **Lesestand 2026-11-27:** §0–§11 enthalten die historische Befundaufnahme;
+> die Umsetzung ist in §12 nachgetragen. Insbesondere existieren RM-1…RM-5
+> und G4/G6 inzwischen. Das ist keine Fachfreigabe der Serienrechnung aus
+> PR #609. Aktueller Audit-/CI-Nachweis:
+> `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
 Stand: 2026-11-05 · Status: **Konzept mit empirischem Ist-Zustand** (keine
 Formeländerung, keine Freigabe)
 

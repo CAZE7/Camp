@@ -1,9 +1,13 @@
 # Release Gates — Camp (Qualitätsgates für Merge und Release)
 
-**Stand:** 2026-11-04  
-**Status:** Verbindlich  
-**Verantwortlich:** Quality Engineering (Gates), Product Owner (Release-Freigabe)  
-**Übergeordnet:** `docs/engineering/ENGINEERING-CONSTITUTION.md` (§10 CI und Releasefreigaben), `docs/engineering/DEFINITION-OF-DONE.md`, `docs/CI.md`, `docs/architecture/ARCHITECTURE-RULES.md`  
+**Stand:** 2026-11-27 (Audit PR #609)
+
+**Status:** Verbindlich
+
+**Verantwortlich:** Quality Engineering (Gates), Product Owner (Release-Freigabe)
+
+**Übergeordnet:** `docs/engineering/ENGINEERING-CONSTITUTION.md` (§10 CI und Releasefreigaben), `docs/engineering/DEFINITION-OF-DONE.md`, `docs/CI.md`, `docs/architecture/ARCHITECTURE-RULES.md`
+
 **Zweck:** Definition verbindlicher Qualitätsgates und welcher Fehler Merge oder Release blockiert.
 
 ---
@@ -49,33 +53,39 @@ Ein Pull Request darf nur gemergt werden, wenn **alle** folgenden Gates grün si
 
 ## 2.1 Mapping Merge-Gates (M-x, PR #604) ↔ Verifikations-Gates (G-x, PR #605)
 
-Die beiden Gate-Systeme sind abgestimmt. PR #605 bringt konzeptionell G1, G3, G5, G7 mit;
-G2, G4, G6 sind explizit offen und werden mit der #605-Remediation nachgeliefert.
+Die beiden Gate-Systeme sind abgestimmt. **Korrektur (Post-Merge-Audit):** Die
+frühere Fassung dieses Absatzes führte G2, G4 und G6 als „offen". Das war
+veraltet — alle drei liegen als Testdateien vor und laufen im Quality Gate
+(`test:coverage` bzw. der benannte Schritt `npm run test:gates`; Nachweis unten
+je Zeile). Die Datei beschreibt damit den Ist-Zustand, nicht einen Plan.
 
-| M-Gate (#604)                             | G-Gate (#605)         | Status    | Anmerkung                                                            |
-| ----------------------------------------- | --------------------- | --------- | -------------------------------------------------------------------- |
-| M-1 Build                                 | —                     | umgesetzt | `npm run build` in quality.yml                                       |
-| M-2 Type Safety                           | —                     | umgesetzt | `typecheck` + `typecheck:tests` in quality.yml                       |
-| M-3 Lint                                  | —                     | umgesetzt | `npm run lint` in quality.yml                                        |
-| M-4 Format                                | —                     | umgesetzt | `npm run format:check` in quality.yml                                |
-| M-5 Unit + Integration Tests mit Coverage | —                     | umgesetzt | `npm run test:coverage` in quality.yml                               |
-| M-6 Architekturtests                      | —                     | umgesetzt | `libBoundary.test.ts`, `routing/architecture.test.ts` in quality.yml |
-| M-7 Routing-Invarianten & Audit           | —                     | umgesetzt | `routing:audit`, `invariants.test.ts` in quality.yml                 |
-| M-8 Elektrik (Golden Master, Property)    | —                     | umgesetzt | `test:goldenmaster`, `vde-properties.test.ts` in quality.yml         |
-| M-9 Routing-Regression                    | —                     | umgesetzt | `test:regression` in quality.yml                                     |
-| M-10 Komponenten & Datenvalidierung       | —                     | umgesetzt | vitest Run für Schema/Registry/Nodes in quality.yml                  |
-| M-11 Warnsystem                           | —                     | umgesetzt | `CableEdge.test.tsx`, `useLiveValidation.test.ts` in quality.yml     |
-| M-12 Persistenz & Migration               | —                     | umgesetzt | `persistence.test.ts`, `storage.test.ts` in quality.yml              |
-| M-13 Security                             | —                     | umgesetzt | `ci:verify-lockfile-gate` in quality.yml                             |
-| M-14 Accessibility                        | G1                    | umgesetzt | `a11y.spec.ts` in quality.yml; G1 (PR #605) konzeptionell abgestimmt |
-| M-15 E2E (blockierende Specs)             | G3                    | umgesetzt | `e2e` Job; G3 (PR #605) konzeptionell abgestimmt                     |
-| —                                         | G2                    | offen     | Mit PR #605-Remediation geplant                                      |
-| —                                         | G4 (Mutation Testing) | offen     | ADR 0039 erstellt; eigener PR nach #605                              |
-| —                                         | G5                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
-| —                                         | G6                    | offen     | Mit PR #605-Remediation geplant                                      |
-| —                                         | G7                    | —         | Mit PR #605 konzeptionell abgestimmt                                 |
+| M-Gate (#604)                             | G-Gate (#605)           | Status     | Anmerkung                                                                                                                            |
+| ----------------------------------------- | ----------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| M-1 Build                                 | —                       | umgesetzt  | `npm run build` in quality.yml                                                                                                       |
+| M-2 Type Safety                           | —                       | umgesetzt  | `typecheck` + `typecheck:tests` in quality.yml                                                                                       |
+| M-3 Lint                                  | —                       | umgesetzt  | `npm run lint` in quality.yml                                                                                                        |
+| M-4 Format                                | —                       | umgesetzt  | `npm run format:check` in quality.yml                                                                                                |
+| M-5 Unit + Integration Tests mit Coverage | —                       | umgesetzt  | `npm run test:coverage` in quality.yml                                                                                               |
+| M-6 Architekturtests                      | —                       | umgesetzt  | `libBoundary.test.ts`, `routing/architecture.test.ts` in quality.yml                                                                 |
+| M-7 Routing-Invarianten & Audit           | —                       | umgesetzt  | `routing:audit`, `invariants.test.ts` in quality.yml                                                                                 |
+| M-8 Elektrik (Golden Master, Property)    | —                       | umgesetzt  | `test:goldenmaster`, `vde-properties.test.ts` in quality.yml                                                                         |
+| M-9 Routing-Regression                    | —                       | umgesetzt  | `test:regression` in quality.yml                                                                                                     |
+| M-10 Komponenten & Datenvalidierung       | —                       | umgesetzt  | vitest Run für Schema/Registry/Nodes in quality.yml                                                                                  |
+| M-11 Warnsystem                           | —                       | umgesetzt  | `CableEdge.test.tsx`, `useLiveValidation.test.ts` in quality.yml                                                                     |
+| M-12 Persistenz & Migration               | —                       | umgesetzt  | `persistence.test.ts`, `storage.test.ts` in quality.yml                                                                              |
+| M-13 Security                             | —                       | umgesetzt  | `ci:verify-lockfile-gate` in quality.yml                                                                                             |
+| M-14 Accessibility                        | G1                      | umgesetzt  | `a11y.spec.ts` in quality.yml; G1 (PR #605) konzeptionell abgestimmt                                                                 |
+| M-15 E2E (blockierende Specs)             | G3                      | umgesetzt  | `e2e` Job; G3 (PR #605) konzeptionell abgestimmt                                                                                     |
+| —                                         | G2                      | umgesetzt  | `test/reference/differential.test.ts` (Produktivfunktionen vs. RM-1…RM-5); läuft in `test:coverage`, einzeln via `test:differential` |
+| —                                         | G4 (kritische Mutanten) | umgesetzt  | `test/invariants/mutation-critical.test.ts` (9 Tests, 6 kuratierte Klassen); im Gate-Schritt `npm run test:gates`                    |
+| —                                         | G5                      | umgesetzt  | `lib/vde-properties.test.ts` (Idempotenz/Doppellauf) in `quality.yml`                                                                |
+| —                                         | G6                      | umgesetzt  | `test/invariants/silent-pass-gate.test.ts` (Plan × Profil, offene Befunde als Untergrenze); `npm run test:gates`                     |
+| —                                         | G7                      | Repo-Admin | `safety-review`-Label + CODEOWNERS-Regel; **kein** CI-Job — Branch-Ruleset-Aufgabe auf GitHub                                        |
 
-**Hinweis:** G2, G4, G6 werden nicht in `quality.yml` implementiert, solange PR #605 sie nicht konzeptionell abgeschlossen hat. Nach Merge von #605 folgen sie als eigener PR.
+**Hinweis:** G4 ist bewusst **kein** Stryker-Lauf, sondern sechs von Hand
+kuratierte Klassen kritischer Mutanten; ein vollständiger Stryker-Lauf ist als
+PR-Gate zu teuer (Begründung in ADR 0039). G7 ist keine Code-Aufgabe und wurde
+deshalb nicht als CI-Job erfunden.
 
 ---
 

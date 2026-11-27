@@ -245,6 +245,12 @@ Länge — die 0,2 m sind eine bewusste Planungsvorgabe. Position modelliert üb
 - `bankShortCircuitCurrentA`, `shortCircuitAtFuseA`, `breakingCapacityAOf`.
 - Bank = reine Parallelschaltung; Serien-Strings nicht modelliert
   (Parallelschätzung ist konservativ = größerer Ik).
+- Audit PR #609: Widersprüchliche Bankdeklarationen werden vor der Rechnung
+  durch `deriveBatteryBanks` erkannt (`declaration-mismatch`, `missing-counts`,
+  `member-count-mismatch`) und liefern `null`; AMP-004 meldet
+  `UNVERIFIABLE`. Undeklarierte Blöcke behalten ihre Bestandsschätzung plus
+  Rückfrage (`ambiguous-topology`). **Keine neue Serienformel** übernommen:
+  AUD-020 / R-026 bleiben ohne unabhängigen Fachnachweis offen.
 
 **I₂-Koordination (IEC 60364-4-43 §433.1):** `conventionalOperatingCurrentI2`
 (`lib/verify/deviceClasses.ts`) nimmt den Datenblattwert `edge.data.i2A` vor jeder

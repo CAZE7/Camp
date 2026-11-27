@@ -1,5 +1,11 @@
 # Standard-Branch auf `main` umstellen (Deploy-Runbook)
 
+> **Historischer Stand — Abgleich 2026-11-27:** Dieses Dokument ist eine
+> Momentaufnahme, keine aktuelle Merge-/Releasefreigabe. PR #604–#606 sind
+> spätestens seit Merge-Commit `1cd4f81d` integriert. Der Default-Branch ist
+> `main`; aktuelle Befunde, tatsächliche CI-Läufe und offene Freigaben stehen
+> in `docs/ABschlussbericht_Post-Merge-Quality-Audit.md`.
+
 Anleitung für den Betreiber oder einen Agenten mit **Admin- und
 `workflows:write`-Rechten** am Repo. **Nur Vorbereitung ist im Repo
 geschehen** — die Ziel-Änderung des Deploy-Triggers auf `main` liegt als

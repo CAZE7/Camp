@@ -902,9 +902,9 @@ export function checkBreakingCapacity(context: PassContext): CheckResult {
           entity: { kind: 'system', id: 'short-circuit-model' },
           kind: 'UNVERIFIABLE',
           message:
-            'Abschaltvermögen: der Kurzschlussstrom der Batteriebank ist nicht bestimmbar (Innenwiderstand/Chemie fehlen) — kein Vergleich mit I_cn möglich.',
+            'Abschaltvermögen: der Kurzschlussstrom der Batteriebank ist nicht bestimmbar (Bankdeklaration oder Spannungen widersprüchlich bzw. Innenwiderstand/Chemie fehlen) — kein Vergleich mit I_cn möglich.',
           autoFixRemedy:
-            'Innenwiderstand (mΩ, Datenblatt) je Batterie eintragen oder Kapazität und Chemie angeben, damit I_k schätzbar wird.',
+            'Bankdeklaration (Topologie, Mitglieder und Reihen-/Parallelzahlen) sowie Nennspannungen prüfen; Innenwiderstand (mΩ, Datenblatt) je Batterie oder Kapazität und Chemie angeben, damit I_k schätzbar wird.',
         }),
       ],
       0

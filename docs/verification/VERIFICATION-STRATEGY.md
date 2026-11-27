@@ -1,9 +1,13 @@
 # Verification Strategy — Camp (Elektrikplaner)
 
-**Stand:** 2026-11-04  
-**Status:** Verbindlich (Erstfassung)  
-**Verantwortlich:** Quality Engineering (QE) gemeinsam mit Safety Engineering  
-**Übergeordnet:** `docs/engineering/ENGINEERING-CONSTITUTION.md`, `docs/safety/SAFETY-PLAN.md`, `docs/safety/RISK-REGISTER.md`, `docs/safety/SAFETY-CASE.md`  
+**Stand:** 2026-11-27 (Methodenabgleich PR #609)
+
+**Status:** Verbindlich (Erstfassung)
+
+**Verantwortlich:** Quality Engineering (QE) gemeinsam mit Safety Engineering
+
+**Übergeordnet:** `docs/engineering/ENGINEERING-CONSTITUTION.md`, `docs/safety/SAFETY-PLAN.md`, `docs/safety/RISK-REGISTER.md`, `docs/safety/SAFETY-CASE.md`
+
 **Verwandt:** `docs/ai/TESTING-CONTEXT.md`, `docs/architecture/ARCHITECTURE-RULES.md`, `docs/verification/REQUIREMENTS-MATRIX.md`, `docs/verification/RELEASE-GATES.md`
 
 ---
@@ -32,25 +36,25 @@ Für jeden kritischen Bereich werden geeignete Prüfverfahren und deren Abnahmek
 
 ## 3. Prüfverfahren im Überblick
 
-| Verfahren                            | Was es prüft                                                 | Wo eingesetzt in Camp                                                                                                                                | Abnahmekriterium                                                                                |
-| ------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Unit-Testing**                     | Einzelne Funktionen, Grenzfälle                              | `lib/**/*.test.ts`, `components/**/*.test.ts` (vitest, jsdom)                                                                                        | Alle grün; Coverage-Gate `lib/**`: Zeilen 90 %, Branches 85 %, Funktionen 90 %, Statements 95 % |
-| **Integration-Testing**              | Zusammenspiel (Store, Hooks, Komponenten)                    | `store/*.test.ts`, `components/planner/**/*.test.tsx`                                                                                                | Alle grün                                                                                       |
-| **Property-Based Testing**           | Gesetze über tausende generierte Fälle                       | `lib/vde-properties.test.ts` (G1–G7, fast-check), `hananGridMasks.test.ts`, `orthogonalRouting.invariants.test.ts`                                   | 1 000 Fälle je Gesetz, keine Verletzung                                                         |
-| **Differential Testing**             | Zwei unabhängige Implementierungen liefern gleiches Ergebnis | ELK vs. Dagre Layout (`ab-compare.test.ts`); zwei Strompfade (DC vs. AC) — historisch vereinheitlicht (ELE-009)                                      | Byte-identisch bzw. konsistent                                                                  |
-| **Invariant-Testing**                | Harte Garantien immer erfüllt                                | `lib/routing/invariants.ts` (I1–I10), `finalValidation.ts`                                                                                           | I1–I3 = 0 (hart); I4–I7 Metrik/Ratchet; I9 Determinismus                                        |
-| **Metamorphic Testing**              | Eigenschaft bei Transformationen erhalten                    | Umgekehrte Eingabe ⇒ gleicher Graph-Hash (`tests/scale/plannerScale.test.ts`); Kanten-Permutation ⇒ gleiche AutoWire-Edge-ID-Zuordnung               | Gleiches Ergebnis                                                                               |
-| **Mutation Testing**                 | Tests erkennen künstliche Fehler                             | (geplant — noch nicht im CI)                                                                                                                         | Mutation Score ≥ Schwelle (festzulegen)                                                         |
-| **Fuzz Testing**                     | Robustheit gegen unerwartete Eingaben                        | fast-check generiert zufällige Eingaben für Eigenschaften (G1–G7)                                                                                    | Keine Verletzung bei 1 000 Fällen                                                               |
-| **Boundary Testing**                 | Grenzwerte (Min/Max, 0, undefiniert)                         | `lib/units.ts` (wirft bei <0 / =0), `selectFuseSize` (Kabelgrenze), `crossSection` (1,5 / 70 mm²)                                                    | Jede Grenze hat Positiv- und Negativtest                                                        |
-| **Dimensional Analysis**             | Einheiten konsistent                                         | Branded Types (`Watts`, `Amps`, `Volts`, `Mm2`, …) in `lib/units.ts`; `unit` Feld nur an nackte Zahlen hängen                                        | Typecheck + `units.typecheck.test.ts`; keine Einheit an Nicht-Zahlen                            |
-| **Unabhängige Referenzberechnungen** | Berechnung durch zweite, einfache Methode bestätigt komplexe | Kabelquerschnitt über thermischen Bedarf vs. Spannungsfall (zwei Wege, beide Normreihe); Kurzschluss `bankShortCircuitCurrentA` vs. Einzelkomponente | Beide Wege runden auf gleiche Normreihe; Abweichungen dokumentiert                              |
-| **Regression-Testing**               | Früher gefundene Fehler bleiben behoben                      | `scripts/regression/` (15 Szenarien, SVG-Byte-Vergleich), `knownPlans/` Golden Master                                                                | Byte-identisch; Änderung nur mit Begründung + Recapture                                         |
-| **Integration-Testing (System)**     | Gesamtsystem im Verbund                                      | Store-Aktionen + Routing + Validierung (`usePlannerStoreExtended.test.ts` mit echtem Store, kein Mock)                                               | `assertZeroWarnings()`, `assertNoSafetyWarnings()`                                              |
-| **End-to-End-Testing**               | Echte Bedienung gegen Static Export                          | `tests/e2e/*.spec.ts` (Playwright, 4 Projekte: 375/768/1440/touch)                                                                                   | Alle blockierenden Specs grün; a11y critical/serious = Fail                                     |
-| **Visual Regression Testing**        | Pixel-genaue UI                                              | `tests/e2e/visual.spec.ts` (Snapshots hell/dunkel, 375/768/1440)                                                                                     | Baselines nach UI-Freigabe; maxDiffPixelRatio 0,02                                              |
-| **Architektur-Testing**              | Einhaltung der Schichtenregeln                               | `scripts/architecture/libBoundary.test.ts`, `scripts/routing/architecture.test.ts`                                                                   | Alle grün; keine verbotenen Imports                                                             |
-| **Gezielte Formal Verification**     | Mathematischer Nachweis kritischer Eigenschaften             | (geplant — z. B. `I_B ≤ I_n ≤ I_z` für den gesamten Zustandsraum)                                                                                    | Noch nicht im CI; Ziel: Security-critical Claims                                                |
+| Verfahren                            | Was es prüft                                                 | Wo eingesetzt in Camp                                                                                                                  | Abnahmekriterium                                                                                |
+| ------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Unit-Testing**                     | Einzelne Funktionen, Grenzfälle                              | `lib/**/*.test.ts`, `components/**/*.test.ts` (vitest, jsdom)                                                                          | Alle grün; Coverage-Gate `lib/**`: Zeilen 90 %, Branches 85 %, Funktionen 90 %, Statements 95 % |
+| **Integration-Testing**              | Zusammenspiel (Store, Hooks, Komponenten)                    | `store/*.test.ts`, `components/planner/**/*.test.tsx`                                                                                  | Alle grün                                                                                       |
+| **Property-Based Testing**           | Gesetze über tausende generierte Fälle                       | `lib/vde-properties.test.ts` (G1–G7, fast-check), `hananGridMasks.test.ts`, `orthogonalRouting.invariants.test.ts`                     | 1 000 Fälle je Gesetz, keine Verletzung                                                         |
+| **Differential Testing**             | Zwei unabhängige Implementierungen liefern gleiches Ergebnis | `test/reference/differential.test.ts`: Produktion gegen RM-1…RM-5; Referenzmodule ohne Produktivimporte                                | Byte-identisch bzw. konsistent                                                                  |
+| **Invariant-Testing**                | Harte Garantien immer erfüllt                                | `lib/routing/invariants.ts` (I1–I10), `finalValidation.ts`                                                                             | I1–I3 = 0 (hart); I4–I7 Metrik/Ratchet; I9 Determinismus                                        |
+| **Metamorphic Testing**              | Eigenschaft bei Transformationen erhalten                    | Umgekehrte Eingabe ⇒ gleicher Graph-Hash (`tests/scale/plannerScale.test.ts`); Kanten-Permutation ⇒ gleiche AutoWire-Edge-ID-Zuordnung | Gleiches Ergebnis                                                                               |
+| **Mutation Testing**                 | Tests erkennen künstliche Fehler                             | `test/invariants/mutation-critical.test.ts` (G4: sechs kuratierte Klassen, neun Tests; `test:gates`)                                   | Alle kuratierten Mutanten erkannt; kein vollständiger Stryker-Score                             |
+| **Fuzz Testing**                     | Robustheit gegen unerwartete Eingaben                        | fast-check generiert zufällige Eingaben für Eigenschaften (G1–G7)                                                                      | Keine Verletzung bei 1 000 Fällen                                                               |
+| **Boundary Testing**                 | Grenzwerte (Min/Max, 0, undefiniert)                         | `lib/units.ts` (wirft bei <0 / =0), `selectFuseSize` (Kabelgrenze), `crossSection` (1,5 / 70 mm²)                                      | Jede Grenze hat Positiv- und Negativtest                                                        |
+| **Dimensional Analysis**             | Einheiten konsistent                                         | Branded Types (`Watts`, `Amps`, `Volts`, `Mm2`, …) in `lib/units.ts`; `unit` Feld nur an nackte Zahlen hängen                          | Typecheck + `units.typecheck.test.ts`; keine Einheit an Nicht-Zahlen                            |
+| **Unabhängige Referenzberechnungen** | Berechnung durch zweite, einfache Methode bestätigt komplexe | `test/reference/rm1-voltage-drop.ts` bis `rm5-energy.ts`; separat implementierte Referenzen, keine unabhängige fachliche Freigabe      | Beide Wege runden auf gleiche Normreihe; Abweichungen dokumentiert                              |
+| **Regression-Testing**               | Früher gefundene Fehler bleiben behoben                      | `scripts/regression/` (15 Szenarien, SVG-Byte-Vergleich), `knownPlans/` Golden Master                                                  | Byte-identisch; Änderung nur mit Begründung + Recapture                                         |
+| **Integration-Testing (System)**     | Gesamtsystem im Verbund                                      | Store-Aktionen + Routing + Validierung (`usePlannerStoreExtended.test.ts` mit echtem Store, kein Mock)                                 | `assertZeroWarnings()`, `assertNoSafetyWarnings()`                                              |
+| **End-to-End-Testing**               | Echte Bedienung gegen Static Export                          | `tests/e2e/*.spec.ts` (Playwright, 4 Projekte: 375/768/1440/touch)                                                                     | Alle blockierenden Specs grün; a11y critical/serious = Fail                                     |
+| **Visual Regression Testing**        | Pixel-genaue UI                                              | `tests/e2e/visual.spec.ts` (Snapshots hell/dunkel, 375/768/1440)                                                                       | Baselines nach UI-Freigabe; maxDiffPixelRatio 0,02                                              |
+| **Architektur-Testing**              | Einhaltung der Schichtenregeln                               | `scripts/architecture/libBoundary.test.ts`, `scripts/routing/architecture.test.ts`                                                     | Alle grün; keine verbotenen Imports                                                             |
+| **Gezielte Formal Verification**     | Mathematischer Nachweis kritischer Eigenschaften             | (geplant — z. B. `I_B ≤ I_n ≤ I_z` für den gesamten Zustandsraum)                                                                      | Noch nicht im CI; Ziel: Security-critical Claims                                                |
 
 ---
 
@@ -133,26 +137,29 @@ Für jeden kritischen Bereich werden geeignete Prüfverfahren und deren Abnahmek
 
 ---
 
-## 5. Mutation Testing (geplant)
+## 5. Mutation Testing — umgesetzt in begrenztem Umfang
 
-Mutation Testing ist noch nicht im CI. Ziel: Für die sicherheitskritischen Module (`lib/electrical.ts`, `lib/vde-standards.ts`, `lib/shortCircuit.ts`, `lib/acProtection.ts`, `lib/connectionRules.ts`) einen Mutation-Score festzulegen (Vorschlag: ≥ 80 % für killed mutants auf sicherheitsrelevante Linien). Einführung über eigenen ADR mit Messung vor/nachher.
+G4 läuft im CI über `npm run test:gates`: neun Tests für sechs von Hand
+kuratierte kritische Mutantenklassen. Das ist **kein** vollständiger
+Stryker-Lauf und kein gemessener Gesamt-Mutationsscore (ADR 0039).
+Ein vollständiger Score bleibt geplant. Ziel: Für die sicherheitskritischen Module (`lib/electrical.ts`, `lib/vde-standards.ts`, `lib/shortCircuit.ts`, `lib/acProtection.ts`, `lib/connectionRules.ts`) einen Mutation-Score festzulegen (Vorschlag: ≥ 80 % für killed mutants auf sicherheitsrelevante Linien). Einführung über eigenen ADR mit Messung vor/nachher.
 
 ---
 
 ## 6. Abnahmekriterien pro Verifikationsstufe
 
-| Stufe              | Kriterium                                         | Blockiert Merge                    | Blockiert Release                |
-| ------------------ | ------------------------------------------------- | ---------------------------------- | -------------------------------- |
-| Unit + Integration | Alle grün, Coverage-Gate `lib/**`                 | Ja                                 | Ja                               |
-| Property (G1–G7)   | Keine Verletzung bei 1 000 Fällen                 | Ja                                 | Ja                               |
-| Invariante (I1–I3) | = 0 hart                                          | Ja                                 | Ja                               |
-| Architekturtests   | Alle grün                                         | Ja                                 | Ja                               |
-| Golden Master      | Byte-identisch (oder begründeter Recapture)       | Ja                                 | Ja                               |
-| Regression         | Byte-identisch, I1=I2=I3=0 je Szenario            | Ja                                 | Ja                               |
-| E2E (blockierend)  | Alle grün, a11y critical/serious = Fail           | Ja                                 | Ja                               |
-| Visual Regression  | ≤ 0,02 Drift (baselines eingefroren)              | Melden (nicht blockierend)         | Bei UI-Freigabe Ja               |
-| Performance        | Render ≤ 16 ms; Live-Routing ≤ 300 ms (begründet) | Nein (Gate existiert, s. PERF-001) | Nein (Zielkonflikt dokumentiert) |
-| Security           | Keine Secrets, Lockfile-OK, statischer Export     | Ja                                 | Ja                               |
+| Stufe              | Kriterium                                         | Blockiert Merge            | Blockiert Release                                      |
+| ------------------ | ------------------------------------------------- | -------------------------- | ------------------------------------------------------ |
+| Unit + Integration | Alle grün, Coverage-Gate `lib/**`                 | Ja                         | Ja                                                     |
+| Property (G1–G7)   | Keine Verletzung bei 1 000 Fällen                 | Ja                         | Ja                                                     |
+| Invariante (I1–I3) | = 0 hart                                          | Ja                         | Ja                                                     |
+| Architekturtests   | Alle grün                                         | Ja                         | Ja                                                     |
+| Golden Master      | Byte-identisch (oder begründeter Recapture)       | Ja                         | Ja                                                     |
+| Regression         | Byte-identisch, I1=I2=I3=0 je Szenario            | Ja                         | Ja                                                     |
+| E2E (blockierend)  | Alle grün, a11y critical/serious = Fail           | Ja                         | Ja                                                     |
+| Visual Regression  | ≤ 0,02 Drift (baselines eingefroren)              | Melden (nicht blockierend) | Bei UI-Freigabe Ja                                     |
+| Performance        | Render ≤ 16 ms; Live-Routing ≤ 300 ms (begründet) | Ja (`perf:edge-routing`)   | Ja (bestehende Ratchets; 16-ms-Live-Ziel bleibt offen) |
+| Security           | Keine Secrets, Lockfile-OK, statischer Export     | Ja                         | Ja                                                     |
 
 ---
 

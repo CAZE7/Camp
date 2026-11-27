@@ -1,5 +1,69 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-11-27 — Unabhängiges Nachaudit PR #609 (#604–#606)
+
+**Basis / Umfang:** `43ce7dcfb44b6bb97b612652c3cbee17cd54cecc`, eigener Branch
+`arena/32fdc878-camp`; PR #609 separat auf `a6cf041d4b4281817e760ceec3e0345322dde639`
+geprüft. Kein Merge, keine Änderung an fremden Branches oder Workflow-Dateien.
+Der Unterschied des später hinzugekommenen M-13-Gates ist keine Löschung
+in #609 (dessen echte Basis: `1cd4f81d`).
+
+**Nachgewiesene Korrekturen:**
+
+- `shortCircuit.ts`: Nur ungültige Deklarationen werden über das bestehende
+  Bank-Modell abgefangen (`null` statt Zahlen trotz widersprüchlicher Daten).
+  Ri-Faustformel, Parallelrechnung, Spannungsbasis, K-3-Prüfung und alle
+  Grenzwerte bleiben unverändert. Die unbestätigte Serienformel aus #609
+  wird ausdrücklich **nicht** übernommen. Undeklarierte Banken bleiben
+  legacy-kompatibel. AMP-004 bleibt sichtbar `UNVERIFIABLE`; Meldung nennt
+  nun auch Bankdeklaration/Spannungen statt fälschlich ausschließlich Ri.
+- Requirements-Validator samt 30 Tests/Fixtures aus #609 wiederverwendet;
+  falsche Zuordnung einer späteren Risikoannotation (F-609-4), übergangenes
+  `S` in `F/S` (F-609-5) und widersprüchliche Header-Alias-Auswahl korrigiert.
+  Die neuen Fälle waren vor der Korrektur rot. Keine Assertion abgeschwächt.
+- Bildexport: Download und Bericht nutzen denselben Aufnahmepfad. Auswahl
+  wird unmittelbar ab dem Löschen bis zum Renderende beobachtet; auch
+  Frame-Zeitfenster und ABA-Änderungen bleiben erhalten. Gemeinsamer DOM wird
+  bei parallelen Aufträgen seriell benutzt; Fehler sperren die Queue nicht.
+  Restaurierte Auswahl-Caches referenzieren die aktuellen Knoten/Kanten.
+- Dokumentation: aktuelle Strom-SSOT und Links, Gate-Status, historische
+  Merge-/CI-Angaben und M-13-Ausnahme berichtigt. Kein grüner PR-CI-Lauf
+  behauptet: alle vier Jobs von `42475319218` wurden wegen Billing nicht
+  gestartet. S-03/S-3-Konflikt nicht durch eine Sicherheitsabschwächung
+  „gelöst“: CL-004/014 Teilweise; Risiken R-026–R-029 und CAMP-REQ-029 / CL-024
+  bilden offene Freigaben ab.
+
+**Zusätzlicher nachgewiesener Diagnostic-Defekt:** Der echte CLI-Checker
+meldete PASS, nachdem sämtliche Zustände wegen fehlender Metriken ausgelassen
+worden waren. Auch NaN als CLI-Schwelle sowie ungültige Messzahlen konnten
+Prüfungen neutralisieren. Jetzt kein PASS ohne mindestens einen vergleichbaren
+Zustand, bei Wegfall zuvor vorhandener Zustände oder bei nicht-endlichen /
+negativen Pflichtmetriken und Schwellen. Zehn neue Tests rufen tatsächlich den
+CI-CLI-Einstieg auf; die sechs bisherigen Fixture-Tests bleiben unangetastet.
+Die Platzhalter-Generator-/Runnerstrecke bleibt unintegriert und liefert nun
+korrekt Exit 2 statt falschem Grün (R-028). Kein Router oder Budget verändert.
+Der vollständige erste Check wies außerdem zwei bestehende Dashboard-Exporttests
+als rot aus: ihr `getState()`-Mock enthielt kein `waterEdges`, anders als der echte
+Store und der Selektormock derselben Datei. Das Mock-Feld ist vervollständigt;
+alle 36 Dashboard-Assertions und alle Exporttests bleiben unverändert erhalten
+und sind im fokussierten Nachlauf grün (4 Dateien / 56 Tests).
+`npm audit --omit=dev` meldet zwei high-Advisory-Pakete (R-029); keine
+Exploitierbarkeit ohne weiteren Nachweis behauptet und kein blindes Update.
+
+**Regressionsschutz:** `lib/shortCircuit.test.ts` (12 neue Fälle),
+`lib/verify/ampacity.test.ts` (2),
+`components/planner/utils/exportPlanImage.race.test.ts` (17),
+`verify-requirements-matrix.test.ts` (30 aus #609 plus 5 Nachauditfälle),
+`scripts/architecture/documentationReconciliation.test.ts` (10),
+`diagnostic-regression-check.test.ts` (10 neue echte CLI-Fälle).
+
+**Verifikation / offene DoD-Punkte:** tatsächliche Ergebnisse, Commit-SHAs,
+CI-Links und Umgebungsgrenzen im
+`docs/ABschlussbericht_Post-Merge-Quality-Audit.md`. Unabhängige fachliche
+Prüfung, Sicherheitsreviews, Browsernachweis und bestätigte Branch Protection
+sind keine durch diesen Ledger ersetzbare Freigabe. Bestehende Sicherungs-
+und Routing-Assertions bleiben bestehen; keine Baseline wird neu freigegeben.
+
 ## LEDGER 2026-11-03 (3) — P0: Fahrzeugspezifische Kabeldimensionierung
 
 **Anlass:** Review/ELE-001. Für ALLE Leitungen galt pauschal
