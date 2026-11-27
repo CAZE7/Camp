@@ -1,18 +1,18 @@
 # PR-Mergeplan — Camp (Engineering & Quality Framework)
 
-**Stand:** 2026-11-05  
-**Autor:** Agent-Modus (PR #604)  
+**Stand:** 2026-11-05
+**Autor:** Agent-Modus (PR #604)
 **Zweck:** Empfohlene Merge-Reihenfolge für alle offenen PRs im Repo, damit keine Doppelarbeit entsteht und keine Konflikte zwischen Parallel-PRs auftreten.
 
----
+> **⚠️ Historischer Stand (nach Merge #604, #605, #606):** Alle drei PRs sind inzwischen in `main` integriert (Merge-Commit `1cd4f81d54f15fc2cf55ad93bbe29ba81451cd34`, 2026-11-07). Dieser Mergeplan dient ab hier nur noch als Nachweis der abgehobenen Planung und wird nicht weiter fortgeschrieben. Die Spalte „Status“ dokumentiert, welcher Stand zum Merge-Zeitpunkt galt.
 
-## 1. Offene PRs im Repo
+## 1. Offene PRs im Repo (zum Merge-Zeitpunkt)
 
-| PR        | Branch                                | Inhalt                                                                                                                                                                    | Relevanz für #604                                                                              |
-| --------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| #604      | `arena/949821e6-camp`                 | Engineering & Quality Framework (docs-only, CI, Konsistenzcheck)                                                                                                          | **Dieser PR** — Basis für alle anderen                                                         |
-| #605      | `arena/8b44e0c9-camp`                 | Verifikation + Tests: ELECTRICAL-VERIFICATION-STRATEGY.md (§12, §12.7 Abstimmung mit #604), ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md, test/reference/_, test/invariants/_ | Deckt O-07/N-04 (Mutation Testing G4), CL-001/O-02 (E-1, E-2, K-2), CI-Gates G1, G3, G5, G7 ab |
-| #606      | `arena/3ad41177-camp`                 | Produktreife: PRODUCT-READINESS-AUDIT.md, PR-Body (Aud-Status)                                                                                                            | Deckt O-08 (Visual-Gate Trennung), AUD-003 (R-001 Verweis) ab                                  |
+| PR        | Branch                                | Inhalt                                                                                                                                                                    | Relevanz für #604                                                                              | Status nach Merge       |
+| --------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------- |
+| #604      | `arena/949821e6-camp`                 | Engineering & Quality Framework (docs-only, CI, Konsistenzcheck)                                                                                                          | **Dieser PR** — Basis für alle anderen                                                         | ✅ in `main` integriert |
+| #605      | `arena/8b44e0c9-camp`                 | Verifikation + Tests: ELECTRICAL-VERIFICATION-STRATEGY.md (§12, §12.7 Abstimmung mit #604), ELECTRICAL-INVARIANT-REMEDIATION-PLAN.md, test/reference/_, test/invariants/_ | Deckt O-07/N-04 (Mutation Testing G4), CL-001/O-02 (E-1, E-2, K-2), CI-Gates G1, G3, G5, G7 ab | ✅ in `main` integriert |
+| #606      | `arena/3ad41177-camp`                 | Produktreife: PRODUCT-READINESS-AUDIT.md, PR-Body (Aud-Status)                                                                                                            | Deckt O-08 (Visual-Gate Trennung), AUD-003 (R-001 Verweis) ab                                  | ✅ in `main` integriert |
 | #598      | `cursor/obfuscate-client-chunks-60ec` | Build: javascript-obfuscator                                                                                                                                              | Muss nach quality.yml-Änderungen rebasen; Perf-Gates neu prüfen                                |
 | #580      | `arena/79491226-camp`                 | Seitenaufbau/Inhalte                                                                                                                                                      | Keine direkte Überschneidung mit #604                                                          |
 | #585–#591 | Abhängig                              | Dependabot-Updates                                                                                                                                                        | Erst NACH Feature-PRs mergen (Lockfile-Churn)                                                  |
@@ -21,12 +21,12 @@
 
 ## 2. Empfohlene Merge-Reihenfolge
 
-| Reihenfolge | PR                   | Begründung                                                                                                                                                            |
-| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1           | **#604** (dieser PR) | Basis: Dokumentation, CI, Konsistenzcheck, Safety Case, Risk Register, Requirements Matrix. Alle anderen PRs bauen darauf auf.                                        |
-| 2           | **#605**             | Verifikation + Tests. Baut auf #604 auf (Safety Case, Risk Register). G4 (Mutation Testing) folgt nach #605 als eigener PR.                                           |
-| 3           | **#606**             | Produktreife-Audit. Baut auf #604 + #605 auf (Visual-Gate, Baseline-Verfahren).                                                                                       |
-| 4           | **#598**             | Build-Obfuskation. Muss nach #604 (quality.yml-Änderungen) rebasen und Perf-Gates neu prüfen.                                                                         |
+| Reihenfolge | PR                   | Begründung                                                                                                                                                            | Status                  |
+| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 1           | **#604** (dieser PR) | Basis: Dokumentation, CI, Konsistenzcheck, Safety Case, Risk Register, Requirements Matrix. Alle anderen PRs bauen darauf auf.                                        | ✅ in `main` integriert |
+| 2           | **#605**             | Verifikation + Tests. Baut auf #604 auf (Safety Case, Risk Register). G4 (Mutation Testing) folgt nach #605 als eigener PR.                                           | ✅ in `main` integriert |
+| 3           | **#606**             | Produktreife-Audit. Baut auf #604 + #605 auf (Visual-Gate, Baseline-Verfahren).                                                                                       | ✅ in `main` integriert |
+| 4           | **#598**             | Build-Obfuskation. Muss nach #604 (quality.yml-Änderungen) rebasen und Perf-Gates neu prüfen.                                                                         |                         |
 | 5           | **#580**             | Seitenaufbau. Keine direkte Überschneidung, kann parallel oder nach #604.                                                                                             |
 | 6           | **#585–#591**        | Dependabot. Erst nach allen Feature-PRs, um Lockfile-Churn zu vermeiden. ai-SDK 7.x / @ai-sdk/react 4.x Major-Upgrades auf Breaking Changes prüfen (R-022, ADR 0021). |
 

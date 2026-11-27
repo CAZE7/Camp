@@ -82,6 +82,7 @@ export async function exportPlanImage(): Promise<ExportResult> {
     edgeIds: state.edges.filter((e) => e.selected).map((e) => e.id),
   };
   const clearedSelection = previousSelection.nodeIds.length > 0 || previousSelection.edgeIds.length > 0;
+  let postClearSelection: { nodeIds: string[]; edgeIds: string[] } | null = null;
   if (clearedSelection) {
     usePlannerStore.setState((s) => ({
       nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
@@ -90,25 +91,47 @@ export async function exportPlanImage(): Promise<ExportResult> {
       selectedEdges: [],
     }));
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const afterClear = usePlannerStore.getState();
+    postClearSelection = {
+      nodeIds: afterClear.nodes.filter((n) => n.selected).map((n) => n.id),
+      edgeIds: afterClear.edges.filter((e) => e.selected).map((e) => e.id),
+    };
   }
   try {
     return await renderAndDownload(toPng, nodes);
   } finally {
-    if (clearedSelection) {
-      usePlannerStore.setState((s) => {
-        const nodes = s.nodes.map((n) =>
-          previousSelection.nodeIds.includes(n.id) ? { ...n, selected: true } : n
-        );
-        const edges = s.edges.map((e) =>
-          previousSelection.edgeIds.includes(e.id) ? { ...e, selected: true } : e
-        );
-        return {
-          nodes,
-          edges,
-          selectedNodes: nodes.filter((n) => n.selected),
-          selectedEdges: edges.filter((e) => e.selected),
-        };
-      });
+    if (clearedSelection && postClearSelection) {
+      // Die Auswahl nur wiederherstellen, wenn sie sich seit dem
+      // Exportstart nicht geändert hat. Eine von einer anderen Interaktion
+      // während des asynchronen Renders geänderte Auswahl darf nicht
+      // unconditional überschrieben werden (Race-Condition). Der Vergleich
+      // erfolgt gegen den Zustand unmittelbar nach dem Löschen, damit eine
+      // externe Änderung während des Renders erkannt wird.
+      const current = usePlannerStore.getState();
+      const currentSelection = {
+        nodeIds: current.nodes.filter((n) => n.selected).map((n) => n.id),
+        edgeIds: current.edges.filter((e) => e.selected).map((e) => e.id),
+      };
+      const selectionUnchanged =
+        currentSelection.nodeIds.join(',') === postClearSelection.nodeIds.join(',') &&
+        currentSelection.edgeIds.join(',') === postClearSelection.edgeIds.join(',');
+
+      if (selectionUnchanged) {
+        usePlannerStore.setState((s) => {
+          const nodes = s.nodes.map((n) =>
+            previousSelection.nodeIds.includes(n.id) ? { ...n, selected: true } : n
+          );
+          const edges = s.edges.map((e) =>
+            previousSelection.edgeIds.includes(e.id) ? { ...e, selected: true } : e
+          );
+          return {
+            nodes,
+            edges,
+            selectedNodes: nodes.filter((n) => n.selected),
+            selectedEdges: edges.filter((e) => e.selected),
+          };
+        });
+      }
     }
   }
 }
@@ -153,17 +176,25 @@ export async function capturePlanImage(options?: { watermark?: boolean }): Promi
   const nodes: Node[] =
     viewMode === 'water' ? (state.waterNodes as unknown as Node[]) : (state.nodes as unknown as Node[]);
 
-  const selectedNodeIds = state.nodes.filter((n) => n.selected).map((n) => n.id);
-  const selectedEdgeIds = state.edges.filter((e) => e.selected).map((e) => e.id);
-  const selectedWaterNodeIds = state.waterNodes.filter((n) => n.selected).map((n) => n.id);
-  const selectedWaterEdgeIds = state.waterEdges.filter((e) => e.selected).map((e) => e.id);
+  const previousSelection = {
+    nodeIds: state.nodes.filter((n) => n.selected).map((n) => n.id),
+    edgeIds: state.edges.filter((e) => e.selected).map((e) => e.id),
+    waterNodeIds: state.waterNodes.filter((n) => n.selected).map((n) => n.id),
+    waterEdgeIds: state.waterEdges.filter((e) => e.selected).map((e) => e.id),
+  };
   const hadSelection =
-    selectedNodeIds.length +
-      selectedEdgeIds.length +
-      selectedWaterNodeIds.length +
-      selectedWaterEdgeIds.length >
+    previousSelection.nodeIds.length +
+      previousSelection.edgeIds.length +
+      previousSelection.waterNodeIds.length +
+      previousSelection.waterEdgeIds.length >
     0;
 
+  let postClearSelection: {
+    nodeIds: string[];
+    edgeIds: string[];
+    waterNodeIds: string[];
+    waterEdgeIds: string[];
+  } | null = null;
   if (hadSelection) {
     usePlannerStore.setState((s) => ({
       nodes: s.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
@@ -174,25 +205,57 @@ export async function capturePlanImage(options?: { watermark?: boolean }): Promi
       selectedEdges: [],
     }));
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const afterClear = usePlannerStore.getState();
+    postClearSelection = {
+      nodeIds: afterClear.nodes.filter((n) => n.selected).map((n) => n.id),
+      edgeIds: afterClear.edges.filter((e) => e.selected).map((e) => e.id),
+      waterNodeIds: afterClear.waterNodes.filter((n) => n.selected).map((n) => n.id),
+      waterEdgeIds: afterClear.waterEdges.filter((e) => e.selected).map((e) => e.id),
+    };
   }
 
   try {
     const image = await renderToDataUrl(toPng, nodes, options?.watermark ?? false);
     return { ...image, viewMode, identity };
   } finally {
-    if (hadSelection) {
-      usePlannerStore.setState((s) => ({
-        nodes: s.nodes.map((n) => (selectedNodeIds.includes(n.id) ? { ...n, selected: true } : n)),
-        edges: s.edges.map((e) => (selectedEdgeIds.includes(e.id) ? { ...e, selected: true } : e)),
-        waterNodes: s.waterNodes.map((n) =>
-          selectedWaterNodeIds.includes(n.id) ? { ...n, selected: true } : n
-        ),
-        waterEdges: s.waterEdges.map((e) =>
-          selectedWaterEdgeIds.includes(e.id) ? { ...e, selected: true } : e
-        ),
-        selectedNodes: s.nodes.filter((n) => selectedNodeIds.includes(n.id)),
-        selectedEdges: s.edges.filter((e) => selectedEdgeIds.includes(e.id)),
-      }));
+    if (hadSelection && postClearSelection) {
+      // Die Auswahl nur wiederherstellen, wenn sie sich seit dem
+      // Exportstart nicht geändert hat. Eine von einer anderen Interaktion
+      // während des asynchronen Renders geänderte Auswahl darf nicht
+      // unconditional überschrieben werden (Race-Condition). Der Vergleich
+      // erfolgt gegen den Zustand unmittelbar nach dem Löschen, damit eine
+      // externe Änderung während des Renders erkannt wird.
+      const current = usePlannerStore.getState();
+      const currentSelection = {
+        nodeIds: current.nodes.filter((n) => n.selected).map((n) => n.id),
+        edgeIds: current.edges.filter((e) => e.selected).map((e) => e.id),
+        waterNodeIds: current.waterNodes.filter((n) => n.selected).map((n) => n.id),
+        waterEdgeIds: current.waterEdges.filter((e) => e.selected).map((e) => e.id),
+      };
+      const selectionUnchanged =
+        currentSelection.nodeIds.join(',') === postClearSelection.nodeIds.join(',') &&
+        currentSelection.edgeIds.join(',') === postClearSelection.edgeIds.join(',') &&
+        currentSelection.waterNodeIds.join(',') === postClearSelection.waterNodeIds.join(',') &&
+        currentSelection.waterEdgeIds.join(',') === postClearSelection.waterEdgeIds.join(',');
+
+      if (selectionUnchanged) {
+        usePlannerStore.setState((s) => ({
+          nodes: s.nodes.map((n) =>
+            previousSelection.nodeIds.includes(n.id) ? { ...n, selected: true } : n
+          ),
+          edges: s.edges.map((e) =>
+            previousSelection.edgeIds.includes(e.id) ? { ...e, selected: true } : e
+          ),
+          waterNodes: s.waterNodes.map((n) =>
+            previousSelection.waterNodeIds.includes(n.id) ? { ...n, selected: true } : n
+          ),
+          waterEdges: s.waterEdges.map((e) =>
+            previousSelection.waterEdgeIds.includes(e.id) ? { ...e, selected: true } : e
+          ),
+          selectedNodes: s.nodes.filter((n) => previousSelection.nodeIds.includes(n.id)),
+          selectedEdges: s.edges.filter((e) => previousSelection.edgeIds.includes(e.id)),
+        }));
+      }
     }
   }
 }

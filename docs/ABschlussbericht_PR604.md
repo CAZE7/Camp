@@ -1,10 +1,12 @@
 # Abschlussbericht — PR #604 / Engineering & Quality Framework (Camp)
 
-**Branch:** `arena/949821e6-camp`  
-**Commit-SHA:** `5e22af5`  
-**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: OPEN  
-**Stand:** 2026-11-05  
-**Bewertung:** MERGE-READY (siehe Abschnitt 8, Restrisiken dokumentiert)
+**Branch:** `arena/949821e6-camp`
+**Commit-SHA:** `5e22af5` (Feature-Branch; nicht mehr in dieser Historie auflösbar, Squash-Merge)
+**PR:** #604 (https://github.com/CAZE7/Camp/pull/604) — state: **MERGED in `main`** (Merge-Commit `1cd4f81d54f15fc2cf55ad93bbe29ba81451cd34` zusammen mit #605 und #606, 2026-11-07)
+**Stand:** 2026-11-05 (Berichtsstand); dokumentiert 2026-11-07 als abgeschlossen
+**Bewertung:** MERGE-READY gewesen; alle Restrisiken in Abschnitt 8 dokumentiert und als offen belassen
+
+> **⚠️ Historischer Dokumentationsstand:** Dieser Bericht beschreibt den Zustand von PR #604 zum Merge-Zeitpunkt (2026-11-05). PR #604, #605 und #606 sind inzwischen in `main` integriert. Aussagen über „offene PRs“, „geplante CI-Gates“ oder den Stand der Requirements Matrix beziehen sich auf den Berichtsstand und sind teilweise durch den tatsächlichen Post-Merge-Zustand überholt — siehe `docs/PR-MERGEPLAN.md` (historisch), `docs/verification/RELEASE-GATES.md` (aktueller Gate-Stand) und `docs/safety/` (aktueller Safety-Case / Risk Register).
 
 ---
 
@@ -249,4 +251,13 @@ Die folgenden Punkte sind dokumentierte Restrisiken, die den Merge **nicht block
 
 ---
 
-**Ende des Abschlussberichts.**
+**Aktueller Stand nach dem Merge (#604–#606, 2026-11-07, `main`):**
+
+| Punkt                 | Berichtsstand (2026-11-05)                                                           | Aktueller Stand nach Merge                                                                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR #604 / #605 / #606 | offen (Branches `arena/949821e6-camp`, `arena/8b44e0c9-camp`, `arena/3ad41177-camp`) | ✅ alle in `main` integriert                                                                                                                                                                                                                              |
+| O-02 / CL-001         | `Teilweise`, #605-Invarianten E-1/E-2/K-2 geplant                                    | E-1, E-2, K-2 umgesetzt (Remediation abgeschlossen 2026-11-06; `test:invariants` ohne erwartete Fehler); CL-001 bleibt `Teilweise` — manuelle `fuseSize`-Eingabe weiterhin nicht durch `selectFuseSize` abgedeckt, kein „Erfüllt“ ohne technische Evidenz |
+| R-004                 | `Behandelt` (Code + 3 Unit-Tests)                                                    | unverändert; Code-Implementierung in `main` verifiziert (`CableEdge.tsx` `fuse-offset-missing`, `CableEdge.test.tsx` 3 Tests)                                                                                                                             |
+| CI-Gates G2 / G4 / G6 | geplant, nach #605 eigener PR                                                        | umgesetzt: G2 in der Vitest-Suite (`test:differential`), G4 + G6 via `npm run test:gates` im `quality`-Job von `quality.yml`; kein eigenständiger zusätzlicher CI-Job erfunden                                                                            |
+
+---\n\n**Ende des Abschlussberichts.**

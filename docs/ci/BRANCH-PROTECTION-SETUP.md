@@ -12,6 +12,12 @@ Branch Protection mit Required Status Checks verhindert, dass ein PR ohne grüne
 
 **Ohne aktive Branch Protection ist ein grüner CI-Lauf nur eine Empfehlung, keine Durchsetzung.**
 
+> **Status (2026-11-07):** Die Branch Protection ist in GitHub **noch nicht aktiv** (erfordert Repo-Admin / `workflows:write`). Der Merge von PR #604–#606 ist deshalb auf diesem Repo noch ohne erforderliche Required Status Checks erfolgt.
+>
+> **API-Versuch (2026-11-07):** `gh api repos/CAZE7/Camp/branches/main/protection` → **HTTP 403 „Resource not accessible by integration“**. Die GitHub-App-Integration hat weder Repo-Admin- noch `workflows:write`-Berechtigung. Die Einrichtung der Required Status Checks (alle Jobs aus Abschnitt 2) muss durch einen Repo-Admin über die GitHub-UI oder ein autorisiertes Token erfolgen.
+>
+> Diese Datei bleibt die Vorbereitung für die Admin-Einrichtung (offener Punkt O-06 / N-02).
+
 ---
 
 ## 2. Erforderliche Status Checks (alle Jobs aus `.github/workflows/quality.yml`)

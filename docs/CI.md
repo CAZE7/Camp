@@ -57,12 +57,16 @@ als transportierbarer Patch vorhanden. Ein Agent oder Repo-Admin mit
 Übergabe mit den nötigen Settings-Schritten steht in `agent.md` und
 `docs/ci/pages-deploy-handoff-prompt.md`.
 
-Wichtig: Der aktuelle Default-Branch ist
-`feature/react-flow-cable-editor-7322653268250495059`. Der Workflow-Trigger ist
-absichtlich explizit auf diesen Namen begrenzt, weil GitHub-Action-Trigger keine
-Ausdrücke für `github.event.repository.default_branch` auswerten. Bei einem
-bewussten Wechsel auf `main` müssen Default-Branch, Pages-Quelle,
-`github-pages`-Environment-Regel und Workflow-Liste gemeinsam geändert werden.
+Wichtig: Der Default-Branch des Repositories ist `main`
+(`origin/HEAD -> origin/main`, gemessen am 2026-11-07). Die Aussage in älteren
+Dokumenten, der Default-Branch sei `feature/react-flow-cable-editor-7322653268250495059`,
+ist überholt (Stand 2026-09/10-12, vor der Umstellung auf `main`). Der
+Workflow-Trigger trägt den Default-Branch explizit, weil GitHub-Action-Trigger
+keine Ausdrücke für `github.event.repository.default_branch` auswerten. Bei
+einem Wechsel des Default-Branch müssen Default-Branch, Pages-Quelle,
+`github-pages`-Environment-Regel und Workflow-Liste gemeinsam geändert werden
+(siehe `docs/default-branch-auf-main-umstellen.md` für die historische
+Runbook-Dokumentation der Umstellung).
 
 ## 3. Belege
 

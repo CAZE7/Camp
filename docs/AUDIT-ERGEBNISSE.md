@@ -1,10 +1,18 @@
 # Audit-Ergebnisse — Engineering & Quality Framework (Camp)
 
-**Stand:** 2026-11-05  
-**Branch:** `arena/949821e6-camp`  
-**PR:** #604 (https://github.com/CAZE7/Camp/pull/604)  
-**Basis:** Commit `90ce95a` (aufbauend auf `2b8fd91`)  
+**Stand:** 2026-11-05
+**Branch:** `arena/949821e6-camp`
+**PR:** #604 (https://github.com/CAZE7/Camp/pull/604)
+**Basis:** Commit `90ce95a` (aufbauend auf `2b8fd91`)
 **Prüfgegenstand:** 12 Dokumente (11 Framework-Dokumente + AUDIT-ERGEBNISSE.md) + bestehende Artefakte (AGENTS.md, ADRs, package.json, GitHub Actions, Tests, neuer Konsistenzcheck)
+
+> **⚠️ Historischer Dokumentationsstand (Audit zum PR #604, 2026-11-05):** Dieser Bericht beschreibt den Zustand **vor** der Umsetzung der R-004-Code-Änderung (`fuse-offset-missing` in `CableEdge.tsx`) und vor dem Merge von PR #604–#606 in `main` (2026-11-07, Merge-Commit `1cd4f81d54f15fc2cf55ad93bbe29ba81451cd34`). Aussagen, die von der Code-Implementierung abweichen, sind als historisch zu lesen:
+>
+> - **R-004:** Hier als „Offen\" dokumentiert (Code löste fehlenden `fuseOffset` nicht aus). Aktueller Stand: Code implementiert (`fuse-offset-missing` als kritischer Befund, 3 Unit-Tests grün), `docs/safety/RISK-REGISTER.md` führt R-004 als „Behandelt\", `docs/safety/SAFETY-CASE.md` CL-002 verweist auf R-004 als behandelt.
+> - **Requirements-Matrix-Check:** Hier mit 2 erwarteten Fehlern (CAMP-REQ-002, CAMP-REQ-023 ohne Claim) dokumentiert. Aktueller Stand: beide Anforderungen haben Claims (CL-002, CL-023), `node scripts/ci/verify-requirements-matrix.mjs` → Exit 0.
+> - **CI-Gates G2 / G4 / G6:** Hier als geplant dokumentiert. Aktueller Stand: umgesetzt (G2 in der Vitest-Test-Suite, G4 + G6 via `npm run test:gates` in `quality.yml`), siehe `docs/verification/RELEASE-GATES.md` §2.1.
+>
+> Der Bericht bleibt unverändert als historischer Nachweis; aktuelle Zustände stehen in den jeweiligen Fachdokumenten.
 
 ---
 
